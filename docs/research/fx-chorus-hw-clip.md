@@ -16,7 +16,7 @@ Tags follow `.agents/rules/provenance-in-code.md`.
 | Second edge over first (wet gain) | 0.86 (median, 54 rows) | 0.82 at amount 64, 0.88 at 90 (about 80 for 0.86) | 1.0 at amount 127 | EMPIRICAL |
 | Nord trace against plugin trace | within 0.1 ms on all 7 overlapping frames | n/a | n/a | EMPIRICAL |
 
-Verdict: the rate agrees with CHOR type 4 and the wet gain with an amount near 80; the **absolute delay is 0.55 times the firmware's** (and 0.13 times the engine's) if the displayed sawtooth is the 87.31 Hz note. The clip does not show that, so **CHOR stays opt-in** (D57). Type 5 cannot be told from the clip: its output is not a clean delayed copy of an edge (s4), the scope shows one.
+Verdict: the rate agrees with CHOR type 4 and the wet gain with an amount near 80; the **absolute delay is 0.55 times the firmware's** (and 0.13 times the engine's) if the displayed sawtooth is the 87.31 Hz note. The clip does not show that, so **CHOR stays opt-in** (D60). Type 5 cannot be told from the clip: its output is not a clean delayed copy of an edge (s4), the scope shows one.
 
 ## 2. What the clip contains
 

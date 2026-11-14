@@ -51,6 +51,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D55](#d55-edit-value-cells-are-q1616-the-knob-laws-are-captured-the-envelope-rate-index-from-the-knob-is-opt-in) | 2026-11-14 | Edit value cells are Q16.16; the knob laws are captured; the envelope rate index from the knob is opt-in | accepted |
 | [D49](#d49-the-layer-mode-flag-is-reverb-global-the-verified-chain-is-exposed-opt-in-the-level-defaults-stay) | 2026-11-14 | The layer mode flag is Reverb GLOBAL; the verified chain is exposed opt-in; the level defaults stay | accepted |
 | [D50](#d50-fx-mod-1-rm-a-wah-wah-and-pump-use-the-firmware-routines-behind-firmwarefxmod1-boot-words-complete-phas-1-and-spin-chor-delays-are-rescaled) | 2026-11-14 | FX Mod 1 RM, A-WAH, WAH and PUMP use the firmware routines behind `FirmwareFx::mod1`; boot words complete PHAS 1 and SPIN; CHOR delays are rescaled | accepted |
+| [D60](#d60-the-chor-hardware-clip-keeps-firmwarefxmod2-opt-in) | 2026-11-14 | The CHOR hardware clip keeps `FirmwareFx::mod2` opt-in | accepted |
 
 ---
 
@@ -640,13 +641,16 @@ Two new switches (CLI, `FirmwareOptions`, GUI Firmware bar); defaults, GUI defau
 - **Why:** The knob laws are VERIFIED by run for every knob (D55) and the clips now show a net gain without a regression, which is the D22 bar for an increment. A separate crate keeps the tools out of `cargo test --workspace --all-targets` as examples; as `bin` targets they build in debug but only their light unit tests run (no engine render on the test thread), so the Windows stack margin of `nord-core` and `nord-gui` is unchanged.
 - **Alternatives:** Keep the tools as `nord-core` examples with `test = false` (rejected: `--all-targets` still builds them in debug and the earlier overflow was found there); move them into `tools/` as Python (rejected: they link the engine); flip with the bar against `legacy` (rejected: the default itself no longer clears that bar on two clips, see the findings below, which is independent of the knob laws).
 - **Impact:** The default render of every program with stored knobs changes slightly: sweep of 384 programs, 154 render differently (median level change 0.04 dB, largest +1.84 dB `Daft Lead`, -1.51 dB `ScissorSplit Whl`), no silent or non-finite program, no program newly clipping at 0.1 % or more (one firmware-all program, `Ice Pad`, now clips 2 of 96,000 frames). `render_hash` and the golden hashes are unchanged (their layers are built in code and carry no knobs; no re-baseline). Findings that stay open: against `legacy` the default misses the RMS bar on `sci_fi_80s` (-0.4 -> -10.4 dB) and `sine_pluck` (+2.0 -> +5.3 dB), and `mega_line` (1.87 -> 2.53) and `sci_fi_80s` (0.24 -> 1.39) scores are worse than the table of the D22 flip; the cause was not bisected.
-CHOR hardware `FirmwareFx::mod2` opt-in
 
-`feat/chorus-hw-clip`; [fx-chorus-hw-clip](research/fx-chorus-hw-clip.md))
-first hardware recording Mod effect (Nord Stage 4 chorus Kontakt Ultimate Pianos chorus) shows decaying sawtooth DAW oscilloscope delayed copy before each edge. asks modulation metrics side before flips.
-Measure edge separation (`tools/fx_chorus_clip.py scope`) emulator same sawtooth (`examples/fx_chorus_probe.rs`, `grid`): LFO 0.336 Hz (type 4 word `v 30` gives 0.343 Hz), copy delay 0.62 1.78 ms (firmware 0.87 3.28 ms, 4.5 13.5 ms), wet dry 0.86. `FirmwareFx::mod2` `DEFAULT`; chorus default; GUI rate one-copy structure agree type 4, delay off 1.7 (swing 2.1) if scope saw 87.31 Hz note, scope signal audio clip, positions Nord unknown, dry reference audio comb exists, be evaluated.
-Flip CHOR because firmware closer far off, firmware miss explained would 93 programs one clip); rescale firmware delays 0.55 scale rests unverified scope frequency).
-OQ21 gains result questions user (Nord positions, scope source frequency); TD-10 records opt-in; audio change.
+### D60. The CHOR hardware clip keeps `FirmwareFx::mod2` opt-in
+
+- **Status:** accepted 2026-11-14
+- **Decided by:** Yuri Olive (PR for `feat/chorus-hw-clip`; evidence [fx-chorus-hw-clip](research/fx-chorus-hw-clip.md))
+- **Context:** The first hardware recording of a Mod 2 effect (Nord Stage 4 chorus against the Kontakt Ultimate Pianos 2 chorus) shows a decaying sawtooth on a DAW oscilloscope with a delayed copy before each edge. D22 asks for modulation metrics with no side worse than about 3 dB before a default flips.
+- **Decision:** Measure the edge separation of the clip (`tools/fx_chorus_clip.py scope`) and of the emulator on the same sawtooth (`examples/fx_chorus_probe.rs`, `grid`): LFO 0.336 Hz (type 4 word `v = 30` gives 0.343 Hz), copy delay 0.62 to 1.78 ms (firmware 0.87 to 3.28 ms, engine 4.5 to 13.5 ms), wet over dry 0.86. `FirmwareFx::mod2` stays out of `DEFAULT`; the engine chorus stays the default; `render_hash` and the GUI default are unchanged.
+- **Why:** The rate and the one-copy structure agree with type 4, but the delay is off by 1.7 (swing 2.1) if the scope saw is the 87.31 Hz note, the scope signal is not the audio of the clip, the knob positions of the Nord are unknown, and no dry reference or audio comb exists, so the D22 bar cannot be evaluated.
+- **Alternatives:** Flip CHOR to default because the firmware is closer than the engine (rejected: the engine is far off, but the firmware miss is not explained and the default would move 93 programs on one clip); rescale the firmware delays by 0.55 (rejected: the scale rests on the unverified scope frequency).
+- **Impact:** OQ21 gains the clip result and the questions for the user (Nord knob positions, scope source and frequency); TD-10 records the opt-in; no audio change.
 
 ### D59. The default P table gets a separate SUPER wave 1 to 4 row; the 15-clip regressions of PR 292 and PR 319 are refitted
 
