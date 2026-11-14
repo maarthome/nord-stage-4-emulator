@@ -197,8 +197,53 @@ Result: the increment passes the D22 bar (`summary --baseline strip+st+tbl`: mea
 
 Findings of the re-run, not caused by the knob laws:
 
-- The default (`strip+st+tbl`) mean is 4.03, not the 3.93 of the table above: `mega_line` 1.87 -> 2.53 and `sci_fi_80s` 0.24 -> 1.39 moved since that table (later engine changes; the cause was not bisected), the other clips match it.
+- The default (`strip+st+tbl`) mean is 4.03, not the 3.93 of the table above: `mega_line` 1.87 -> 2.53 and `sci_fi_80s` 0.24 -> 1.39 moved since that table (PR 292 and PR 319, bisected and refitted in section 9, D59), the other clips match it.
 - Against `legacy` the default no longer clears the bar of `summary`: `sci_fi_80s` RMS -0.4 -> -10.4 dB and `sine_pluck` RMS +2.0 -> +5.3 dB (the bar counts RMS for Part A clips). The scores themselves are better than legacy on 9 of 15 clips.
+
+## 9. Regression bisect and refit (D59, 2026-11-14)
+
+The default of the D57 re-run (`strip+st+tbl`, knob laws on) scored 3.96 against the 3.93 of the PR 275 table, with two clips moved and two RMS bars missed against legacy. Bisect (one release `ns4` per commit of the first-parent history after PR 275, same two clips, variant `strip+st+tbl`, replay velocity 100):
+
+| Clip | Last good | First bad | Cause |
+|---|---|---|---|
+| `mega_line` (1.87 to 2.53) | 83c6c425 PR 297, 1.87 | 9d7e4045 PR 292 (`synth-stages-rest-5`), 2.53 | SUPER wave 1 (`Super1`) became a stage model; before it played the legacy saw at the idle row, now it plays the stage at the idle block (gain 1.0, factor 1.0) |
+| `sci_fi_80s` (0.24 to 1.39) | 54644a52 PR 321, 0.24 | 3a5143fc PR 319 (`synth-stages-rest-9`), 1.39 | Ladder24 stage `0x12549D` replaced the older filter: RMS +0.0 to -10.4 dB, brilliance -0.1 to +3.3 dB; the MULTI gain 0.26 and the Ladder factor 1.0 were fitted for the old filter |
+
+Other bisect points (all `mega_line` 1.87 / `sci_fi_80s` 0.24 unless named): PR 275 (270efa29), PR 286 (8d47618c), PR 295 (1d4167ef), PR 293 (9dd4ab28), PR 297; `mega_line` 2.53 from PR 292 on, `sci_fi_80s` 1.39 from PR 319 on (PR 309 cc925db5, PR 324 8c12e839, PR 337 18d036c3). The knob laws (D55 / D57) and the kFltFreq law are not involved: they do not touch these clips (the knob-law default is off in the bisect builds and `strip+st+tbl` reads the same on them).
+
+Diagnosis: (1) stage model: both stages are bit exact; the change of the clip is the P block they now reach (rows tuned for what played before). (2) P block (ASSUMED ratios, weights, shape word): not the cause, the SHAPE and saw rows are untouched and their clips did not move. (3) Filter law: the tangent reading `R = tan(pi fc / fs)` is inconsistent with the displayed Hz ([synth-knob-laws](synth-knob-laws.md) s6, ARM law `i = knob - 52`, `R(i) = 0.36083 + 0.0079301 i`), but replacing the fitted type factors by it needs a hardware cutoff sweep per type (the displayed 277 Hz at knob 52 reads 4.8 kHz): not done, the type factors stay EMPIRICAL and only the Ladder24 one (the stage that reads `R` as a table position, D54) changed. (4) Knob laws: no effect on these clips.
+
+Refit (grids per clip, rows rendered in parallel with `--p-table table:<row>=g/0/1/shape/cutoff`; the per-type factors through a temporary environment hook, removed):
+
+| Row / factor | Old | New | Grid (score) | Clip |
+|---|---|---|---|---|
+| SUPER (wave 0) cutoff | 1.07 | 0.45 | 0.25 / 0.36 / 0.42 / 0.45 / 0.5 / 0.7: 4.69 / 1.97 / 1.88 / 2.36 / 3.08 / 5.24 | `pad_silk` (fit) |
+| SUPER1 (waves 1 to 4) gain / cutoff | idle 1.0 / 1.0 | 1.0 / 3.2 | with SUPER 0.45: 2.6 / 3.2: 1.91 / 1.69; gain 1.6 worse (3.29 at factor 1.0) | `mega_line` (was hold-out) |
+| MULTI gain | 0.26 | 0.75 | 0.26 / 0.7 / 0.9: RMS -10.4 / -1.3 / +1.2 dB, score 1.39 / 0.82 / 0.99 | `sci_fi_80s` |
+| Ladder24 type factor | 1.0 | 0.8 | 0.5 / 0.65 / 0.8 / 1.0: brilliance -4.4 / -3.8 / -1.6 / +3.3 dB (with MULTI 0.9 for the last three), `phat_3osc` 2.59 to 2.63 | `sci_fi_80s`, `phat_3osc` |
+| SHAPE SINE gain / cutoff | idle 1.0 / 1.0 | 0.5 / 3.0 | cutoff 1.0 / 2.0 / 3.0 / 4.0: 6.52 / 4.73 / 4.75 / 4.83; gain 0.55 = RMS +0.8, 0.45 = -1.0 dB | `sine_pluck` (one clip, no hold-out) |
+
+`pad_silk` is the pad whose SUPER wave 0 level and cutoff are independent of the 3 lesson clips (filter open); the old conflict with `mega_line` came from the Super row serving wave 1 of that clip (the clip also contains a wave 0 oscillator, so the two rows interact: SUPER 0.4 / SUPER1 2.2 gave 2.17, 0.45 / 3.2 gives 1.69). Disclosure: `mega_line` is a fit clip of SUPER1 now, `sine_pluck` has no hold-out for the SHAPE SINE row, `sci_fi_80s` is the only Ladder24 clip with a filter in range (`phat_3osc` is open, 13 kHz), so these rows are EMPIRICAL and weak. BP stays 1.4 (`filter_bank`: BP 1.0 / 1.8 give 4.64 / 5.52 against 4.33); its error is not in the presence band.
+
+15-clip table (default `strip+st+tbl`, knob laws on; before = D57 re-run on the merged branch, after = this PR; legacy for reference):
+
+| Clip | Role | Legacy | Before | After | Presence dB (before to after) | RMS dB (before to after) |
+|---|---|---|---|---|---|---|
+| lead_smooth | fit | 4.93 | 0.69 | 0.69 | -2.0 / -2.0 | -0.9 / -0.9 |
+| lead_crunch | holdout | 8.33 | 1.23 | 1.23 | +2.4 / +2.4 | +2.2 / +2.2 |
+| pad_silk | fit | 6.53 | 7.62 | **2.36** | +13.2 / +2.2 | +1.1 / +0.5 |
+| mega_line | holdout | 2.98 | 2.53 | **1.69** | -3.1 / -2.9 | -3.2 / -2.7 |
+| sci_fi_80s | fit | 2.03 | 1.39 | **0.86** | +1.4 / +1.8 | -10.4 / -0.7 |
+| filter_bank | fit | 3.15 | 4.33 | 4.33 | -3.3 / -3.3 | +0.5 / +0.5 |
+| phat_3osc | holdout | 3.21 | 2.59 | 2.63 | +3.3 / +3.1 | +0.9 / +0.8 |
+| sweep_12db | holdout | 21.38 | 1.97 | 1.97 | -2.4 / -2.4 | +7.3 / +7.3 |
+| sine_pluck | holdout | 5.99 | 6.52 | **4.75** | -18.6 / -12.2 | +5.3 / -0.0 |
+| ag_blip_saw / square | fit | 5.28 / 3.29 | 5.31 / 3.29 | same | | |
+| ag_zap_saw | holdout | 8.99 | 6.59 | 6.59 | +1.7 | -4.3 |
+| ag_supersaw_0 / 3 / 10 | holdout | 11.31 / 6.83 / 4.96 | 4.38 / 6.02 / 4.96 | same | | |
+| **mean (15)** | | 6.61 | 3.96 | **3.40** | | |
+
+`python tools/synth_validate.py summary result.json` against legacy: the default beats legacy on 11 of 15 clips (mean score gain 3.21, hold-outs 8 of 9 with gain 4.42), two are equal (`ag_blip_square`, `ag_supersaw_10`), two are worse (`filter_bank`, `ag_blip_saw` by 0.03), the D22 bar passes (no clip over 3 dB in presence, no Part A clip over 3 dB in RMS: `mega_line` presence -0.1 to -2.9). Still above legacy: `filter_bank` 4.33 against 3.15 (BP of saws, mid / low bands, not presence). `sine_pluck` presence is still -12.2 dB (the SHAPE SINE word, not the filter). `render_hash` whole `63923599...50a16` (D59).
 
 ## Stop point
 

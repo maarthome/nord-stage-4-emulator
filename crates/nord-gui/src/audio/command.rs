@@ -9,6 +9,8 @@ use nord_core::synth::{FilterModel, SynthOscMode, VaWaveform};
 use std::sync::Arc;
 
 /// Commands sent from the UI/MIDI to the real-time DSP thread.
+// Sent from the UI thread (a few per second at most); the large option struct is not on the audio path.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum AudioCommand {
     /// Organ-area panel edit (see `audio/edits/organ.rs`).

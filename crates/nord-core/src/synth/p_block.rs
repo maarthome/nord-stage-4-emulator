@@ -103,6 +103,8 @@ impl PBlock {
 
 /// CLI / GUI selection of the P block (`--synth-p fitted | gain,w2,r2,shape,cutoff`), `Eq` so it
 /// can live in `FirmwareOptions`; the custom form is in thousandths.
+// `Copy` option struct built once per render, never on the audio path: boxing would drop `Copy`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PSpec {
     /// The EMPIRICAL fit ([`PBlock::FITTED`]).

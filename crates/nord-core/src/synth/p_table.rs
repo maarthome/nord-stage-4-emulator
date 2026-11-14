@@ -12,10 +12,9 @@
 //! without a Rust model).
 
 use super::p_block::PBlock;
-use crate::synth_types::FilterModel;
 
 /// Number of rows of the table.
-pub const PWAVE_COUNT: usize = 9;
+pub const PWAVE_COUNT: usize = 10;
 
 /// One row of the table: the oscillator stage family a decoded ANALOG wave plays through.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,6 +35,8 @@ pub enum PWave {
     Multi,
     /// SUPER wave 0 (`0x121D6D`).
     Super,
+    /// SUPER waves 1 to 4 (stages `Super1`, `Super24`, D22 follow-up 5).
+    Super1,
     /// Everything else (sine, triangle, noise, SUB OSC, SYNC, MISC): idle block.
     Other,
 }
@@ -50,6 +51,7 @@ impl PWave {
         "shapesine",
         "multi",
         "super",
+        "super1",
         "other",
     ];
 
@@ -66,6 +68,7 @@ impl PWave {
             (4, 0 | 1 | 2 | 5) => Self::ShapeSine,
             (5, _) => Self::Multi,
             (6, 0) => Self::Super,
+            (6, 1..=4) => Self::Super1,
             _ => Self::Other,
         }
     }
@@ -91,6 +94,7 @@ impl PWave {
         Self::ShapeSine,
         Self::Multi,
         Self::Super,
+        Self::Super1,
         Self::Other,
     ];
 }
@@ -199,33 +203,32 @@ const PULSE: PBlock = row(0.27, 0.5, 0.85);
 /// equal to the Osc Ctrl knob (`shape` 1.0 scales it); hold-out Crunch Synth (A:66, score 8.3
 /// legacy to 1.2).
 const SHAPE: PBlock = row(0.6, 1.0, 1.75);
-/// MULTI row. EMPIRICAL: gain 0.26 and cutoff factor 1.4 from `sci_fi_80s` (A:44, fit,
-/// score 2.0 to 0.24); hold-out `mega_line` (A:48).
-const MULTI: PBlock = row(0.26, 0.5, 1.4);
-/// SUPER wave 0 row. EMPIRICAL: gain 2.0 (RMS +0.2 dB on `pad_silk`, A:86). Cutoff factor 1.07
-/// times the LP12 type factor 1.4 of [`type_cutoff_scale`] = 1.5, the value of the earlier
-/// compromise: `pad_silk` alone wants 0.5 (presence +8.7 dB too bright at 1.0) and `mega_line`
-/// (A:48, LP12 1200 Hz) wants 2.0. Section 7 of the validation research shows the conflict is
-/// the filter envelope of `pad_silk` (its score is 1.5 at 2 envelope octaves per full amount),
-/// not a cutoff factor of the SUPER stage, so the SUPER row keeps the compromise.
-const SUPER: PBlock = row(2.0, 0.5, 1.07);
-
-/// Cutoff factor per filter type, applied with the table on top of the row factor (the strip
-/// cutoff word of the displayed value is multiplied by it).
-///
-/// EMPIRICAL (`docs/research/synth-validation.md` section 7, grid on the 15 clips; the Hz law of
-/// the stages themselves, `R = tan(pi fc / F)`, is VERIFIED against the oracle, the displayed
-/// cutoff to word map is not):
-///
-/// LP12 1.4 (grid 0.7 to 1.7 on `sweep_12db`, `mega_line`, `sine_pluck`, `lead_crunch`,
-/// `pad_silk`), BP 1.4 (`filter_bank` presence -2.6 to -0.7 dB), LP24 / Ladder24 / HP 1.0 (LP24 1.3
-/// is clearly worse, no clip for the others).
-pub fn type_cutoff_scale(model: FilterModel) -> f32 {
-    match model {
-        FilterModel::Lp12 | FilterModel::BandPass => 1.4,
-        FilterModel::Lp24 | FilterModel::Ladder24 | FilterModel::HighPass => 1.0,
-    }
-}
+/// MULTI row. EMPIRICAL: gain 0.75 and cutoff factor 1.4 from `sci_fi_80s` (A:44, fit; the
+/// gain was 0.26 until the Ladder24 stage of PR 319 replaced the filter that clip uses, then the
+/// clip read -10.4 dB RMS: gains 0.26 / 0.7 / 0.9 give RMS -10.4 / -1.3 / +1.2 dB, score 1.39 /
+/// 0.82 / 0.99, with the Ladder24 type factor 0.8 of [`super::p_type`]); `mega_line` (A:48)
+/// gains from it too (RMS -3.2 to -2.5 dB).
+const MULTI: PBlock = row(0.75, 0.5, 1.4);
+/// SUPER wave 0 row. EMPIRICAL: gain 2.0 (RMS +0.2 dB on `pad_silk`, A:86) and cutoff factor
+/// 0.45, times the LP12 type factor 1.4 = 0.63: grid on `pad_silk` over the row factor 0.25 /
+/// 0.36 / 0.42 / 0.45 / 0.5 / 0.7 gives score 4.69 / 1.97 / 1.88 / 2.36 / 3.08 / 5.24 (was 7.62
+/// with the old compromise 1.07; 0.45 keeps `mega_line` inside the bar). The old conflict with `mega_line` (that clip wants 3.1 in total) came from
+/// one row serving SUPER waves 0 and 1: wave 1 now has its own row, [`SUPER1`]. The envelope
+/// octave hypothesis of the earlier section 7 is not needed. Disclosure: `pad_silk` is the fit
+/// clip; the three Super Saw lesson clips (filter open) do not act on the factor.
+const SUPER: PBlock = row(2.0, 0.5, 0.45);
+/// SUPER waves 1 to 4 row (stages `Super1`, `Super24`, which play after PR 292 instead of the
+/// legacy saw). EMPIRICAL: gain 1.0, cutoff factor 3.2 from `mega_line` (A:48, LP12 1200 Hz,
+/// wave 1 plus a SUPER wave 0 oscillator; with the SUPER row at 1.07 the grid factor 0.7 / 1.0
+/// / 1.5 / 2.2 gives score 2.74 / 2.53 / 2.10 / 1.58 at gain 1, with the SUPER row at 0.45 the
+/// factor 2.6 / 3.2 gives 1.91 / 1.69; gain 1.6 is worse, 3.29 at factor 1.0). The clip was a
+/// hold-out before; waves 2 to 4 reuse the row (ASSUMED, no clip).
+const SUPER1: PBlock = row(1.0, 0.5, 3.2);
+/// SHAPE SINE row (waves 0 to 2, 5). EMPIRICAL: gain 0.5 and cutoff factor 3.0 from `sine_pluck`
+/// (A:26, LP12 185 Hz, one clip, no hold-out): gain 0.5 = RMS -1.0 dB (idle 1.0 reads +5.3);
+/// factor 1.0 / 2.0 / 3.0 / 4.0 gives presence -18.6 / -14.6 / -12.2 / -11.3 dB, score 6.52 /
+/// 4.73 / 4.75 / 4.83. The remaining presence gap is the SHAPE SINE word, not the filter.
+const SHAPE_SINE: PBlock = row(0.5, 1.0, 3.0);
 
 /// Rows in [`PWave`] order. SHAPE saw reuses the saw row and SHAPE SQUARE / SHAPE SINE / other
 /// waves stay at the idle block: ASSUMED, no fit clip with a hold-out.
@@ -235,9 +238,10 @@ const BLOCKS: [PBlock; PWAVE_COUNT] = [
     SHAPE,
     SAW,
     PBlock::IDLE,
-    PBlock::IDLE,
+    SHAPE_SINE,
     MULTI,
     SUPER,
+    SUPER1,
     PBlock::IDLE,
 ];
 
@@ -260,25 +264,21 @@ mod tests {
         );
         assert_eq!(PWave::from_category_wave(5, 3), PWave::Multi);
         assert_eq!(PWave::from_category_wave(6, 0), PWave::Super);
-        assert_eq!(
-            PWave::from_category_wave(6, 1),
-            PWave::Other,
-            "legacy super saw"
-        );
+        assert_eq!(PWave::from_category_wave(6, 1), PWave::Super1);
+        assert_eq!(PWave::from_category_wave(6, 4), PWave::Super1);
+        assert_eq!(PWave::from_category_wave(6, 5), PWave::Other);
         assert_eq!(PWave::from_category_wave(0, 6), PWave::Other);
         assert_eq!(PWave::from_category_wave(7, 0), PWave::Other);
     }
 
     #[test]
-    fn type_factors_and_super_row_keep_the_lp12_super_cutoff_at_the_old_compromise() {
-        assert_eq!(type_cutoff_scale(FilterModel::Lp12), 1.4);
-        assert_eq!(type_cutoff_scale(FilterModel::BandPass), 1.4);
-        assert_eq!(type_cutoff_scale(FilterModel::Lp24), 1.0);
-        let sup = PTable::FITTED.block(PWave::Super).cutoff_scale;
-        let lp12 = sup * type_cutoff_scale(FilterModel::Lp12);
-        assert!((lp12 - 1.5).abs() < 0.01, "SUPER x LP12 = {lp12}");
+    fn super_rows_are_separate_for_wave_zero_and_the_stage_waves() {
+        let w0 = PTable::FITTED.block(PWave::Super).cutoff_scale;
+        let w1 = PTable::FITTED.block(PWave::Super1).cutoff_scale;
+        assert!(w1 > 3.0 * w0, "wave 0 {w0}, wave 1 {w1}");
         assert_eq!(PTable::FITTED.block(PWave::PureSaw).cutoff_scale, 0.85);
         assert_eq!(PTable::FITTED.block(PWave::PurePulse).cutoff_scale, 0.85);
+        assert_eq!(PTable::FITTED.block(PWave::ShapeSine).gain, 0.5);
     }
 
     #[test]
