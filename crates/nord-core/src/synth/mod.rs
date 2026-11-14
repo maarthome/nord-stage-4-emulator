@@ -50,6 +50,7 @@ mod key_velocity;
 mod measured;
 mod p_block;
 mod p_table;
+mod p_type;
 mod pattern;
 mod pattern_presets;
 mod perf;
@@ -88,7 +89,8 @@ pub use measured::{
     SUPERSAW_VOICES, VIBRATO_DEPTH_SCALE_MEASURED,
 };
 pub use p_block::{PBlock, PSpec};
-pub use p_table::{type_cutoff_scale, PTable, PTableSpec, PWave, PWAVE_COUNT};
+pub use p_table::{PTable, PTableSpec, PWave, PWAVE_COUNT};
+pub use p_type::type_cutoff_scale;
 pub use pattern::{pan_gains, CustomPattern, PatternPan, ACCENT_VELOCITY_BOOST, PATTERN_MAX_STEPS};
 pub use perf::{
     ClockDivision, GatePattern, PerfState, PATTERN_PRESETS, PATTERN_PRESET_COUNT,
