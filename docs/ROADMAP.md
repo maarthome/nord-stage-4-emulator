@@ -321,6 +321,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] Wire `kCmpResponse` and the delay feedback filter / ping-pong words (found with the Q16.16 cell, [synth-knob-laws](research/synth-knob-laws.md) s2) into `FirmwareFx`
 - [ ] Remaining stage models (SAMPLE / WAVE banks) bit exact in Python, then opt-in Rust; synth parity remainder: `0x1257B2`, the knob to strip word maps (ASSUMED), `kFltType` and `osc_wave` to stage selection, then flip the defaults and re-baseline `render_hash` (TD-11)
 - [x] Synth default flip (D22): strip chain + stage oscillators + EMPIRICAL per-wave P table (`synth/p_table.rs`, `--synth-p table`) validated on 15 hardware clips (`tools/synth_validate.py`, [synth-validation](research/synth-validation.md)); `render_hash` re-baselined; program sweep clean (0 NaN, 0 newly silent, clipping 18 to 9 programs)
+- [x] Synth clip regressions (D59): bisect of `mega_line` (PR 292) and `sci_fi_80s` (PR 319), SUPER1 row, refit of SUPER / MULTI / SHAPE SINE rows and the Ladder24 factor, 15-clip mean 3.96 to 3.40 ([synth-validation](research/synth-validation.md) s9)
 - [ ] Pulse and triangle shapes, amp envelope smoothing
 - [ ] Hardware sweeps for the remaining ASSUMED scales ([synth-hardware-sweep-plan](research/synth-hardware-sweep-plan.md), OQ7)
 
