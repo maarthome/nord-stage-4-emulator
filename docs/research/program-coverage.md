@@ -116,8 +116,12 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | `synth.wave=KEYS` | 2 | 2 |
 | `synth.wave=ORGAN` | 1 | 1 |
 | `synth.sample=loaded` | 119 | 215 |
-| `synth.sample.kernel=0` (keys <= 47 reachable) | 115 | 208 |
-| `synth.sample.kernel=1` .. `=5` (each) | 119 | 215 |
+| `synth.sample.kernel=0` | 115 | 208 |
+| `synth.sample.kernel=1` | 119 | 215 |
+| `synth.sample.kernel=2` | 119 | 215 |
+| `synth.sample.kernel=3` | 119 | 215 |
+| `synth.sample.kernel=4` | 119 | 215 |
+| `synth.sample.kernel=5` | 119 | 215 |
 | `synth.filter=BandPass` | 18 | 24 |
 | `synth.filter=HighPass` | 11 | 14 |
 | `synth.filter=Ladder24` | 52 | 69 |
@@ -133,7 +137,7 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | `synth.arp` (enabled) | 32 | 49 |
 | `synth.mono` (enabled) | 34 | 48 |
 
-SAMPLE layer kernels (2026-11-14 re-run, 384 programs, 4,800 frames, `--frames 4800`): all 215 SAMPLES layers (119 programs) load their `.nsmp4`; over the key spans of their zones the firmware key rule ([synth-sample-kernel-rule](synth-sample-kernel-rule.md)) reaches kernels 1 to 5 in every layer and kernel 0 (keys up to 47) in 208 layers of 115 programs, so the six kernels are all in use and the ASSUMED ratio rule (which never picks kernels 0 and 1) differs from the firmware in every SAMPLES program. The 14 WAVE (Wavetable) layers in 12 programs (BELLS/TINES 3, DIGITAL 8, KEYS 2, ORGAN 1) stay unmodelled: no ARM path of the WAVE bank is decoded.
+SAMPLE layer kernels (384 programs, `96000` frames): 215 of 215 SAMPLES layers (119 programs) load their `.nsmp4`; over the key spans of their zones the firmware key rule ([synth-sample-kernel-rule](synth-sample-kernel-rule.md)) reaches kernels 1, 2, 3, 4, 5 in every loaded layer and kernel 0 in 208 layers of 115 programs. The ASSUMED ratio rule never picks kernels 0 and 1, so it differs from the firmware in every SAMPLES program that reaches them. The 14 WAVE (Wavetable) layers in 12 programs (BELLS/TINES 3, DIGITAL 8, KEYS 2, ORGAN 1) stay unmodelled.
 
 ## 6. Effects
 
@@ -254,14 +258,14 @@ Use-weighted: a path used by two layers counts twice. A `verified` row means the
 
 ## 8. Render health
 
-- `default`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 37, clipping >= 0.1%: 9.
-- `firmware`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 40, clipping >= 0.1%: 9.
+- `default`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 36, clipping >= 0.1%: 9.
+- `firmware`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 36, clipping >= 0.1%: 8.
 
-Level difference firmware minus default (RMS, dB) over 384 programs: min -7.54, p10 -2.09, median 0.39, p90 2.84, max 18.39, mean 0.42.
+Level difference firmware minus default (RMS, dB) over 384 programs: min -9.02, p10 -2.26, median 0.39, p90 2.83, max 18.39, mean 0.4.
 
 ### Outliers
 
-Counts: panic 0, non-finite 0, silent 0, clipping 18, level jump 11.
+Counts: panic 0, non-finite 0, silent 0, clipping 17, level jump 12.
 
 **Clipping (top 30)**
 
@@ -282,7 +286,6 @@ Counts: panic 0, non-finite 0, silent 0, clipping 18, level jump 11.
 | Program/Bank B/Q and A.ns4p | firmware | 1.0 | 0.004323 |
 | Program/Bank C/Vox Like Me.ns4p | firmware | 1.0 | 0.002406 |
 | Program/Bank C/TapePiano AT.ns4p | default | 1.0 | 0.001396 |
-| Program/Bank E/Cinema Rise.ns4p | firmware | 1.0 | 0.001146 |
 | Program/Bank C/Vox Like Me.ns4p | default | 1.0 | 0.001047 |
 | Program/Bank B/Solo n Walk B3.ns4p | firmware | 1.0 | 0.001 |
 
@@ -292,22 +295,28 @@ Counts: panic 0, non-finite 0, silent 0, clipping 18, level jump 11.
 |---|---|
 | Program/Bank C/Farfisa II.ns4p | 18.39 |
 | Program/Bank B/Fan Club Piano.ns4p | 9.22 |
-| Program/Bank D/16th Note Bass.ns4p | 8.73 |
+| Program/Bank E/PineScape Synth.ns4p | -9.02 |
 | Program/Bank A/Jazz Guitar II.ns4p | 8.64 |
+| Program/Bank D/16th Note Bass.ns4p | 8.52 |
 | Program/Bank E/Snappy D6.ns4p | 8.35 |
-| Program/Bank C/Bounce Clav.ns4p | 7.58 |
 | Program/Bank B/Wormhole Organ.ns4p | -7.54 |
+| Program/Bank C/Bounce Clav.ns4p | 7.53 |
 | Program/Bank C/LoFi Piano.ns4p | -7.47 |
-| Program/Bank F/Resonant Peaks.ns4p | 6.66 |
+| Program/Bank E/24 Frames J3.ns4p | 7.32 |
 | Program/Bank F/OD Rock Bass.ns4p | 6.46 |
 | Program/Bank A/B3 Old Forest.ns4p | -6.39 |
 
 ## 9. Implications
 
-(see the data file)
+Regenerated 2026-11-14 for the D59 synth defaults (per-wave P rows, Ladder24 cutoff factor 0.8, knob laws default since D57, SUPER and SHAPE stages), `96000` frames, both modes in one run (`default` and `--firmware-all --firmware-routing`), against the numbers committed before (same 384 programs, same notes). Derived numbers only.
+
+- Health: panic 0, non-finite 0, silent 0 in both modes, as before. No program newly clips at >= 0.1 %. Programs with any clipped sample: `default` 37 to 36 (Fat Wheel no longer clips), `firmware` 40 to 36 (Bounce Clav, Ice Pad, Cinema Rise, Fat Wheel, Moving Chords no longer clip; Calling Whl newly clips, below 0.1 %). Clipping >= 0.1 %: `default` 9 to 9, `firmware` 9 to 8 (Cinema Rise drops out).
+- Level against the previous numbers (RMS change of the same program, same mode): median 0.0 dB, 55 programs move by more than 1 dB and 23 by more than 6 dB in `default` (50 and 23 in `firmware`). Largest rises in `default`: Scream Lead AT +13.3 dB, 80s Sci-Fi +9.8, Statement Syn Bs +9.7, Warm Syn Brass, Classic Syn Bass, Paisley Synth, Dyn Octave Pad and Funk Hit Split +9.1 to +9.2. Largest drops: Glow Chords Whl -9.3 dB (-12.1 in `firmware`), Sine Rain Pad -7.0, ScissorSplit Whl -6.3, Trumpet Synth and Syn Flute -6.0, Moving Chords -5.8.
+- Firmware minus default level (section 8): minimum -7.54 to -9.02 dB, maximum unchanged at +18.39 (Farfisa II, an organ program). Resonant Peaks (+6.66) leaves the jump list; PineScape Synth (-9.02) and 24 Frames J3 (+7.32) enter it. The classification totals (section 7) are unchanged: the status table is a reading of the specs, not of the render.
+- The level shifts are model changes validated only by the 15 hardware clips ([synth-validation](synth-validation.md)); no factory program has a hardware level reference, so they stay open under TD-11.
 
 ## 10. Follow-ups
 
--
+- Hardware level references for the synth programs with the largest shifts (Scream Lead AT, 80s Sci-Fi, Glow Chords Whl) to confirm or refit the per-wave P rows (TD-11).
 
 Data: [data/program-sweep.json](data/program-sweep.json). Reproduce: `cargo build --release -p nord-tools --bin program_sweep` then `uv run python tools/program_sweep.py --ns4b ".reference/<backup>.ns4b"`.
