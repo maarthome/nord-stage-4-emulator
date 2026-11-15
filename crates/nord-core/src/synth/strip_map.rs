@@ -8,27 +8,40 @@
 //! | Panel value | Strip word | Law (DSP side) | Tag of the mapping |
 //! |---|---|---|---|
 //! | Cutoff in Hz | word 3, `i` = top byte | `R = ramp(i)`, `fc = F atan(R) / pi` | ASSUMED (inverse of the law, display Hz is the cutoff) |
-//! | Attack seconds | ADR word, index `-64..64` | `cA(idx)`, linear ramp of `1 / cA` passes | ASSUMED (time to full scale) |
-//! | Decay / release seconds | ADR word, index | `a(idx)`, `a^n` per pass, tau = `1 / (1 - a)` passes | ASSUMED (tau = displayed time) |
+//! | Attack seconds | ADR word, index `-64..64` | `cA(idx)`, linear ramp of `1 / cA` passes | VERIFIED (time to full scale = display, ARM run) |
+//! | Decay / release seconds | ADR word, index | `a(idx)`, `a^n` per pass, tau = `1 / (1 - a)` passes | VERIFIED by index (tau = display / ln 100 at plateau starts); constant 0.18 EMPIRICAL |
 //!
-//! A pass is [`STRIP_PASS_FRAMES`] SY frames. ASSUMED, with two corroborations: with two frames per
-//! pass the attack table spans 0.50 ms (index -64, 10.9 passes) to 46 s (index 64, 1.0e6 passes),
-//! the panel's 0.5 ms attack floor and 45 s ceiling (one frame per pass would stop at 23 s); and
-//! the decay table spans tau 0.67 ms to 9.2 s, the panel's 3 ms to 45 s decay range times
-//! [`DECAY_TAU_FRACTION`] (0.18, EMPIRICAL from the filter envelope clip) gives 0.54 ms to 8.1 s,
-//! the same span within 20 %. Hence decay and release use tau = 0.18 x the displayed time.
+//! A pass is [`STRIP_PASS_FRAMES`] SY frames, VERIFIED by the ARM run of `docs/research/
+//! synth-knob-laws.md` s3: the ARM writes the rate index `knob - 64` and the attack ramp of two
+//! frames per pass equals the displayed time at the first knob of each table plateau (ratio 1.00
+//! to 1.01); the attack table spans 0.50 ms (index -64, 10.9 passes) to 46 s (index 64, 1.0e6
+//! passes), the panel's 0.5 ms floor and 45 s ceiling. The displayed decay time is the time to fall
+//! 40 dB at the first knob of a plateau (`tau = display / ln 100`); [`DECAY_TAU_FRACTION`] keeps
+//! the clip-fitted 0.18 for layers without stored knobs.
+//! What stays ASSUMED is the rest of the mapping: the ARM word of a displayed cutoff (section 6 of
+//! the same note) and that the panel value of a layer without stored knobs is the display.
 
 use super::{
     attack_coeff, decay_release_coeff, fw_cutoff_cycles_per_sample, fw_strip_cutoff_r,
     FW_CUTOFF_CLIP, SY_FRAME_RATE_HZ,
 };
 
-/// Ratio of the decay / release time constant to the displayed time (the classic engine's
-/// `ENV_DECAY_TAU_FRACTION`, EMPIRICAL 0.18 from the filter envelope clip; ASSUMED to hold for the
-/// amp envelope and for release, supported by the table range above).
+/// Ratio of the decay / release time constant to the displayed time.
+///
+/// EMPIRICAL 0.18 (the classic engine's `ENV_DECAY_TAU_FRACTION`, fitted on the laser-zap filter
+/// clip at display 2.07 s). The firmware law is not a constant fraction: the displayed decay is the
+/// time to fall 40 dB at the first knob of each plateau of the rate table (`tau = display / ln 100
+/// = 0.2171 x display`, VERIFIED, `docs/research/synth-knob-laws.md` s3) and the ratio drifts
+/// from 0.225 down to 0.169 over the plateau (the rate index repeats while the display keeps
+/// rising), which is why 0.18 fits a mid-plateau clip. Layers that carry their stored knobs use
+/// the exact index (`knob_laws`, default); this constant serves layers built without knobs, where
+/// a flat 0.2171 would break that clip (checked: the `engine` golden segment moves 0.12 % in RMS).
 pub const DECAY_TAU_FRACTION: f32 = 0.18;
 
-/// ASSUMED: SY frames per envelope pass (see the module header).
+/// VERIFIED: SY frames per envelope pass, 2: the attack ramp time `1 / cA(knob - 64)` passes equals
+/// the displayed attack time at the first knob of each plateau, ratio 1.000 to 1.011 at knobs 0,
+/// 16, ..., 112 (`docs/research/synth-knob-laws.md` s3; `synth::fw_knob_laws` test
+/// `rate_tables_...`).
 pub const STRIP_PASS_FRAMES: f32 = 2.0;
 
 /// Strip table index of the cutoff word that gives `R = 0.36083` (`i = 0`); the ramp is

@@ -32,6 +32,7 @@ mod percussion_poly;
 mod preset_live;
 mod rotary;
 mod rotor_arm;
+mod rotor_choices;
 mod rotor_stop;
 mod scanner;
 #[cfg(test)]

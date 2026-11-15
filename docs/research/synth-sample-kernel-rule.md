@@ -49,7 +49,7 @@ c01e17a0  bl 0xc006ca48 ; str sl, [port] ; str r5, [port]       ; message (addre
 | Pitch | decoded and run in section 7: integer exponent tables (closed forms), the result is `float(int) * 2^-23`; the ARM-side law is VERIFIED, its join with the DSP step table is open | VERIFIED (law), open (join) |
 | Loop handling | no ARM-side loop code was found in the sender; the second read position of Stage B (mask words at frame `+0x28`) is the DSP's loop splice or crossfade, role open ([sy-dsp-map](sy-dsp-map.md) section 6). The engine loops with a crossfade (`sample_osc.rs`), unverified | open |
 | Voice record fields written before prepare (`+0x0A`, `+0x0C..+0x0F`, `+0x13`, ...) | not decoded | open |
-| WAVE bank (14 Wavetable layers in 12 factory programs) | no ARM path decoded; the engine plays a synthetic 64-table placeholder. Whether WAVE layers run on SY (kernel record), on SMP (6-tap Q31, [smp-voice](smp-voice.md)) or on the ORG / PNO strips is not known | open |
+| WAVE bank (14 Wavetable layers in 12 factory programs) | **answered in [synth-stage-models-13](synth-stage-models-13.md):** not SY, not SMP: core 2 stage `0x1247B6` (strip type 54, `kOscBank 3`) with 46 firmware-rodata tables; the engine still plays the 64-table placeholder unless `--synth-wave-bank` is given | VERIFIED (stage 320 of 320; registry) |
 
 ## 5. Program sweep coverage (SAMPLE layers)
 
@@ -101,7 +101,7 @@ Consequence: the structural evidence says the chain key is the layer note withou
 | Item | Result | Tag |
 |---|---|---|
 | Loop and second read position | no ARM-side loop code in the sender (unchanged); the voice update writes `+0x0A`, `+0x0C .. +0x0F`, `+0x13` from stack fields it copies out of the event record (`0xC01E0334..0xC01E0378`, `0xC01E09B8..0xC01E0A48`): roles of the stack slots not decoded | open |
-| WAVE (Wavetable) layers | in the harness the oscillator edits (`kMode` 0..3 x `kOscBank` 0..3, `kOscWave` applied) send only PNO core 1 / core 2 and ORG messages (24 or 32 words each, identical for every bank), **no SY or SMP word**; banks 1 and 2 only change the strip type index to 49..53 ([synth-wave-stages](synth-wave-stages.md): stages `0x124269`, `0x12453F`). So the 14 WAVE layers are most likely strip stages on PNO core 2 plus a table stored on the host, not SY / SMP voices; the table read path is not decoded | EMPIRICAL (negative run) |
+| WAVE (Wavetable) layers | in the harness the oscillator edits (`kMode` 0..3 x `kOscBank` 0..3, `kOscWave` applied) send only PNO core 1 / core 2 and ORG messages (24 or 32 words each, identical for every bank), **no SY or SMP word**; banks 1 and 2 only change the strip type index to 49..53 ([synth-wave-stages](synth-wave-stages.md): stages `0x124269`, `0x12453F`). Corrected in [synth-stage-models-13](synth-stage-models-13.md): banks 1 and 2 are the FM banks; `kOscBank 3` is WAVE (type 54, stage `0x1247B6`, core 2, tables in rodata). Not SY / SMP voices, as read here | EMPIRICAL (negative run), answered by batch 13 |
 
 ## 10. SAMPLES layer in the ARM harness: what was tried (2026-11-14, `tools/arm_sample_probe.py`)
 
@@ -125,7 +125,7 @@ Run it: `uv run --with unicorn python tools/arm_sample_probe.py <CODE> <SRAM> --
 
 1. (loader done, section 11) Register the voice groups of the handler instance `0x9062E330` (or run the ring consumer task) so that `0xC01E00AC` reaches the key store `0xC01E0A00`; then the three captures are one note-on: record write `0x9243B + 0x38 k`, pitch message, fields `+0x0A, +0x0C .. +0x0F, +0x13`.
 2. Decode the DSP side of the pair-block write `0x9219E + 0x20` (which SY routine reads it and fills `DM(0x9354A + index)`), then compare the six measured steps with `sinc::pitch_law`.
-3. WAVE bank: unchanged (section 9, negative run on PNO core 2); the strip stages `0x124269 / 0x12453F` and the table read path are not decoded.
+3. WAVE bank: answered in [synth-stage-models-13](synth-stage-models-13.md) (stage `0x1247B6`, 46 rodata tables); `0x124269 / 0x12453F` are the FM banks, not decoded.
 
 ## 11. The sample loader found and driven (2026-11-14, `tools/arm_sample_probe.py`)
 
@@ -182,6 +182,20 @@ uv run --with unicorn python tools/arm_sy_voice.py target/fw_unpacked/bank0_CODE
 
 Reproduce (local files only): `target/release/sharc-ref sy.bin tools/oracle_scenarios/sy_pitch_join.scn --out target/oracle/join` (edit the two `poke` lines for another `(e, word)` point), `cargo test -p nord-core sinc::pitch_law`, and the zone dumps with `tools/arm_sample_probe.py chunks` on the member read from the backup (map record byte 2, stk bytes `+5`, `+6..+8`). The Octave Shift runs use `boot_sample_rig`, `setup.reset()`, `arm_edit_capture.apply_value(emu, store.address, 0xF5, shift)`, two `rig.tick`, then `play_note`.
 
+## 14. The writer of the table entry `e` is not in the image or the ARM message surface; the step join is modelled (2026-11-14, `sharc-ref --watch`, SY listing, ARM port tables)
+
+| Item | Result | Tag |
+|---|---|---|
+| DSP stores into `DM(0x9354A .. 0x9358F)` | none. The listing `0x1C0300 .. 0x1C23F0` (3,313 instructions, `tools/adi_dis.py`) names `0x9354A` once (`I5 = 0x9354A` in ISR step 3, a **read** through `DM(M5, I5)` and `DM(M6, I5)`); the other `I5` loads are `0xB6011`, `0x935D4`, `0x935E2`, `0x95C9E`, `0x93590` (a pointer cell, not the table). The only store of pair word 0 is the voice reset `0x1C0794` (`R0 = 0x36 | 0x4000000`, `DM(I1 - 0x20) = R0` at `0x1C0794 + 0xB`), i.e. every reset gives the voice the neutral index `0x36` and the field spec `0x0400` (pos 0, len 16) | VERIFIED (listing) |
+| Run | new `sharc-ref --watch LO:LEN[:LIMIT]` logs every data write into a window. Over the warm-up (100,000 steps), the reset, the audio ISR and 12 frames of the full note-on list (the 17 SY messages in order: reset `0x1C0794`, `0x92416`, gains, record fields, prepare `0x1C07CD`, `0x92433`, kernel, pitch, `0x92432`) the window `0x93500 .. 0x9359F` sees **no write**; the only hits are `0x935E2 ..` from `0x1C0C8D` (the warm-up fill of a different table). The image entry stays `0x80008000` (both halves `0x8000`, step 0). The vector sweep stops at vector 0 (reset vector, `Unimplemented`), so the remaining ISRs were not run | VERIFIED (run) |
+| ARM message surface | the ARM reaches the SY only through the port tables `0xC0547F78` (48 voice records `0x92406 + 0x38 k`, 0x370 bytes), `0xC05482F8` (48 pair blocks `0x9219E ..`) and one more of `docs/research/arm-chan-tables.csv`; none covers `0x9354A`. The 290 boot messages and the 17 note-on messages are all opcode 0 plain stores (`w1 >> 28 == 0`), none to `0x93500 .. 0x9359F`; no opcode 1 .. 15 handler call is ever sent (opcode 9 `0x1C03AA` sets up the SPI DMA registers `IISPI 0x1080 .. SPIDMAC 0x1084`, the only handler that could stream a table). Binding the sample (`load_sample`, `EDIT_SMP_ID`, `EDIT_MODE`, `bind_layer`, two ticks) sends no SY or SMP message at all, the type 4 event `0xC01E24F0` sends none in this run, and the ARM never sends the "go" message `0x1C084C` of `sy_voice_*.scn` | VERIFIED (run, `tools/arm_sy_voice.py` flow with message dumps) |
+| Harness gap | the harness sets the status bit of the voice update by hand (section 12, ASSUMED meaning "SY voice ready"), so the part of the ARM flow after the DSP answers (the "go" state, the writes that would give the pair a key-dependent index or entry) is not reached; that is the one place where the writer can still hide, together with an SPI DMA (opcode 9) or a table the real boot loads. Nothing in the image, the 290 boot messages or the note-on points to it | open |
+| Entry format (new) | the nine-note oracle run `tools/oracle_scenarios/sy_pitch_nine.scn` (key, zone word and modelled entry poked; `loop 6`; goldens in `sinc/step_join.rs`) shows that the 16-bit entry is a float with a **5-bit exponent, an 11-bit mantissa and denormals at `E = 0`**: `ratio = 0.625 * m` for `E = 0` (`m = (e & 0x7FF) / 2048`), `0.625 * 2^(E - 1) * (1 + m)` for `E >= 1`. The entries `0xF458 .. 0xFC58` of a signed-exponent reading make the oracle clip the step to `0x08000000` (not a ratio), the entries `0x018B .. 0x062C` (`E = 0`) give steps within 5e-5 of the join | VERIFIED (oracle, 9 of 9 notes within 5e-5) |
+| Join against the oracle | with `e = pack(word_law(key) / 0.05)` and the zone word, the DSP step words of the nine notes are `0xCEDD89, 0xCF018B, 0xCEC5D9, 0xCEF5CD, 0xCF0D30, 0xD7CE54, 0xBF7577, 0xDD8751, 0xC227EE` (keys 48, 59, 60, 71, 72, 83, 84, 95, 96); `sinc::step_join::sy_step` agrees within 5e-5 relative and each is within 0.5 % of `rate / 43402.34 * 2^((key - root) / 12)` (the zone tune truncation is 0.23 %). The six measured steps of [sy-smp-audio](sy-smp-audio.md) section 4 are the `word = 0.05` column (`dsp_step_matches_the_oracle_points`). What this proves is the **arithmetic** of the join and of the entry format; that `e` holds `word_law(key) / 0.05` is a model (`table_entry_for_key`) | VERIFIED (join, entry format); ASSUMED (the entry value) |
+| Engine | `--sample-pitch fw` is rebuilt on `sinc::step_join::output_step` = `dsp_step(unpack(table_entry_for_key(key)), zone_word(root, rate)) * 43402.34375 / engine_rate`. At the root key it plays at the native rate within 0.3 %, and it follows the semitone law within 0.5 %. The default stays off (D65): `e` is a model, so D22 is not met; no golden hash changes | VERIFIED (tests); default decision D65 |
+
+Reproduce: `target/release/sharc-ref sy.bin tools/oracle_scenarios/sy_pitch_nine.scn` (series `loK` and `hiK`, the step word is `hi << 16 | lo`), `sharc-ref sy.bin SCENARIO --watch 0x93500:0xA0` for the write watch, `cargo test -p nord-core sinc::step_join`.
+
 ## Implications
 
 - `SincKernelSet::for_key` (`sinc/key_rule.rs`) is the firmware rule. Since section 12 it is the **default** for the `SAMPLES` oscillator (`--sample-kernel key`, D46): the record write `0x9243B` was captured for nine keys and equals the rule on the stored voice key. `--sample-kernel ratio` and `--legacy-all` select the old ASSUMED ratio rule. Kernels 0 and 1 (`fc` 1.10, 1.05) are used for keys up to B3; the legacy rule never picked them.
@@ -190,7 +204,7 @@ Reproduce (local files only): `target/release/sharc-ref sy.bin tools/oracle_scen
 
 ## Follow-ups
 
-0. (section 13) Open: the writer of the DSP table entry `DM(0x9354A + index)` (the played-key side of the step); then `step = e * 0.05 / word` and `--sample-pitch fw` can be built on `zone_word` and checked end to end.
+0. (section 14) Still open: the writer of the DSP table entry `DM(0x9354A + index)`. Not a DSP store, not an ARM port, not a boot message; look at the ARM flow after the DSP answers the prepare message (the "go" state the harness never reaches), an opcode 9 SPI DMA, and a sample set the real loader binds. `--sample-pitch fw` is built on `step_join` with a modelled entry and stays opt-in (D65).
 
 1. (done, section 12) Boot the harness with a SAMPLES layer, play a note and capture the key store and the message to `0x9243B + 0x38 k`.
 2. DSP side of the pitch word: which SY routine reads `0x921A6` (word 8 of the pair block `0x9219E`) and fills `DM(0x9354A + index)`; a `sharc-ref` replay of the full ARM message list leaves the step at 0, so a message or a table fill is still missing (the ARM writes `0x9219E = 0xFFFFFFFF` in the type 4 event). Then compare the six measured steps with `sinc::pitch_law`.

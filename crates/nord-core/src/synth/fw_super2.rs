@@ -144,7 +144,7 @@ pub fn fir_lane(words: &[u32; 6], rel: usize, c0: usize, fir: &[u32], signed: bo
 
 /// One interpolated table value of one voice at `phase`: the band row `(offset, count)` picks
 /// the cycle, `phase * count` the position, its fraction the FIR phase.
-fn voice_value(t: &Super24Tables, phase: u32, offset: usize, count: usize) -> f32 {
+pub(super) fn voice_value(t: &Super24Tables, phase: u32, offset: usize, count: usize) -> f32 {
     let prod = phase as u64 * count as u64;
     let idx = (prod >> 32) as usize + offset;
     let fir_phase = ((prod as u32) >> 23) as usize % FIR_PHASES as usize;

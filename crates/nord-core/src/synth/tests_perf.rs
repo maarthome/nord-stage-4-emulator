@@ -21,7 +21,7 @@ fn window_energy(frames: &[[f32; 2]], from: usize, to: usize) -> f32 {
 fn gate_alternates_sound_and_silence_at_the_step_period() {
     let mut s = layer();
     s.arp_mode = ArpMode::Gate;
-    s.arp_rate_bpm = 240.0; // step = 60 / (240 * 4) = 62.5 ms = 3000 samples
+    s.arp_rate_bpm = 480.0; // step = 30 / 480 = 62.5 ms = 3000 samples
     s.perf.gate_env = 1.0;
     s.note_on(57, 110);
     let frames = render_n(&mut s, 3000 * 8);
@@ -44,7 +44,7 @@ fn gate_envelope_hardness_controls_the_edge() {
     let min_level = |env: f32| {
         let mut s = layer();
         s.arp_mode = ArpMode::Gate;
-        s.arp_rate_bpm = 240.0;
+        s.arp_rate_bpm = 480.0;
         s.perf.gate_env = env;
         s.note_on(57, 110);
         let mut lo = 1.0f32;
@@ -89,7 +89,7 @@ fn rest_note_pattern(s: &mut SynthLayer) {
 fn gate_pattern_rests_follow_the_preset() {
     let mut s = layer();
     s.arp_mode = ArpMode::Gate;
-    s.arp_rate_bpm = 240.0;
+    s.arp_rate_bpm = 480.0;
     s.perf.gate_env = 1.0;
     s.perf.pattern_on = true;
     rest_note_pattern(&mut s); // [rest, 4, rest, 4]
@@ -110,7 +110,7 @@ fn gate_pattern_rests_follow_the_preset() {
 fn arp_pattern_skips_rest_steps() {
     let mut s = layer();
     s.arp_mode = ArpMode::Up;
-    s.arp_rate_bpm = 240.0;
+    s.arp_rate_bpm = 480.0;
     s.perf.pattern_on = true;
     rest_note_pattern(&mut s); // [rest, 4, rest, 4]
     s.note_on(60, 100);
@@ -179,7 +179,7 @@ fn kb_hold_keeps_the_arpeggio_running() {
     let mut s = layer();
     s.perf.kb_hold = true;
     s.arp_mode = ArpMode::Up;
-    s.arp_rate_bpm = 240.0;
+    s.arp_rate_bpm = 480.0;
     s.note_on(60, 100);
     s.note_on(64, 100);
     s.note_off(60);
@@ -244,7 +244,7 @@ fn kb_sync_restarts_the_arp_on_the_first_new_note_only() {
     let first_step_delay = |sync: bool| {
         let mut s = layer();
         s.arp_mode = ArpMode::Up;
-        s.arp_rate_bpm = 240.0;
+        s.arp_rate_bpm = 480.0;
         s.perf.kb_sync = sync;
         s.note_on(60, 100);
         render_n(&mut s, 1500); // mid-step
@@ -270,7 +270,7 @@ fn kb_sync_restarts_the_arp_on_the_first_new_note_only() {
 fn kb_sync_does_not_reset_while_a_key_is_still_down() {
     let mut s = layer();
     s.arp_mode = ArpMode::Up;
-    s.arp_rate_bpm = 240.0;
+    s.arp_rate_bpm = 480.0;
     s.perf.kb_sync = true;
     s.note_on(60, 100);
     render_n(&mut s, 1500);
