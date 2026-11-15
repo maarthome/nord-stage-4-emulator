@@ -161,8 +161,7 @@ mod tests {
     /// Start phase of voice `j` of `lane` in case `n` (`phase_word` of the generator).
     fn start_phase(n: usize, lane: usize, j: usize) -> f64 {
         let k = (n * 16 + lane * 8 + j) as u32;
-        f64::from((k.wrapping_mul(0x2F1B_3C5).wrapping_add(12_345) & 0xFFFF_FF00) as u32)
-            / 4_294_967_296.0
+        f64::from(k.wrapping_mul(0x02F1_B3C5).wrapping_add(12_345) & 0xFFFF_FF00) / 4_294_967_296.0
     }
 
     #[test]

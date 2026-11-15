@@ -56,9 +56,14 @@ def load_words() -> dict[int, dict[int, int]]:
 def type_of(category: int, wave: int) -> int:
     with TYPES.open(encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            if r["mode"] == "1" and r["bank"] == "0" and (int(r["cat"]), int(r["wave"])) == (
-                category,
-                wave,
+            if (
+                r["mode"] == "1"
+                and r["bank"] == "0"
+                and (int(r["cat"]), int(r["wave"]))
+                == (
+                    category,
+                    wave,
+                )
             ):
                 return int(r["type"])
     raise KeyError((category, wave))
@@ -115,8 +120,8 @@ def rust() -> str:
     parts = [
         "//! Firmware parity of the verified-words unison stages (`fw_stages/words.rs`).\n"
         "//!\n"
-        "//! Derived values only, made by `python tools/synth_stage_golden11.py > <file>` from the\n"
-        "//! bit-exact models fed the ARM words (`docs/research/synth-p-writer.md`).\n",
+        "//! Derived values only, made by `python tools/synth_stage_golden11.py > <file>`\n"
+        "//! from the bit-exact models fed the ARM words (`docs/research/synth-p-writer.md`).\n",
         g.words_rust("CASE", [r[0] for r in data]),
         g.words_rust("DT", [r[1] for r in data]),
         g.words_rust("S5", [r[2] for r in data]),

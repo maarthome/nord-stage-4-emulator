@@ -1,7 +1,7 @@
 //! Firmware parity of the verified-words unison stages (`fw_stages/words.rs`).
 //!
-//! Derived values only, made by `python tools/synth_stage_golden11.py > <file>` from the
-//! bit-exact models fed the ARM words (`docs/research/synth-p-writer.md`).
+//! Derived values only, made by `python tools/synth_stage_golden11.py > <file>`
+//! from the bit-exact models fed the ARM words (`docs/research/synth-p-writer.md`).
 
 pub(super) const CASE: [u32; 20] = [
     0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000001, 0x00000001, 0x00000001, 0x00000001,
