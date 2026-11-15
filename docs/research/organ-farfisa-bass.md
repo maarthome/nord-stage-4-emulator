@@ -288,6 +288,50 @@ New interpreter rules (each checked by the trace, nothing assumed): `fext / fdep
 
 Not done in this pass (and why): (2) the Rust recursion and the oracle re-check (the part after the lane fold is a software pipelined sequence of about 280 instructions with PEy helpers; it needs the scanner phase law first, the Rust stage keeps the EMPIRICAL FIR, +1.1 to +2.5 dB on the chord goldens, unchanged); drawbar / percussion key tables and the `G` resync after a key-up (need the ARM capture with key-up, only the direct drawbar script is replayed here); (3) branches and flags for `0x122B85` (conditional execution and `comp` now exist, branches and a Farfisa model 2 install with weights are still missing), so the Farfisa gain-table FIRs stay; (4) Twin amp types 7 to 9, `0x122B1D` and the cabinet biquad bank.
 
+## 15. Firmware recursion in Rust: the Bass stage runs the generator and processor at the DSP rate (2026-11-14)
+
+Tools: `tools/sharc_listing_rust.py` (decodes the listing with the rules of the Python VM into integer rows), `tools/organ_bass_fw_gen.py` (`rust` tables with `--check`, `image` / `delta` / `golden` from `sharc-chain`), `tools/organ_bass_voice.py` (ARM capture of the voice records, `table`). Rust: `organ/b3_bass_fw/` (`f40.rs` 40 bit float and fixed multiplier, `exec.rs` instruction executor, `mod.rs` machine, `prog_gen.rs` / `prog_proc.rs` GENERATED rows), `organ/b3_bass_voice.rs`, `organ/b3_bass_stage.rs`. Data: [bass-fw-image.csv](data/bass-fw-image.csv) (6,881 DM words of the installed model 5 plus start registers), [bass-fw-chord-delta.csv](data/bass-fw-chord-delta.csv), [bass-fw-chord-golden.csv](data/bass-fw-chord-golden.csv), [bass-voice-slots.csv](data/bass-voice-slots.csv).
+
+```bash
+python tools/organ_bass_fw_gen.py rust  target/PNO/core1_sram.bin --check
+python tools/organ_bass_fw_gen.py image target/PNO/core1_sram.bin n888.script bass-fw-image.csv --exe target/release/sharc-chain
+python tools/organ_bass_fw_gen.py delta target/PNO/core1_sram.bin n888.script bass-fw-chord-delta.csv --script2 c3.script --exe target/release/sharc-chain
+python tools/organ_bass_fw_gen.py golden target/PNO/core1_sram.bin c3.script bass-fw-chord-golden.csv --calls 48 --exe target/release/sharc-chain
+python tools/organ_bass_voice.py capture target/fw_unpacked/bank0_CODE.bin target/fw_unpacked/bank0_SRAM.bin cap.csv --keys 24:28 --drawbars 888888888
+cargo test -p nord-core --lib b3_bass
+```
+
+(`n888.script` = `tools/organ_fb_pass.py script ... --model 5 --keys= --drawbars 888888888`, `c3.script` the same with `--keys 60,64,67`.)
+
+Design. The scanner phase law, the lattice sections and the 40 bit float behaviour are not re-derived by hand: the two routines are decoded once into rows (`INS` / `LOOP` plus one row per instruction item, 898 rows for `0x122296`, 555 for `0x121BBE`, no firmware bytes) and executed by a small machine in Rust with the rules of the Python interpreter. Single precision was **not** used: s13 measured 1 ulp of drift after about 70 instructions, and the 40 bit executor is bit exact.
+
+| Check | Result | Tag |
+|---|---|---|
+| Rust machine against `sharc-chain` (boot + model 5 install + key-down 60 64 67, drawbars 888888888): output words of 48 calls (generator + processor), test `decoded_chain_is_bit_exact_against_the_oracle_golden` | 48 of 48 calls, both frames, every word equal | VERIFIED (run) |
+| Executor rules (post modify and broadcast loads, long word stores, per PE `if lt`, `comp`, circular buffers) and the 40 bit arithmetic | unit tests in `exec.rs` / `f40.rs`; the Python rules were checked against the oracle in s13 / s14 | VERIFIED |
+| Generated rows are current | `python tools/organ_bass_fw_gen.py rust ... --check` | VERIFIED |
+| **Line criterion** (<= 1 dB) of the stage against `bass-chord-goldens.csv`, all 46 lines of the six chords g1, g3, g3r, g10, g10r, g10s (8192 point Hann peak bin at the DSP rate, 1,200 samples skipped; test `single_key_and_chord_lines_follow_the_oracle_goldens`) | worst line error 0.0036 dB (g1), 0.0005 dB (g3, g3r), 0.0011 dB (g10, g10r, g10s). The EMPIRICAL FIR of s12 read +1.1 to +2.5 dB on g3 | VERIFIED (run), state words per key ASSUMED where listed below |
+
+Scanner phase law (read from the generator tail, not separately measured). The state block is at `DM 0xC01F6` (`i7`; the long word at `0xC01F6` loads `i6 = 0xC0262`, the 128 entry table centred at `i6`, and `i7`): words `+2 / +3` the increment `0x002A454D` per lane, `+4 / +5` and `+6 / +7` two 32 bit phases (start `0x40000000` and `0xC0000000`), `+8 .. +11` wrap counters. Per call both phases advance by `2 inc`; a wrap (`comp` of the new against the old phase, `if lt`) steps the counters by 8 modulo 32. The index is `fext phase by 25:7 (se)` (7 bit signed, `-64..63`), the fraction is the low 25 bits (`fdep ... 6:25`, `float` by `-31`); the tap is the linear interpolation `(1 - f) T[i] + f T[i + 1]` of the table (values 0 to 1.07, a smooth bump) stored at `0xC0202 + m`, which the processor reads with `m3 = dm(0x10 .. 0x18, i2)` (nine taps on the delay line `0xB46E6`); the frame loop steps `0xB33BC` by 2 per frame (reset every call). The 28 and 34 product lane dot products read the ring at `0xB32E8 + dm(0xB33BA)` and `0xB32F4 + ...` (`0xB33BA` + 0x68 per frame), the lane fold is `f0 = f8 + s8`, the 33 tap FIR and the two lattice groups run on the circular buffer `l6 = 0x21` (`pm(i11)` pointers), then the nine tap sum, three biquads, the DC blocker and the output store. All of it is executed, not approximated.
+
+Key-down state fed to the machine by the stage (`b3_bass_stage.rs`):
+
+| Words | Source | Tag |
+|---|---|---|
+| Windows `DM 0x951F1 + k`, `0x95241 + k` | `BassState` (s11), additive per key | VERIFIED (exact for 888888888) |
+| Generator weights `DM 0x95122 + (note - 36)` | `GenWeights` `T[note][n]` (s12) | VERIFIED |
+| `G` `DM 0xB44C9` | `phi(S)` (s11) | VERIFIED |
+| Voice records `DM 0x954E6 + 20 j`, `0x9559C + 4 j`, `0xB4246 + 12 j` (slot `j` = press mod 5) | `bass-voice-slots.csv`: per key, the 36 words of the ARM key-down at its slot of a fresh session, relocated | key dependence VERIFIED (capture); the per press jitter (pointer offsets, coefficient scatter, drawn by the ARM) ASSUMED: the same key at another slot has other words, and the line levels do not depend on them (above) |
+| `DM 0xB44CB` (a second accumulator, about 0.03 per key) | not written | ASSUMED irrelevant (zeroing `0xB44C9` and `0xB44CB` of the 3 key state changes the output by 2.5 % rms, almost all `G`) |
+
+The voice records are the part that s11 called "not read by the processor": the generator **does** read them (ten sections per call over `0x954E6..0x95549`, `0x9559C..`, `0xB4246..`). Restoring the nokeys values of the coefficients, the shift counts or the masks each leaves only 3 % to 31 % of the output rms, so the installed values matter; but the chord line levels are reproduced to 0.004 dB with the jitter of other presses, i.e. the jitter does not change the line amplitudes. They are a per-key table here, not a closed form. What the capture shows: the drawbar item writes 3 sections and the percussion item 1 per key (888000000), the first five presses fill slots 0..4 (20 + 4 + 12 words), the 6th and later presses rewrite slot 0, pointer pairs rotate through a 7 entry list (`0xB3424 .. 0xB35EA`) with the press count, and the coefficient (about `-0.008` at key 24, `-0.022` at key 108) rises with the key.
+
+Cost. Release build: 3.6 s of CPU per second of audio (about 21.7 k calls per second, 70 ns per decoded instruction): the stage is for **offline rendering** (`ns4 render`, `emu_vs_hw.py`) and not real time. Faster paths (a single precision or fixed point recursion with the same rows, a Rust code generator from the rows) are open. The stage does no work with no key held after a 10,000 call ring-down (ASSUMED).
+
+Defaults. `--b3-bass-processor on` stays opt-in (D22): the key tables are the `888888888` key-down (the real default program writes smaller window steps), the `G` resync after a key-up is replayed (0.01 dB), and no B3 Bass hardware clip exists (the B3 clip of [organ-presence-gap](organ-presence-gap.md) plays the B3 model, so the `emu_vs_hw.py` bass band delta is 0.00 dB by construction). `render_hash` is unchanged.
+
+Not done (time box): drawbar and percussion dependence of the key tables (only `888000000` and `888888888` were captured), key-up capture and the `G` resync, a closed form of the voice jitter, a real time path, `tools/emu_vs_hw.py` on a Bass clip (none exists), and the whole Farfisa part: `0x122B85` needs branches (`if ne jump 0x122d88`), flags in the interpreter and a model 2 install with weights; the Farfisa gain-table FIRs in `farfisa_keys.rs` stay.
+
 ## Implications
 
 - The Farfisa generator is fully decoded and ported; the Farfisa audio is not reachable until the ARM weights and the filter table are captured (OQ19). The documented structure (four weighted sums, biquads, 8 lattice sections, four gains) gives the model target.
@@ -298,6 +342,6 @@ Not done in this pass (and why): (2) the Rust recursion and the oracle re-check 
 ## Follow-ups
 
 1. Find the ARM writer of the Farfisa weights `DM 0x95FFC + 0x178 i`, filter tables `0x965FC..` and the lattice flag (the sender `0xC0224468` family with the record table `0xC0282ED0`, [pno-full-pass](pno-full-pass.md) s6), then replay the Farfisa chord and port the processor.
-2. Bit-exact Python models of `0x122296` and `0x121E2B` on random inputs (the layout is in section 4.2), then the scanner as a Rust stage on `B3Wheels`. Section 13: the listing of `0x122296` runs bit-exact in `tools/sharc_listing_vm.py` for one call; the generator listing and the multi-call replay are done (s14, 4696 calls bit-exact); next are branches for `0x122B85`, the scanner phase law and the section by section recursion in Rust.
+2. Bit-exact Python models of `0x122296` and `0x121E2B` on random inputs (the layout is in section 4.2), then the scanner as a Rust stage on `B3Wheels`. Section 13: the listing of `0x122296` runs bit-exact in `tools/sharc_listing_vm.py` for one call; the generator listing and the multi-call replay are done (s14, 4696 calls bit-exact); next are branches for `0x122B85`; s15 runs the decoded generator and processor in Rust (the Bass stage, scanner phase law read from the listing).
 3. Identify what the second store of an organ layer edits (chan 1, 3).
 4. Record the real frame rate (a C0 / C4 recording) and re-anchor `DSP_FRAME_RATE`.

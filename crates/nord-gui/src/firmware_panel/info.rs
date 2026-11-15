@@ -337,8 +337,8 @@ pub const ROUTING: SwitchInfo = sw(
     "Global",
     "--firmware-routing",
     "Firmware routing",
-    Assumed,
-    "Section/layer enables and per-layer KB zones as the program stores them (zone codes open).",
+    Verified,
+    "Section/layer enables, the loader's empty-mask rule and per-layer KB zones as the program stores them (on by default; --legacy-routing turns it off).",
 );
 
 /// All switches in bar order.
