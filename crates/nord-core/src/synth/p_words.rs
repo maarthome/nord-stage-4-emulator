@@ -166,8 +166,9 @@ const ROWS: [(PWave, u8, u8); 6] = [
 impl PTableSpec {
     /// The table of `--synth-p verified`: for the rows a single oscillator describes, the gain is
     /// `GAIN_PER_P16 * P[16] * weight` from the ARM words (VERIFIED words, one EMPIRICAL level
-    /// constant); the cutoff factors and the MULTI / SUPER rows stay as in [`PTable::FITTED`]
-    /// (their stages mix several voices, the Rust stages keep their own normalisation).
+    /// constant); the MULTI / SUPER stages read the words themselves (`PTable::words`) and their
+    /// rows carry `GAIN_PER_P16`. The cutoff factors are the EMPIRICAL ones of
+    /// [`PTable::FITTED`] (`docs/research/synth-validation.md` s11).
     pub fn verified() -> PTableSpec {
         let mut rows = [None; PWAVE_COUNT];
         for (w, c, v) in ROWS {
@@ -182,7 +183,19 @@ impl PTableSpec {
                 ]);
             }
         }
-        PTableSpec::from_rows(rows)
+        // The unison rows: the stage reads the words itself (`p_stage_words.rs`), so the row
+        // carries the engine level only.
+        for w in [PWave::Multi, PWave::Super, PWave::Super1] {
+            let b = PTable::FITTED.block(w);
+            rows[w as usize] = Some([
+                (GAIN_PER_P16 * 1000.0).round() as i32,
+                0,
+                1000,
+                (b.shape * 1000.0).round() as i32,
+                (b.cutoff_scale * 1000.0).round() as i32,
+            ]);
+        }
+        PTableSpec::from_rows(rows, true)
     }
 }
 
@@ -242,7 +255,8 @@ mod tests {
     fn verified_is_a_synth_p_selection() {
         use crate::synth::PSpec;
         let spec = PSpec::parse("verified").unwrap();
-        assert_eq!(spec, PSpec::Table(PTableSpec::verified()));
+        assert_eq!(spec, PSpec::Verified);
+        assert_eq!(spec.table(), Some(PTableSpec::verified().table()));
         assert_ne!(spec, PSpec::Table(PTableSpec::BUILTIN));
         assert!(PSpec::parse("VERIFIED").is_ok());
     }
@@ -255,7 +269,28 @@ mod tests {
         let p = t.block(PWave::PurePulse);
         assert!((p.gain - 0.28).abs() < 1e-6);
         assert_eq!(p.cutoff_scale, f.block(PWave::PurePulse).cutoff_scale);
-        assert_eq!(t.block(PWave::Multi), f.block(PWave::Multi));
-        assert_eq!(t.block(PWave::Super), f.block(PWave::Super));
+        assert!(t.words && !f.words);
+        // the unison rows carry the engine level only, the cutoff factors stay
+        for w in [PWave::Multi, PWave::Super, PWave::Super1] {
+            let (b, o) = (t.block(w), f.block(w));
+            assert_eq!(
+                (b.gain, b.cutoff_scale),
+                (GAIN_PER_P16, o.cutoff_scale),
+                "{w:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn verified_rows_can_be_overridden_for_fit_sweeps() {
+        use crate::synth::PSpec;
+        let PSpec::Table(spec) = PSpec::parse("verified:super=1.6/0/1/0.5/0.7").unwrap() else {
+            panic!("table")
+        };
+        let t = spec.table();
+        assert!(t.words);
+        assert_eq!(t.block(PWave::Super).cutoff_scale, 0.7);
+        assert_eq!(t.block(PWave::Multi).gain, GAIN_PER_P16);
+        assert!(PSpec::parse("verifiedx").is_err());
     }
 }

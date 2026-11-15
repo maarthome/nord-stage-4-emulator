@@ -129,7 +129,7 @@ pub const P_TABLE: SwitchInfo = sw(
     "--synth-p",
     "P table",
     Empirical,
-    "Per-wave level, cutoff factor and SHAPE word law fitted to hardware clips (default); off = unit P, fitted = the Smooth Lead block.",
+    "Per-wave level, cutoff factor and SHAPE word law fitted to hardware clips (default); ARM words = the ARM's own oscillator words with the SUPER / MULTI stages reading them (cutoff factors still fitted); off = unit P, fitted = the Smooth Lead block.",
 );
 /// Synth filter (`--filter-engine`).
 pub const FILTER: SwitchInfo = sw(
@@ -337,8 +337,8 @@ pub const ROUTING: SwitchInfo = sw(
     "Global",
     "--firmware-routing",
     "Firmware routing",
-    Assumed,
-    "Section/layer enables and per-layer KB zones as the program stores them (zone codes open).",
+    Verified,
+    "Section/layer enables, the loader's empty-mask rule and per-layer KB zones as the program stores them (on by default; --legacy-routing turns it off).",
 );
 
 /// All switches in bar order.

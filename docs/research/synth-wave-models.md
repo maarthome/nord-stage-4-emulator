@@ -78,7 +78,7 @@ The P block (`P[-32]`, `P[-30]` ratios, `P[-14..-10]` weights, `P[16]` gain) and
 
 ## 9. Where the P block and the shape words come from (oracle experiments, third round)
 
-> **Superseded by [synth-p-writer](synth-p-writer.md):** the ARM writes the P block (strip apply `0xC01CE7D8` and 44 word senders), not another core or DMA; the idle block below is an image default that every loaded program replaces (`P[-32 .. -29]` become 1.0 and the unison ratios, the gains 0.25 and so on). The oracle observations of this section stay correct for the image block; the conclusion about the writer does not.
+> **Superseded by [synth-p-writer](synth-p-writer.md):** the ARM writes the P block (strip apply `0xC01CE7D8` and 44 word senders), not another core or DMA; the idle block below is an image default that every loaded program replaces (`P[-32 .. -29]` become 1.0 and the unison ratios, the gains 0.25 and so on). The oracle observations of this section stay correct for the image block; the conclusion about the writer does not. The MULTI / SUPER stages read the written words since D70 (`--synth-p verified`, [synth-p-writer](synth-p-writer.md) s8): the MULTI idle record `1, 2, 0.5` and the ASSUMED SUPER ratios are placeholders of the other table modes only.
 
 Experiments with `sharc-org` on the ORG and PNO core 2 images (commands in this section; `--watch` logs every store of the pass):
 
