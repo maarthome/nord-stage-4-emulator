@@ -46,7 +46,8 @@ fn unison_mix(
 #[inline]
 fn multi_mix(st: &mut FwStageState, dt: f32, i_sy: f32, s5: f32, w: &StageWords) -> f32 {
     let mut sum = 0.0;
-    for v in 0..3 {
+    let phases = st.phases.iter_mut().zip(st.phases_y.iter_mut());
+    for (v, (px, py)) in phases.take(3).enumerate() {
         let mult = |lane: usize| {
             let d = if v == 0 {
                 1.0
@@ -58,12 +59,12 @@ fn multi_mix(st: &mut FwStageState, dt: f32, i_sy: f32, s5: f32, w: &StageWords)
         let (mx, my) = (mult(0), mult(1));
         let (dx, dy) = (dt * mx, dt * my);
         let g = fade(2.0 * i_sy * mx);
-        sum += g * w.own[v] * saw_diff(st.phases[v], dx);
-        st.phases[v] = wrap_pos(st.phases[v] + dx, 1.0);
+        sum += g * w.own[v] * saw_diff(*px, dx);
+        *px = wrap_pos(*px + dx, 1.0);
         if w.cross[v] != 0.0 {
-            sum += g * w.cross[v] * saw_diff(st.phases_y[v], dy);
+            sum += g * w.cross[v] * saw_diff(*py, dy);
         }
-        st.phases_y[v] = wrap_pos(st.phases_y[v] + dy, 1.0);
+        *py = wrap_pos(*py + dy, 1.0);
     }
     sum
 }
@@ -88,13 +89,15 @@ impl FwStageState {
     /// falls 15 dB from ctrl 0 to 1).
     pub fn staggered() -> Self {
         let mut s = Self::default();
-        for j in 0..8 {
-            s.phases[j] = START_PHASES[j];
-            s.phases_y[j] = START_PHASES[8 + j];
+        let (xs, ys) = START_PHASES.split_at(8);
+        s.phases.copy_from_slice(xs);
+        s.phases_y.copy_from_slice(ys);
+        let cyc = |p: f32| (f64::from(p) * 4_294_967_296.0) as u32;
+        for (d, p) in s.s24.phase.iter_mut().zip(xs) {
+            *d = cyc(*p);
         }
-        for j in 0..s.s24.phase.len() {
-            s.s24.phase[j] = (f64::from(START_PHASES[j]) * 4_294_967_296.0) as u32;
-            s.s24.phase_y[j] = (f64::from(START_PHASES[8 + j]) * 4_294_967_296.0) as u32;
+        for (d, p) in s.s24.phase_y.iter_mut().zip(ys) {
+            *d = cyc(*p);
         }
         s
     }
@@ -191,13 +194,14 @@ mod tests {
                     _ => d * (rho * u + 1.0 - u),
                 }
             };
-            for j in 0..8 {
+            let phases = st.phases.iter_mut().zip(st.phases_y.iter_mut());
+            for (j, (px, py)) in phases.enumerate() {
                 let (x, y) = (
                     start_phase(case as usize, 0, j),
                     start_phase(case as usize, 1, j),
                 );
-                st.phases[j] = wrap_pos((x + f64::from(inc(0, j))) as f32, 1.0);
-                st.phases_y[j] = wrap_pos((y + f64::from(inc(1, j))) as f32, 1.0);
+                *px = wrap_pos((x + f64::from(inc(0, j))) as f32, 1.0);
+                *py = wrap_pos((y + f64::from(inc(1, j))) as f32, 1.0);
             }
             for k in 0..4 {
                 let got = st.sample_words(stage, 0.0, dt, dt * SY_FRAME_RATE_HZ, s5, &w);

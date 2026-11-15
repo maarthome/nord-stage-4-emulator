@@ -44,13 +44,14 @@ impl StageWords {
             cross: [0.0; WORD_VOICES],
             octaves: [at(-260), at(-259), at(-258)],
         };
-        for j in 0..WORD_VOICES {
-            let k = j as i32;
-            for lane in 0..2 {
-                s.ratios[lane][j] = w.get(-32 + 2 * k + lane as i32).unwrap_or(1.0);
+        for (lane, row) in s.ratios.iter_mut().enumerate() {
+            for (j, r) in row.iter_mut().enumerate() {
+                *r = w.get(-32 + 2 * j as i32 + lane as i32).unwrap_or(1.0);
             }
-            s.own[j] = at(-16 + 4 * k);
-            s.cross[j] = at(-13 + 4 * k);
+        }
+        for (j, (own, cross)) in s.own.iter_mut().zip(s.cross.iter_mut()).enumerate() {
+            *own = at(-16 + 4 * j as i32);
+            *cross = at(-13 + 4 * j as i32);
         }
         s
     }
