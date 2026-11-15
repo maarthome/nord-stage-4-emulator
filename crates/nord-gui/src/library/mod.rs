@@ -246,6 +246,11 @@ impl BackupLibraryState {
         Ok(())
     }
 
+    /// An `.ns4b` archive is open.
+    pub fn is_open(&self) -> bool {
+        self.archive.is_some()
+    }
+
     /// Drops retired `Arc` sound allocations only once the audio thread has released its reference.
     pub fn reap_retired_sounds(&mut self) {
         self.retired_pianos.retain(|arc| Arc::strong_count(arc) > 1);
