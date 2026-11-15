@@ -1,4 +1,5 @@
-//! `sample_pitch_fw`: the note-to-step ratio of the `SAMPLES` oscillator (opt-in firmware law).
+//! `sample_pitch_fw`: the note-to-step ratio of the `SAMPLES` oscillator (opt-in firmware join of
+//! the zone word and the modelled table entry, `sinc::step_join`).
 
 use super::*;
 use std::sync::Arc;
@@ -22,14 +23,23 @@ fn step(fw: bool, note: u8) -> f64 {
 }
 
 #[test]
-fn firmware_pitch_law_is_off_by_default_and_exact_at_the_root_key() {
+fn firmware_pitch_law_is_off_by_default_and_near_native_at_the_root_key() {
     assert!(!SynthLayer::new(48_000.0).sample_pitch_fw);
     assert!((step(false, 36) - 0.25).abs() < 1e-12);
-    assert_eq!(step(true, 60), 1.0);
+    // One Q8 tune count (0.23 %) plus the 11-bit entry rounding bound the root-key error.
+    assert!((step(true, 60) - 1.0).abs() < 3e-3, "{}", step(true, 60));
 }
 
 #[test]
-fn firmware_pitch_law_differs_from_equal_temperament_by_under_two_tenths_of_a_percent() {
-    let (eq, fw) = (step(false, 24), step(true, 24));
-    assert!(eq != fw && (fw / eq - 1.0).abs() < 2e-4, "{eq} {fw}");
+fn firmware_pitch_law_follows_the_semitone_law_within_half_a_percent() {
+    for note in [24u8, 36, 60, 72, 96] {
+        let (eq, fw) = (step(false, note), step(true, note));
+        assert!(eq != fw && (fw / eq - 1.0).abs() < 5e-3, "{note}: {eq} {fw}");
+    }
+}
+
+#[test]
+fn firmware_step_equals_the_step_join_of_the_zone() {
+    let want = crate::sinc::step_join::output_step(48, 60, 48_000.0, 48_000.0);
+    assert!((step(true, 48) - want).abs() < 1e-12);
 }
