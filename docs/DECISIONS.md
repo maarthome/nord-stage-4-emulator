@@ -67,8 +67,9 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D73](#d73-firmwarerouting-is-the-default-the-loader-rule-for-an-empty-layer-mask-is-verified) | 2026-11-14 | `FirmwareRouting` is the default; the loader rule for an empty layer mask is VERIFIED | accepted |
 | [D79](#d79-piano-comparisons-replay-transcribed-velocities-and-pedal) | 2026-11-15 | Piano comparisons replay transcribed velocities and pedal | proposed |
 | [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
-| [D83](#d83-the-pure-noise-row-of-the-p-table-takes-the-saw-gain-verified-arm-word-the-synth-layer-level-law-stays-open) | 2026-11-15 | The PURE noise row of the P table takes the saw gain (VERIFIED ARM word); the synth layer level law stays open | proposed |
-| [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | accepted |
+| [D87](#d87-the-synth-layer-level-law-v--1272-is-the-verified-default) | 2026-11-15 | The synth layer level follows the verified `(v / 127)^2` by default (handler `0xC011BB48` run); supersedes D82 | accepted |
+| [D83](#d83-the-pure-noise-row-of-the-p-table-takes-the-saw-gain-verified-arm-word-the-synth-layer-level-law-stays-open) | 2026-11-15 | The PURE noise row of the P table takes the saw gain (VERIFIED ARM word); the synth layer level law stays open (settled by D87) | proposed |
+| [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | superseded by D87 |
 | [D78](#d78-library-drawer-loads-start-from-an-init-program-the-organ-ladders-follow-the-section-state) | 2026-11-15 | Library drawer loads start from an Init Program; the organ ladders follow the section state | accepted |
 | [D70](#d70-the-arm-p-words-drive-the-multi-and-super-stages-under---synth-p-verified-the-default-stays-the-empirical-table) | 2026-11-14 | The ARM P words drive the MULTI and SUPER stages under `--synth-p verified`; the default stays the EMPIRICAL table | accepted |
 
@@ -887,3 +888,14 @@ accepted
 Grand Pad best squared (1.24 1.46 2.69 1.0; RMS +0.6 +2.3), estimated contradicts it, does meet bar flip.
 Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out document comparison switch).
 `engine/mod.rs`, `engine/mix.rs`, `render_opts.rs` (test `synth_layer_law_squares_the_fader_only_when_selected`), segment `pianopad_grand`, OQ22. renders hashes unchanged.
+
+
+### D87. The synth layer level law `(v / 127)^2` is the verified default
+
+- **Status:** accepted 2026-11-15 (supersedes the default of D82; settles the open point of D83)
+- **Decided by:** Claude (agent), D22 bar met; evidence [synth-layer-level-law](research/synth-layer-level-law.md). Pending the user's listening check.
+- **Context:** D82 found Grand Pad (A:43) better squared but left it opt-in (the handler was only disassembled, the DSoundman clip read linear); D83 found Leaky Stabs II (A:46) 8 dB too loud in the noise layer and named handler `0xC0114588`. OQ22 asked which law the firmware uses.
+- **Decision:** The level handler is `0xC011BB48` (ids `0xA4..0xA6`); `0xC0114588` is a display path (16-bit word, never sent). Run in the ARM harness (`tools/arm_layer_level.py`, 30 synth cases, 70 of 70 with organ and piano): the stored word is `(v / 127)^2`, `-0.05` at 0, sent to FX core 1 rows 17..19, whose consumer is linear in the word. `synth_layer_law` is on by default (`Stage4Engine`, `FirmwareOptions`, `--firmware-all`); `--legacy-synth-layer-law` (and `--legacy-all`) restore the linear fader; `--firmware-synth-layer-law` stays accepted.
+- **Why:** D22 criteria: (1) algorithm VERIFIED by the live run, (2) the mapping (edit id to word to FX row) VERIFIED, (3) `render_hash` re-baselined. Clips: `synth_leaky` 3.19 to 1.95 (Transkun notes 5.38 to 3.97), `pianopad_grand` 2.14 / 2.19 (audio notes, tie) and 1.48 to 1.42 (Transkun notes). The DSoundman layered clip (-2.7 dB at fader 0.7, linear -3.1, squared -6.2) disagrees, but its fader taper is unknown and the word is firmware evidence.
+- **Alternatives:** keep linear (rejected: contradicts the run); keep the flag opt-in (rejected: criteria met); fit a power (rejected: the word is exact).
+- **Impact:** `engine/mod.rs`, `render_opts.rs` (defaults, `--legacy-synth-layer-law`, summary, tests), `tools/arm_layer_level.py` (synth handler) and its test, `emu_vs_hw_segments.json` (`legacy-synth-layer` variants replace the hand-squared ones). `render_hash` whole `b9a1d073...b846` to `46f4dc64fc6de62eac40f1ee8549548d3965eea2d86aa5d59b828ed6566da506`; only segment `engine` moves (peak 0.995080 to 0.951197, RMS 0.212688 to 0.208288). Program sweep rows of programs with a synth layer level below 127 move (TD-11, not regenerated). Open: Reverb GLOBAL on (scale 3.25) is not modelled.

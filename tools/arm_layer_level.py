@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Run the layer level handlers of the firmware (organ `0xC011AB8C`, piano `0xC011A7A4`, synth `0xC011BA38`) live.
+"""Run the layer level handlers of the firmware (organ, piano, synth) live.
+
+Organ `0xC011AB8C`, piano `0xC011A7A4`, synth `0xC011BA38`.
 
 The handlers turn the q16 edit value `v << 16` of the layer level ids into the gain word that the
 ARM stores for the DSP (`docs/research/organ-output-law.md` s3, `piano-note-velocity.md` s4:
@@ -16,9 +18,9 @@ to the q16 value, store at `table[7 * layer + slot_word + 0x34]` where `slot_wor
 [0xC0 + 4 * [this + 0x64] + 0x658 literal]`, then the tail call `0xC023195C` (stubbed to record its
 arguments).
 
-The synth handler (`0xC011BA38`, ids `0xA4..0xA6`, the code at `0xC011BB48`) has the same body (VERIFIED
-by the run: `(v / 127)^2`, sentinel `-0.05`) with other field offsets: layer `[this + 0x90]`, table
-`[this + 0xB0]`, event kind 8, slots 4 / 5 / 6 for `[this + 0x64]` in {0, 1} / {2, 3} / {4, 5}.
+The synth handler (`0xC011BA38`, ids `0xA4..0xA6`, the code at `0xC011BB48`) has the same
+body (VERIFIED by the run: `(v / 127)^2`, sentinel `-0.05`) with other field offsets: layer
+`[this + 0x90]`, table `[this + 0xB0]`, event kind 8, slots 4 / 5 / 6 for `[this + 0x64]` in {0, 1} / {2, 3} / {4, 5}.
 `0xC0114588` (ids `0xA4..0xA6` of a different dispatcher) is not a level store: it keeps a 16-bit
 rounded `v * k` for the display and never reaches the sender.
 """

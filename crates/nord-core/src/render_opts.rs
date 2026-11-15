@@ -905,13 +905,19 @@ mod tests {
         assert!(!o.piano_layer_law, "the layer law is opt-in");
         let law = FirmwareOptions::from_args(&args(&["--firmware-piano-layer-law"])).unwrap();
         assert!(law.piano_layer_law && law.summary().contains("piano-layer-law"));
-        assert!(o.synth_layer_law, "the verified synth layer law is the default");
+        assert!(
+            o.synth_layer_law,
+            "the verified synth layer law is the default"
+        );
         assert!(!o.summary().contains("synth-layer"));
         assert!(!FirmwareOptions::legacy_all().synth_layer_law);
         let sl = FirmwareOptions::from_args(&args(&["--legacy-synth-layer-law"])).unwrap();
         assert!(!sl.synth_layer_law && sl.summary().contains("legacy-synth-layer"));
         let mut e = Stage4Engine::new(48_000.0);
-        assert!(e.synth_layer_law, "the engine default follows the verified law");
+        assert!(
+            e.synth_layer_law,
+            "the engine default follows the verified law"
+        );
         sl.apply_to(&mut e);
         assert!(!e.synth_layer_law);
         let again = FirmwareOptions::from_args(&args(&["--firmware-synth-layer-law"])).unwrap();
