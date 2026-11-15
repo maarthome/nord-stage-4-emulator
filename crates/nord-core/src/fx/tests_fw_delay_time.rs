@@ -1,5 +1,6 @@
 //! `FirmwareFx::delay_time` wiring: the first echo lands at the verified sample, the engine time
-//! stays the default, tempo sync and a missing raw value fall back to the engine.
+//! stays the default, a missing raw value falls back to the engine, tempo sync follows the
+//! firmware division table.
 
 use super::*;
 
@@ -33,8 +34,9 @@ fn delay_time_only() -> FirmwareFx {
 
 #[test]
 fn first_echo_is_c15_plus_two_samples() {
-    // kDlyRateClkDiv 16383: c[0x15] = 868, echo 870; 1024: c[0x15] = 46498, echo 46500.
-    for (raw, want) in [(16_383_u16, 870_usize), (1024, 46_500)] {
+    // kDlyRateClkDiv 16383: c[0x15] = 868, echo 870; 1024: c[0x15] = 46498, echo 46500 frames of
+    // the 43,402.34 Hz DSP rate, scaled to the 48 kHz engine rate (x 1.105920).
+    for (raw, want) in [(16_383_u16, 962_usize), (1024, 51_426)] {
         let mut fx = chain(delay_time_only());
         fx.delay_rate_raw = Some(raw);
         assert_eq!(echo_index(&mut fx, want + 200), want, "raw {raw}");
@@ -50,23 +52,21 @@ fn switch_off_keeps_the_engine_time() {
 }
 
 #[test]
-fn missing_raw_value_and_tempo_sync_fall_back_to_the_engine() {
+fn missing_raw_value_falls_back_and_tempo_sync_uses_the_firmware_division() {
     let mut a = chain(delay_time_only());
     a.delay_time_ms = 100.0;
     assert_eq!(echo_index(&mut a, 6000), 4800, "no raw value");
     let mut b = chain(FirmwareFx::ALL);
-    b.delay_rate_raw = Some(16_383);
+    // raw 1024 = division 1 (0.375 of a whole note = 1.5 beats = 750 ms at 120 bpm)
+    b.delay_rate_raw = Some(1024);
     b.delay_clock_sync = true;
-    b.delay_sync_beats = Some(0.5);
-    // 120 bpm, half a beat = 12000 samples (the engine's sync path, not the firmware raw value;
-    // the slewed read position lands within a few samples)
-    let echo = echo_index(&mut b, 30_000);
-    assert!(echo.abs_diff(12_000) <= 8, "sync echo at {echo}");
+    let echo = echo_index(&mut b, 40_000);
+    assert!(echo.abs_diff(36_001) <= 8, "sync echo at {echo}");
 }
 
 #[test]
 fn raw_value_is_clamped_to_the_14_bit_range() {
     let mut fx = chain(delay_time_only());
     fx.delay_rate_raw = Some(u16::MAX);
-    assert_eq!(echo_index(&mut fx, 1200), 870);
+    assert_eq!(echo_index(&mut fx, 1200), 962);
 }

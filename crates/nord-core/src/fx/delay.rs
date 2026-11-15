@@ -5,15 +5,16 @@ use crate::phase_wrap::wrap_pos;
 
 impl LayerFxChain {
     pub(super) fn target_delay_samples(&self, bpm: f32) -> f32 {
-        // Firmware time law of `kDlyRateClkDiv` (opt-in, free running only): VERIFIED, see
-        // `fw_delay_time`. The firmware range is 18 ms to 1.28 s, inside the line.
-        if let (true, false, Some(raw)) = (
-            self.firmware_fx.delay_time,
-            self.delay_clock_sync,
-            self.delay_rate_raw,
-        ) {
-            let samples =
-                fw_delay_time::echo_samples_at(raw.min(fw_delay_time::MAX_RATE), self.sample_rate);
+        // Firmware time law of `kDlyRateClkDiv` (opt-in): free running (VERIFIED, `fw_delay_time`)
+        // or tempo synced (division table and ms law VERIFIED, `fw_delay_sync`; the hand-off of the
+        // sync time to the unit is ASSUMED). The firmware range is 20 ms to 1.416 s.
+        if let (true, Some(raw)) = (self.firmware_fx.delay_time, self.delay_rate_raw) {
+            let raw = raw.min(fw_delay_time::MAX_RATE);
+            let samples = if self.delay_clock_sync {
+                fw_delay_sync::sync_echo_samples_at(raw, f64::from(bpm), self.sample_rate)
+            } else {
+                fw_delay_time::echo_samples_at(raw, self.sample_rate)
+            };
             return samples.clamp(1.0, (DELAY_LINE_LEN - 8) as f32);
         }
         let target_ms = if self.delay_clock_sync {
