@@ -47,6 +47,8 @@ The default synth chain (`SynthChain::FirmwareStrip`) maps the displayed Hz to a
 | 3 | `kFltType` to stage index for a loaded program (`[strip + 0x74]` to `[strip + 0x7C]` link) | LP12 / LP24 / Ladder selection is ASSUMED | ARM program load (`tools/arm_program_load.py`) with a synth layer, write watch on `[strip + 0x7C]` |
 | 4 | Envelope and LFO terms of the filter-lane sum (`w5`, `w7`, modulation) with a voice word | `fc_nat` above is the unmodulated base | extend the probe with the filter ADR on and read `R` per pass |
 
+**Update (D108):** item 2 of this table is half closed: the resonance word reaches the stage position as `idx = 64 + 33.25 (knob / 127 - 0.5)` (47.38 to 80.62) at the idle LFO scale ([synth-filter-type-corners](synth-filter-type-corners.md)); items 1, 3 and 4 stay open (`sharc-org` counts no pc hits, only `--coverage` ranges and `--watch` stores).
+
 ## Implications
 
 - OQ22 and `audio-remaining` item 12 keep the factors EMPIRICAL; the cutoff law of a voice is now VERIFIED, and the `R` ramp of [synth-adr-and-strip-law](synth-adr-and-strip-law.md) s4 is the idle state only.
