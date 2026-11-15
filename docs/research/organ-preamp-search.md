@@ -88,3 +88,52 @@ Reading (EMPIRICAL, one clip, note lengths unknown): with the right-hand registe
 1. Note durations from the audio (offset detection on the sustained lines) so that the held-length sweep becomes one measurement; then re-run with `--leslie firmware`.
 2. Sub band +11 dB on the Transkun replay: check the bass layer / drum path of the firmware Leslie (`--leslie-ring`, rotor drum horn balance) with the lone-note hardware clip.
 3. DSP-in-the-loop answers for `0xC0066E64` ([arm-part-activation](arm-part-activation.md) follow-up 1) to reach the part command consumer that installs the Leslie element.
+
+## 6. Follow-up (2026-11-15, task `org-leslie-feeder`): the feeder, the note set, the sub band
+
+Tags as above. Data: [data/emu_vs_hw_b3_merged_leslie.json](data/emu_vs_hw_b3_merged_leslie.json).
+
+### 6.1 (a) Who feeds the Leslie: `0xB6000..3` is the harness, not the firmware
+
+| Item | Result | Tag |
+|---|---|---|
+| `0xB6000..3` | Scratch pair chosen by `tools/fx_leslie_run.py` (`IO`). No PNO instruction stores to or loads from it (no immediate in either core) | VERIFIED (negative) |
+| Real input pair | The module chain loop (`0x2427D2..`, listing bytes) reads the lane pair `DM(-31, I1)` of the record, multiplies it by `wet = g' + c` and stores it at the scratch `0xC2E1A`; it then calls the row routine with `I0 = 0xC2E1A`. The routine saves that `I0` at `DM(0xB4CCC)` (`0x24AD5A`) and reads it back as `R0, R1 = DM(I2, M2)` (`0x24B260`) | VERIFIED (listing) |
+| Two more additive feeds | `0x24B254..0x24B2A0`: (1) an aux pair at `DM(DM(0xB2F3B))` (image `0xC0142`) times `DM(0xB2F3C)`; the gain is **0 in the image and in the boot log**, so it is off; (2) the two stereo DMA input lanes at `DM(0xB00E5)` and `+0x14` (`0xB0078` / `0xB008C`, or `0xC0078` / `0xC008C`: the ping-pong input base chosen at `0x2421B2`). No CPU store to `0xB0078 / 0xB008C` exists (only the base immediates), so they are filled by a DMA (ASSUMED) | VERIFIED (listing, boot log), DMA ASSUMED |
+| Do the feeds differ in gain? | **No.** Seeded noise (amp 0.3, 300 calls, boot log replayed) into the in-place pair gives last-call outputs `-7.6e-4 / -8.1e-4 / -1.0e-4 / -4.1e-4`; the same noise into `0xB0078 / 0xB007A` gives `-7.2e-4 / -7.9e-4 / -3.4e-5 / -4.4e-4` (same level, -48 dB re the input; the pair sum is symmetric: `0xB008C` gives the same words). The processor is linear in the sum, so **the feed point cannot explain a level gap** | VERIFIED (run) |
+| Chain mix after the call | `out = proc * wet + lane * DM(0xB00EE)` (`0x242840..0x24286E`, `I3 = 0xB0106`); `wet` is the ramped `g' + c` of the record; the weight word `0xB00EE` is neither in the boot log nor written by code (image value). With `wet + dry = 1` no stage above unity exists in the chain (reading of the multiply order) | VERIFIED (listing), mix reading ASSUMED |
+| The "48 dB" | Reproduced as the ring model: with the history ring frozen the firmware Leslie reads **-47.8 dB RMS** against the clip, with the plain advance **-4.9 dB** (s6.2). Confirms [fx-leslie](fx-leslie.md) s10: a frozen history, not a missing gain | VERIFIED (run) |
+
+So the Leslie level hand-over is closed as a search target: no feeder carries a gain, the chain does not amplify, and the missing piece is the DMA filled history ring (open, `RingAdvance`). No stage to port; no code change.
+
+### 6.2 (b) Note set, durations and residuals
+
+Transkun hears the Leslie amplitude modulation as re-attacks: the 525 notes of the clip are **96 sustained keys** once same-key notes closer than 0.3 s are joined (gap 0.1 s: 261, 0.5 s: 76, 1.0 s: 55); midi 62 alone has 91 detections. The replay of 525 short notes also re-triggers key click and envelope 525 times. `tools/note_offsets.py` (new, tests `tools/tests/test_note_offsets.py`) joins the re-triggers (`--merge-gap`) and replaces each offset by an audio estimate (partials 1..3, 12 dB drop from the attack level; an **upper bound**: shared partials of other notes keep the level up). Hold median: 0.04 s as transcribed, 0.34 s merged, 0.86 s with audio offsets (mean 1.21 s).
+
+Gaps emulator minus hardware, dB re RMS (`tools/emu_vs_hw.py --events-from`, same options as s4.2):
+
+| Stream | Variant | sub | low | mid | presence | brilliance | RMS | score |
+|---|---|---|---|---|---|---|---|---|
+| transcribed, 525 | default | +10.0 | -1.2 | +4.1 | -2.4 | +6.8 | +0.3 | 4.92 |
+| transcribed, 525 | engine rotary | +13.8 | 0.0 | +3.0 | -3.6 | +3.1 | -7.6 | 4.72 |
+| transcribed, 525 | firmware, advance | +13.3 | -2.2 | +3.4 | +5.2 | +7.6 | -10.4 | 6.35 |
+| merged, 96 | default | +11.1 | -1.4 | +3.1 | -4.7 | -0.4 | +4.8 | 4.14 |
+| merged, 96 | engine rotary | +13.8 | -0.1 | +1.8 | -8.9 | -6.0 | -3.1 | 6.11 |
+| merged, 96 | firmware, advance | +14.5 | -1.5 | +3.1 | **+1.5** | +4.5 | -6.7 | 5.02 |
+| audio offsets, 96 | default | +11.0 | -1.2 | +3.4 | -4.3 | +2.6 | +6.6 | 4.52 |
+| audio offsets, 96 | engine rotary | +13.5 | +0.3 | +2.6 | -10.5 | -4.2 | -1.2 | 6.22 |
+| audio offsets, 96 | firmware, advance | +13.7 | -2.0 | +3.8 | **+2.8** | +5.8 | -4.9 | 5.60 |
+| audio offsets, 96 | firmware, ring frozen | +10.9 | -1.9 | +4.2 | -7.6 | +0.9 | -47.8 | 5.11 |
+| audio offsets, 96 | firmware, pass-routine ring | +4.1 | -7.7 | -0.6 | +8.9 | +23.3 | -11.8 | 8.91 |
+
+Reading (EMPIRICAL, one clip): with a realistic note set the firmware Leslie presence is **+1.5 .. +2.8 dB** (inside 3 dB; it was -5.7 on the 101 confirmed notes and +2.7 .. +5.4 on the 525 chatter notes) and the engine rotary stays 9 to 10 dB under; RMS -4.9 .. -6.7 dB (it shrinks with held length). Mid +3.1 .. +3.8, brilliance +4.5 .. +5.8 and sub +13.7 are still outside the bar.
+
+**Sub +14 dB is an artifact of the surrogate ring.** The replayed set has no note below E3 (midi 52), so there is no 20 to 120 Hz fundamental to excite. The firmware advance render carries -22 to -25 dB re total flat from 0 to 90 Hz (hardware -55 to -43, engine rotary -56 to -41) with lines at 6.8 and 13.7 Hz (the horn fast speed and its double) and a mean of -1.5e-3. The ring variants move it: pass-routine ring +4.1 (but presence +8.9, brilliance +23.3), frozen +10.9 (silent). The sub excess therefore belongs to the unmodelled DMA ring ([fx-leslie](fx-leslie.md) s11.2), not to a Leslie gain or a preamp.
+
+D22 bar not met (sub, mid and brilliance outside 3 dB, RMS 4.9 dB under, one clip, ring unmodelled): **no default changes**; `--leslie firmware` stays opt-in (D63, D94).
+
+## 7. Follow-ups after section 6
+
+1. Model the DMA ring that fills `0xB0078 / 0xB008C` and the 8-pass restart; then re-run the table (the sub excess and the brilliance should move with it).
+2. The value of `DM(0xB00EE)` (chain dry weight) and a run of `sharc-pass` with a Leslie record in the organ chain, to confirm the mix reading of s6.1.
+3. A hardware clip of a lone held B3 note, rotary slow and fast: fixes the speed history and removes the note-set uncertainty.
