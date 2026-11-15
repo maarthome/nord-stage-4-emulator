@@ -62,16 +62,9 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     // The ARP/POLY/GATE legend printed into the RATE `8` and RANGE `2` numerals.
     ("synth.arp.range", 5.0, 0.0),
     // The Rotary DRIVE knob moves up so its name fits between the numerals and the ORGAN legend.
-    ("rotary.drive", 0.0, -7.0),
-    // The ORGAN / STOP MODE names (with their LED) and the SLOW / FAST row need a button pitch of
-    // 34 px at the 7.5 px minimum font: legend of the button above, 2 px gap, name line (rule `V`).
-    ("rotary.organ", 0.0, 5.0),
-    ("rotary.close_mic", 0.0, 5.0),
-    ("rotary.stop_angle", 0.0, 12.0),
-    ("rotary.angle", 0.0, 12.0),
-    ("rotary.stop_mode", 0.0, 12.0),
-    ("rotary.speed_leds", 0.0, 20.0),
-    ("rotary.speed", 0.0, 20.0),
+    ("rotary.drive", 0.0, -4.0),
+    // The ORGAN / STOP MODE names and the SLOW / FAST row need a button pitch of 34 px at the
+    // 7.5 px minimum font; the verified layout rects (PR #375) already give more.
     // LED spacing (rules `B`, `T`): buttons whose LED moved up 3.3 px need their legends clear.
     ("organ.zone_leds", 0.0, 1.5),
     ("organ.vibrato_on.a", 0.0, 2.0),
@@ -81,8 +74,6 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("piano.ped_noise", 1.5, 0.0),
     ("organ.on", 0.0, -1.0),
     ("organ.solo", 0.0, -1.0),
-    // "DECAY FAST" and "HARMONIC 3RD" touched; the third button moves right.
-    ("organ.perc_third", 12.0, 0.0),
 ];
 
 /// `(id prefix, dx, dy)`: shift of every control whose id starts with the prefix, added to its
@@ -111,8 +102,6 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     ("synth.filter.", 0.0, 16.0),
     ("synth.amp.", 0.0, 16.0),
     ("synth.unison", 0.0, 16.0),
-    // Organ: the VIB/CHORUS A / B buttons move down so their names clear the bottom type names.
-    ("organ.vibrato_on.", 0.0, 5.0),
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
     ("organ.perc_", 3.0, 0.0),
     // Piano: the PIANO SELECT box (type names, dial) moves under the KB TOUCH / DYN COMP LEDs; the

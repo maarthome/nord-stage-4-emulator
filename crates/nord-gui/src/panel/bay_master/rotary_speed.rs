@@ -17,8 +17,6 @@ const NAME_SIZE: f32 = 5.0;
 const PAIR_GAP: f32 = 7.0;
 /// Radius (px) of the speed LEDs.
 const LED_R: f32 = 1.6;
-/// Centre of the LED row above the button top: bezel 1.5, gap 2.5, LED bezel 2.6.
-const ROW_LIFT: f32 = 6.8;
 
 /// X of the first LED and of the second LED of the row centred on `cx`, given the two name
 /// widths: `[LED gap name]  [LED gap name]` as one block.
@@ -40,7 +38,9 @@ pub(super) fn render_speed(
     let fast = matches!(state.rotary_speed, RotarySpeed::Fast);
     let speed = rect_or_empty("rotary.speed", o);
     let cx = frame.center().x;
-    let ly = speed.top() - ROW_LIFT;
+    // The row sits in its own layout rectangle (`rotary.speed_leds`, verified against the photo);
+    // its names belong to it, so the label centres are inside that rectangle.
+    let ly = rect_or_empty("rotary.speed_leds", o).center().y;
     let (ws, wf) = (
         text_width(painter, "SLOW", NAME_SIZE.max(crate::widgets::MIN_FONT_PX)),
         text_width(painter, "FAST", NAME_SIZE.max(crate::widgets::MIN_FONT_PX)),
