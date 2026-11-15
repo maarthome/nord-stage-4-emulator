@@ -63,8 +63,15 @@ mod tests {
     #[test]
     fn range_list_has_the_ten_firmware_choices() {
         assert_eq!(PSTICK_RANGE_LIST.len(), 10, "edit id range 0..=9");
-        assert_eq!(PSTICK_RANGE_LIST[1] as u8, PSTICK_DEFAULT_RANGE, "default index 1");
-        let positive: Vec<i8> = PSTICK_RANGE_LIST.iter().copied().filter(|r| *r > 0).collect();
+        assert_eq!(
+            PSTICK_RANGE_LIST[1] as u8, PSTICK_DEFAULT_RANGE,
+            "default index 1"
+        );
+        let positive: Vec<i8> = PSTICK_RANGE_LIST
+            .iter()
+            .copied()
+            .filter(|r| *r > 0)
+            .collect();
         assert_eq!(positive.first().copied(), Some(PSTICK_MIN_RANGE as i8));
         assert_eq!(positive.last().copied(), Some(PSTICK_MAX_RANGE as i8));
         assert!(positive.windows(2).all(|w| w[0] < w[1]), "ascending");
