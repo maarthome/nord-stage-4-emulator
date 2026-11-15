@@ -47,6 +47,18 @@
        {"label": "vel-88-piano-chain+slew", "velocity": 88, "flags": ["--firmware-piano-chain", "--piano-slew-fw"]},
        {"label": "piano-chain+law+slew", "flags": ["--firmware-piano-chain", "--firmware-piano-layer-law", "--piano-slew-fw"]},
        {"label": "routing", "flags": ["--firmware-routing"]}]},
+    {"id": "piano_felt", "entry": "Program/Bank A/Felt Upright.ns4p", "engine": "piano Upright (Felt), no FX", "at_s": 150, "duration_s": 40,
+     "variants": [
+       {"label": "default", "flags": []},
+       {"label": "vel-64", "velocity": 64, "flags": []},
+       {"label": "vel-80", "velocity": 80, "flags": []},
+       {"label": "vel-88", "velocity": 88, "flags": []},
+       {"label": "vel-100", "velocity": 100, "flags": []},
+       {"label": "vel-127", "velocity": 127, "flags": []},
+       {"label": "legacy-piano-level", "velocity": 88, "flags": ["--legacy-piano-level"]},
+       {"label": "piano-chain", "velocity": 88, "flags": ["--firmware-piano-chain"]},
+       {"label": "slew-100", "velocity": 100, "flags": ["--piano-slew-fw"]},
+       {"label": "slew-88", "velocity": 88, "flags": ["--piano-slew-fw"]}]},
     {"id": "synth_lead", "entry": "Program/Bank A/Smooth Lead.ns4p", "engine": "synth Triangle LP24", "at_s": 2420, "duration_s": 22,
      "variants": [
        {"label": "default", "flags": []},
