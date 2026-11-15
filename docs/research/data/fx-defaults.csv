@@ -1,0 +1,45 @@
+block,edt_name,fw_raw,unit,fw_value,source,emu_field,emu_default,status,note
+mod1,Edt_Effects_kFx1Enable,0,bool,0,chain,mod1_type,Mod1Type::Off,representation,Off is the disabled state
+mod1,Edt_Effects_kFx1Type,0,enum,0,preset,mod1_type_raw,0,match,
+mod1,Edt_Effects_kFx1Amt,64,frac,0.503937,chain,mod1_amount,0.4,differs,applied by apply_firmware_defaults
+mod1,Edt_Effects_kFx1Amt,64,frac,0.503937,preset,mod1_amount,0.5,match,
+mod1,Edt_Effects_kFx1RateClkDiv,64,frac,0.503937,preset,mod1_rate,0.4,differs,
+mod1,Edt_Effects_kFx1RateClkDiv,64,skip,64,chain,mod1_rate_hz,4,not-compared,rate law per type
+mod1,Edt_Effects_kFx1ClkEnable,0,bool,0,preset,mod1_clock_sync,0,match,
+mod2,Edt_Effects_kFx2Enable,0,bool,0,chain,mod2_type,Mod2Type::Off,representation,Off is the disabled state
+mod2,Edt_Effects_kFx2Type,0,enum,0,preset,mod2_type_raw,4,differs,
+mod2,Edt_Effects_kFx2Amt,64,frac,0.503937,chain,mod2_amount,0.35,differs,applied by apply_firmware_defaults
+mod2,Edt_Effects_kFx2Amt,64,frac,0.503937,preset,mod2_amount,0.4,differs,
+mod2,Edt_Effects_kFx2Rate,64,frac,0.503937,preset,mod2_rate,0.3,differs,
+mod2,Edt_Effects_kFx2Rate,64,skip,64,chain,mod2_rate_hz,0.8,not-compared,rate law per type
+amp,Edt_Effects_kAmpEnable,0,bool,0,chain,amp_cabinet,AmpCabinet::Off,representation,Off is the disabled state
+amp,Edt_Effects_kAmpTypeNew,0,enum,0,preset,amp_type_new,0,match,
+eq,Edt_Effects_kAmpTreble,0,db,0,chain,eq_treble_db,0,match,
+eq,Edt_Effects_kAmpMid,0,db,0,chain,eq_mid_db,0,match,
+eq,Edt_Effects_kAmpBass,0,db,0,chain,eq_bass_db,0,match,
+eq,Edt_Effects_kAmpMidFreq,64,eq_hz,999,chain,eq_mid_freq_hz,1000,match,
+eq,Edt_Effects_kAmpMidFreq,64,frac,0.503937,preset,eq_mid_freq_norm,0.503937,match,
+drive,Edt_Effects_kAmpDrive,0,frac,0,chain,drive_amount,0,match,
+drive,Edt_Effects_kAmpDrive,0,frac,0,preset,amp_drive,0,match,
+comp,Edt_Effects_kCmpEnable,0,bool,0,chain,comp_enabled,0,match,
+comp,Edt_Effects_kCmpAmt,95,frac,0.748031,chain,comp_amount,0,differs,applied by apply_firmware_defaults
+comp,Edt_Effects_kCmpAmt,95,frac,0.748031,preset,comp_amount,0,differs,
+comp,Edt_Effects_kCmpResponse,0,bool,0,chain,comp_fast,0,match,
+delay,Edt_Effects_kDlyEnable,0,bool,0,chain,delay_enabled,0,match,
+delay,Edt_Effects_kDlyClkEnable,0,bool,0,chain,delay_clock_sync,0,match,
+delay,Edt_Effects_kDlyRateClkDiv,11008,delay_ms,250,chain,delay_time_ms,375,differs,applied by apply_firmware_defaults
+delay,Edt_Effects_kDlyRateClkDiv,11008,frac14,0.671916,preset,delay_rate_norm,0.25,differs,
+delay,Edt_Effects_kDlyMix,64,frac,0.503937,chain,delay_mix,0.25,differs,applied by apply_firmware_defaults
+delay,Edt_Effects_kDlyMix,64,frac,0.503937,preset,delay_mix,0,differs,
+delay,Edt_Effects_kDlyMode,0,bool,0,chain,delay_analog,0,match,
+delay,Edt_Effects_kDlyFbkPingPong,0,bool,0,chain,delay_ping_pong,0,match,
+delay,Edt_Effects_kDlyFbkAmt,64,frac,0.503937,chain,delay_feedback,0.35,differs,applied by apply_firmware_defaults
+delay,Edt_Effects_kDlyFbkAmt,64,frac,0.503937,preset,delay_feedback,0.3,differs,
+delay,Edt_Effects_kDlyFbFxType,0,enum,0,preset,delay_fb_fx_type,0,match,
+reverb,Edt_Effects_kRvbEnable,0,bool,0,chain,reverb_model,ReverbModel::Stage,representation,no enable flag
+reverb,Edt_Effects_kRvbAmt,38,frac,0.299213,chain,reverb_mix,0.15,differs,applied by apply_firmware_defaults
+reverb,Edt_Effects_kRvbAmt,38,frac,0.299213,preset,reverb_amount,0,differs,
+reverb,Edt_Effects_kRvbColor,0,enum,0,preset,reverb_color,0,match,
+reverb,Edt_Effects_kRvbType,6,rvb_type,6,chain,reverb_model,ReverbModel::Stage,match,Stage
+rotary,Edt_OrgCom_kEffectsLeslieEnable,1,bool,1,organ,rotary_enabled,1,match,
+rotary,Edt_OrgCom_kEffectsLeslieDrv,0,frac,0,organ,rotary_drive,0.2,differs,

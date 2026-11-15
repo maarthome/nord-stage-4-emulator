@@ -23,6 +23,8 @@ mod fw_chorus4;
 mod fw_chorus5;
 mod fw_coeffs;
 mod fw_compressor;
+mod fw_defaults;
+mod fw_defaults_table;
 mod fw_delay;
 pub mod fw_delay_sync;
 mod fw_delay_table;
