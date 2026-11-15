@@ -16,6 +16,8 @@ pub enum Kind {
     CapTravel,
     /// Bounding square of an LED (bezel included).
     Led,
+    /// One lit segment of a level ladder (a bar, not a round LED).
+    LedSeg,
 }
 
 /// One recorded rectangle.
@@ -47,6 +49,11 @@ pub fn led(p: &egui::Painter, c: egui::Pos2, r: f32) {
     record(p.ctx(), Kind::Led, rect, "");
 }
 
+/// Record one segment of a level ladder (test builds only).
+pub fn led_seg(p: &egui::Painter, rect: Rect) {
+    record(p.ctx(), Kind::LedSeg, rect, "");
+}
+
 /// Record the travel of a fader cap (test builds only).
 pub fn cap_travel(ctx: &Context, rect: Rect, id: &str) {
     record(ctx, Kind::CapTravel, rect, id);
@@ -73,5 +80,16 @@ mod tests {
         assert_eq!(recorded(&ctx).len(), 1);
         clear(&ctx);
         assert!(recorded(&ctx).is_empty());
+    }
+
+    #[test]
+    fn ladder_segments_are_recorded() {
+        let ctx = Context::default();
+        let p = egui::Painter::new(ctx.clone(), egui::LayerId::background(), Rect::EVERYTHING);
+        led_seg(
+            &p,
+            Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(4.0, 4.0)),
+        );
+        assert_eq!(recorded(&ctx)[0].kind, Kind::LedSeg);
     }
 }

@@ -5,6 +5,7 @@
 //! heap allocations when hot-swapping instruments.
 
 mod export;
+mod init_load;
 mod loaders;
 mod piano_bridge;
 mod piano_catalog;
@@ -19,6 +20,7 @@ mod ui;
 use crate::panel::bay_program::store::PER_BANK;
 use crate::panel::FwMessage;
 use crossbeam_channel::{unbounded, Receiver, Sender};
+pub use init_load::{init_program, InitTarget};
 use nord_core::cbin::{Ns4BackupArchive, PresetIndex, PresetSection, ProgramDecoded, SlotIndex};
 use nord_core::piano::{NpnoSound, PianoCategory};
 use nord_core::synth::SynthSampleSound;
@@ -75,6 +77,9 @@ pub struct BackupLibraryState {
     pub active_tab: BackupTab,
     pub piano_slot_b: bool,
     pub synth_layer_idx: usize,
+    /// Keep the running program when a Pianos / Samples tab sound is loaded (default off: the
+    /// load starts from an Init Program, see `init_load`).
+    pub merge_into_program: bool,
     pub pending_jobs: usize,
     /// Firmware messages for the Program OLED raised by loads (`Piano not found`, ...); the panel
     /// poll turns them into toasts.
@@ -124,6 +129,7 @@ impl BackupLibraryState {
             active_tab: BackupTab::Programs,
             piano_slot_b: false,
             synth_layer_idx: 0,
+            merge_into_program: false,
             pending_jobs: 0,
             notices: Vec::new(),
             status_message: "No .ns4b backup loaded".to_string(),
@@ -244,6 +250,16 @@ impl BackupLibraryState {
         self.samples = samples;
         self.reap_retired_sounds();
         Ok(())
+    }
+
+    /// A decode of a piano / sample bank is still running (the OLED shows `Please wait...`).
+    pub fn is_busy(&self) -> bool {
+        self.pending_jobs > 0
+    }
+
+    /// An `.ns4b` archive is open.
+    pub fn is_open(&self) -> bool {
+        self.archive.is_some()
     }
 
     /// Drops retired `Arc` sound allocations only once the audio thread has released its reference.

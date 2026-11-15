@@ -29,6 +29,32 @@ pub fn step(pos: u8, up: bool) -> u8 {
     }
 }
 
+/// Position whose LED set is `mask`; a set no position produces (a program can store any of the
+/// 12 firmware codes) counts as position 0, so the next press starts from "all zones".
+pub fn position_of(mask: u8) -> u8 {
+    (0..POSITIONS)
+        .find(|&p| leds(p) == mask & 0b1111)
+        .unwrap_or(0)
+}
+
+/// The four LED states of an LED set (bit `u` = zone `u + 1`).
+pub fn lits_of(mask: u8) -> [bool; 4] {
+    std::array::from_fn(|i| mask & (1 << i) != 0)
+}
+
+/// What the zone LEDs show: with the keyboard split off there are no zones, so every LED is dark.
+///
+/// VERIFIED against the demo video: the KB ZONE LEDs of the Organ and Piano are dark on every
+/// program without a split (A:13, A:38, A:77) and light the focused layer's zones on those with one
+/// (A:14: zones 3-4, A:34: zones 1-2).
+pub fn shown(lits: [bool; 4], split_on: bool) -> [bool; 4] {
+    if split_on {
+        lits
+    } else {
+        [false; 4]
+    }
+}
+
 /// The four LED states of a position.
 pub fn lits(pos: u8) -> [bool; 4] {
     let l = leds(pos);
@@ -53,6 +79,26 @@ mod tests {
             assert_eq!(lits(pos).iter().filter(|b| **b).count(), 1);
         }
         assert_eq!(lits(3), [false, false, true, false]);
+    }
+
+    #[test]
+    fn led_sets_map_back_to_positions_and_light_any_zone_pair() {
+        for p in 0..POSITIONS {
+            assert_eq!(position_of(leds(p)), p);
+        }
+        assert_eq!(
+            position_of(0b1100),
+            0,
+            "a stored pair is no button position"
+        );
+        assert_eq!(lits_of(0b1100), [false, false, true, true]);
+        assert_eq!(lits_of(0b1111), lits(0));
+    }
+
+    #[test]
+    fn zone_leds_are_dark_without_a_split() {
+        assert_eq!(shown(lits(0), false), [false; 4]);
+        assert_eq!(shown(lits_of(0b1100), true), [false, false, true, true]);
     }
 
     #[test]

@@ -97,3 +97,18 @@ def test_find_crops_dir_walks_up_and_honours_env(tmp_path, monkeypatch):
     assert lo.find_crops_dir(str(deep)) == str(tmp_path / ".reference" / "crops")
     monkeypatch.setenv("NS4_CROPS", "/x")
     assert lo.find_crops_dir(str(deep)) == "/x"
+
+
+def test_topdown_crops_map_isotropically_onto_their_section():
+    """`program`, `keybed`, `wheels` use the straight-on HA88 render: one mm/px on both axes."""
+    rects = {
+        "program": {"x": 535.367, "y": 0.0, "w": 130.038, "h": 179.147},
+        "keybed": {"x": 0.0, "y": 179.147, "w": 1290.0, "h": 159.78},
+        "wheels": {"x": 0.0, "y": 0.0, "w": 240.708, "h": 179.147},
+    }
+    for name, rect in rects.items():
+        file, _sec, outline, _secs, window = lo.CROPS[name]
+        assert file.startswith("../") and window is not None
+        m = lo.Mapping(lo.outline_anchors(outline, rect))
+        assert abs(m.anisotropy() - 1.0) < 0.01, name
+        assert abs(m.ax - 0.1195) < 0.001, name

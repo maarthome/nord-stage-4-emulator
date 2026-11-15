@@ -19,6 +19,8 @@ struct CliArgs {
     screenshot_scale: Option<f32>,
     screenshot_section: Option<nord_panel::Section>,
     initial_program: Option<PathBuf>,
+    /// `--program A:14`: panel location to load from `--backup` (no file path).
+    initial_slot: Option<String>,
     initial_backup: Option<PathBuf>,
     initial_piano: Option<PathBuf>,
     initial_sample: Option<PathBuf>,
@@ -42,7 +44,11 @@ fn parse_cli_args<I: IntoIterator<Item = String>>(args: I) -> CliArgs {
             parsed.screenshot_section = iter.next().and_then(|v| screenshot::parse_section(&v));
         } else if arg == "--program" || arg == "-p" {
             if let Some(path) = iter.next() {
-                parsed.initial_program = Some(PathBuf::from(path));
+                if nord_gui::headless_load::parse_slot(&path).is_some() {
+                    parsed.initial_slot = Some(path);
+                } else {
+                    parsed.initial_program = Some(PathBuf::from(path));
+                }
             }
         } else if arg == "--backup" || arg == "-b" {
             if let Some(path) = iter.next() {
@@ -84,6 +90,7 @@ struct Stage4App {
     shot: Option<ShotPlan>,
     shot_requested: bool,
     frame_count: u32,
+    headless_load: nord_gui::headless_load::HeadlessLoad,
     firmware: FirmwarePanelState,
 }
 
@@ -105,6 +112,7 @@ impl Stage4App {
                 .map(|t| ShotPlan::new(t, cli.screenshot_section, cli.screenshot_scale)),
             shot_requested: false,
             frame_count: 0,
+            headless_load: nord_gui::headless_load::HeadlessLoad::new(cli.initial_slot.as_deref()),
             firmware: FirmwarePanelState::new(cli.firmware),
         };
         app.firmware.push(&app.audio_handle);
@@ -173,6 +181,12 @@ impl eframe::App for Stage4App {
         self.frame_count += 1;
         self.library
             .poll_results(&mut self.state, &self.audio_handle);
+        if self
+            .headless_load
+            .drive(&mut self.state, &self.library, &self.audio_handle)
+        {
+            self.frame_count = 1; // a screenshot waits for the program to be loaded
+        }
 
         // Handle drag and drop of .ns4p, .ns4b, .npno, and .nsmp4 files
         let dropped = ctx.input(|i| i.raw.dropped_files.clone());
@@ -236,6 +250,13 @@ impl eframe::App for Stage4App {
                     &self.firmware.opts,
                 )));
             }
+
+            egui::TopBottomPanel::bottom("ns4_computer_kb_bar").show(ctx, |ui| {
+                nord_gui::panel::computer_kb_bar::show_bar(ui, &mut self.state.computer_kb);
+                if let Some(ports) = self.audio_handle.midi_ports() {
+                    nord_gui::audio::midi_ports::show(ui, ports);
+                }
+            });
 
             self.library.handle_keys(ctx);
             self.library
@@ -420,6 +441,10 @@ mod tests {
         assert_eq!(parsed.initial_backup, Some(PathBuf::from("restore.ns4b")));
         assert_eq!(parsed.initial_piano, Some(PathBuf::from("grand.npno")));
         assert_eq!(parsed.initial_sample, Some(PathBuf::from("strings.nsmp4")));
+
+        let slot = parse_cli_args(["nord-stage4", "--program", "A:14"].map(String::from));
+        assert_eq!(slot.initial_slot.as_deref(), Some("A:14"));
+        assert_eq!(slot.initial_program, None, "a location is not a file");
 
         let positional = parse_cli_args(["nord-stage4".to_string(), "factory.ns4b".to_string()]);
         assert_eq!(

@@ -24,6 +24,7 @@ from pathlib import Path
 M32 = 0xFFFFFFFF
 ALL_ONES = 0xFF_FFFF_FFFF
 LINE = re.compile(r"^([0-9a-f]{8})\s+((?:[0-9a-f]{4} ?)+)\s+(.*?);?\s*$")
+JUMP = re.compile(r"(?:if (\w+) )?jump (0x[0-9a-f]+)")
 
 
 def sx(v: int) -> int:
@@ -344,9 +345,17 @@ class Vm:
         for ia, v in post_i:
             self.i[ia] = v
 
+    def cond_ok(self, cond: str) -> bool:
+        """Whether the program sequencer condition `cond` holds (flags live in `GenVm`)."""
+        raise ValueError(f"condition {cond!r} needs the flag model of GenVm")
+
     # ---- program --------------------------------------------------------------------------
-    def run(self, prog: list[Insn], on_step=None) -> None:  # noqa: ANN001
-        """Runs `prog` up to its `rts`; `on_step(insn)` is called after every instruction."""
+    def run(self, prog: list[Insn], on_step=None, base: int = 0) -> None:  # noqa: ANN001
+        """Runs `prog` up to its `rts`; `on_step(insn)` is called after every instruction.
+
+        `base` is the word address of the routine start: an absolute `jump 0xADDR` goes to the
+        instruction at offset `ADDR - base` (non delayed jumps, no delay slots).
+        """
         at = {p.addr: k for k, p in enumerate(prog)}
         stack: list[list[int]] = []  # [start index, end addr, remaining count]
         k = 0
@@ -365,6 +374,17 @@ class Vm:
                 continue
             if ins.text.startswith("rts"):
                 return
+            if j := JUMP.fullmatch(ins.text):
+                taken = j[1] is None or self.cond_ok(j[1])
+                if on_step:
+                    on_step(ins)
+                if taken:
+                    if (tgt := int(j[2], 0) - base) not in at:
+                        raise ValueError(f"jump target {j[2]} is not an instruction")
+                    k = at[tgt]
+                else:
+                    k += 1
+                continue
             self.step(ins)
             if on_step:
                 on_step(ins)
@@ -429,5 +449,5 @@ def check(
                 else:
                     getattr(vm, k)[:] = want[k]
 
-    vm.run(prog[1:], on_step)
+    vm.run(prog[1:], on_step, base=base)
     return bad

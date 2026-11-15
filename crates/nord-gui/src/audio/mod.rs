@@ -11,6 +11,7 @@ mod frame;
 mod handle;
 #[cfg(feature = "app")]
 mod io;
+pub mod midi_ports;
 mod standalone;
 
 pub use apply::apply_audio_command;

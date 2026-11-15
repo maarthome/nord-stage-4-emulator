@@ -87,21 +87,21 @@ pub const FRAMES: &[FrameDef] = &[
         Piano,
         "UNISON",
         &["piano.unison"],
-        [0.0, 10.0, 0.0, 0.0],
+        [0.0, 21.0, 0.0, 0.0],
     ),
     bare(
         "piano.frame.kb_touch",
         Piano,
         "KB TOUCH",
         &["piano.kb_touch"],
-        [0.0, 10.0, 0.0, 0.0],
+        [0.0, 21.0, 0.0, 0.0],
     ),
     bare(
         "piano.frame.dyn_comp",
         Piano,
         "DYN COMP",
         &["piano.dyn_comp"],
-        [0.0, 10.0, 0.0, 0.0],
+        [0.0, 21.0, 0.0, 0.0],
     ),
     boxed(
         "piano.frame.select",
@@ -116,7 +116,7 @@ pub const FRAMES: &[FrameDef] = &[
         Synth,
         "MODE",
         &["synth.mode"],
-        [4.0, 26.0, 4.0, 12.0],
+        [4.9, 21.0, 5.0, 9.6],
     ),
     boxed(
         "synth.frame.arp",
@@ -128,21 +128,21 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.arp.range",
             "synth.arp.menu",
         ],
-        [8.0, 14.0, 2.0, 12.0],
+        [5.5, 10.5, 5.3, 8.0],
     ),
     boxed(
         "synth.frame.voice",
         Synth,
         "VOICE",
         &["synth.voice.mode", "synth.voice.glide"],
-        [6.0, 14.0, 10.5, 8.0],
+        [4.9, 10.5, 7.7, 8.5],
     ),
     boxed(
         "synth.frame.vibrato",
         Synth,
         "VIBRATO",
         &["synth.vibrato.selector", "synth.vibrato.menu"],
-        [5.0, 14.0, 4.0, 8.0],
+        [5.4, 15.6, 5.1, 6.2],
     ),
     boxed(
         "synth.frame.lfo",
@@ -154,7 +154,7 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.lfo.mod_amt",
             "synth.lfo.dest",
         ],
-        [8.0, 14.0, 9.0, 12.0],
+        [5.3, 7.9, 5.5, 12.0],
     ),
     boxed(
         "synth.frame.osc",
@@ -166,7 +166,7 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.osc.ctrl",
             "synth.osc.env_amt",
         ],
-        [5.5, 14.0, 11.0, 12.0],
+        [8.5, 10.9, 7.9, 14.0],
     ),
     boxed(
         "synth.frame.filter",
@@ -179,21 +179,21 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.filter.freq",
             "synth.filter.res",
         ],
-        [4.0, 14.0, 10.5, 12.0],
+        [4.5, 8.0, 5.3, 14.0],
     ),
     boxed(
         "synth.frame.amp",
         Synth,
         "AMP",
         &["synth.amp.envelope"],
-        [4.0, 14.0, 4.0, 12.0],
+        [4.1, 10.9, 4.5, 11.3],
     ),
     boxed(
         "synth.frame.unison",
         Synth,
         "UNISON",
         &["synth.unison"],
-        [4.0, 14.0, 4.0, 8.0],
+        [4.1, 19.0, 4.5, 1.3],
     ),
     // Layer Effects.
     boxed(
@@ -262,7 +262,10 @@ pub const FRAMES: &[FrameDef] = &[
         ],
         [3.0, 14.0, 6.0, 12.0],
     ),
-    // Program area (the red central block).
+    // Program area (the red central block). VERIFIED against the HA88 top-down render: the pads
+    // reproduce the printed boxes (MORPH ASSIGN x 4905..5348 y 697..885 px, PRESET LIBRARY
+    // x 5208..5655 y 925..1098, PROGRAM x 5130..5738 y 1478..1826; SPLIT / MST CLK / TRANSP are
+    // title tabs over bare controls). The PROGRAM box holds only the eight buttons, not the OLED.
     boxed(
         "program.frame.morph",
         Program,
@@ -275,21 +278,21 @@ pub const FRAMES: &[FrameDef] = &[
         Program,
         "SPLIT",
         &["split.on_set", "split.leds"],
-        [6.0, 12.0, 6.0, 8.0],
+        [0.5, 12.0, 0.5, 8.0],
     ),
     boxed(
         "program.frame.mst_clk",
         Program,
         "MST CLK",
         &["mst_clk.tap_set"],
-        [4.0, 14.0, 4.0, 12.0],
+        [1.7, 14.0, 1.7, 9.0],
     ),
     boxed(
         "program.frame.transp",
         Program,
         "TRANSP",
         &["transp.on_set"],
-        [4.0, 14.0, 4.0, 10.0],
+        [4.0, 14.0, 4.0, 8.5],
     ),
     boxed(
         "program.frame.preset_library",
@@ -300,25 +303,20 @@ pub const FRAMES: &[FrameDef] = &[
             "preset_library.piano",
             "preset_library.synth",
         ],
-        [4.0, 14.0, 4.0, 12.0],
+        [4.0, 12.0, 4.0, 8.0],
     ),
     boxed(
         "program.frame.program",
         Program,
         "PROGRAM",
         &[
-            "program.oled",
-            "program.dial",
             "program.button.1",
             "program.button.4",
             "program.button.5",
             "program.button.8",
-            "program.page_down",
-            "program.page_up",
         ],
-        [1.2, 1.0, 4.0, 12.0],
-    )
-    .at(0.06),
+        [3.6, 14.9, 4.2, 9.5],
+    ),
 ];
 
 #[cfg(test)]

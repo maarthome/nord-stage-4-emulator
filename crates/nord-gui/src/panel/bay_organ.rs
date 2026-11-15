@@ -4,7 +4,7 @@
 //! `organ_strip.rs`, the drawbars in `organ_drawbars.rs`; this file has the section frame, the
 //! model selector, PRESET/SYNC, vibrato/chorus and the percussion buttons.
 
-use super::ctl::{gesture_button, led_small, shift_legend, tag, tag_fit, Face};
+use super::ctl::{gesture_button, shift_legend, tag, tag_fit, Face, TAG_LIFT_LED};
 use super::layout_px::{rect_or_empty, to_px};
 use super::organ_drawbars::render_drawbars;
 use super::organ_logic::{model_index, scanner_for, vib_index, MODELS, VIB_TYPES};
@@ -45,7 +45,8 @@ fn render_model(
     audio: &AudioHandle,
 ) {
     let btn = rect_or_empty("organ.model", origin);
-    let idx = model_index(state.organ_model, state.organ_ui.b3_bass);
+    let (shown_model, shown_bass) = state.organ_model_of(state.organ_ui.focus_layer);
+    let idx = model_index(shown_model, shown_bass);
     let face = Face {
         tip: "ORGAN MODEL: B3, B3 Bass, Vox, Farf, Pipe 1, Pipe 2",
         ..Face::black()
@@ -59,40 +60,16 @@ fn render_model(
         face,
     ) {
         let (model, b3_bass) = MODELS[cycle(idx, MODELS.len(), true)];
+        // The engine edit sets both layers' model.
         state.organ_model = model;
         state.organ_ui.b3_bass = b3_bass;
+        state.organ_ui.model_b = model;
+        state.organ_ui.b3_bass_b = b3_bass;
         audio.send_command(AudioCommand::Organ(OrganEdit::Model { model, b3_bass }));
     }
     // Above the model LEDs and their names, not over them.
     let leds = rect_or_empty("organ.model_leds", origin);
-    // Six LEDs, two columns of three, with the model names beside them.
-    let names = [("B3", "BASS"), ("VOX", "FARF"), ("PIPE1", "PIPE2")];
-    for i in 0..MODELS.len() {
-        let c = pos2(
-            leds.left() + leds.width() * if i % 2 == 0 { 0.2 } else { 0.8 },
-            leds.top() + leds.height() * ((i / 2) as f32 + 0.5) / 3.0,
-        );
-        led_small(painter, c, i == idx, LED_RED, LED_RED_DIM, 1.5);
-    }
-    for (row, (l, r)) in names.iter().enumerate() {
-        let y = leds.top() + leds.height() * (row as f32 + 0.5) / 3.0;
-        label(
-            painter,
-            pos2(leds.left() - 3.0, y),
-            l,
-            5.0,
-            Color32::WHITE,
-            Align2::RIGHT_CENTER,
-        );
-        label(
-            painter,
-            pos2(leds.right() + 3.0, y),
-            r,
-            5.0,
-            Color32::WHITE,
-            Align2::LEFT_CENTER,
-        );
-    }
+    super::organ_model::paint(painter, leds, idx);
     super::ctl::mark(ui, "organ.model_leds");
 }
 
@@ -152,7 +129,7 @@ fn render_vibrato(
                 send_scanner(state, audio, t);
             }
         }
-        tag(painter, rect, text, 6.5);
+        tag(painter, rect, text, TAG_LIFT_LED);
     }
 }
 
@@ -164,12 +141,23 @@ fn send_scanner(state: &Stage4PanelState, audio: &AudioHandle, layer: usize) {
     }));
 }
 
-fn send_percussion(state: &Stage4PanelState, audio: &AudioHandle) {
-    audio.send_command(AudioCommand::SetPercussion {
-        enabled: state.perc_on,
-        soft: state.perc_soft,
-        fast: state.perc_fast,
-        third: state.perc_third,
+fn send_percussion(state: &Stage4PanelState, audio: &AudioHandle, layer: usize) {
+    let p = state.organ_perc_of(layer);
+    audio.send_command(if layer == 0 {
+        AudioCommand::SetPercussion {
+            enabled: p.on,
+            soft: p.soft,
+            fast: p.fast,
+            third: p.third,
+        }
+    } else {
+        AudioCommand::Organ(OrganEdit::Percussion {
+            layer: layer as u8,
+            on: p.on,
+            soft: p.soft,
+            fast: p.fast,
+            third: p.third,
+        })
     });
 }
 
@@ -180,6 +168,8 @@ fn render_percussion(
     state: &mut Stage4PanelState,
     audio: &AudioHandle,
 ) {
+    let focus = state.organ_ui.focus_layer;
+    let shown = state.organ_perc_of(focus);
     for (id, text, shift_fn) in [
         ("organ.perc_on", "ON", false),
         ("organ.perc_volume", "VOLUME SOFT", true),
@@ -188,10 +178,10 @@ fn render_percussion(
     ] {
         let rect = rect_or_empty(id, origin);
         let lit = match id {
-            "organ.perc_on" => state.perc_on,
-            "organ.perc_volume" => state.perc_soft,
-            "organ.perc_decay" => state.perc_fast,
-            _ => state.perc_third,
+            "organ.perc_on" => shown.on,
+            "organ.perc_volume" => shown.soft,
+            "organ.perc_decay" => shown.fast,
+            _ => shown.third,
         };
         let face = Face {
             led: Some(lit),
@@ -200,13 +190,17 @@ fn render_percussion(
         };
         match gesture_button(ui, &mut state.organ_ui.trackers, rect, id, shift_fn, face) {
             Some(Trigger::Primary) => {
+                let mut p = shown;
                 match id {
-                    "organ.perc_on" => state.perc_on = !state.perc_on,
-                    "organ.perc_volume" => state.perc_soft = !state.perc_soft,
-                    "organ.perc_decay" => state.perc_fast = !state.perc_fast,
-                    _ => state.perc_third = !state.perc_third,
+                    "organ.perc_on" => p.on = !p.on,
+                    "organ.perc_volume" => p.soft = !p.soft,
+                    "organ.perc_decay" => p.fast = !p.fast,
+                    _ => p.third = !p.third,
                 }
-                send_percussion(state, audio);
+                for l in state.edit_layers(focus, 2) {
+                    state.set_organ_perc(l, p);
+                    send_percussion(state, audio, l);
+                }
             }
             Some(Trigger::Shifted) => {
                 state.organ_ui.perc_poly = !state.organ_ui.perc_poly;
@@ -222,7 +216,7 @@ fn render_percussion(
             let at = pos2(rect.left() - 4.0, rect.center().y);
             label(painter, at, text, 5.5, Color32::WHITE, Align2::RIGHT_CENTER);
         } else {
-            tag_fit(painter, rect, text, 8.0, 44.0);
+            tag_fit(painter, rect, text, TAG_LIFT_LED, 44.0);
         }
         if id == "organ.perc_volume" {
             shift_legend(
@@ -260,10 +254,20 @@ mod tests {
                 if mode == nord_core::organ::ScannerMode::V2
         ));
         s.perc_soft = true;
-        send_percussion(&s, &audio);
+        send_percussion(&s, &audio, 0);
         assert!(matches!(
             rx.try_recv(),
             Ok(AudioCommand::SetPercussion { soft: true, .. })
+        ));
+        s.organ_ui.perc_b.third = true;
+        send_percussion(&s, &audio, 1);
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(AudioCommand::Organ(OrganEdit::Percussion {
+                layer: 1,
+                third: true,
+                ..
+            }))
         ));
     }
 }

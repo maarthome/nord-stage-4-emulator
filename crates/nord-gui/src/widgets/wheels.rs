@@ -1,6 +1,34 @@
 //! Pitch stick and mod wheel widget.
 
-use egui::{pos2, vec2, Color32, Rect, Sense, Stroke, StrokeKind, Ui};
+use egui::{vec2, Color32, Painter, Pos2, Rect, Sense, Shape, Stroke, Ui, Vec2};
+
+/// Layout bounding boxes (mm) the shapes are scaled from: `master.pitch_stick` / `master.mod_wheel`.
+const PITCH_BBOX_MM: (f32, f32) = (32.1, 19.4);
+const MOD_BBOX_MM: (f32, f32) = (19.1, 49.0);
+/// Slot and paddle sizes (length, width) in mm.
+///
+/// VERIFIED: measured on the HA88 top-down render (`data/photo_anchors_wheels.csv`, 0.1195 mm/px):
+/// pitch slot 255 x 110 px, paddle 200 x 80 px, tilt -12 deg; wheel slot 395 x 90 px, tilt -14 deg
+/// (error about +-1.5 mm, the slot edges are shaded).
+const PITCH_SLOT_MM: (f32, f32) = (30.5, 13.0);
+const PITCH_PADDLE_MM: (f32, f32) = (24.0, 9.6);
+/// Wheel slot (width, length).
+const MOD_SLOT_MM: (f32, f32) = (11.0, 48.0);
+/// Rotation (radians, clockwise on screen) of the pitch slot and of the wheel slot's long axis.
+const PITCH_TILT: f32 = -0.21;
+const MOD_TILT: f32 = -0.245;
+
+/// Filled rectangle `size` (along its own x, y) centred on `c`, rotated by `angle` radians.
+fn fill_rotated(p: &Painter, c: Pos2, size: Vec2, angle: f32, fill: Color32, stroke: Stroke) {
+    let (sin, cos) = angle.sin_cos();
+    let pts = [(-1.0_f32, -1.0_f32), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
+        .map(|(x, y)| {
+            let (px, py) = (x * size.x * 0.5, y * size.y * 0.5);
+            c + vec2(px * cos - py * sin, px * sin + py * cos)
+        })
+        .to_vec();
+    p.add(Shape::convex_polygon(pts, fill, stroke));
+}
 
 /// Authentic Nord wooden pitch stick and steel mod wheel.
 pub fn pitch_and_mod_wheels(
@@ -33,28 +61,28 @@ pub fn pitch_and_mod_wheels(
         changed = true;
     }
 
-    // Bezel recess
-    p.rect_filled(rect_pitch, 4.0, Color32::from_rgb(12, 14, 16));
-    p.rect_stroke(
-        rect_pitch,
-        4.0,
-        Stroke::new(1.0_f32, Color32::from_rgb(35, 40, 45)),
-        StrokeKind::Inside,
+    // Slot (30.5 x 13 mm) and wooden paddle (24 x 9.6 mm), both tilted -12 degrees: the HA88
+    // top-down render shows the right end higher. `rect_pitch` is the 32.1 x 19.4 mm bounding box.
+    let s = rect_pitch.width() / PITCH_BBOX_MM.0;
+    let c = rect_pitch.center();
+    let axis = vec2(PITCH_TILT.cos(), PITCH_TILT.sin());
+    fill_rotated(
+        p,
+        c,
+        vec2(PITCH_SLOT_MM.0, PITCH_SLOT_MM.1) * s,
+        PITCH_TILT,
+        Color32::from_rgb(10, 11, 13),
+        Stroke::new(1.0_f32, Color32::from_rgb(30, 34, 38)),
     );
-    // Wooden paddle
-    let stick_w = 16.0;
-    let stick_h = rect_pitch.height() * 0.7;
-    let offset_x = *pitch * (rect_pitch.width() * 0.35);
-    let stick_rect = Rect::from_center_size(
-        pos2(rect_pitch.center().x + offset_x, rect_pitch.center().y),
-        vec2(stick_w, stick_h),
-    );
-    p.rect_filled(stick_rect, 3.0, Color32::from_rgb(180, 130, 80)); // Wood beech tone
-    p.rect_stroke(
-        stick_rect,
-        3.0,
-        Stroke::new(1.0_f32, Color32::from_rgb(110, 75, 40)),
-        StrokeKind::Inside,
+    // The paddle travels along the slot: +1 is the right (upper) end.
+    let travel = (PITCH_SLOT_MM.0 - PITCH_PADDLE_MM.0) * 0.5 * s;
+    fill_rotated(
+        p,
+        c + axis * (*pitch * travel),
+        vec2(PITCH_PADDLE_MM.0, PITCH_PADDLE_MM.1) * s,
+        PITCH_TILT,
+        Color32::from_rgb(196, 140, 84), // wood
+        Stroke::new(1.0_f32, Color32::from_rgb(120, 80, 44)),
     );
 
     // 2. Mod wheel (grooved metal cylinder)
@@ -65,26 +93,36 @@ pub fn pitch_and_mod_wheels(
         changed = true;
     }
 
-    p.rect_filled(rect_mod, 4.0, Color32::from_rgb(12, 14, 16));
-    p.rect_stroke(
-        rect_mod,
-        4.0,
-        Stroke::new(1.0_f32, Color32::from_rgb(35, 40, 45)),
-        StrokeKind::Inside,
+    // Slot 48 x 11 mm tilted 14 degrees (bottom end to the right), silver wheel rim inside it with
+    // a grip groove that runs along the slot as the wheel turns (0 = bottom, 1 = top).
+    let s = rect_mod.height() / MOD_BBOX_MM.1;
+    let c = rect_mod.center();
+    let axis = vec2(-MOD_TILT.sin(), MOD_TILT.cos());
+    let (w_slot, h_slot) = (MOD_SLOT_MM.0 * s, MOD_SLOT_MM.1 * s);
+    fill_rotated(
+        p,
+        c,
+        vec2(w_slot, h_slot),
+        MOD_TILT,
+        Color32::from_rgb(10, 11, 13),
+        Stroke::new(1.0_f32, Color32::from_rgb(30, 34, 38)),
     );
-
-    let travel = rect_mod.height() * 0.7;
-    let mod_y = rect_mod.bottom() - 12.0 - *mod_wheel * travel;
-    let mod_cap = Rect::from_center_size(
-        pos2(rect_mod.center().x, mod_y),
-        vec2(rect_mod.width() * 0.75, 18.0),
+    fill_rotated(
+        p,
+        c,
+        vec2(w_slot * 0.78, h_slot * 0.97),
+        MOD_TILT,
+        Color32::from_gray(176),
+        Stroke::new(1.0_f32, Color32::from_gray(225)),
     );
-    p.rect_filled(mod_cap, 2.0, Color32::from_gray(180));
-    p.rect_stroke(
-        mod_cap,
-        2.0,
-        Stroke::new(1.0_f32, Color32::from_gray(240)),
-        StrokeKind::Inside,
+    let along = (0.5 - *mod_wheel) * h_slot * 0.8;
+    fill_rotated(
+        p,
+        c + axis * along,
+        vec2(w_slot * 0.78, 3.0),
+        MOD_TILT,
+        Color32::from_gray(92),
+        Stroke::NONE,
     );
 
     changed
@@ -95,6 +133,30 @@ mod tests {
     use super::*;
     use crate::widgets::support::with_ui;
     use egui::{pos2, vec2, Rect};
+
+    /// Pitch slot rises to the right, the wheel slot's bottom end leans right (HA88 render).
+    #[test]
+    fn tilts_follow_the_render() {
+        const { assert!(PITCH_TILT < 0.0 && MOD_TILT < 0.0) };
+        let (sin, cos) = PITCH_TILT.sin_cos();
+        assert!(cos > 0.9 && sin < 0.0, "right end is higher on screen");
+        assert!(PITCH_PADDLE_MM.0 < PITCH_SLOT_MM.0 && PITCH_PADDLE_MM.1 < PITCH_SLOT_MM.1);
+    }
+
+    #[test]
+    fn rotated_rect_paints_one_polygon() {
+        with_ui(|ui| {
+            let n = ui.ctx().layer_painter(ui.layer_id());
+            fill_rotated(
+                &n,
+                pos2(50.0, 50.0),
+                vec2(40.0, 10.0),
+                0.2,
+                Color32::WHITE,
+                Stroke::NONE,
+            );
+        });
+    }
 
     #[test]
     fn test_wheels_unchanged_without_input() {

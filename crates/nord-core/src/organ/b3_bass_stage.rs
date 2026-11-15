@@ -38,7 +38,7 @@ const RING_DOWN_CALLS: u32 = 10_000;
 const IMAGE: &str = include_str!("../../../../docs/research/data/bass-fw-image.csv");
 
 /// Catmull-Rom interpolation between `h[1]` and `h[2]` at `mu` in `[0, 1)`.
-fn cubic(h: &[f32; 4], mu: f32) -> f32 {
+pub(super) fn cubic(h: &[f32; 4], mu: f32) -> f32 {
     let (a, b, c, d) = (h[0], h[1], h[2], h[3]);
     let m1 = 0.5 * (c - a);
     let m2 = 0.5 * (d - b);

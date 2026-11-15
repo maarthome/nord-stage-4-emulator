@@ -81,6 +81,7 @@ Every custom UI widget in `crates/nord-gui` / `crates/nord-plugin` must render t
 - **Adjacent 8-Segment Red LED Ladder (`1..8`):**
   - Next to every drawbar slot is a white-framed vertical strip numbered `1` through `8` with 8 rectangular red LEDs (`#FF2A2A`).
   - Lights from the top down (`1..N`) to display the active drawbar registration (and any live Morph transition).
+  - Unlit while the Organ section is off and in Drawbar Live (EMPIRICAL: the hardware frame of the piano program `A:13 Felt Upright` shows no lit ladder, [D78](../DECISIONS.md)).
 - **Drawbar Cap Colors:**
   - Indices `0, 1` (`16'`, `5 1/3'`): Black (`#1A1C1E`)
   - Indices `2, 3` (`8'`, `4'`): White (`#ECEBE6`)
@@ -88,6 +89,23 @@ Every custom UI widget in `crates/nord-gui` / `crates/nord-plugin` must render t
   - Index `5` (`2'`): White (`#ECEBE6`)
   - Indices `6, 7` (`1 3/5'`, `1 1/3'`): Black (`#1A1C1E`)
   - Index `8` (`1'`): White (`#ECEBE6`)
+
+### 4.2a Program load -> panel state, checked against the demo video (`ns4-6c08`)
+
+Ground truth: frames of `NEW NORD STAGE 4 - PROGRAMAS PRESETS DEMO (PART A)` (Stage 4 Compact, bank A in order; frames and the backup stay in git-ignored `.reference/` and `target/video_frames/`). Reproduce ours with `python tools/gui_shots.py --backup <ns4b> --program A:14 --sections organ` (`--program` takes a panel location; `nord-stage4 --backup X --program A:14 --screenshot out.png` does the same). A location is `bank:page+button`, the file's `location_index` 3 is `A:14` (checked for A:14, A:24, A:34, A:77 against the names on the OLED).
+
+| Rule | Evidence | Tag |
+|---|---|---|
+| The Organ ladders, percussion LEDs, model, vibrato ON and KB ZONE LEDs show the **focused layer**; with both layers on a load focuses B, with only A on it focuses A | A:14, A:24, A:34 show the stored layer B values; A:77 (A only) shows A | VERIFIED (4 programs); the firmware stores the focus (`engine-routing.md`: `B3 Chords n Solo` focus 1), its bits are not decoded: Open |
+| Drawbar ladder `n` = `n` LEDs lit from the top (`1..n`), `0` = none, `8` = all | A:14 layer B `8 8 8 6 3 3 1 5 0` counted on the frame at 3:56 | VERIFIED |
+| The 9 sliders are physical: a program load never moves them (all caps sit at value 8 in every frame); a slider edit in Preset mode writes the focused layer's preset | every frame of the video | VERIFIED |
+| Percussion ON / SOFT / FAST / THIRD are stored **per layer** (the engine plays both sets) | A:14: layer B `on, 3rd` lit, layer A stores `off, soft, fast, 3rd` | VERIFIED |
+| The focused layer's ON/OFF LED blinks while several layers of the section are on, the other layers stay lit | 10 frames of A:14 at 2 fps: B alternates, A steady | VERIFIED (Organ); same rule in Piano and Synth: ASSUMED |
+| KB ZONE LEDs = `CASE_LEDS[CASE_TABLE[active split points][code]]` of the focused layer, **all dark when the split is off** | A:14 B code 6 -> zones 3-4, A:34 B code 0 -> zones 1-2 (middle split point only); no split (A:13, A:38, A:77): dark | VERIFIED |
+| STRING RES / PED NOISE / SOFT REL LEDs only on Grand and Upright | A:13 lit; A:22 (Electric) dark although the flags are stored on | VERIFIED for Electric, ASSUMED for the rest |
+| Rotary: speed, stop, drive, ORGAN routing follow the program | decoded; the video user switches speed live, not compared | ASSUMED |
+
+Open (not matched yet): Piano TIMBRE of `Felt Upright` shows SOFT while the stored `kEq` is 0 (`Off`); UNISON / DYN COMP LEDs of A:13 show lit points that the stored 0 does not explain; SUSTPED / PSTICK LEDs per layer (A:38, A:13) are not decoded; the stored organ focus bits; Piano and Synth focus rules (A:38 Synth focuses A with A and B on, so "highest layer" is Organ only).
 
 ### 4.3 Dual-Column Red Triangle Matrix Selector (`TriangleSelectorWidget`)
 - Used in `ORGAN MODEL` (`FARF / VOX / B3` vs `PIPE1 / PIPE2 / B3 BASS`), `VIB/CHORUS` (`C2 V3 C3 / V2 C1 V1`), and `PIANO SELECT` (`ELECTRIC / UPRIGHT / GRAND` vs `CLAV / DIGITAL / MISC`).
@@ -280,3 +298,19 @@ Remaining differences against `.reference/crops` (kept: legibility over fidelity
 | Effects | variation lists beside the rocker LEDs, FREQ / RES numerals (200 ... 8K), FX FOCUS column inside a box | one LED row per selector without names, no numerals on the amp FREQ knob |
 | Master / Program | the PAGE / BANK buttons inside the PROGRAM box | the PAGE buttons touch its left edge |
 | Keybed | keys only | keys plus the three LED names |
+
+### Round 7: LED spacing, Rotary Speaker box, ORGAN MODEL order
+
+LED spacing rules (audit rules `B` and `D`, `panel/legibility_leds.rs`), values in px at the panel scale (`LAYOUT_SCALE` 2):
+
+| Pair | Minimum gap between bezels | Status |
+|---|---|---|
+| LED to the bezel of a button (rectangle + 1.5 px; Effects pills use a 2 px bezel and are built 0.5 px further out) | 2.5 | ASSUMED: the photos show a visible dark gap, none is measurable at 2000 px; chosen to match rule `C` |
+| LED to LED (centre pitch >= diameter + 2) | 2.0 | ASSUMED: same reason |
+| Bar to bar and LED to bar in level ladders | 1.5 | EMPIRICAL: the photos (`NS4-Panel-organ`) show the 11-segment ladders with a thin dark line between bars; 1.5 px is the smallest gap that reads as a separate bar |
+
+First run: 53 `B` and 21 `D` (plus 40 ladder bars at 1.0 px, which the first version of the rule did not record); 0 after. Fixes live in shared helpers: `ctl::led_above` / `LED_LIFT` (state LED above a gesture button), `ctl::LEGEND_DROP` (Shift legend with its LED), `bay_effects::ctx::LED_LIFT_FX`, `lists::COL_DX` / `BOTTOM_ROW` / `NAME_GAP`, `piano_widgets::led_strip` (radius follows the pitch), `bay_piano_select::SIDE_LED` / `LED_ROW_DROP`, `organ_widgets` / `piano_widgets` `SEG_GAP`, `organ_vib_matrix::PITCH_Y`. Names printed above a button with an LED use `ctl::TAG_LIFT_LED`.
+
+Rotary Speaker box (photo `NS4_Panel-crop-left.jpg`): every control and legend sits on the frame's vertical centre line (`layout_tweaks`: the `rotary.` controls move 11 px left; the frame is symmetric, 41 px each side). ORGAN and STOP MODE print as "o NAME" above their button (`ctl_led_tag::tag_led`: text centred on the button, LED left of the text, as on the instrument); SLOW / FAST is one row centred on the line (`bay_master/rotary_speed.rs`); the button pitch is 34 px so the legend above, the 2 px stacked gap (rule `V`) and the name line fit. DRIVE moved 3 px up so its name clears ORGAN.
+
+ORGAN MODEL order (VERIFIED, presentation only, photos `NS4_Panel-crop-left.jpg`, `NS4_HA88_Organ-01_241008.jpg`, manual p.18): the printed columns read FARF, VOX, B3 (left) and PIPE1, PIPE2, B3 BASS (right). `organ_model::SLOTS` maps each printed slot to the engine index; `organ_logic::MODELS` (B3, B3 Bass, Vox, Farf, Pipe 1, Pipe 2) and the button's step order are unchanged. Other lists checked against the photos and found in order: PIANO SELECT (ELECTRIC / CLAV, UPRIGHT / DIGITAL, GRAND / MISC), TIMBRE, VIB/CHORUS matrix (C2 V3 C3 / V2 C1 V1), Mod 1, Mod 2, Amp, Delay variation and filter, Reverb lists, Synth MODE and VOICE.

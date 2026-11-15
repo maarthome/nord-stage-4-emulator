@@ -75,3 +75,7 @@ The solo difference (-2.7 dB) agrees with the linear law (-3.1 dB) and not with 
 1. Hardware: one chord at synth fader 127, 100, 64, 32 with every other setting fixed; read the fader value on the OLED (Layer level page) to avoid reading the cap.
 2. Emulator: render the full PianoPad program once a `.ns4p` of it is available (store dump), with `--firmware-routing`, and compare the layer sum and the pad envelope onset (attack 690 ms, release 1.94 s) on a single sustained chord with no speech.
 3. Pad attack and release from a clip without speech and a single chord.
+
+## 7. Update (Grand Pad, 2026-11-15)
+
+The factory program `A:43 Grand Pad` (synth layer level 0.567) gives the opposite reading with Transkun notes: the squared level scores best (1.24 against 1.46 linear), so the synth law is split between the two clips; see [grand-pad-vs-video](grand-pad-vs-video.md) and D82 (opt-in `--firmware-synth-layer-law`).

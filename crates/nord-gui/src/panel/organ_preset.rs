@@ -5,7 +5,7 @@
 //! into the stored preset. Engine side: `OrganEdit::{DrawbarLive, LiveDrawbars, SyncPreset}`
 //! (host `organz_drawbar_live_{n}`, `organz_live1..9_{n}`, `organz_sync_{n}`).
 
-use super::ctl::{gesture_button, shift_legend, tag, Face};
+use super::ctl::{gesture_button, shift_legend, tag, Face, TAG_LIFT_LED};
 use super::layout_px::rect_or_empty;
 use super::prelude::*;
 use crate::audio::OrganEdit;
@@ -24,7 +24,10 @@ pub(super) fn toggle_live(state: &mut Stage4PanelState, audio: &AudioHandle) {
 
 /// SYNC: the stored preset takes the physical positions (engine and panel).
 pub(super) fn sync_preset(state: &mut Stage4PanelState, audio: &AudioHandle) {
-    state.organ_drawbars = state.organ_ui.live_bars;
+    // The engine copies the physical bars into the stored preset of both layers.
+    for l in 0..2 {
+        state.set_organ_drawbars(l, state.organ_ui.live_bars);
+    }
     audio.send_command(AudioCommand::Organ(OrganEdit::LiveDrawbars(
         state.organ_ui.live_bars,
     )));
@@ -57,7 +60,7 @@ pub(super) fn render_preset(
         Some(Trigger::Shifted) => sync_preset(state, audio),
         _ => {}
     }
-    tag(painter, btn, "PRESET", 8.0);
+    tag(painter, btn, "PRESET", TAG_LIFT_LED);
     shift_legend(ui, btn, "organ.sync", "SYNC", None, None);
 }
 

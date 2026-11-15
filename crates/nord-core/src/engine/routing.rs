@@ -60,7 +60,7 @@ pub struct ProgramRouting {
 /// gives view mask 1 for all 9 formerly silent programs and for `Tines Layer`, `J3 Grand Layers`.
 /// `mask` is the decoded scene mask (already gated by the section enable, bits 0..1 organ, 2..3
 /// piano, 4..6 synth); a section with no enable bit stays 0.
-pub(super) fn default_layer_a(section_enable: u8, mask: u8) -> u8 {
+pub fn default_layer_a(section_enable: u8, mask: u8) -> u8 {
     const SECTIONS: [(u8, u8, LayerId); 3] = [
         (0b100, 0b0000_0011, LayerId::OrganA),
         (0b010, 0b0000_1100, LayerId::PianoA),
@@ -102,6 +102,20 @@ const CASE_LEDS: [u8; 11] = [
 pub const fn zone_leds(code: u8) -> u8 {
     let code = if code > 11 { 11 } else { code as usize };
     CASE_LEDS[zone_table::CASE_TABLE[7][code][0] as usize]
+}
+
+/// LED zone set (bit `u` = zone `u + 1`) the panel lights for a `kKbZone` code under the split
+/// state of the program: `active[i]` = split enabled and point `i` flagged. The firmware picks
+/// the case from the row of the active-point mask, so points that are off join the zones next to
+/// them (the layer's real key range, as in [`ProgramRouting::zone_range`]).
+///
+/// VERIFIED against the demo video (`B3 Chords n Solo`, A:14, 3:56, and `B3 Praise Split`, A:34):
+/// with only the middle point active, code 6 lights zones 3-4 and code 0 lights zones 1-2, which
+/// is what the case table gives; test `split_state_joins_the_zones_next_to_an_inactive_point`.
+pub const fn zone_leds_for(code: u8, active: [bool; 3]) -> u8 {
+    let mask = active[0] as usize | (active[1] as usize) << 1 | (active[2] as usize) << 2;
+    let code = if code > 11 { 11 } else { code as usize };
+    CASE_LEDS[zone_table::CASE_TABLE[mask][code][0] as usize]
 }
 
 impl ProgramRouting {
@@ -191,6 +205,22 @@ impl Stage4Engine {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn split_state_joins_the_zones_next_to_an_inactive_point() {
+        use super::zone_leds_for;
+        // Demo video: A:14 (layer B code 6) lights zones 3-4, A:34 (layer B code 0) zones 1-2,
+        // both with only the middle split point active.
+        let mid = [false, true, false];
+        assert_eq!(zone_leds_for(6, mid), 0b1100);
+        assert_eq!(zone_leds_for(0, mid), 0b0011);
+        // No split: the table has one row of "all zones" for every code.
+        assert_eq!(zone_leds_for(9, [false; 3]), 0b1111);
+        // All three points: the plain code table.
+        for code in 0..12 {
+            assert_eq!(zone_leds_for(code, [true; 3]), super::zone_leds(code));
+        }
+    }
+
     use super::*;
     use crate::morph::CrossfadeWidth;
 

@@ -264,6 +264,8 @@ y = max(b clip(u) + a y_prev, clip(u))   a = exp(-0.0047343 2^r 2^(n/12) rho)  (
 | Frame rate 43,402.6 Hz | puts oscillator 0 row 0 on C0 = 16.3516 Hz; the Vox offset (-9.9 cent against the Pipe bank rate) agrees | ASSUMED |
 | LFO (rate `DM 0xC27D6`, depth `0xC27D7`, the Farfisa vibrato) | modelled in Python, not in Rust (the depth is an ARM word with unknown mapping) | VERIFIED in Python, not ported |
 
+Update (D74, research s16): the key stage below is now the decoded processor `0x122B85` on the firmware machine (`organ/farfisa_fw/`, 40 bit float, both lattice tables bit exact against `sharc-chain`; input ring from `FarfisaWheels` at the DSP rate, key-down words `1/48 x velocity` at `DM 0x95FE4 + key + {0, 0x62, 0xD0}` plus the bias words, output resampled to the host rate, `set_farfisa_processor` allocates it); the FIR realisation and gain tables described next are replaced (line error <= 0.0039 dB on four oracle chords), the ring-down is 10,000 calls (ASSUMED) and the stage is offline only (about 2 s of CPU per second of audio).
+
 Key stage (`farfisa_keys.rs`, `OrganLayer::farfisa_processor`, `--farfisa-processor on|off`, default off; active on `OrganModel::Farfisa` with `ToneWheelSource::FarfisaWheels` only): `y = L sum_keys g_key/48 (G0 * wheel(n - 12) + G1 * wheel(n))`, with `g_key` the 2 ms ramped held-key gain (ASSUMED ramp), `G0`, `G1` the measured sum 0 / sum 1 line gains realised as two 255-tap linear-phase FIRs designed in place from the tables (Hann-windowed frequency sampling, redesigned when the sample rate changes), `L = weight_level x bus_gain` of the output law. It replaces the drawbar sum, percussion and the legacy 750 Hz / 2.5 kHz formant filter of the Farfisa model; the key click, scanner and rotary run unchanged. No allocation in `render_frame` (history and FIR buffers are built at construction, a redesign writes in place).
 
 | Item | Source | Tag |
@@ -318,6 +320,10 @@ Each key routes 9 contact switches to the 9 drawbar buses (`0..=8` level steps).
 - **Decay Switch:** `Fast` ($\tau \approx 180\text{ ms}$) or `Slow` ($\tau \approx 550\text{ ms}$).
 - **Volume Switch:** `Normal` ($0\text{ dB}$ percussion boost, $-3\text{ dB}$ main drawbar attenuation) or `Soft` ($-6\text{ dB}$ percussion level, $0\text{ dB}$ drawbar attenuation).
 - **Single-Trigger Logic:** Percussion fires only when transitioning from 0 keys held on the layer to $\ge 1$ key held; legato playing does not re-trigger the percussion envelope until all keys in the layer are released.
+
+### 3.3.0 Percussion per layer (ns4-6c08)
+
+`apply_organ_section` loads layer A's percussion set (`percussion_on`, `_soft`, `_fast`, `_third`) into `organ_a` and layer B's (`percussion_on_b`, ...) into `organ_b`; `program_export` writes both back. VERIFIED against the demo video: `B3 Chords n Solo` (A:14) stores layer A `off, soft, fast, 3rd` and layer B `on, normal, slow, 3rd`, and the panel with layer B focused lights ON and 3RD only. Before this change layer A's set drove both layers (OQ31: "layer B percussion not played"). GUI edits go through `OrganEdit::Percussion { layer, .. }` and `OrganEdit::Drawbars { layer, bars }` (layer A keeps `SetPercussion` / `SetDrawbars`). The sound of layers that store different percussion sets is not compared with the hardware.
 
 ### 3.3.1 POLY percussion, Preset / Drawbar Live, shared vibrato (manual p.20-21, OS v1.6x)
 

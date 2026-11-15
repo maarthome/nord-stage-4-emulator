@@ -8,7 +8,7 @@ use crate::widgets::label;
 /// Column pitch (px) of the matrix.
 const PITCH_X: f32 = 11.5;
 /// Row pitch (px) between the two LED rows.
-const PITCH_Y: f32 = 6.0;
+const PITCH_Y: f32 = 7.5;
 /// Gap (px) between the selector button and the first column.
 const GAP: f32 = 2.0;
 

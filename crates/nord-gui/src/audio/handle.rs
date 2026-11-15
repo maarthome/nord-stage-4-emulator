@@ -1,6 +1,7 @@
 //! `AudioHandle`: UI-side sender for audio commands and MIDI events.
 
 use super::control::ControlLink;
+use super::midi_ports::MidiPorts;
 use super::AudioCommand;
 use crate::telemetry::TelemetryHandle;
 use crossbeam_channel::{bounded, Receiver, Sender};
@@ -21,6 +22,8 @@ pub struct AudioHandle {
     /// Counts the sound edits sent (see `AudioCommand::is_program_edit`); the Program display
     /// compares it with the value at the last load / store to show the boxed `E`.
     edits: Arc<AtomicU32>,
+    /// MIDI input port list and selection (standalone only).
+    midi_ports: Option<MidiPorts>,
 }
 
 impl AudioHandle {
@@ -36,6 +39,7 @@ impl AudioHandle {
                 control: None,
                 telemetry: TelemetryHandle::new(),
                 edits: Arc::new(AtomicU32::new(0)),
+                midi_ports: None,
             },
             rx,
         )
@@ -47,6 +51,16 @@ impl AudioHandle {
         let (mut handle, rx) = Self::new();
         handle.control = Some(Arc::new(ControlLink::new()));
         (handle, rx)
+    }
+
+    /// Attaches the MIDI input port list (the standalone start-up does this once).
+    pub fn set_midi_ports(&mut self, ports: MidiPorts) {
+        self.midi_ports = Some(ports);
+    }
+
+    /// The MIDI input port list, when this handle has one.
+    pub fn midi_ports(&self) -> Option<&MidiPorts> {
+        self.midi_ports.as_ref()
     }
 
     /// The control link, when this handle has one.

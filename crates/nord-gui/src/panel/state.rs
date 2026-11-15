@@ -103,6 +103,8 @@ pub struct Stage4PanelState {
     pub sync_knobs_on_program_load: bool,
     pub mouse_held_note: Option<u8>,
     pub midi_active_keys: [bool; 128],
+    /// Computer-keyboard playing (A S D F ... keys), see `computer_kb.rs`.
+    pub computer_kb: super::computer_kb::ComputerKeyboard,
 
     /// Engine telemetry of this frame and the MIDI / EXTERN blink timers (see `telemetry.rs`).
     pub telemetry: crate::telemetry::PanelTelemetry,
@@ -200,6 +202,7 @@ impl Default for Stage4PanelState {
             sync_knobs_on_program_load: false,
             mouse_held_note: None,
             midi_active_keys: [false; 128],
+            computer_kb: Default::default(),
             telemetry: Default::default(),
             leds: Default::default(),
         }
@@ -226,7 +229,16 @@ impl Stage4PanelState {
             0x2A..=0x2F | 0x06 | 0x0B | 0x0D | 0x34 => 1 << 4, // Synth A
             _ => (1 << 0) | (1 << 2) | (1 << 4),
         };
-        let scene_mask = if prog.global.scene_1_mask != 0 {
+        // The mask the engine plays under `FirmwareRouting` (the Firmware bar default): the stored
+        // scene mask plus layer A in every enabled section without a layer (OQ25). The category
+        // guess is only the fallback for a program with no enabled section (synthetic programs).
+        let firmware_mask = nord_core::engine::default_layer_a(
+            prog.global.section_enable_i,
+            prog.global.scene_1_mask,
+        );
+        let scene_mask = if firmware_mask != 0 {
+            firmware_mask
+        } else if prog.global.scene_1_mask != 0 {
             prog.global.scene_1_mask
         } else {
             cat_mask
@@ -237,20 +249,17 @@ impl Stage4PanelState {
         self.organ_b_active = (scene_mask & (1 << 1)) != 0;
         self.organ_a_level = prog.organ.layer_a_level;
         self.organ_b_level = prog.organ.layer_b_level;
-        self.organ_model = prog.organ.model;
-        self.organ_drawbars = prog.organ.drawbars_a;
-        self.scanner_on = prog.organ.vibrato_on;
+        self.mirror_organ(&prog.organ);
+        let split = prog.global.split_enabled;
+        self.mirror_organ_zones(
+            &prog.global.kb_zone,
+            prog.global.split_zone_enabled.map(|z| z && split),
+        );
 
         // Piano section
         self.piano_a_active = (scene_mask & (1 << 2)) != 0;
         self.piano_b_active = (scene_mask & (1 << 3)) != 0;
-        self.piano_a_level = prog.piano.layer_a.level;
-        self.piano_b_level = prog.piano.layer_b.level;
-        self.piano_cat = prog.piano.layer_a.category;
-        self.piano_timbre = prog.piano.layer_a.timbre;
-        self.piano_touch = prog.piano.layer_a.touch;
-        self.string_res = prog.piano.layer_a.string_res;
-        self.pedal_noise = prog.piano.layer_a.pedal_noise;
+        self.mirror_piano(&prog.piano);
 
         // Synth section
         self.synth_a_active = (scene_mask & (1 << 4)) != 0;

@@ -137,6 +137,14 @@
    "what": "A:44 MULTI Ladder24"
   },
   {
+   "id": "leaky_stabs",
+   "source": "partA",
+   "segment": "synth_leaky",
+   "role": "holdout",
+   "wave": "shapesaw+noise",
+   "what": "A:46 SHAPE saw + white noise, both Ladder24 2500 Hz, filter-env stab"
+  },
+  {
    "id": "filter_bank",
    "source": "partA",
    "segment": "synth_filterbank",
@@ -151,6 +159,14 @@
    "role": "holdout",
    "wave": "saw",
    "what": "A:67 3 x Pure Saw Ladder24 (filter not modelled)"
+  },
+  {
+   "id": "horizon_whl",
+   "source": "partA",
+   "segment": "synth_horizon",
+   "role": "holdout",
+   "wave": "super",
+   "what": "A:16 SUPER wave 0 x2 LP24 277 / 554 Hz at -12 st (zone split, low notes), MULTI LP12; arp running on the video"
   },
   {
    "id": "sweep_12db",

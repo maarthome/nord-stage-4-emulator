@@ -151,7 +151,8 @@ pub fn led_strip(
     } else {
         rect.width()
     } / n.max(1) as f32;
-    let r = (step * 0.42).clamp(1.2, 3.0);
+    // Bezels (r + 1) keep 2 px between neighbours (audit rule `D`).
+    let r = (step * 0.5 - 2.0).clamp(1.2, 2.4);
     for i in 0..n {
         let off = (i as f32 + 0.5) * step;
         let c = if vertical {
@@ -162,6 +163,9 @@ pub fn led_strip(
         mini_led(p, c, lit(i), col.0, col.1, r, dim);
     }
 }
+
+/// Dark gap (px) between ladder segments (audit rule `D`: at least 1.5 px).
+const SEG_GAP: f32 = 1.5;
 
 /// Segmented level ladder (`lit` of `n` segments, green to red).
 pub fn ladder(p: &Painter, rect: Rect, n: usize, lit: usize) {
@@ -176,7 +180,12 @@ pub fn ladder(p: &Painter, rect: Rect, n: usize, lit: usize) {
             (LED_GREEN, LED_GREEN_DIM)
         };
         let y = rect.bottom() - (i as f32 + 1.0) * seg_h;
-        let r = Rect::from_min_size(pos2(rect.left(), y + 0.5), vec2(rect.width(), seg_h - 1.0));
+        let r = Rect::from_min_size(
+            pos2(rect.left(), y + SEG_GAP * 0.5),
+            vec2(rect.width(), seg_h - SEG_GAP),
+        );
+        #[cfg(test)]
+        crate::widgets::probe::led_seg(p, r);
         p.rect_filled(r, 0.8, if on { col.0 } else { col.1 });
     }
 }
