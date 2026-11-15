@@ -75,8 +75,13 @@ def test_wav_roundtrip_and_window_outputs(tmp_path):
     assert rate == sr and abs(float(mono.max()) - 0.3) < 0.01
     rows = [
         {
-            "t": 5.0, "program": "A:61", "class": "piano", "rms_dbfs": -20.0,
-            "notes": 2, "supported": None, "piano_like": True,
+            "t": 5.0,
+            "program": "A:61",
+            "class": "piano",
+            "rms_dbfs": -20.0,
+            "notes": 2,
+            "supported": None,
+            "piano_like": True,
         }
     ]
     tc.write_windows_csv(rows, tmp_path / "w.csv")
@@ -101,5 +106,7 @@ def test_build_outputs_and_parser(tmp_path):
     doc, rows = tc.build_outputs(mid, wav, "t", 100.0, progs)
     assert doc["events"][0]["onset_s"] == 100.0 and "snr_db" in doc["events"][0]
     assert rows[0]["t"] == 100.0 and rows[0]["program"] == "A:61"
-    args = tc.build_parser().parse_args(["slice", "e.json", "--at", "1", "--duration", "2", "--out", "o"])
+    args = tc.build_parser().parse_args(
+        ["slice", "e.json", "--at", "1", "--duration", "2", "--out", "o"]
+    )
     assert args.fn is tc.cmd_slice

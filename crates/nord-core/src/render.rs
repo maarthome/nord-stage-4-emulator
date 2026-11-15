@@ -181,8 +181,14 @@ pub fn parse_note_events(
     // Optional sustain-pedal stream: {"pedal": [{"t": seconds, "value": 0..=127}]} -> CC 64.
     if let Some(p) = v.get("pedal").and_then(serde_json::Value::as_array) {
         for e in p {
-            let t = e.get("t").and_then(serde_json::Value::as_f64).filter(|t| *t >= 0.0);
-            let val = e.get("value").and_then(serde_json::Value::as_u64).filter(|v| *v <= 127);
+            let t = e
+                .get("t")
+                .and_then(serde_json::Value::as_f64)
+                .filter(|t| *t >= 0.0);
+            let val = e
+                .get("value")
+                .and_then(serde_json::Value::as_u64)
+                .filter(|v| *v <= 127);
             let (t, val) = t
                 .zip(val)
                 .ok_or_else(|| format!("pedal event needs t >= 0 and value 0..=127: {e}"))?;

@@ -33,9 +33,7 @@ def test_empty_inputs():
 def test_agreement_and_cli(tmp_path, capsys):
     vid = tmp_path / "v.json"
     vid.write_text(
-        json.dumps(
-            {"events": [n(60, 1.0, confirmed=True), n(62, 2.0, confirmed=False)]}
-        )
+        json.dumps({"events": [n(60, 1.0, confirmed=True), n(62, 2.0, confirmed=False)]})
     )
     stream = tmp_path / "s.json"
     stream.write_text(json.dumps({"events": [n(60, 11.02), n(99, 50.0)]}))

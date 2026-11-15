@@ -302,9 +302,7 @@ def run_all(args: argparse.Namespace) -> dict[str, Any]:
     for seg in spec["segments"]:
         if args.only and seg["id"] not in args.only:
             continue
-        hw_wav, events = prepare_segment(
-            seg, args.video, work, tools, detect=not args.events_from
-        )
+        hw_wav, events = prepare_segment(seg, args.video, work, tools, detect=not args.events_from)
         if args.events_from:
             events = emu_events.segment_events(
                 emu_events.stream_path(args.events_from, spec["video"]),
