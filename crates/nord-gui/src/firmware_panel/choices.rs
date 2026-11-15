@@ -71,11 +71,16 @@ pub(super) const CHAINS: [Choice<Option<SynthChain>>; 2] = [
         "partly VERIFIED, P table EMPIRICAL",
     ),
 ];
-pub(super) const P_TABLES: [Choice<Option<PSpec>>; 3] = [
+pub(super) const P_TABLES: [Choice<Option<PSpec>>; 4] = [
     (
         Some(PSpec::Table(PTableSpec::BUILTIN)),
         "Per-wave table (default)",
         "EMPIRICAL, docs/research/synth-validation.md",
+    ),
+    (
+        Some(PSpec::Verified),
+        "ARM words (verified)",
+        "VERIFIED words, EMPIRICAL cutoff factors, docs/research/synth-p-writer.md",
     ),
     (
         Some(PSpec::Fitted),

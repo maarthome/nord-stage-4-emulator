@@ -167,6 +167,10 @@ impl SynthLayer {
         } else {
             None
         };
+        // Verified-words table (`--synth-p verified`): the unison stages read the ARM words.
+        let stage_words = self
+            .stage_words
+            .filter(|_| self.p_table.is_some_and(|t| t.words));
         let stage_ctrl = if self.strip_stage == Some(FwStage::ShapeSquare) {
             self.strip_shape.unwrap_or(0.5)
         } else {
@@ -320,7 +324,11 @@ impl SynthLayer {
             let (raw_osc_l, raw_osc_r) = match self.osc_mode {
                 SynthOscMode::Analog => {
                     if let Some(stage) = stage_osc {
-                        (v.stage.sample(stage, t, dt, eff_freq, stage_ctrl), None)
+                        let y = match &stage_words {
+                            Some(w) => v.stage.sample_words(stage, t, dt, eff_freq, stage_ctrl, w),
+                            None => v.stage.sample(stage, t, dt, eff_freq, stage_ctrl),
+                        };
+                        (y, None)
                     } else if uni_count > 0 {
                         let mut acc = (0.0f32, 0.0f32);
                         for (k, voice) in UNISON_VOICES[uni_level][..uni_count]

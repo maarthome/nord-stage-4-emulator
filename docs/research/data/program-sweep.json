@@ -11,7 +11,7 @@
  "paths": {
   "fx.amp": {
    "programs": 261,
-   "uses": 478
+   "uses": 480
   },
   "fx.amp=HP24": {
    "programs": 8,
@@ -51,23 +51,23 @@
   },
   "fx.amp=off": {
    "programs": 214,
-   "uses": 387
+   "uses": 389
   },
   "fx.comp": {
    "programs": 117,
-   "uses": 202
+   "uses": 204
   },
   "fx.delay": {
-   "programs": 153,
-   "uses": 250
+   "programs": 155,
+   "uses": 252
   },
   "fx.delay.mode=0": {
-   "programs": 41,
-   "uses": 67
+   "programs": 42,
+   "uses": 68
   },
   "fx.delay.mode=1": {
-   "programs": 73,
-   "uses": 111
+   "programs": 74,
+   "uses": 112
   },
   "fx.delay.mode=2": {
    "programs": 32,
@@ -78,8 +78,8 @@
    "uses": 24
   },
   "fx.delay_fb": {
-   "programs": 67,
-   "uses": 96
+   "programs": 68,
+   "uses": 97
   },
   "fx.delay_fb=CHOR": {
    "programs": 22,
@@ -94,8 +94,8 @@
    "uses": 14
   },
   "fx.delay_fb=SPACE": {
-   "programs": 21,
-   "uses": 27
+   "programs": 22,
+   "uses": 28
   },
   "fx.delay_fb=VIBE": {
    "programs": 11,
@@ -103,7 +103,7 @@
   },
   "fx.eq": {
    "programs": 265,
-   "uses": 501
+   "uses": 503
   },
   "fx.mod1": {
    "programs": 90,
@@ -135,11 +135,11 @@
   },
   "fx.mod2": {
    "programs": 158,
-   "uses": 259
+   "uses": 260
   },
   "fx.mod2=CHOR": {
    "programs": 93,
-   "uses": 154
+   "uses": 155
   },
   "fx.mod2=ENS": {
    "programs": 3,
@@ -163,7 +163,7 @@
   },
   "fx.reverb": {
    "programs": 358,
-   "uses": 752
+   "uses": 756
   },
   "fx.reverb.type=0": {
    "programs": 40,
@@ -178,40 +178,40 @@
    "uses": 57
   },
   "fx.reverb.type=3": {
-   "programs": 158,
-   "uses": 301
+   "programs": 160,
+   "uses": 303
   },
   "fx.reverb.type=4": {
    "programs": 136,
-   "uses": 268
+   "uses": 269
   },
   "fx.reverb.type=5": {
    "programs": 28,
-   "uses": 55
+   "uses": 56
   },
   "fx.reverb=BOOTH": {
-   "programs": 193,
-   "uses": 358
+   "programs": 195,
+   "uses": 360
   },
   "fx.reverb=ROOM": {
    "programs": 150,
-   "uses": 323
+   "uses": 325
   },
   "fx.reverb=SPRING": {
    "programs": 57,
    "uses": 71
   },
   "organ.drawbars": {
-   "programs": 42,
-   "uses": 58
+   "programs": 44,
+   "uses": 60
   },
   "organ.model=B3": {
-   "programs": 26,
-   "uses": 35
+   "programs": 27,
+   "uses": 36
   },
   "organ.model=B3 Bass": {
-   "programs": 3,
-   "uses": 3
+   "programs": 4,
+   "uses": 4
   },
   "organ.model=Farfisa": {
    "programs": 2,
@@ -234,16 +234,16 @@
    "uses": 8
   },
   "organ.rotary": {
-   "programs": 22,
-   "uses": 33
+   "programs": 24,
+   "uses": 35
   },
   "organ.rotary_speed=Fast": {
    "programs": 1,
    "uses": 2
   },
   "organ.rotary_speed=Slow": {
-   "programs": 16,
-   "uses": 25
+   "programs": 18,
+   "uses": 27
   },
   "organ.rotary_speed=Stop": {
    "programs": 5,
@@ -278,32 +278,32 @@
    "uses": 12
   },
   "piano.category=Digital": {
-   "programs": 12,
-   "uses": 12
+   "programs": 14,
+   "uses": 14
   },
   "piano.category=Electric": {
    "programs": 59,
    "uses": 63
   },
   "piano.category=Grand": {
-   "programs": 152,
-   "uses": 155
+   "programs": 153,
+   "uses": 156
   },
   "piano.category=Misc": {
    "programs": 8,
    "uses": 9
   },
   "piano.category=Upright": {
-   "programs": 48,
-   "uses": 55
+   "programs": 50,
+   "uses": 57
   },
   "piano.class=1": {
    "programs": 5,
    "uses": 5
   },
   "piano.class=14": {
-   "programs": 8,
-   "uses": 8
+   "programs": 10,
+   "uses": 10
   },
   "piano.class=15": {
    "programs": 4,
@@ -326,28 +326,28 @@
    "uses": 9
   },
   "piano.class=5": {
-   "programs": 149,
-   "uses": 150
+   "programs": 150,
+   "uses": 151
   },
   "piano.class=6": {
-   "programs": 48,
-   "uses": 55
+   "programs": 50,
+   "uses": 57
   },
   "piano.class=7": {
    "programs": 3,
    "uses": 3
   },
   "piano.extra_voice=not_played": {
-   "programs": 247,
-   "uses": 273
+   "programs": 250,
+   "uses": 276
   },
   "piano.sample=loaded": {
-   "programs": 267,
-   "uses": 306
+   "programs": 272,
+   "uses": 311
   },
   "piano.string_res": {
-   "programs": 238,
-   "uses": 256
+   "programs": 240,
+   "uses": 258
   },
   "routing.engines=organ": {
    "programs": 12,
@@ -358,8 +358,8 @@
    "uses": 6
   },
   "routing.engines=organ+piano+synth": {
-   "programs": 14,
-   "uses": 14
+   "programs": 16,
+   "uses": 16
   },
   "routing.engines=organ+synth": {
    "programs": 10,
@@ -370,16 +370,16 @@
    "uses": 77
   },
   "routing.engines=piano+synth": {
-   "programs": 170,
-   "uses": 170
+   "programs": 173,
+   "uses": 173
   },
   "routing.engines=synth": {
-   "programs": 95,
-   "uses": 95
+   "programs": 90,
+   "uses": 90
   },
   "routing.kb_zone=0": {
-   "programs": 39,
-   "uses": 39
+   "programs": 40,
+   "uses": 40
   },
   "routing.kb_zone=1": {
    "programs": 4,
@@ -406,8 +406,8 @@
    "uses": 256
   },
   "routing.kb_zone=6": {
-   "programs": 36,
-   "uses": 36
+   "programs": 37,
+   "uses": 37
   },
   "routing.kb_zone=9": {
    "programs": 119,
@@ -418,28 +418,28 @@
    "uses": 172
   },
   "routing.layers_used=1": {
-   "programs": 100,
-   "uses": 100
+   "programs": 99,
+   "uses": 99
   },
   "routing.layers_used=2": {
    "programs": 111,
    "uses": 111
   },
   "routing.layers_used=3": {
-   "programs": 92,
-   "uses": 92
+   "programs": 90,
+   "uses": 90
   },
   "routing.layers_used=4": {
-   "programs": 61,
-   "uses": 61
+   "programs": 63,
+   "uses": 63
   },
   "routing.layers_used=5": {
    "programs": 18,
    "uses": 18
   },
   "routing.layers_used=6": {
-   "programs": 1,
-   "uses": 1
+   "programs": 2,
+   "uses": 2
   },
   "routing.layers_used=7": {
    "programs": 1,
@@ -770,7 +770,7 @@
   {
    "path": "fx.amp",
    "programs": 261,
-   "uses": 478,
+   "uses": 480,
    "default": "verified",
    "firmware_all": "verified",
    "basis": "effects-and-routing: firmware drive stage and cabinet are the default amp path (words VERIFIED, voicing ASSUMED)"
@@ -802,23 +802,23 @@
   {
    "path": "fx.comp",
    "programs": 117,
-   "uses": 202,
+   "uses": 204,
    "default": "assumed",
    "firmware_all": "verified",
    "basis": "effects-and-routing: firmware compressor routine VERIFIED, parameters and bus position ASSUMED"
   },
   {
    "path": "fx.delay",
-   "programs": 153,
-   "uses": 250,
+   "programs": 155,
+   "uses": 252,
    "default": "assumed",
    "firmware_all": "verified",
    "basis": "effects-and-routing: firmware time/mix words VERIFIED (firmware_fx.delay_laws), loop is the engine's"
   },
   {
    "path": "fx.delay_fb",
-   "programs": 67,
-   "uses": 96,
+   "programs": 68,
+   "uses": 97,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "effects-and-routing: feedback effects approximated"
@@ -826,7 +826,7 @@
   {
    "path": "fx.eq",
    "programs": 265,
-   "uses": 501,
+   "uses": 503,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "effects-and-routing: RBJ biquads; gain step and Q ASSUMED"
@@ -842,7 +842,7 @@
   {
    "path": "fx.mod2",
    "programs": 158,
-   "uses": 259,
+   "uses": 260,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "effects-and-routing: Mod 2 types are engine models, constants ASSUMED"
@@ -866,31 +866,31 @@
   {
    "path": "fx.reverb",
    "programs": 358,
-   "uses": 752,
+   "uses": 756,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "effects-and-routing: reverb network is the engine FDN; wrap routine not wired; mix law verified under firmware-all"
   },
   {
    "path": "organ.drawbars",
-   "programs": 42,
-   "uses": 58,
+   "programs": 44,
+   "uses": 60,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "organ-engine: drawbar scaling per model, Legacy for non-Pipe"
   },
   {
    "path": "organ.model=B3",
-   "programs": 26,
-   "uses": 35,
+   "programs": 27,
+   "uses": 36,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "organ-model-paths: B3 tone source not located; Legacy wheels; firmware-all forces the Pipe bank (attribution disproved)"
   },
   {
    "path": "organ.model=B3 Bass",
-   "programs": 3,
-   "uses": 3,
+   "programs": 4,
+   "uses": 4,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "organ-model-paths: raw model 5 decodes to B3 plus the bass flag (was folded into Pipe2); bass processor 0x122296 not bit-exact (OQ18)"
@@ -937,8 +937,8 @@
   },
   {
    "path": "organ.rotary",
-   "programs": 22,
-   "uses": 33,
+   "programs": 24,
+   "uses": 35,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "organ-engine: Rotary 122 model ASSUMED; Leslie routine not wired into the program path"
@@ -953,16 +953,16 @@
   },
   {
    "path": "piano.extra_voice=not_played",
-   "programs": 247,
-   "uses": 273,
+   "programs": 250,
+   "uses": 276,
    "default": "assumed",
    "firmware_all": "assumed",
    "basis": "piano-sound-load: classes 1,2,3,5,6 start an extra voice the engine does not play"
   },
   {
    "path": "piano.sample=loaded",
-   "programs": 267,
-   "uses": 306,
+   "programs": 272,
+   "uses": 311,
    "default": "verified",
    "firmware_all": "verified",
    "basis": "piano-engine: .npno stream decode and firmware level law (D23 default)"
@@ -1178,26 +1178,26 @@
  ],
  "status_totals": {
   "default": {
-   "verified": 1008,
-   "assumed": 5656,
+   "verified": 1015,
+   "assumed": 5677,
    "unmodelled": 119
   },
   "firmware_all": {
-   "verified": 2623,
-   "assumed": 4041,
+   "verified": 2634,
+   "assumed": 4058,
    "unmodelled": 119
   }
  },
  "renders": [
   {
    "entry": "Program/Bank A/12dB Sweep.ns4p",
-   "rms_delta_db": 0.15189555287361145,
+   "rms_delta_db": 0.3691708743572235,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.8351,
-    "rms": 0.18071,
+    "peak": 0.8297,
+    "rms": 0.17625,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1215,7 +1215,7 @@
   },
   {
    "entry": "Program/Bank A/4 Osc Funk Bass.ns4p",
-   "rms_delta_db": 0.7935433387756348,
+   "rms_delta_db": 0.7700245976448059,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1230,8 +1230,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2076,
-    "rms": 0.06198,
+    "peak": 0.2193,
+    "rms": 0.06181,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1263,7 +1263,7 @@
   },
   {
    "entry": "Program/Bank A/80s Sci-Fi.ns4p",
-   "rms_delta_db": 0.8466840982437134,
+   "rms_delta_db": 0.4827401638031006,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1278,8 +1278,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2807,
-    "rms": 0.0439,
+    "peak": 0.2909,
+    "rms": 0.0421,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1311,7 +1311,7 @@
   },
   {
    "entry": "Program/Bank A/Aeon Pad Whl.ns4p",
-   "rms_delta_db": 0.5167577266693115,
+   "rms_delta_db": 0.5197397470474243,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1327,7 +1327,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.94,
-    "rms": 0.25051,
+    "rms": 0.25059,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1359,23 +1359,23 @@
   },
   {
    "entry": "Program/Bank A/B3 Chords n Solo.ns4p",
-   "rms_delta_db": -3.4386274814605713,
+   "rms_delta_db": -0.5713757276535034,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.26277,
-    "clipped": 32,
-    "clip_fraction": 0.000167,
+    "peak": 0.8701,
+    "rms": 0.19026,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    },
    "firmware": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.8559,
-    "rms": 0.17686,
+    "peak": 0.8517,
+    "rms": 0.17815,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1383,13 +1383,13 @@
   },
   {
    "entry": "Program/Bank A/B3 Jazz Split.ns4p",
-   "rms_delta_db": -1.6154248714447021,
+   "rms_delta_db": 0.42231613397598267,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.22996,
+    "peak": 0.93,
+    "rms": 0.18342,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1399,7 +1399,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.9713,
-    "rms": 0.19093,
+    "rms": 0.19255,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1407,15 +1407,15 @@
   },
   {
    "entry": "Program/Bank A/B3 Old Forest.ns4p",
-   "rms_delta_db": -6.39205265045166,
+   "rms_delta_db": -0.62037193775177,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.37701,
-    "clipped": 174,
-    "clip_fraction": 0.000906,
+    "peak": 0.8498,
+    "rms": 0.19399,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    },
    "firmware": {
@@ -1431,23 +1431,23 @@
   },
   {
    "entry": "Program/Bank A/B3 Praise Split.ns4p",
-   "rms_delta_db": -4.7474565505981445,
+   "rms_delta_db": -0.43496257066726685,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.24259,
-    "clipped": 2,
-    "clip_fraction": 1e-05,
+    "peak": 0.6484,
+    "rms": 0.1497,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    },
    "firmware": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7496,
-    "rms": 0.14044,
+    "peak": 0.7438,
+    "rms": 0.14239,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1455,15 +1455,15 @@
   },
   {
    "entry": "Program/Bank A/B3 Shade.ns4p",
-   "rms_delta_db": -0.8394172787666321,
+   "rms_delta_db": 0.4014130234718323,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.4748,
-    "clipped": 7241,
-    "clip_fraction": 0.037714,
+    "rms": 0.4178,
+    "clipped": 2341,
+    "clip_fraction": 0.012193,
     "silent": false
    },
    "firmware": {
@@ -1471,9 +1471,9 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.43106,
-    "clipped": 4219,
-    "clip_fraction": 0.021974,
+    "rms": 0.43757,
+    "clipped": 4735,
+    "clip_fraction": 0.024661,
     "silent": false
    }
   },
@@ -1503,7 +1503,7 @@
   },
   {
    "entry": "Program/Bank A/Boxxx.ns4p",
-   "rms_delta_db": 0.35687488317489624,
+   "rms_delta_db": 0.35694342851638794,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1671,7 +1671,7 @@
   },
   {
    "entry": "Program/Bank A/Dual Gates.ns4p",
-   "rms_delta_db": -4.599619388580322,
+   "rms_delta_db": -4.601256370544434,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1686,8 +1686,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1921,
-    "rms": 0.03205,
+    "peak": 0.1918,
+    "rms": 0.03204,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1719,7 +1719,7 @@
   },
   {
    "entry": "Program/Bank A/Filter Bank Ld.ns4p",
-   "rms_delta_db": 4.160861968994141,
+   "rms_delta_db": 4.097383499145508,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1735,7 +1735,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7197,
-    "rms": 0.2069,
+    "rms": 0.20539,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1791,13 +1791,13 @@
   },
   {
    "entry": "Program/Bank A/Horizon Whl.ns4p",
-   "rms_delta_db": 1.5246965885162354,
+   "rms_delta_db": 0.47695744037628174,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4833,
-    "rms": 0.08507,
+    "peak": 0.3422,
+    "rms": 0.09597,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1806,7 +1806,7 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3919,
+    "peak": 0.3929,
     "rms": 0.10139,
     "clipped": 0,
     "clip_fraction": 0.0,
@@ -1839,7 +1839,7 @@
   },
   {
    "entry": "Program/Bank A/In Stereo Mk I .ns4p",
-   "rms_delta_db": 3.632479667663574,
+   "rms_delta_db": 3.6518406867980957,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1855,7 +1855,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.8356,
-    "rms": 0.15867,
+    "rms": 0.15902,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1887,7 +1887,7 @@
   },
   {
    "entry": "Program/Bank A/J3 Open Sky.ns4p",
-   "rms_delta_db": -1.1826858520507812,
+   "rms_delta_db": -1.2097071409225464,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1903,7 +1903,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7934,
-    "rms": 0.13459,
+    "rms": 0.13417,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1911,7 +1911,7 @@
   },
   {
    "entry": "Program/Bank A/Jazz Guitar II.ns4p",
-   "rms_delta_db": 8.640254974365234,
+   "rms_delta_db": 8.218303680419922,
    "default": {
     "finite": true,
     "nan": 0,
@@ -1927,7 +1927,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.4876,
-    "rms": 0.09023,
+    "rms": 0.08595,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1959,13 +1959,13 @@
   },
   {
    "entry": "Program/Bank A/M Lead Pad Split.ns4p",
-   "rms_delta_db": -3.467879295349121,
+   "rms_delta_db": 0.47547441720962524,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2979,
-    "rms": 0.07358,
+    "peak": 0.1743,
+    "rms": 0.04627,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -1975,7 +1975,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.1843,
-    "rms": 0.04936,
+    "rms": 0.04888,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2055,13 +2055,13 @@
   },
   {
    "entry": "Program/Bank A/Momentum Whl.ns4p",
-   "rms_delta_db": 1.6293984651565552,
+   "rms_delta_db": 0.9753798842430115,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 0.7446,
-    "rms": 0.08728,
+    "rms": 0.09411,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2079,13 +2079,13 @@
   },
   {
    "entry": "Program/Bank A/NS4 Palette.ns4p",
-   "rms_delta_db": 0.21494178473949432,
+   "rms_delta_db": 0.21577104926109314,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 0.936,
-    "rms": 0.16213,
+    "rms": 0.16236,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2095,7 +2095,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.16619,
+    "rms": 0.16644,
     "clipped": 6,
     "clip_fraction": 3.1e-05,
     "silent": false
@@ -2199,13 +2199,13 @@
   },
   {
    "entry": "Program/Bank A/Shimmer Upright.ns4p",
-   "rms_delta_db": -0.2930671274662018,
+   "rms_delta_db": -0.2418849617242813,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.8382,
-    "rms": 0.13502,
+    "peak": 0.838,
+    "rms": 0.13419,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2215,7 +2215,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7981,
-    "rms": 0.13054,
+    "rms": 0.13051,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2223,7 +2223,7 @@
   },
   {
    "entry": "Program/Bank A/Shoreline Whl.ns4p",
-   "rms_delta_db": -2.4336438179016113,
+   "rms_delta_db": -2.436044454574585,
    "default": {
     "finite": true,
     "nan": 0,
@@ -2238,8 +2238,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3877,
-    "rms": 0.0889,
+    "peak": 0.3908,
+    "rms": 0.08887,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2247,7 +2247,7 @@
   },
   {
    "entry": "Program/Bank A/Sidechain Whl II.ns4p",
-   "rms_delta_db": 3.1289820671081543,
+   "rms_delta_db": 3.1221413612365723,
    "default": {
     "finite": true,
     "nan": 0,
@@ -2263,7 +2263,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7626,
-    "rms": 0.11623,
+    "rms": 0.11614,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2295,13 +2295,13 @@
   },
   {
    "entry": "Program/Bank A/Silver Rush.ns4p",
-   "rms_delta_db": 0.38359761238098145,
+   "rms_delta_db": 0.4165947139263153,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 0.7033,
-    "rms": 0.08587,
+    "rms": 0.08583,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2311,7 +2311,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7463,
-    "rms": 0.08975,
+    "rms": 0.09005,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2463,7 +2463,7 @@
   },
   {
    "entry": "Program/Bank A/Stereo Wah Clav.ns4p",
-   "rms_delta_db": -1.988375186920166,
+   "rms_delta_db": -2.013350248336792,
    "default": {
     "finite": true,
     "nan": 0,
@@ -2479,7 +2479,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.2162,
-    "rms": 0.02617,
+    "rms": 0.02609,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2535,7 +2535,7 @@
   },
   {
    "entry": "Program/Bank A/Texas Nights J3.ns4p",
-   "rms_delta_db": 2.7045810222625732,
+   "rms_delta_db": 2.845345973968506,
    "default": {
     "finite": true,
     "nan": 0,
@@ -2551,7 +2551,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.2622,
-    "rms": 0.03292,
+    "rms": 0.03346,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2559,13 +2559,13 @@
   },
   {
    "entry": "Program/Bank A/The Gospel II.ns4p",
-   "rms_delta_db": -0.06886178255081177,
+   "rms_delta_db": -0.07980435341596603,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7014,
-    "rms": 0.16281,
+    "peak": 0.6731,
+    "rms": 0.16489,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2574,8 +2574,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7691,
-    "rms": 0.16152,
+    "peak": 0.7559,
+    "rms": 0.16338,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2607,13 +2607,13 @@
   },
   {
    "entry": "Program/Bank A/Tines Layer.ns4p",
-   "rms_delta_db": 3.731721878051758,
+   "rms_delta_db": 3.048583984375,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4399,
-    "rms": 0.08621,
+    "peak": 0.6821,
+    "rms": 0.11753,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2622,8 +2622,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7298,
-    "rms": 0.13248,
+    "peak": 0.8796,
+    "rms": 0.16694,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2679,7 +2679,7 @@
   },
   {
    "entry": "Program/Bank A/Vintage Vox J3.ns4p",
-   "rms_delta_db": 0.24097317457199097,
+   "rms_delta_db": 0.4520091414451599,
    "default": {
     "finite": true,
     "nan": 0,
@@ -2694,8 +2694,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.752,
-    "rms": 0.18164,
+    "peak": 0.779,
+    "rms": 0.18611,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2751,15 +2751,15 @@
   },
   {
    "entry": "Program/Bank B/B3 Bassline.ns4p",
-   "rms_delta_db": -2.5575199127197266,
+   "rms_delta_db": 0.5341553688049316,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.2468,
-    "clipped": 9,
-    "clip_fraction": 4.7e-05,
+    "peak": 0.8991,
+    "rms": 0.17487,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    },
    "firmware": {
@@ -2767,7 +2767,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.9421,
-    "rms": 0.18385,
+    "rms": 0.18597,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2775,23 +2775,23 @@
   },
   {
    "entry": "Program/Bank B/B3 Dual Samba.ns4p",
-   "rms_delta_db": -5.080182075500488,
+   "rms_delta_db": 0.3155936002731323,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.25985,
-    "clipped": 19,
-    "clip_fraction": 9.9e-05,
+    "peak": 0.6696,
+    "rms": 0.13955,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    },
    "firmware": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.692,
-    "rms": 0.14478,
+    "peak": 0.694,
+    "rms": 0.14471,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2871,15 +2871,15 @@
   },
   {
    "entry": "Program/Bank B/Burning Lead.ns4p",
-   "rms_delta_db": 3.16164493560791,
+   "rms_delta_db": 0.3944459855556488,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.38801,
-    "clipped": 1692,
-    "clip_fraction": 0.008812,
+    "rms": 0.54654,
+    "clipped": 17854,
+    "clip_fraction": 0.09299,
     "silent": false
    },
    "firmware": {
@@ -2887,9 +2887,9 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.55837,
-    "clipped": 21906,
-    "clip_fraction": 0.114094,
+    "rms": 0.57193,
+    "clipped": 24296,
+    "clip_fraction": 0.126542,
     "silent": false
    }
   },
@@ -2919,13 +2919,13 @@
   },
   {
    "entry": "Program/Bank B/Choral Pad.ns4p",
-   "rms_delta_db": -2.056838274002075,
+   "rms_delta_db": -2.0516231060028076,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3132,
-    "rms": 0.06177,
+    "peak": 0.31,
+    "rms": 0.06173,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2943,7 +2943,7 @@
   },
   {
    "entry": "Program/Bank B/Chorus Caster.ns4p",
-   "rms_delta_db": 4.25802755355835,
+   "rms_delta_db": 3.5671961307525635,
    "default": {
     "finite": true,
     "nan": 0,
@@ -2959,7 +2959,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.3559,
-    "rms": 0.04206,
+    "rms": 0.03884,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2967,7 +2967,7 @@
   },
   {
    "entry": "Program/Bank B/Chrome Layer.ns4p",
-   "rms_delta_db": -1.2598800659179688,
+   "rms_delta_db": -1.262906789779663,
    "default": {
     "finite": true,
     "nan": 0,
@@ -2983,7 +2983,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.463,
-    "rms": 0.09908,
+    "rms": 0.09905,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -2991,7 +2991,7 @@
   },
   {
    "entry": "Program/Bank B/Cinematic Grand.ns4p",
-   "rms_delta_db": -0.9885648488998413,
+   "rms_delta_db": -1.0916411876678467,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3007,7 +3007,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.5769,
-    "rms": 0.09422,
+    "rms": 0.09311,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3087,7 +3087,7 @@
   },
   {
    "entry": "Program/Bank B/Dark Matter Mk I.ns4p",
-   "rms_delta_db": 0.6114633083343506,
+   "rms_delta_db": 0.5628616213798523,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3103,7 +3103,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.6396,
-    "rms": 0.15715,
+    "rms": 0.15628,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3183,7 +3183,7 @@
   },
   {
    "entry": "Program/Bank B/Favorite Video.ns4p",
-   "rms_delta_db": -3.1451141834259033,
+   "rms_delta_db": -2.7495994567871094,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3198,8 +3198,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3059,
-    "rms": 0.05151,
+    "peak": 0.3066,
+    "rms": 0.05391,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3231,7 +3231,7 @@
   },
   {
    "entry": "Program/Bank B/FM Cloud Whl.ns4p",
-   "rms_delta_db": -1.881885051727295,
+   "rms_delta_db": -1.8758001327514648,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3246,8 +3246,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3236,
-    "rms": 0.05835,
+    "peak": 0.3195,
+    "rms": 0.05839,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3279,7 +3279,7 @@
   },
   {
    "entry": "Program/Bank B/Frozen Time Whl.ns4p",
-   "rms_delta_db": 0.07648970186710358,
+   "rms_delta_db": 0.01830485835671425,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3295,7 +3295,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.4441,
-    "rms": 0.07746,
+    "rms": 0.07695,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3303,13 +3303,13 @@
   },
   {
    "entry": "Program/Bank B/Funk Hit Split.ns4p",
-   "rms_delta_db": -2.540353775024414,
+   "rms_delta_db": -0.0806884616613388,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.8587,
-    "rms": 0.13787,
+    "peak": 0.4797,
+    "rms": 0.09477,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3318,8 +3318,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5524,
-    "rms": 0.10291,
+    "peak": 0.461,
+    "rms": 0.09389,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3327,7 +3327,7 @@
   },
   {
    "entry": "Program/Bank B/Gradient Whl.ns4p",
-   "rms_delta_db": 3.8323047161102295,
+   "rms_delta_db": 3.832210063934326,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3351,7 +3351,7 @@
   },
   {
    "entry": "Program/Bank B/Grand EP Whl.ns4p",
-   "rms_delta_db": 2.3860421180725098,
+   "rms_delta_db": 2.727656364440918,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3366,24 +3366,24 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.12477,
-    "clipped": 3,
-    "clip_fraction": 1.6e-05,
+    "peak": 0.9641,
+    "rms": 0.12978,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    }
   },
   {
    "entry": "Program/Bank B/Grand Vibra Bs.ns4p",
-   "rms_delta_db": -1.4760727882385254,
+   "rms_delta_db": 0.6291058659553528,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.11308,
-    "clipped": 5,
-    "clip_fraction": 2.6e-05,
+    "peak": 0.7849,
+    "rms": 0.08874,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    },
    "firmware": {
@@ -3399,13 +3399,13 @@
   },
   {
    "entry": "Program/Bank B/Guitar Concerto.ns4p",
-   "rms_delta_db": 0.6833251714706421,
+   "rms_delta_db": 0.8585183620452881,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3099,
-    "rms": 0.03859,
+    "peak": 0.3136,
+    "rms": 0.03782,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3591,7 +3591,7 @@
   },
   {
    "entry": "Program/Bank B/Live CP Grand.ns4p",
-   "rms_delta_db": -1.1346038579940796,
+   "rms_delta_db": -1.1706082820892334,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3607,7 +3607,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.6381,
-    "rms": 0.08223,
+    "rms": 0.08189,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3639,7 +3639,7 @@
   },
   {
    "entry": "Program/Bank B/Lush 12db Pad.ns4p",
-   "rms_delta_db": -1.6065956354141235,
+   "rms_delta_db": -2.705963611602783,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3654,8 +3654,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1853,
-    "rms": 0.04194,
+    "peak": 0.1449,
+    "rms": 0.03696,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3687,7 +3687,7 @@
   },
   {
    "entry": "Program/Bank B/Marimba.ns4p",
-   "rms_delta_db": -1.498964548110962,
+   "rms_delta_db": -1.0085203647613525,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3702,8 +3702,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4035,
-    "rms": 0.07136,
+    "peak": 0.4176,
+    "rms": 0.07551,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3711,13 +3711,13 @@
   },
   {
    "entry": "Program/Bank B/Newschool Old J3.ns4p",
-   "rms_delta_db": 2.7482857704162598,
+   "rms_delta_db": 5.675783157348633,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2322,
-    "rms": 0.03514,
+    "peak": 0.1355,
+    "rms": 0.02508,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3807,7 +3807,7 @@
   },
   {
    "entry": "Program/Bank B/Q and A.ns4p",
-   "rms_delta_db": 3.4913811683654785,
+   "rms_delta_db": 3.506218910217285,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3823,9 +3823,9 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.2352,
-    "clipped": 830,
-    "clip_fraction": 0.004323,
+    "rms": 0.23561,
+    "clipped": 862,
+    "clip_fraction": 0.00449,
     "silent": false
    }
   },
@@ -3879,7 +3879,7 @@
   },
   {
    "entry": "Program/Bank B/Snappy Syn Brass.ns4p",
-   "rms_delta_db": -0.9888010025024414,
+   "rms_delta_db": -0.6207150816917419,
    "default": {
     "finite": true,
     "nan": 0,
@@ -3895,7 +3895,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.2533,
-    "rms": 0.05356,
+    "rms": 0.05587,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -3927,15 +3927,15 @@
   },
   {
    "entry": "Program/Bank B/Solo n Walk B3.ns4p",
-   "rms_delta_db": -2.7560782432556152,
+   "rms_delta_db": 0.9117052555084229,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.40423,
-    "clipped": 3668,
-    "clip_fraction": 0.019104,
+    "rms": 0.25818,
+    "clipped": 3,
+    "clip_fraction": 1.6e-05,
     "silent": false
    },
    "firmware": {
@@ -3943,23 +3943,23 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.29433,
-    "clipped": 192,
-    "clip_fraction": 0.001,
+    "rms": 0.28675,
+    "clipped": 98,
+    "clip_fraction": 0.00051,
     "silent": false
    }
   },
   {
    "entry": "Program/Bank B/Soul Bass Split.ns4p",
-   "rms_delta_db": 0.5888768434524536,
+   "rms_delta_db": 0.7633860111236572,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.15037,
-    "clipped": 8,
-    "clip_fraction": 4.2e-05,
+    "peak": 0.8142,
+    "rms": 0.14738,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    },
    "firmware": {
@@ -4047,7 +4047,7 @@
   },
   {
    "entry": "Program/Bank B/Sync Pulse Whl.ns4p",
-   "rms_delta_db": 0.35111114382743835,
+   "rms_delta_db": 0.383034884929657,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4063,15 +4063,15 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.27739,
-    "clipped": 13,
-    "clip_fraction": 6.8e-05,
+    "rms": 0.27841,
+    "clipped": 56,
+    "clip_fraction": 0.000292,
     "silent": false
    }
   },
   {
    "entry": "Program/Bank B/Taped Wurly.ns4p",
-   "rms_delta_db": 3.4101927280426025,
+   "rms_delta_db": 3.5182714462280273,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4086,8 +4086,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7489,
-    "rms": 0.13322,
+    "peak": 0.7343,
+    "rms": 0.13489,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4095,7 +4095,7 @@
   },
   {
    "entry": "Program/Bank B/Unity Whl.ns4p",
-   "rms_delta_db": 0.20904870331287384,
+   "rms_delta_db": 0.21281316876411438,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4110,8 +4110,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.6227,
-    "rms": 0.12794,
+    "peak": 0.6255,
+    "rms": 0.12799,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4239,13 +4239,13 @@
   },
   {
    "entry": "Program/Bank B/Wormhole Organ.ns4p",
-   "rms_delta_db": -7.544093132019043,
+   "rms_delta_db": 2.6135640144348145,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5281,
-    "rms": 0.14181,
+    "peak": 0.152,
+    "rms": 0.04404,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4263,7 +4263,7 @@
   },
   {
    "entry": "Program/Bank C/Allround Lead.ns4p",
-   "rms_delta_db": 0.14245320856571198,
+   "rms_delta_db": -0.5365694761276245,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4278,8 +4278,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3197,
-    "rms": 0.12341,
+    "peak": 0.3217,
+    "rms": 0.11413,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4311,13 +4311,13 @@
   },
   {
    "entry": "Program/Bank C/B3 70s Rock.ns4p",
-   "rms_delta_db": 0.2832171320915222,
+   "rms_delta_db": 0.2666124999523163,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4133,
-    "rms": 0.08579,
+    "peak": 0.3942,
+    "rms": 0.08625,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4326,8 +4326,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4141,
-    "rms": 0.08863,
+    "peak": 0.4126,
+    "rms": 0.08894,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4335,7 +4335,7 @@
   },
   {
    "entry": "Program/Bank C/Bounce Clav.ns4p",
-   "rms_delta_db": 7.532386779785156,
+   "rms_delta_db": 7.489310264587402,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4351,7 +4351,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.8188,
-    "rms": 0.13255,
+    "rms": 0.1319,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4383,13 +4383,13 @@
   },
   {
    "entry": "Program/Bank C/Chord N Melody.ns4p",
-   "rms_delta_db": 1.4887572526931763,
+   "rms_delta_db": 2.9533944129943848,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5626,
-    "rms": 0.12298,
+    "peak": 0.326,
+    "rms": 0.10418,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4399,7 +4399,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7027,
-    "rms": 0.14597,
+    "rms": 0.14637,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4407,7 +4407,7 @@
   },
   {
    "entry": "Program/Bank C/Clean OB Sawz.ns4p",
-   "rms_delta_db": 1.8244802951812744,
+   "rms_delta_db": 1.7284672260284424,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4423,7 +4423,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.3916,
-    "rms": 0.0931,
+    "rms": 0.09207,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4503,7 +4503,7 @@
   },
   {
    "entry": "Program/Bank C/Dance Lead.ns4p",
-   "rms_delta_db": -0.13892248272895813,
+   "rms_delta_db": -0.15874147415161133,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4518,8 +4518,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2614,
-    "rms": 0.04714,
+    "peak": 0.261,
+    "rms": 0.04703,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4527,7 +4527,7 @@
   },
   {
    "entry": "Program/Bank C/Digi Heaven.ns4p",
-   "rms_delta_db": 1.5655864477157593,
+   "rms_delta_db": 0.18983511626720428,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4543,7 +4543,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.873,
-    "rms": 0.17725,
+    "rms": 0.15129,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4551,7 +4551,7 @@
   },
   {
    "entry": "Program/Bank C/Distorted Whl II.ns4p",
-   "rms_delta_db": 0.7777771949768066,
+   "rms_delta_db": 0.7921587228775024,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4567,7 +4567,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.5426,
-    "rms": 0.17814,
+    "rms": 0.17844,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4647,15 +4647,15 @@
   },
   {
    "entry": "Program/Bank C/Farfisa II.ns4p",
-   "rms_delta_db": 18.386903762817383,
+   "rms_delta_db": 0.5226105451583862,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.161,
-    "rms": 0.03431,
-    "clipped": 0,
-    "clip_fraction": 0.0,
+    "peak": 1.0,
+    "rms": 0.26877,
+    "clipped": 4,
+    "clip_fraction": 2.1e-05,
     "silent": false
    },
    "firmware": {
@@ -4663,7 +4663,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.28494,
+    "rms": 0.28544,
     "clipped": 19,
     "clip_fraction": 9.9e-05,
     "silent": false
@@ -4863,15 +4863,15 @@
   },
   {
    "entry": "Program/Bank C/LoFi Piano.ns4p",
-   "rms_delta_db": -7.466753959655762,
+   "rms_delta_db": 7.396326065063477,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.3873,
-    "clipped": 1572,
-    "clip_fraction": 0.008188,
+    "peak": 0.5936,
+    "rms": 0.0815,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    },
    "firmware": {
@@ -4879,7 +4879,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.16395,
+    "rms": 0.19097,
     "clipped": 4,
     "clip_fraction": 2.1e-05,
     "silent": false
@@ -4887,7 +4887,7 @@
   },
   {
    "entry": "Program/Bank C/LoveBallad Layer.ns4p",
-   "rms_delta_db": 2.6121201515197754,
+   "rms_delta_db": 2.615644693374634,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4903,7 +4903,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.9784,
-    "rms": 0.18051,
+    "rms": 0.18058,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4935,7 +4935,7 @@
   },
   {
    "entry": "Program/Bank C/Lyle Lead J3.ns4p",
-   "rms_delta_db": 1.0570887327194214,
+   "rms_delta_db": 1.037996768951416,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4950,8 +4950,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1385,
-    "rms": 0.06755,
+    "peak": 0.1408,
+    "rms": 0.06741,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4959,7 +4959,7 @@
   },
   {
    "entry": "Program/Bank C/Melody Pearls.ns4p",
-   "rms_delta_db": 2.5096449851989746,
+   "rms_delta_db": 2.5092997550964355,
    "default": {
     "finite": true,
     "nan": 0,
@@ -4975,7 +4975,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.15867,
+    "rms": 0.15866,
     "clipped": 9,
     "clip_fraction": 4.7e-05,
     "silent": false
@@ -4983,13 +4983,13 @@
   },
   {
    "entry": "Program/Bank C/Night Gaunts Whl.ns4p",
-   "rms_delta_db": -1.0491032600402832,
+   "rms_delta_db": -0.8001980185508728,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.205,
-    "rms": 0.06541,
+    "peak": 0.1906,
+    "rms": 0.06358,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -4998,8 +4998,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2341,
-    "rms": 0.05796,
+    "peak": 0.231,
+    "rms": 0.05798,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5103,13 +5103,13 @@
   },
   {
    "entry": "Program/Bank C/Piano Soft Orch.ns4p",
-   "rms_delta_db": -2.011528491973877,
+   "rms_delta_db": -0.4976012110710144,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1182,
-    "rms": 0.02667,
+    "peak": 0.8416,
+    "rms": 0.08731,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5118,8 +5118,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.0919,
-    "rms": 0.02116,
+    "peak": 0.5864,
+    "rms": 0.08245,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5151,13 +5151,13 @@
   },
   {
    "entry": "Program/Bank C/Pizz Quintet Spl.ns4p",
-   "rms_delta_db": -5.271145820617676,
+   "rms_delta_db": 0.4253287613391876,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2745,
-    "rms": 0.05074,
+    "peak": 0.1834,
+    "rms": 0.02633,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5223,7 +5223,7 @@
   },
   {
    "entry": "Program/Bank C/PWM Strings.ns4p",
-   "rms_delta_db": 0.6879045963287354,
+   "rms_delta_db": 0.67894047498703,
    "default": {
     "finite": true,
     "nan": 0,
@@ -5239,7 +5239,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.6614,
-    "rms": 0.13547,
+    "rms": 0.13533,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5247,23 +5247,23 @@
   },
   {
    "entry": "Program/Bank C/Rising Sun.ns4p",
-   "rms_delta_db": 0.2612597942352295,
+   "rms_delta_db": 0.09485341608524323,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.442,
-    "rms": 0.05094,
-    "clipped": 0,
-    "clip_fraction": 0.0,
+    "peak": 1.0,
+    "rms": 0.10102,
+    "clipped": 6,
+    "clip_fraction": 3.1e-05,
     "silent": false
    },
    "firmware": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4503,
-    "rms": 0.0525,
+    "peak": 0.9523,
+    "rms": 0.10213,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5319,7 +5319,7 @@
   },
   {
    "entry": "Program/Bank C/Santoor Pluck.ns4p",
-   "rms_delta_db": 0.3875585198402405,
+   "rms_delta_db": 0.6596208214759827,
    "default": {
     "finite": true,
     "nan": 0,
@@ -5335,7 +5335,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.4281,
-    "rms": 0.081,
+    "rms": 0.08358,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5391,7 +5391,7 @@
   },
   {
    "entry": "Program/Bank C/Stereo AnaStr II.ns4p",
-   "rms_delta_db": 0.5050774216651917,
+   "rms_delta_db": 0.5145896077156067,
    "default": {
     "finite": true,
     "nan": 0,
@@ -5406,8 +5406,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2261,
-    "rms": 0.05916,
+    "peak": 0.2269,
+    "rms": 0.05922,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5415,7 +5415,7 @@
   },
   {
    "entry": "Program/Bank C/Superior Sequel.ns4p",
-   "rms_delta_db": -0.12268641591072083,
+   "rms_delta_db": -0.06377480924129486,
    "default": {
     "finite": true,
     "nan": 0,
@@ -5430,8 +5430,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.348,
-    "rms": 0.05872,
+    "peak": 0.2862,
+    "rms": 0.05912,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5559,7 +5559,7 @@
   },
   {
    "entry": "Program/Bank C/TapePiano AT.ns4p",
-   "rms_delta_db": -1.2783386707305908,
+   "rms_delta_db": -1.2624655961990356,
    "default": {
     "finite": true,
     "nan": 0,
@@ -5575,15 +5575,15 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.14618,
-    "clipped": 12,
-    "clip_fraction": 6.3e-05,
+    "rms": 0.14645,
+    "clipped": 5,
+    "clip_fraction": 2.6e-05,
     "silent": false
    }
   },
   {
    "entry": "Program/Bank C/Ultimate Ballad.ns4p",
-   "rms_delta_db": 1.832419514656067,
+   "rms_delta_db": 1.8308604955673218,
    "default": {
     "finite": true,
     "nan": 0,
@@ -5599,7 +5599,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.9784,
-    "rms": 0.13413,
+    "rms": 0.1341,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5703,13 +5703,13 @@
   },
   {
    "entry": "Program/Bank C/Vista Layer Whl.ns4p",
-   "rms_delta_db": -1.705864429473877,
+   "rms_delta_db": -1.6613214015960693,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.1517,
+    "rms": 0.15163,
     "clipped": 24,
     "clip_fraction": 0.000125,
     "silent": false
@@ -5719,7 +5719,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.9385,
-    "rms": 0.12465,
+    "rms": 0.12524,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5847,13 +5847,13 @@
   },
   {
    "entry": "Program/Bank D/70s CP Strings.ns4p",
-   "rms_delta_db": 1.5026956796646118,
+   "rms_delta_db": 1.0541223287582397,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7199,
-    "rms": 0.08358,
+    "peak": 0.7228,
+    "rms": 0.08801,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5943,13 +5943,13 @@
   },
   {
    "entry": "Program/Bank D/B3 Reggae.ns4p",
-   "rms_delta_db": 0.8101402521133423,
+   "rms_delta_db": 0.7981311678886414,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 0.4761,
-    "rms": 0.10932,
+    "rms": 0.10974,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5958,8 +5958,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5297,
-    "rms": 0.12001,
+    "peak": 0.5177,
+    "rms": 0.1203,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -5991,7 +5991,7 @@
   },
   {
    "entry": "Program/Bank D/Big Analog Pluck.ns4p",
-   "rms_delta_db": 3.0931556224823,
+   "rms_delta_db": 3.1194303035736084,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6007,7 +6007,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.6509,
-    "rms": 0.0814,
+    "rms": 0.08165,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6039,7 +6039,7 @@
   },
   {
    "entry": "Program/Bank D/Calling Whl.ns4p",
-   "rms_delta_db": 0.9665456414222717,
+   "rms_delta_db": 0.9888597726821899,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6055,7 +6055,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.11661,
+    "rms": 0.11691,
     "clipped": 14,
     "clip_fraction": 7.3e-05,
     "silent": false
@@ -6135,7 +6135,7 @@
   },
   {
    "entry": "Program/Bank D/Danceflr Peak MW.ns4p",
-   "rms_delta_db": 3.688819646835327,
+   "rms_delta_db": 3.629037857055664,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6151,7 +6151,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.1822,
-    "rms": 0.01209,
+    "rms": 0.01201,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6159,15 +6159,15 @@
   },
   {
    "entry": "Program/Bank D/Door Knob.ns4p",
-   "rms_delta_db": -5.642895221710205,
+   "rms_delta_db": -0.9739394187927246,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.42155,
-    "clipped": 3275,
-    "clip_fraction": 0.017057,
+    "rms": 0.24627,
+    "clipped": 1,
+    "clip_fraction": 5e-06,
     "silent": false
    },
    "firmware": {
@@ -6183,7 +6183,7 @@
   },
   {
    "entry": "Program/Bank D/Dramatic Opening.ns4p",
-   "rms_delta_db": 1.6885502338409424,
+   "rms_delta_db": 1.6869789361953735,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6198,7 +6198,7 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1052,
+    "peak": 0.1054,
     "rms": 0.01786,
     "clipped": 0,
     "clip_fraction": 0.0,
@@ -6231,7 +6231,7 @@
   },
   {
    "entry": "Program/Bank D/Dyno Chorus Mk I.ns4p",
-   "rms_delta_db": 1.832797646522522,
+   "rms_delta_db": 1.9028539657592773,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6247,7 +6247,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.887,
-    "rms": 0.17765,
+    "rms": 0.17909,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6351,7 +6351,7 @@
   },
   {
    "entry": "Program/Bank D/Glow Chords Whl.ns4p",
-   "rms_delta_db": -5.018558979034424,
+   "rms_delta_db": -4.627243995666504,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6367,7 +6367,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.1777,
-    "rms": 0.03417,
+    "rms": 0.03574,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6423,7 +6423,7 @@
   },
   {
    "entry": "Program/Bank D/HP Splash Whl.ns4p",
-   "rms_delta_db": -0.0734739825129509,
+   "rms_delta_db": -0.08136624097824097,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6438,8 +6438,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4274,
-    "rms": 0.05079,
+    "peak": 0.4235,
+    "rms": 0.05074,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6471,13 +6471,13 @@
   },
   {
    "entry": "Program/Bank D/Innocense.ns4p",
-   "rms_delta_db": 1.008949637413025,
+   "rms_delta_db": 1.0193477869033813,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5337,
-    "rms": 0.06046,
+    "peak": 0.5343,
+    "rms": 0.06039,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6495,7 +6495,7 @@
   },
   {
    "entry": "Program/Bank D/Jealous Upright.ns4p",
-   "rms_delta_db": 1.893573522567749,
+   "rms_delta_db": 3.5412333011627197,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6510,8 +6510,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.9821,
-    "rms": 0.12971,
+    "peak": 0.9998,
+    "rms": 0.1568,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6543,7 +6543,7 @@
   },
   {
    "entry": "Program/Bank D/Marimba Pad Whl.ns4p",
-   "rms_delta_db": -0.3896028995513916,
+   "rms_delta_db": -0.41499918699264526,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6559,7 +6559,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7233,
-    "rms": 0.15033,
+    "rms": 0.14989,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6591,7 +6591,7 @@
   },
   {
    "entry": "Program/Bank D/Melody Pad.ns4p",
-   "rms_delta_db": -4.695718765258789,
+   "rms_delta_db": -4.705927848815918,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6606,8 +6606,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2888,
-    "rms": 0.05895,
+    "peak": 0.2883,
+    "rms": 0.05888,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6615,7 +6615,7 @@
   },
   {
    "entry": "Program/Bank D/Memory Glitch.ns4p",
-   "rms_delta_db": -1.6810317039489746,
+   "rms_delta_db": -3.1851065158843994,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6630,8 +6630,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4122,
-    "rms": 0.08781,
+    "peak": 0.3197,
+    "rms": 0.07385,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6639,7 +6639,7 @@
   },
   {
    "entry": "Program/Bank D/Mirror Image Pad.ns4p",
-   "rms_delta_db": -0.20832040905952454,
+   "rms_delta_db": -0.20863912999629974,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6654,7 +6654,7 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2899,
+    "peak": 0.2901,
     "rms": 0.06134,
     "clipped": 0,
     "clip_fraction": 0.0,
@@ -6663,13 +6663,13 @@
   },
   {
    "entry": "Program/Bank D/Nox Split.ns4p",
-   "rms_delta_db": -1.3867807388305664,
+   "rms_delta_db": 1.2170488834381104,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3203,
-    "rms": 0.06446,
+    "peak": 0.2381,
+    "rms": 0.04779,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6678,8 +6678,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2414,
-    "rms": 0.05495,
+    "peak": 0.2446,
+    "rms": 0.05497,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6759,7 +6759,7 @@
   },
   {
    "entry": "Program/Bank D/PWM and Noise.ns4p",
-   "rms_delta_db": -4.1493401527404785,
+   "rms_delta_db": -4.017298698425293,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6775,7 +6775,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.6515,
-    "rms": 0.1226,
+    "rms": 0.12448,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6783,13 +6783,13 @@
   },
   {
    "entry": "Program/Bank D/Quintet Bass Spl.ns4p",
-   "rms_delta_db": -0.5827977061271667,
+   "rms_delta_db": 1.3515043258666992,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4878,
-    "rms": 0.08144,
+    "peak": 0.2866,
+    "rms": 0.06518,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6855,7 +6855,7 @@
   },
   {
    "entry": "Program/Bank D/Rose Synth Piano.ns4p",
-   "rms_delta_db": -4.499679088592529,
+   "rms_delta_db": -4.521722316741943,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6871,7 +6871,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.2592,
-    "rms": 0.03529,
+    "rms": 0.0352,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6879,13 +6879,13 @@
   },
   {
    "entry": "Program/Bank D/Rotor Clav.ns4p",
-   "rms_delta_db": 0.6951162815093994,
+   "rms_delta_db": 0.5122227668762207,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 0.4194,
-    "rms": 0.07408,
+    "rms": 0.07078,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6894,8 +6894,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.543,
-    "rms": 0.08025,
+    "peak": 0.5429,
+    "rms": 0.07508,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6903,13 +6903,13 @@
   },
   {
    "entry": "Program/Bank D/Rotor EP.ns4p",
-   "rms_delta_db": 0.6615515947341919,
+   "rms_delta_db": 0.6530759334564209,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 0.8336,
-    "rms": 0.16873,
+    "rms": 0.16916,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6918,8 +6918,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7359,
-    "rms": 0.18208,
+    "peak": 0.7358,
+    "rms": 0.18237,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -6927,7 +6927,7 @@
   },
   {
    "entry": "Program/Bank D/Sidechain String.ns4p",
-   "rms_delta_db": -0.8399048447608948,
+   "rms_delta_db": -0.8357781171798706,
    "default": {
     "finite": true,
     "nan": 0,
@@ -6942,8 +6942,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2853,
-    "rms": 0.0491,
+    "peak": 0.2891,
+    "rms": 0.04912,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7023,7 +7023,7 @@
   },
   {
    "entry": "Program/Bank D/Space Bass.ns4p",
-   "rms_delta_db": 1.8831071853637695,
+   "rms_delta_db": 1.7812488079071045,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7039,7 +7039,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.3046,
-    "rms": 0.03419,
+    "rms": 0.03379,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7071,7 +7071,7 @@
   },
   {
    "entry": "Program/Bank D/Sundae Lead.ns4p",
-   "rms_delta_db": 0.537278413772583,
+   "rms_delta_db": 0.47834813594818115,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7086,8 +7086,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2014,
-    "rms": 0.04375,
+    "peak": 0.2026,
+    "rms": 0.04345,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7143,7 +7143,7 @@
   },
   {
    "entry": "Program/Bank D/Sweet EP Pad.ns4p",
-   "rms_delta_db": -0.07477676868438721,
+   "rms_delta_db": -0.18815426528453827,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7159,7 +7159,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7676,
-    "rms": 0.14498,
+    "rms": 0.1431,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7311,15 +7311,15 @@
   },
   {
    "entry": "Program/Bank D/Windhoek B3 II.ns4p",
-   "rms_delta_db": 0.6156737804412842,
+   "rms_delta_db": 0.6009214520454407,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.53849,
-    "clipped": 18382,
-    "clip_fraction": 0.09574,
+    "rms": 0.52152,
+    "clipped": 15193,
+    "clip_fraction": 0.07913,
     "silent": false
    },
    "firmware": {
@@ -7327,15 +7327,15 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.57805,
-    "clipped": 26048,
-    "clip_fraction": 0.135667,
+    "rms": 0.55888,
+    "clipped": 21881,
+    "clip_fraction": 0.113964,
     "silent": false
    }
   },
   {
    "entry": "Program/Bank E/24 Frames J3.ns4p",
-   "rms_delta_db": 7.32278299331665,
+   "rms_delta_db": 7.3400373458862305,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7351,7 +7351,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.2098,
+    "rms": 0.21022,
     "clipped": 86,
     "clip_fraction": 0.000448,
     "silent": false
@@ -7407,13 +7407,13 @@
   },
   {
    "entry": "Program/Bank E/B3 Squabble.ns4p",
-   "rms_delta_db": -0.07605049014091492,
+   "rms_delta_db": -0.12993770837783813,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.6254,
-    "rms": 0.1268,
+    "peak": 0.6169,
+    "rms": 0.12954,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7422,8 +7422,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.6402,
-    "rms": 0.12569,
+    "peak": 0.6365,
+    "rms": 0.12761,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7431,13 +7431,13 @@
   },
   {
    "entry": "Program/Bank E/B3 Synth Layer.ns4p",
-   "rms_delta_db": 0.034192174673080444,
+   "rms_delta_db": 0.055617205798625946,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7599,
-    "rms": 0.18238,
+    "peak": 0.6762,
+    "rms": 0.16845,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7446,8 +7446,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7813,
-    "rms": 0.1831,
+    "peak": 0.721,
+    "rms": 0.16953,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7503,7 +7503,7 @@
   },
   {
    "entry": "Program/Bank E/Big Felt Pad Whl.ns4p",
-   "rms_delta_db": -0.028019074350595474,
+   "rms_delta_db": 0.009502198547124863,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7519,7 +7519,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.5996,
-    "rms": 0.11369,
+    "rms": 0.11418,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7527,13 +7527,13 @@
   },
   {
    "entry": "Program/Bank E/Big White Scape.ns4p",
-   "rms_delta_db": -1.940773606300354,
+   "rms_delta_db": -3.59171724319458,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5972,
-    "rms": 0.09921,
+    "peak": 0.4676,
+    "rms": 0.11472,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7542,8 +7542,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3765,
-    "rms": 0.07934,
+    "peak": 0.3773,
+    "rms": 0.07587,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7599,7 +7599,7 @@
   },
   {
    "entry": "Program/Bank E/Calm Before Whl.ns4p",
-   "rms_delta_db": -2.522779703140259,
+   "rms_delta_db": -2.524585723876953,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7614,8 +7614,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1982,
-    "rms": 0.03789,
+    "peak": 0.2007,
+    "rms": 0.03788,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7623,13 +7623,13 @@
   },
   {
    "entry": "Program/Bank E/Church Layer 1.ns4p",
-   "rms_delta_db": 0.3445057272911072,
+   "rms_delta_db": 0.3344576060771942,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7403,
-    "rms": 0.12656,
+    "peak": 0.7384,
+    "rms": 0.12762,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7639,7 +7639,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7857,
-    "rms": 0.13168,
+    "rms": 0.13263,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7647,7 +7647,7 @@
   },
   {
    "entry": "Program/Bank E/Cinema Rise.ns4p",
-   "rms_delta_db": 0.10217331349849701,
+   "rms_delta_db": 0.05924307554960251,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7662,16 +7662,16 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.958,
-    "rms": 0.21575,
-    "clipped": 0,
-    "clip_fraction": 0.0,
+    "peak": 1.0,
+    "rms": 0.21469,
+    "clipped": 46,
+    "clip_fraction": 0.00024,
     "silent": false
    }
   },
   {
    "entry": "Program/Bank E/Classic Syn Bass.ns4p",
-   "rms_delta_db": 0.20520269870758057,
+   "rms_delta_db": 0.09435359388589859,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7686,8 +7686,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1876,
-    "rms": 0.05178,
+    "peak": 0.1761,
+    "rms": 0.05112,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7743,13 +7743,13 @@
   },
   {
    "entry": "Program/Bank E/Fast Octaves.ns4p",
-   "rms_delta_db": 0.020150061696767807,
+   "rms_delta_db": 0.4431877136230469,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3859,
-    "rms": 0.09083,
+    "peak": 0.3628,
+    "rms": 0.08652,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7767,7 +7767,7 @@
   },
   {
    "entry": "Program/Bank E/Felt Clouds.ns4p",
-   "rms_delta_db": 1.7230863571166992,
+   "rms_delta_db": 1.3421858549118042,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7783,7 +7783,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.5836,
-    "rms": 0.10627,
+    "rms": 0.10171,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7791,7 +7791,7 @@
   },
   {
    "entry": "Program/Bank E/Flammable AT.ns4p",
-   "rms_delta_db": -3.4825143814086914,
+   "rms_delta_db": -3.6184616088867188,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7806,8 +7806,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3542,
-    "rms": 0.10557,
+    "peak": 0.355,
+    "rms": 0.10393,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7839,7 +7839,7 @@
   },
   {
    "entry": "Program/Bank E/Gospel 1993.ns4p",
-   "rms_delta_db": 1.7413105964660645,
+   "rms_delta_db": 1.7622519731521606,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7855,7 +7855,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.518,
-    "rms": 0.09155,
+    "rms": 0.09177,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7863,7 +7863,7 @@
   },
   {
    "entry": "Program/Bank E/Helium Whl.ns4p",
-   "rms_delta_db": -0.229074627161026,
+   "rms_delta_db": -0.21909669041633606,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7878,8 +7878,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7409,
-    "rms": 0.10721,
+    "peak": 0.7471,
+    "rms": 0.10734,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7911,7 +7911,7 @@
   },
   {
    "entry": "Program/Bank E/Hybrid Knock EP.ns4p",
-   "rms_delta_db": 0.8714098930358887,
+   "rms_delta_db": 1.0044164657592773,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7926,8 +7926,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.6203,
-    "rms": 0.14086,
+    "peak": 0.6205,
+    "rms": 0.14304,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -7935,7 +7935,7 @@
   },
   {
    "entry": "Program/Bank E/J3 E Pno Pad.ns4p",
-   "rms_delta_db": 1.8403129577636719,
+   "rms_delta_db": 1.8244349956512451,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7951,7 +7951,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.1343,
+    "rms": 0.13406,
     "clipped": 13,
     "clip_fraction": 6.8e-05,
     "silent": false
@@ -7959,7 +7959,7 @@
   },
   {
    "entry": "Program/Bank E/J3 Electric Pno.ns4p",
-   "rms_delta_db": -1.5376795530319214,
+   "rms_delta_db": -1.44829523563385,
    "default": {
     "finite": true,
     "nan": 0,
@@ -7974,8 +7974,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5192,
-    "rms": 0.08221,
+    "peak": 0.5201,
+    "rms": 0.08306,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8031,7 +8031,7 @@
   },
   {
    "entry": "Program/Bank E/J3 Soul Lead.ns4p",
-   "rms_delta_db": 4.006834506988525,
+   "rms_delta_db": 4.025598526000977,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8047,7 +8047,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.1381,
-    "rms": 0.02845,
+    "rms": 0.02851,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8055,13 +8055,13 @@
   },
   {
    "entry": "Program/Bank E/J3 Split Special.ns4p",
-   "rms_delta_db": 4.053205966949463,
+   "rms_delta_db": 7.203404903411865,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5721,
-    "rms": 0.08261,
+    "peak": 0.4328,
+    "rms": 0.05983,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8070,8 +8070,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.9564,
-    "rms": 0.13174,
+    "peak": 0.9701,
+    "rms": 0.13712,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8079,7 +8079,7 @@
   },
   {
    "entry": "Program/Bank E/J3 Super Sawz.ns4p",
-   "rms_delta_db": -3.8269810676574707,
+   "rms_delta_db": -3.8156185150146484,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8094,8 +8094,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5159,
-    "rms": 0.06093,
+    "peak": 0.518,
+    "rms": 0.06101,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8175,7 +8175,7 @@
   },
   {
    "entry": "Program/Bank E/Pillow Fight.ns4p",
-   "rms_delta_db": 2.0518789291381836,
+   "rms_delta_db": 2.055058002471924,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8190,8 +8190,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7179,
-    "rms": 0.20567,
+    "peak": 0.7191,
+    "rms": 0.20575,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8199,7 +8199,7 @@
   },
   {
    "entry": "Program/Bank E/PineScape Synth.ns4p",
-   "rms_delta_db": -9.020381927490234,
+   "rms_delta_db": -9.02838134765625,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8214,8 +8214,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.137,
-    "rms": 0.02272,
+    "peak": 0.1322,
+    "rms": 0.0227,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8247,13 +8247,13 @@
   },
   {
    "entry": "Program/Bank E/Ready ta Scream.ns4p",
-   "rms_delta_db": 0.48977866768836975,
+   "rms_delta_db": 0.48994505405426025,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.9491,
-    "rms": 0.30065,
+    "peak": 0.9117,
+    "rms": 0.30168,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8262,8 +8262,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.9923,
-    "rms": 0.31809,
+    "peak": 0.9605,
+    "rms": 0.31918,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8271,7 +8271,7 @@
   },
   {
    "entry": "Program/Bank E/RoomUpright Whl.ns4p",
-   "rms_delta_db": -1.704871416091919,
+   "rms_delta_db": -1.7132813930511475,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8286,8 +8286,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4705,
-    "rms": 0.07171,
+    "peak": 0.4696,
+    "rms": 0.07164,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8295,7 +8295,7 @@
   },
   {
    "entry": "Program/Bank E/Short Chords.ns4p",
-   "rms_delta_db": -2.420832633972168,
+   "rms_delta_db": -2.0013911724090576,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8311,7 +8311,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.0524,
-    "rms": 0.00266,
+    "rms": 0.0028,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8319,7 +8319,7 @@
   },
   {
    "entry": "Program/Bank E/Simple Tune.ns4p",
-   "rms_delta_db": -4.539647579193115,
+   "rms_delta_db": -3.7225899696350098,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8335,7 +8335,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.486,
-    "rms": 0.08202,
+    "rms": 0.09011,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8367,7 +8367,7 @@
   },
   {
    "entry": "Program/Bank E/Singing Upright.ns4p",
-   "rms_delta_db": 0.5687387585639954,
+   "rms_delta_db": 0.4816342890262604,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8383,7 +8383,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.6469,
-    "rms": 0.12203,
+    "rms": 0.12082,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8487,7 +8487,7 @@
   },
   {
    "entry": "Program/Bank E/Spin Wurly II.ns4p",
-   "rms_delta_db": 3.827181816101074,
+   "rms_delta_db": 3.85707426071167,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8503,7 +8503,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.9492,
-    "rms": 0.14103,
+    "rms": 0.14152,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8511,7 +8511,7 @@
   },
   {
    "entry": "Program/Bank E/Square Shape Pad.ns4p",
-   "rms_delta_db": -2.299508571624756,
+   "rms_delta_db": -2.3634347915649414,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8527,7 +8527,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.5727,
-    "rms": 0.13473,
+    "rms": 0.13374,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8535,7 +8535,7 @@
   },
   {
    "entry": "Program/Bank E/Statement Syn Bs.ns4p",
-   "rms_delta_db": 0.058173470199108124,
+   "rms_delta_db": -0.005736153107136488,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8550,8 +8550,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.079,
-    "rms": 0.02115,
+    "peak": 0.0869,
+    "rms": 0.02099,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8583,7 +8583,7 @@
   },
   {
    "entry": "Program/Bank E/Sub Surface.ns4p",
-   "rms_delta_db": -1.609413504600525,
+   "rms_delta_db": -1.7684458494186401,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8599,7 +8599,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7831,
-    "rms": 0.12531,
+    "rms": 0.12304,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8655,7 +8655,7 @@
   },
   {
    "entry": "Program/Bank E/Turtle Lead.ns4p",
-   "rms_delta_db": 0.1887267678976059,
+   "rms_delta_db": 1.6292645931243896,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8670,8 +8670,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1834,
-    "rms": 0.07085,
+    "peak": 0.2149,
+    "rms": 0.08363,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8799,7 +8799,7 @@
   },
   {
    "entry": "Program/Bank E/Widthh.ns4p",
-   "rms_delta_db": 1.5611028671264648,
+   "rms_delta_db": 1.5565834045410156,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8814,8 +8814,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3702,
-    "rms": 0.06528,
+    "peak": 0.4057,
+    "rms": 0.06525,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8847,7 +8847,7 @@
   },
   {
    "entry": "Program/Bank E/Worn Out Poly.ns4p",
-   "rms_delta_db": -0.42642390727996826,
+   "rms_delta_db": -0.3766162693500519,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8862,8 +8862,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3507,
-    "rms": 0.06376,
+    "peak": 0.3153,
+    "rms": 0.06413,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8871,13 +8871,13 @@
   },
   {
    "entry": "Program/Bank F/1905 Orchestra.ns4p",
-   "rms_delta_db": -2.826385974884033,
+   "rms_delta_db": 0.27474725246429443,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3679,
-    "rms": 0.07131,
+    "peak": 0.2231,
+    "rms": 0.0499,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8895,7 +8895,7 @@
   },
   {
    "entry": "Program/Bank F/5th Poly Arp.ns4p",
-   "rms_delta_db": 1.3928875923156738,
+   "rms_delta_db": 1.39286208152771,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8910,7 +8910,7 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5975,
+    "peak": 0.5947,
     "rms": 0.10069,
     "clipped": 0,
     "clip_fraction": 0.0,
@@ -8943,7 +8943,7 @@
   },
   {
    "entry": "Program/Bank F/Aerial Gaze.ns4p",
-   "rms_delta_db": 0.4427400529384613,
+   "rms_delta_db": 0.2834165692329407,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8958,8 +8958,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.457,
-    "rms": 0.08899,
+    "peak": 0.4491,
+    "rms": 0.08737,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -8967,7 +8967,7 @@
   },
   {
    "entry": "Program/Bank F/Analog Creature.ns4p",
-   "rms_delta_db": 0.7225484251976013,
+   "rms_delta_db": 0.561034083366394,
    "default": {
     "finite": true,
     "nan": 0,
@@ -8982,8 +8982,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3331,
-    "rms": 0.03938,
+    "peak": 0.428,
+    "rms": 0.03866,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9015,7 +9015,7 @@
   },
   {
    "entry": "Program/Bank F/Atmos Lead Whl.ns4p",
-   "rms_delta_db": -3.4577879905700684,
+   "rms_delta_db": -3.159548044204712,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9030,8 +9030,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.1684,
-    "rms": 0.02578,
+    "peak": 0.1668,
+    "rms": 0.02668,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9039,13 +9039,13 @@
   },
   {
    "entry": "Program/Bank F/B3 Meditation II.ns4p",
-   "rms_delta_db": -3.2733631134033203,
+   "rms_delta_db": 0.012851672247052193,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7371,
-    "rms": 0.15398,
+    "peak": 0.5376,
+    "rms": 0.10637,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9055,7 +9055,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.5539,
-    "rms": 0.10563,
+    "rms": 0.10653,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9063,13 +9063,13 @@
   },
   {
    "entry": "Program/Bank F/B3 Praise Bass.ns4p",
-   "rms_delta_db": -3.8993823528289795,
+   "rms_delta_db": 0.6529914736747742,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.9181,
-    "rms": 0.23064,
+    "peak": 0.6522,
+    "rms": 0.13741,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9078,8 +9078,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.7075,
-    "rms": 0.14722,
+    "peak": 0.696,
+    "rms": 0.14814,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9183,7 +9183,7 @@
   },
   {
    "entry": "Program/Bank F/Cassette Pad AT.ns4p",
-   "rms_delta_db": -0.9680786728858948,
+   "rms_delta_db": -0.7279108762741089,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9198,8 +9198,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2874,
-    "rms": 0.06736,
+    "peak": 0.3249,
+    "rms": 0.06925,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9207,7 +9207,7 @@
   },
   {
    "entry": "Program/Bank F/Chamber Upright.ns4p",
-   "rms_delta_db": 1.5440565347671509,
+   "rms_delta_db": 0.8395558595657349,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9222,8 +9222,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.8445,
-    "rms": 0.08919,
+    "peak": 0.7205,
+    "rms": 0.08224,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9231,7 +9231,7 @@
   },
   {
    "entry": "Program/Bank F/Chop Sync Whl.ns4p",
-   "rms_delta_db": 0.010885991156101227,
+   "rms_delta_db": 0.026991253718733788,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9247,7 +9247,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.8209,
-    "rms": 0.17811,
+    "rms": 0.17844,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9279,7 +9279,7 @@
   },
   {
    "entry": "Program/Bank F/Clean Marimba AT.ns4p",
-   "rms_delta_db": 0.29660549759864807,
+   "rms_delta_db": -0.46965286135673523,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9294,8 +9294,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3792,
-    "rms": 0.06954,
+    "peak": 0.5037,
+    "rms": 0.06367,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9303,7 +9303,7 @@
   },
   {
    "entry": "Program/Bank F/Concert Grand.ns4p",
-   "rms_delta_db": 0.8823453187942505,
+   "rms_delta_db": 0.1505686491727829,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9318,8 +9318,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.8777,
-    "rms": 0.11873,
+    "peak": 0.8076,
+    "rms": 0.10914,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9327,13 +9327,13 @@
   },
   {
    "entry": "Program/Bank F/Cute Orchestra.ns4p",
-   "rms_delta_db": 1.2219456434249878,
+   "rms_delta_db": 3.678868055343628,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.476,
-    "rms": 0.06744,
+    "peak": 0.2916,
+    "rms": 0.05082,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9351,7 +9351,7 @@
   },
   {
    "entry": "Program/Bank F/DistantGrand.ns4p",
-   "rms_delta_db": -4.820484161376953,
+   "rms_delta_db": -4.8246355056762695,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9366,8 +9366,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5284,
-    "rms": 0.07485,
+    "peak": 0.5273,
+    "rms": 0.07482,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9399,7 +9399,7 @@
   },
   {
    "entry": "Program/Bank F/Dynamic Trumpet.ns4p",
-   "rms_delta_db": 0.5317032933235168,
+   "rms_delta_db": 0.5576671361923218,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9415,7 +9415,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.1047,
-    "rms": 0.01259,
+    "rms": 0.01262,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9423,7 +9423,7 @@
   },
   {
    "entry": "Program/Bank F/Eddie OB.ns4p",
-   "rms_delta_db": 1.8191845417022705,
+   "rms_delta_db": 1.8180911540985107,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9439,7 +9439,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.3902,
-    "rms": 0.06763,
+    "rms": 0.06762,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9471,7 +9471,7 @@
   },
   {
    "entry": "Program/Bank F/Fat Wheel.ns4p",
-   "rms_delta_db": 0.48377737402915955,
+   "rms_delta_db": 0.44839218258857727,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9487,7 +9487,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.6347,
-    "rms": 0.15416,
+    "rms": 0.15353,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9567,13 +9567,13 @@
   },
   {
    "entry": "Program/Bank F/Forever Split.ns4p",
-   "rms_delta_db": 1.315650463104248,
+   "rms_delta_db": 3.303025960922241,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4434,
-    "rms": 0.09264,
+    "peak": 0.2707,
+    "rms": 0.07376,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9582,8 +9582,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4797,
-    "rms": 0.10779,
+    "peak": 0.4806,
+    "rms": 0.10788,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9639,7 +9639,7 @@
   },
   {
    "entry": "Program/Bank F/Gravity Whl.ns4p",
-   "rms_delta_db": -1.246038556098938,
+   "rms_delta_db": -1.250645399093628,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9654,8 +9654,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3048,
-    "rms": 0.05819,
+    "peak": 0.3046,
+    "rms": 0.05816,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9663,13 +9663,13 @@
   },
   {
    "entry": "Program/Bank F/Hip split.ns4p",
-   "rms_delta_db": 0.5789662003517151,
+   "rms_delta_db": 0.6300410032272339,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4718,
-    "rms": 0.14859,
+    "peak": 0.428,
+    "rms": 0.14772,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9687,7 +9687,7 @@
   },
   {
    "entry": "Program/Bank F/Long EP Ondre J.ns4p",
-   "rms_delta_db": 5.292146682739258,
+   "rms_delta_db": 4.973407745361328,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9703,7 +9703,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 1.0,
-    "rms": 0.23608,
+    "rms": 0.22757,
     "clipped": 47,
     "clip_fraction": 0.000245,
     "silent": false
@@ -9735,7 +9735,7 @@
   },
   {
    "entry": "Program/Bank F/Necklace Upright.ns4p",
-   "rms_delta_db": 0.43397918343544006,
+   "rms_delta_db": 0.46540406346321106,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9751,7 +9751,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.9892,
-    "rms": 0.1641,
+    "rms": 0.16469,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9807,13 +9807,13 @@
   },
   {
    "entry": "Program/Bank F/Ostinato Whl.ns4p",
-   "rms_delta_db": -0.17376208305358887,
+   "rms_delta_db": 0.19101828336715698,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.4392,
-    "rms": 0.10428,
+    "peak": 0.4372,
+    "rms": 0.09998,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9823,7 +9823,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.4485,
-    "rms": 0.10221,
+    "rms": 0.1022,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9831,7 +9831,7 @@
   },
   {
    "entry": "Program/Bank F/Patch Fields.ns4p",
-   "rms_delta_db": 0.030659010633826256,
+   "rms_delta_db": 1.6029276847839355,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9846,10 +9846,10 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.8362,
-    "rms": 0.10928,
-    "clipped": 0,
-    "clip_fraction": 0.0,
+    "peak": 1.0,
+    "rms": 0.13096,
+    "clipped": 25,
+    "clip_fraction": 0.00013,
     "silent": false
    }
   },
@@ -9903,7 +9903,7 @@
   },
   {
    "entry": "Program/Bank F/Resonant Peaks.ns4p",
-   "rms_delta_db": 5.1566596031188965,
+   "rms_delta_db": 5.332582473754883,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9918,8 +9918,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2378,
-    "rms": 0.03571,
+    "peak": 0.2421,
+    "rms": 0.03644,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9927,7 +9927,7 @@
   },
   {
    "entry": "Program/Bank F/Rich Velvet.ns4p",
-   "rms_delta_db": 0.13004907965660095,
+   "rms_delta_db": 0.1355525404214859,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9943,7 +9943,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.5696,
-    "rms": 0.06367,
+    "rms": 0.06371,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9951,7 +9951,7 @@
   },
   {
    "entry": "Program/Bank F/Rudiments.ns4p",
-   "rms_delta_db": 2.1508421897888184,
+   "rms_delta_db": 2.1508381366729736,
    "default": {
     "finite": true,
     "nan": 0,
@@ -9975,13 +9975,13 @@
   },
   {
    "entry": "Program/Bank F/ScissorSplit Whl.ns4p",
-   "rms_delta_db": -1.3858824968338013,
+   "rms_delta_db": -0.33717870712280273,
    "default": {
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2469,
-    "rms": 0.02378,
+    "peak": 0.2904,
+    "rms": 0.02108,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9991,7 +9991,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.25,
-    "rms": 0.02028,
+    "rms": 0.02027,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -9999,7 +9999,7 @@
   },
   {
    "entry": "Program/Bank F/Scream Lead AT.ns4p",
-   "rms_delta_db": -0.8037847876548767,
+   "rms_delta_db": -0.7356321215629578,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10015,7 +10015,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.4836,
-    "rms": 0.11903,
+    "rms": 0.11996,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -10023,7 +10023,7 @@
   },
   {
    "entry": "Program/Bank F/Shiny Synth Keys.ns4p",
-   "rms_delta_db": 0.43953463435173035,
+   "rms_delta_db": 0.3846883177757263,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10039,7 +10039,7 @@
     "nan": 0,
     "inf": 0,
     "peak": 0.7788,
-    "rms": 0.19108,
+    "rms": 0.18987,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -10143,7 +10143,7 @@
   },
   {
    "entry": "Program/Bank F/Synth Clarinet.ns4p",
-   "rms_delta_db": 1.3181453943252563,
+   "rms_delta_db": 0.30172646045684814,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10158,16 +10158,16 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 1.0,
-    "rms": 0.27812,
-    "clipped": 9,
-    "clip_fraction": 4.7e-05,
+    "peak": 0.8331,
+    "rms": 0.24741,
+    "clipped": 0,
+    "clip_fraction": 0.0,
     "silent": false
    }
   },
   {
    "entry": "Program/Bank F/Synth Engine.ns4p",
-   "rms_delta_db": 0.30233147740364075,
+   "rms_delta_db": 0.13038364052772522,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10182,8 +10182,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3965,
-    "rms": 0.05852,
+    "peak": 0.3583,
+    "rms": 0.05737,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -10215,7 +10215,7 @@
   },
   {
    "entry": "Program/Bank F/Taped Section.ns4p",
-   "rms_delta_db": -1.2417395114898682,
+   "rms_delta_db": -1.243204116821289,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10230,8 +10230,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.3936,
-    "rms": 0.0799,
+    "peak": 0.3894,
+    "rms": 0.07988,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -10239,7 +10239,7 @@
   },
   {
    "entry": "Program/Bank F/Time Warp Saw.ns4p",
-   "rms_delta_db": 2.834806203842163,
+   "rms_delta_db": 3.3073205947875977,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10254,8 +10254,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.5854,
-    "rms": 0.01346,
+    "peak": 0.589,
+    "rms": 0.01421,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -10263,7 +10263,7 @@
   },
   {
    "entry": "Program/Bank F/Unclocked Pad.ns4p",
-   "rms_delta_db": 3.7506368160247803,
+   "rms_delta_db": 3.719758987426758,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10278,8 +10278,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.2577,
-    "rms": 0.04332,
+    "peak": 0.2629,
+    "rms": 0.04317,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -10287,7 +10287,7 @@
   },
   {
    "entry": "Program/Bank F/Unstable CP.ns4p",
-   "rms_delta_db": 2.4553420543670654,
+   "rms_delta_db": 1.9290661811828613,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10302,8 +10302,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.48,
-    "rms": 0.09921,
+    "peak": 0.4673,
+    "rms": 0.09338,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -10383,7 +10383,7 @@
   },
   {
    "entry": "Program/Bank F/ZigZag Arp J3.ns4p",
-   "rms_delta_db": -0.0003815675445366651,
+   "rms_delta_db": -0.04102347418665886,
    "default": {
     "finite": true,
     "nan": 0,
@@ -10398,8 +10398,8 @@
     "finite": true,
     "nan": 0,
     "inf": 0,
-    "peak": 0.0235,
-    "rms": 0.00481,
+    "peak": 0.0237,
+    "rms": 0.00479,
     "clipped": 0,
     "clip_fraction": 0.0,
     "silent": false
@@ -10412,34 +10412,34 @@
   "silent": [],
   "clipping": [
    {
-    "entry": "Program/Bank D/Windhoek B3 II.ns4p",
-    "mode": "firmware",
-    "peak": 1.0,
-    "clip_fraction": 0.135667
-   },
-   {
     "entry": "Program/Bank B/Burning Lead.ns4p",
     "mode": "firmware",
     "peak": 1.0,
-    "clip_fraction": 0.114094
+    "clip_fraction": 0.126542
+   },
+   {
+    "entry": "Program/Bank D/Windhoek B3 II.ns4p",
+    "mode": "firmware",
+    "peak": 1.0,
+    "clip_fraction": 0.113964
+   },
+   {
+    "entry": "Program/Bank B/Burning Lead.ns4p",
+    "mode": "default",
+    "peak": 1.0,
+    "clip_fraction": 0.09299
    },
    {
     "entry": "Program/Bank D/Windhoek B3 II.ns4p",
     "mode": "default",
     "peak": 1.0,
-    "clip_fraction": 0.09574
-   },
-   {
-    "entry": "Program/Bank A/B3 Shade.ns4p",
-    "mode": "default",
-    "peak": 1.0,
-    "clip_fraction": 0.037714
+    "clip_fraction": 0.07913
    },
    {
     "entry": "Program/Bank A/B3 Shade.ns4p",
     "mode": "firmware",
     "peak": 1.0,
-    "clip_fraction": 0.021974
+    "clip_fraction": 0.024661
    },
    {
     "entry": "Program/Bank D/Vox Inna-Gadda.ns4p",
@@ -10448,34 +10448,16 @@
     "clip_fraction": 0.019714
    },
    {
-    "entry": "Program/Bank B/Solo n Walk B3.ns4p",
+    "entry": "Program/Bank A/B3 Shade.ns4p",
     "mode": "default",
     "peak": 1.0,
-    "clip_fraction": 0.019104
-   },
-   {
-    "entry": "Program/Bank D/Door Knob.ns4p",
-    "mode": "default",
-    "peak": 1.0,
-    "clip_fraction": 0.017057
+    "clip_fraction": 0.012193
    },
    {
     "entry": "Program/Bank D/Vox Inna-Gadda.ns4p",
     "mode": "default",
     "peak": 1.0,
     "clip_fraction": 0.009443
-   },
-   {
-    "entry": "Program/Bank B/Burning Lead.ns4p",
-    "mode": "default",
-    "peak": 1.0,
-    "clip_fraction": 0.008812
-   },
-   {
-    "entry": "Program/Bank C/LoFi Piano.ns4p",
-    "mode": "default",
-    "peak": 1.0,
-    "clip_fraction": 0.008188
    },
    {
     "entry": "Program/Bank E/Wah EP Ondre J.ns4p",
@@ -10487,7 +10469,7 @@
     "entry": "Program/Bank B/Q and A.ns4p",
     "mode": "firmware",
     "peak": 1.0,
-    "clip_fraction": 0.004323
+    "clip_fraction": 0.00449
    },
    {
     "entry": "Program/Bank C/Vox Like Me.ns4p",
@@ -10506,30 +10488,16 @@
     "mode": "default",
     "peak": 1.0,
     "clip_fraction": 0.001047
-   },
-   {
-    "entry": "Program/Bank B/Solo n Walk B3.ns4p",
-    "mode": "firmware",
-    "peak": 1.0,
-    "clip_fraction": 0.001
    }
   ],
   "level_jump": [
-   {
-    "entry": "Program/Bank C/Farfisa II.ns4p",
-    "rms_delta_db": 18.39
-   },
    {
     "entry": "Program/Bank B/Fan Club Piano.ns4p",
     "rms_delta_db": 9.22
    },
    {
     "entry": "Program/Bank E/PineScape Synth.ns4p",
-    "rms_delta_db": -9.02
-   },
-   {
-    "entry": "Program/Bank A/Jazz Guitar II.ns4p",
-    "rms_delta_db": 8.64
+    "rms_delta_db": -9.03
    },
    {
     "entry": "Program/Bank D/16th Note Bass.ns4p",
@@ -10540,38 +10508,38 @@
     "rms_delta_db": 8.35
    },
    {
-    "entry": "Program/Bank B/Wormhole Organ.ns4p",
-    "rms_delta_db": -7.54
+    "entry": "Program/Bank A/Jazz Guitar II.ns4p",
+    "rms_delta_db": 8.22
    },
    {
     "entry": "Program/Bank C/Bounce Clav.ns4p",
-    "rms_delta_db": 7.53
+    "rms_delta_db": 7.49
    },
    {
     "entry": "Program/Bank C/LoFi Piano.ns4p",
-    "rms_delta_db": -7.47
+    "rms_delta_db": 7.4
    },
    {
     "entry": "Program/Bank E/24 Frames J3.ns4p",
-    "rms_delta_db": 7.32
+    "rms_delta_db": 7.34
+   },
+   {
+    "entry": "Program/Bank E/J3 Split Special.ns4p",
+    "rms_delta_db": 7.2
    },
    {
     "entry": "Program/Bank F/OD Rock Bass.ns4p",
     "rms_delta_db": 6.46
-   },
-   {
-    "entry": "Program/Bank A/B3 Old Forest.ns4p",
-    "rms_delta_db": -6.39
    }
   ]
  },
  "level_delta_db": {
   "n": 384,
-  "min": -9.02,
-  "p10": -2.26,
-  "median": 0.39,
-  "p90": 2.83,
-  "max": 18.39,
-  "mean": 0.4
+  "min": -9.03,
+  "p10": -1.52,
+  "median": 0.43,
+  "p90": 3.12,
+  "max": 9.22,
+  "mean": 0.6
  }
 }

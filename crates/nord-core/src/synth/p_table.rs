@@ -103,11 +103,17 @@ impl PWave {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PTable {
     blocks: [PBlock; PWAVE_COUNT],
+    /// The unison stages (MULTI, SUPER) read the verified ARM words (`p_stage_words.rs`) instead of
+    /// the ASSUMED constants; their rows then carry the engine level `GAIN_PER_P16` only.
+    pub words: bool,
 }
 
 impl PTable {
     /// The EMPIRICAL table, `docs/research/synth-validation.md` section 4.
-    pub const FITTED: PTable = PTable { blocks: BLOCKS };
+    pub const FITTED: PTable = PTable {
+        blocks: BLOCKS,
+        words: false,
+    };
 
     /// Block of a row.
     #[inline]
@@ -127,23 +133,33 @@ impl PTable {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PTableSpec {
     rows: [Option<[i32; 5]>; PWAVE_COUNT],
+    words: bool,
 }
 
 impl PTableSpec {
     /// The built-in table, no overrides.
     pub const BUILTIN: PTableSpec = PTableSpec {
         rows: [None; PWAVE_COUNT],
+        words: false,
     };
 
     /// Selection from explicit rows (`p_words.rs`).
-    pub(super) const fn from_rows(rows: [Option<[i32; 5]>; PWAVE_COUNT]) -> PTableSpec {
-        PTableSpec { rows }
+    pub(super) const fn from_rows(
+        rows: [Option<[i32; 5]>; PWAVE_COUNT],
+        words: bool,
+    ) -> PTableSpec {
+        PTableSpec { rows, words }
     }
 
     /// Parses the part after `table` (empty or `:wave=g/w2/r2/shape/cutoff;...`).
     pub fn parse(rest: &str) -> Result<PTableSpec, String> {
+        Self::parse_over(Self::BUILTIN, rest)
+    }
+
+    /// Like [`PTableSpec::parse`], the rows overriding `base` (`verified:wave=...` fit sweeps).
+    pub fn parse_over(base: PTableSpec, rest: &str) -> Result<PTableSpec, String> {
         let bad = |what: &str| format!("invalid --synth-p table '{rest}': {what}");
-        let mut spec = Self::BUILTIN;
+        let mut spec = base;
         let body = rest.strip_prefix(':').unwrap_or(rest);
         for item in body.split(';').filter(|s| !s.trim().is_empty()) {
             let (name, vals) = item
@@ -172,6 +188,7 @@ impl PTableSpec {
     /// The table this selection stands for.
     pub fn table(&self) -> PTable {
         let mut t = PTable::FITTED;
+        t.words = self.words;
         for w in PWave::ALL {
             if let Some(m) = self.rows[w as usize] {
                 t = t.with(w, PBlock::from_milli(m));
