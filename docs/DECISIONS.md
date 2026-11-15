@@ -69,6 +69,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
 | [D89](#d89-the-sy-pitch-table-entry-writer-is-not-found-the-index-comes-from-an-arm-slot-object---sample-pitch-fw-stays-opt-in) | 2026-11-15 | The SY pitch table entry writer is not found; the index comes from an ARM slot object; `--sample-pitch fw` stays opt-in | accepted |
 | [D83](#d83-the-pure-noise-row-of-the-p-table-takes-the-saw-gain-verified-arm-word-the-synth-layer-level-law-stays-open) | 2026-11-15 | The PURE noise row of the P table takes the saw gain (VERIFIED ARM word); the synth layer level law stays open | proposed |
+| [D86](#d86-piano-decay-and-attack-no-engine-change-the-t60-gap-was-a-replay-artefact-per-octave-t60-is-measured-by-toolspiano_decaypy) | 2026-11-15 | Piano decay and attack: no engine change; the T60 gap was a replay artefact; per-octave T60 measured by `tools/piano_decay.py` | accepted |
 | [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | accepted |
 | [D78](#d78-library-drawer-loads-start-from-an-init-program-the-organ-ladders-follow-the-section-state) | 2026-11-15 | Library drawer loads start from an Init Program; the organ ladders follow the section state | accepted |
 | [D70](#d70-the-arm-p-words-drive-the-multi-and-super-stages-under---synth-p-verified-the-default-stays-the-empirical-table) | 2026-11-14 | The ARM P words drive the MULTI and SUPER stages under `--synth-p verified`; the default stays the EMPIRICAL table | accepted |
@@ -830,12 +831,21 @@ writes synth oscillator P block; `--synth-p verified` opt-in
 
 ### D76. The on-screen keybed plays velocity 88, not 100
 
-- **Status:** proposed (pending the user's listening check)
+- **Status:** superseded by D84 (the constant 88 is replaced by a hit-position velocity; 88 stays as the computer-keyboard default)
 - **Context:** The user hears the GUI's Felt Upright (`A:13`) as much harsher and brighter than the Part A demo video. The program is piano only, Timbre Off, no FX; the sound and the firmware level law are the verified defaults. On the 150 to 190 s clip the spectral shape at velocity 100 matches the recording (3 to 8 kHz +0.5 dB), but the level is +11.0 dB over it, +3.7 dB over the Pipe yardstick ([piano-felt-upright-soft](research/piano-felt-upright-soft.md)). The GUI mouse press sent velocity 100.
 - **Decision:** `MOUSE_VELOCITY` of the on-screen keybed is 88. No DSP default, golden or `render_hash` changes; MIDI input keeps its own velocity.
 - **Why:** The Velvet Grand clip fits a uniform replay velocity of 88 ([piano-note-velocity](research/piano-note-velocity.md)); the Felt Upright clip is +1.1 dB against the yardstick at 88 (inside the 3 dB target). Velocity 100 plays the loud, bright layer of every velocity-layered piano on every click.
 - **Alternatives:** Flip `--piano-slew-fw` or the bus convention (rejected: the absolute level stays ASSUMED, D22); darken the piano with a filter (rejected: the spectrum matches at equal velocity, no evidence for a stage); a velocity-from-click-position control (kept as a follow-up).
 - **Impact:** `crates/nord-gui/src/panel/keybed.rs` constant and test; `emu_vs_hw_segments.json` gains `piano_felt`; OQ20 and the piano spec updated. A single-note hardware recording per velocity is needed to settle level and brightness ([piano-felt-upright-soft](research/piano-felt-upright-soft.md)).
+
+### D84. The mouse velocity of the on-screen keybed follows the hit position along the key
+
+- **Status:** proposed (pending the user's listening check). Supersedes D76.
+- **Context:** D76 fixed the mouse velocity at 88. The 2026-11-15 listening test showed that key force changes the piano sound a lot, and the hardware Felt Upright demo is played at a median velocity of about 43, so a constant 88 is too hard and leaves no way to play soft.
+- **Decision:** `keybed_velocity::velocity_at` maps the pointer position along the pressed key linearly to 20..127: top of the key (back) = 20, front tip = 127. A white key is `height` long, a black key `0.62 * height` (its own front tip is loud too). The computer keyboard (D80, default 88, C / V steps) and MIDI In are unchanged. No DSP default, golden or `render_hash` changes.
+- **Why:** A real key is struck harder near its front tip; the mouse has no force, so the hit position is the only free axis. It gives the whole range, including the soft layers the hardware demo uses.
+- **Alternatives:** Keep 88 (rejected: too hard); a velocity slider (rejected: slower to play, no per-note dynamics); a curve biased to soft values (rejected: no measured mouse-to-force law; the linear map is ASSUMED, a curve can follow the single-note hardware recordings); mouse speed (not available per click in egui).
+- **Impact:** `crates/nord-gui/src/panel/keybed.rs`, new `keybed_velocity.rs` with tests; `docs/specs/visual-style-and-panel.md` keybed section; `computer_keys.rs` comment. Open: the 20 / 127 ends and the linearity are ASSUMED.
 
 ### D81. The MULTI / SUPER stages read the verified ARM words by default; SUPER wave 0 on LP24 has its own cutoff factor
 
@@ -898,3 +908,17 @@ Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out doc
 - **Why:** The entry value cannot be verified end to end, so D22 is not met; the modelled step is already within 0.5 % of the semitone law (below audibility), so a flip would change renders for no verified gain.
 - **Alternatives:** Flip on the model (rejected: same reason as D65); poke an invented slot allocator into the harness (rejected: it would only restate the model).
 - **Impact:** New research note, tool and test; OQ22, TD-08 and the ROADMAP item updated; section 14 of [synth-sample-kernel-rule](research/synth-sample-kernel-rule.md) gets a pointer (its "index stays `0x36`" is the DSP reset only).
+D86. Piano decay attack: change; T60 gap replay artefact; per-octave T60 measured by `tools/piano_decay.py`
+
+[piano-felt-upright-soft](research/piano-felt-upright-soft.md) s2 reported hardware T60 3.2 s against 1.3 s emulator, [piano-transcription](research/piano-transcription.md) s4 attack 121 / 99 ms (chain slew) against 64 / 56 ms. Both came uniform-velocity, pedal-less replay older build. forbids flipping defaults weak evidence.
+`piano.rs`, slew Add `tools/piano_decay.py` (per-octave fundamental T60 hardware clip against emulator transcribed notes pedal) commit derived numbers (`docs/research/data/piano_decay_per_octave.json`, [piano-decay-attack](research/piano-decay-attack.md)). `rate_for` (Velvet-only rate table, ASSUMED) absolute level slew gain stay open (OQ20).
+With transcribed pedal velocities median emulator-to-hardware T60 ratio default 1.00 over 9 octave groups four clips (0.59 2.86); Felt Upright tail 4.25 s against 3.34 s hardware, old "1.3 s" reproduced. Default attack about 10 ms faster than hardware (17 %); slew measures 47 70 ms against 56 64 ms this HEAD, 2x. Fitting decay release constant break octaves that now agree (Felt Upright 9.01 / 9.00 s) chase scatter (1 13 notes per octave).
+Fit damper / release time constant clips gap fit, EMPIRICAL lossy reverberant audio, D22); replace default release envelope by 44 ms release release slew path's, opt-in, its absolute level open); slew level 1 8 dB under default three clips, D72).
+**Update (same PR):** Single-note show slew follows velocity (0.238 dB per velocity unit, default) constant -19.4 dB (= 0.21875 muted extra voice, open bus scale), pedal down (and slew) bypassed 25 77 clip notes; that mix, wrong decay attack parameter, explains clip gap slew. Test `pedal_down_bypasses_the_slew_voice`; decoding damper-down list follow-up.
+tests (`tools/tests/test_piano_decay.py`), data file, spec paragraph `docs/specs/piano-engine.md`, OQ20 update, item. Rust change; every are D85. Organ level `K = 2.8` EMPIRICAL: audit finds `1 / 0.21875` lane word; D72 lead pinned by test
+Claude (agent)
+D72 noted `K = 2.8` 0.23 dB `1.6 * 0.3732 / 0.21875` (organ times FX over piano slew gain). replace `K` by firmware-derived value, promoting if (D22).
+Audit FX, PNO ORG images code stored equal `2.8`, `0.21875` `1 / 0.21875` ([organ-output-law](research/organ-output-law.md) s6). None stored (all matches are non-word-aligned offsets); matches are decoded. `K` `EMPIRICAL`, `Chain` opt-in, default A unit test pins lead later decode has number hit.
+A numerical coincidence two unrelated words derivation (provenance rule: do upgrade tag without new evidence); clips separate 2.73 2.8.
+Add `chain / 0.21875` audio `K` 0.23 dB, carry false VERIFIED look); `Chain` default 13 dB under B3 / Vox clips).
+Doc comment test `organ/output_level.rs`; s6; OQ24 update. audio 

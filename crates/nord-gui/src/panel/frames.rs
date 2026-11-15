@@ -38,6 +38,23 @@ pub(super) fn frame_px(def: &FrameDef, o: egui::Pos2) -> Rect {
     Rect::from_min_max(r.min - vec2(l, t), r.max + vec2(rt, b))
 }
 
+/// Paint the plate of `section` (slate body, header rim, tab with `title`) with panel origin `o`.
+pub(super) fn paint_plate(p: &Painter, o: egui::Pos2, section: Section, title: &str) {
+    let sec = super::layout_px::to_px(nord_panel::section_rect(section), o);
+    let Some(plate) = nord_panel::layout::plate_of(section) else {
+        return;
+    };
+    let to_px = |r| super::layout_px::to_px(r, o);
+    crate::widgets::plate_frame(
+        p,
+        sec,
+        to_px(nord_panel::layout::Rect::new(0.0, plate.top, 0.0, 0.0)).top(),
+        nord_panel::layout::RIM_MM * PX_PER_MM,
+        plate.tab.map(to_px),
+        title,
+    );
+}
+
 /// Paint every frame and title of `section`.
 pub(super) fn paint_frames(p: &Painter, o: egui::Pos2, section: Section) {
     for def in frames_of(section) {
@@ -118,15 +135,21 @@ mod tests {
     #[test]
     fn boxes_of_one_section_do_not_overlap_and_stay_in_the_section() {
         let o = pos2(0.0, 0.0);
+        let mut outside = Vec::new();
         for (i, a) in FRAMES.iter().enumerate() {
             let ra = frame_px(a, o);
             let sec = super::super::view::section_px(a.section, o);
-            assert!(
-                sec.contains_rect(ra),
-                "{} leaves {:?}: {ra:?}",
-                a.id,
-                a.section
-            );
+            if !sec.contains_rect(ra) {
+                outside.push(format!(
+                    "{} leaves {:?} (bottom {:.1} of {:.1}, top {:.1} of {:.1})",
+                    a.id,
+                    a.section,
+                    ra.bottom(),
+                    sec.bottom(),
+                    ra.top(),
+                    sec.top()
+                ));
+            }
             for b in &FRAMES[i + 1..] {
                 if a.section == b.section && a.kind == FrameKind::Box && b.kind == FrameKind::Box {
                     let rb = frame_px(b, o);
@@ -134,6 +157,7 @@ mod tests {
                 }
             }
         }
+        assert!(outside.is_empty(), "{outside:#?}");
     }
 
     #[test]

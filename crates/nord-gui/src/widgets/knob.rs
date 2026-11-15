@@ -35,7 +35,13 @@ pub fn knob(
     super::probe::record(
         ui.ctx(),
         super::probe::Kind::Knob,
-        Rect::from_center_size(center, vec2(radius + 5.5, radius + 5.5) * 2.0),
+        Rect::from_center_size(
+            center,
+            vec2(
+                radius + super::scale::tick_tip(id),
+                radius + super::scale::tick_tip(id),
+            ) * 2.0,
+        ),
         id,
     );
     let p = ui.painter();
@@ -44,7 +50,7 @@ pub fn knob(
     let sweep = 1.5 * std::f32::consts::PI;
 
     // Ticks around knob
-    for i in 0..=10 {
+    for i in (0..=10).filter(|_| super::scale::draws_ticks(id)) {
         let a = a0 + sweep * (i as f32 / 10.0);
         let r1 = radius + 3.0;
         let r2 = radius + 5.5;
