@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Score a Transkun model on the held-out split of a ``synth_dataset.py`` dataset.
 
-    C:/tmp/ns4-ft-venv/Scripts/python.exe -I tools/synth_eval.py C:/tmp/ns4-ft-data \
+    C:/tmp/ns4-ft-venv/Scripts/python.exe tools/synth_eval.py C:/tmp/ns4-ft-data \
         --split val --out C:/tmp/ns4-ft-data/base_val.json
 
 Metrics (pitch must match exactly, one-to-one greedy by smallest onset difference):
@@ -133,8 +133,8 @@ def load_model(device: str, adapter: str | None = None) -> Any:
     return transcribe_clip.load_transkun(device)
 
 
-def transcribe_file(model: Any, wav: Path, device: str) -> list[dict]:
-    """Model notes as dicts ``start, end, pitch, velocity`` (pedal symbols dropped)."""
+def transcribe_file(model: Any, wav: Path, device: str, keep_pedal: bool = False) -> list[dict]:
+    """Model notes as dicts ``start, end, pitch, velocity``; pedal (pitch < 0) only if asked."""
     import torch
 
     x, rate = synth_wav.read_wav(wav)
@@ -144,7 +144,7 @@ def transcribe_file(model: Any, wav: Path, device: str) -> list[dict]:
     return [
         {"start": n.start, "end": n.end, "pitch": n.pitch, "velocity": n.velocity}
         for n in notes
-        if n.pitch > 0
+        if keep_pedal or n.pitch > 0
     ]
 
 
