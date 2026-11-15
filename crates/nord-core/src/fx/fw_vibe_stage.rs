@@ -128,6 +128,7 @@ impl FwVibeStage {
 
 #[cfg(test)]
 mod tests {
+    use super::super::tests_mod2_dense_golden as g;
     use super::*;
 
     fn run(rate: u32, amount: u32, n: usize) -> Vec<[f32; 2]> {
@@ -194,5 +195,20 @@ mod tests {
         let a = run(60, 10, 3000);
         let b = run(60, 120, 3000);
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn the_closed_forms_equal_the_arm_words_at_every_dense_value() {
+        // VERIFIED at the 44 dense values of the ARM harness capture (`tests_mod2_dense_golden`).
+        for &(ty, kind, _off, pts) in g::ARM_WORDS.iter().filter(|w| w.0 == 6) {
+            for &(v, word) in pts {
+                let got = if kind == "Amt" {
+                    depth_word(v)
+                } else {
+                    rate_word(v)
+                };
+                assert_eq!(got, word, "type {ty} {kind} v {v}");
+            }
+        }
     }
 }
