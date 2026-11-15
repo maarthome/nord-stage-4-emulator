@@ -24,6 +24,7 @@ mod fw_chorus5;
 mod fw_coeffs;
 mod fw_compressor;
 mod fw_delay;
+pub mod fw_delay_sync;
 mod fw_delay_table;
 pub mod fw_delay_time;
 mod fw_drive_tables;

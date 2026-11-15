@@ -31,7 +31,10 @@ use crate::synth_params::{
 /// * `pattern.steps/accent/gate/pan`: the engine's custom pattern holds gate lengths in eighths,
 ///   the file four gate codes (`E q Q .`); `pattern.enabled` is written.
 /// * `lfo_mst_clk`, `filter_env_dedicated`, `knobs`: not mapped by `apply_decoded_layer`.
-/// * `osc_ctrl_morph`, `filter_resonance_morph`: the engine has no morph slot for them.
+/// * `osc_ctrl_morph`, `filter_resonance_morph`, `lfo_rate_morph`, `lfo_amount_morph`,
+///   `filter_env_amount_morph`: the engine has no morph slot for them.
+/// * `raw`: stored table indices and the raw filter type (`SynthLayerRaw`); a type `3` (LP+HP) has
+///   no engine model, so it stays with the base while the engine model is unchanged.
 /// * `pan`, `enabled`, `level`, `level_morph`, `octave`: owned by `ProgramState::export_into`.
 pub const LOSSY_FIELDS: &[&str] = &[
     "sample_id",
@@ -44,6 +47,10 @@ pub const LOSSY_FIELDS: &[&str] = &[
     "knobs",
     "osc_ctrl_morph",
     "filter_resonance_morph",
+    "lfo_rate_morph",
+    "lfo_amount_morph",
+    "filter_env_amount_morph",
+    "raw",
 ];
 
 fn deltas(m: &MorphParameter) -> MorphDeltas {
