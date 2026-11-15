@@ -14,7 +14,7 @@
 use super::p_block::PBlock;
 
 /// Number of rows of the table.
-pub const PWAVE_COUNT: usize = 10;
+pub const PWAVE_COUNT: usize = 11;
 
 /// One row of the table: the oscillator stage family a decoded ANALOG wave plays through.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,7 +37,9 @@ pub enum PWave {
     Super,
     /// SUPER waves 1 to 4 (stages `Super1`, `Super24`, D22 follow-up 5).
     Super1,
-    /// Everything else (sine, triangle, noise, SUB OSC, SYNC, MISC): idle block.
+    /// PURE wave 6, white noise (stage `0x121FD8`).
+    Noise,
+    /// Everything else (sine, triangle, SUB OSC, SYNC, MISC): idle block.
     Other,
 }
 
@@ -52,6 +54,7 @@ impl PWave {
         "multi",
         "super",
         "super1",
+        "noise",
         "other",
     ];
 
@@ -69,6 +72,7 @@ impl PWave {
             (5, _) => Self::Multi,
             (6, 0) => Self::Super,
             (6, 1..=4) => Self::Super1,
+            (0, 6) => Self::Noise,
             _ => Self::Other,
         }
     }
@@ -95,6 +99,7 @@ impl PWave {
         Self::Multi,
         Self::Super,
         Self::Super1,
+        Self::Noise,
         Self::Other,
     ];
 }
@@ -262,6 +267,14 @@ const SUPER1: PBlock = row(1.6, 0.5, 2.2);
 /// 4.73 / 4.75 / 4.83. The remaining presence gap is the SHAPE SINE word, not the filter.
 const SHAPE_SINE: PBlock = row(0.5, 1.0, 3.0);
 
+/// PURE wave 6 (white noise) row. The ARM writes `P[16] = 0.25` for noise, exactly as for the PURE
+/// saw (`docs/research/synth-p-writer.md` section 3, VERIFIED run), and the stage output peaks at
+/// the same +-1, so the row takes the saw gain 0.4 (EMPIRICAL, [`SAW`]) instead of the idle 1.0
+/// that sat 8 dB too loud on `Leaky Stabs II` (A:46, a white-noise layer, `synth_leaky`). The
+/// cutoff factor stays 1.0 (ASSUMED, no clip of a filtered noise alone).
+/// `docs/research/synth-validation.md` section 14.
+const NOISE: PBlock = row(0.4, 0.5, 1.0);
+
 /// Rows in [`PWave`] order. SHAPE saw reuses the saw row and SHAPE SQUARE / SHAPE SINE / other
 /// waves stay at the idle block: ASSUMED, no fit clip with a hold-out.
 const BLOCKS: [PBlock; PWAVE_COUNT] = [
@@ -274,6 +287,7 @@ const BLOCKS: [PBlock; PWAVE_COUNT] = [
     MULTI,
     SUPER,
     SUPER1,
+    NOISE,
     PBlock::IDLE,
 ];
 
@@ -299,7 +313,8 @@ mod tests {
         assert_eq!(PWave::from_category_wave(6, 1), PWave::Super1);
         assert_eq!(PWave::from_category_wave(6, 4), PWave::Super1);
         assert_eq!(PWave::from_category_wave(6, 5), PWave::Other);
-        assert_eq!(PWave::from_category_wave(0, 6), PWave::Other);
+        assert_eq!(PWave::from_category_wave(0, 6), PWave::Noise);
+        assert_eq!(PWave::from_category_wave(0, 0), PWave::Other);
         assert_eq!(PWave::from_category_wave(7, 0), PWave::Other);
     }
 
@@ -321,6 +336,22 @@ mod tests {
         assert!(PTableSpec::BUILTIN.table().words);
         assert!(PTableSpec::parse("").unwrap().table().words);
         assert_eq!(PTable::FITTED.block(PWave::Super).gain, 2.4);
+    }
+
+    #[test]
+    fn noise_row_takes_the_saw_gain_like_the_arm_words() {
+        // VERIFIED words: P[16] = 0.25 for PURE noise and PURE saw (synth-p-writer s3).
+        let noise = PTable::FITTED.block(PWave::Noise);
+        let saw = PTable::FITTED.block(PWave::PureSaw);
+        assert_eq!(noise.gain, saw.gain);
+        assert_eq!(noise.cutoff_scale, 1.0);
+        assert_eq!(PWave::from_name("noise"), Some(PWave::Noise));
+        // the stage output of a noise layer is scaled by the row against the idle block
+        let st = Some(super::super::FwStage::Noise);
+        let off = rms(None, PWave::Noise, st);
+        let on = rms(Some(PTable::FITTED), PWave::Noise, st);
+        assert!(off > 1e-4, "{off}");
+        assert!((on / off - noise.gain).abs() < 0.02, "{on} vs {off}");
     }
 
     #[test]

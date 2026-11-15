@@ -37,14 +37,35 @@ impl Stage4Engine {
         self.organ_b.drawbars = org.drawbars_b;
         self.organ_a.octave_shift = org.layer_a_octave.clamp(-2, 2);
         self.organ_b.octave_shift = org.layer_b_octave.clamp(-2, 2);
-        for (organ, vib_on) in [
-            (&mut self.organ_a, org.vibrato_on),
-            (&mut self.organ_b, org.vibrato_on_b),
+        // Each layer has its own percussion set (the panel shows the focused layer's LEDs).
+        // VERIFIED against the demo video (`B3 Chords n Solo`, A:14, 3:56): the panel with layer B
+        // focused lights ON and 3RD only = the stored layer B flags (A: off, soft, fast, 3rd).
+        for (organ, vib_on, perc) in [
+            (
+                &mut self.organ_a,
+                org.vibrato_on,
+                [
+                    org.percussion_on,
+                    org.percussion_soft,
+                    org.percussion_fast,
+                    org.percussion_third,
+                ],
+            ),
+            (
+                &mut self.organ_b,
+                org.vibrato_on_b,
+                [
+                    org.percussion_on_b,
+                    org.percussion_soft_b,
+                    org.percussion_fast_b,
+                    org.percussion_third_b,
+                ],
+            ),
         ] {
-            organ.percussion_enabled = org.percussion_on;
-            organ.percussion_soft = org.percussion_soft;
-            organ.percussion_fast_decay = org.percussion_fast;
-            organ.percussion_third_harmonic = org.percussion_third;
+            organ.percussion_enabled = perc[0];
+            organ.percussion_soft = perc[1];
+            organ.percussion_fast_decay = perc[2];
+            organ.percussion_third_harmonic = perc[3];
             organ.scanner_mode = org.scanner_mode(vib_on);
             organ.rotary_enabled = org.rotary_enabled;
             organ.rotary_speed = org.rotary_speed;

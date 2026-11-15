@@ -9,7 +9,7 @@ mod synth;
 
 pub use fx::FxUi;
 pub use menu::{step_value, MenuUi, SoftResult};
-pub use organ::OrganUi;
+pub use organ::{OrganPerc, OrganUi, ALL_ZONES};
 pub use piano::{inventory_unsupported, slot, PianoOverlay, PianoUi};
 pub use program::ProgramUi;
 pub use synth::*;

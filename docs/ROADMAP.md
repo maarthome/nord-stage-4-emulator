@@ -87,6 +87,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] `SAMPLES` mode SFZ/WAV sample player with loop crossfade and `Soft`/`Bright` timbre damping
 - [x] Polyphonic voice allocator across `Synth A/B/C` (16 pre-allocated voices per layer with dynamic envelope stealing)
 - [x] Tempo-synced `LFO` (Triangle, Saw, Square, Sample & Hold -> `FILTER`, `OSC PITCH`, `OSC CTRL`) and `ARPEGGIATOR / GATE` (`Up`, `Down`, `UpDown`, `Random`, `Poly`, 1-4 octaves)
+- [x] Part A clip `Leaky Stabs II` (A:46, SHAPE saw + white noise) added to the synth validation set; the PURE noise row takes the verified saw gain (D83); open: the synth layer level law (OQ22)
 
 ---
 
