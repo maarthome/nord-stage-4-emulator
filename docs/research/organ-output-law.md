@@ -81,7 +81,7 @@ Before this change the same B3 default read RMS +14.9 dB with the rotary drive 8
 
 `render_hash` (the golden dump uses a B3 layer on the Legacy path and no program) is unchanged: `c7f06ca7ff6f8663be3bf2af772c6d6854f23593808ff3382d1895cf5f5ddbd5`. Real renders change: every program with the rotary on (drive 0.1 times) and every Pipe layer (level).
 
-## 6. Audit of the images for the `K` lead (D84, 2026-11-15)
+## 6. Audit of the images for the `K` lead (D85, 2026-11-15)
 
 - **Checked:** 2026-11-15. **Sources (local):** `target/DSP/dsp_image_{0_FX,1_PNO,2_ORG}.bin`, `target/fw_unpacked/bank0_CODE.bin`.
 - **Question:** is there a stored word that scales the organ lanes by `1 / 0.21875` (or equals `K = 2.8`), which would turn the D72 lead `K = 1.6 * 0.3732 / 0.21875 = 2.729` (0.23 dB from 2.8) into a derivation?
@@ -108,4 +108,4 @@ Before this change the same B3 default read RMS +14.9 dB with the rotary drive 8
 2. Run `0xC011AB8C` with the real per-layer controller to confirm the squared law dynamically; capture a second swell value (`v = 64`) to check `520 v^2`.
 3. Remove or rescale the Legacy key click on the firmware B3 path; re-run the B3 presence.
 4. A Pipe-only and a pedal-position-known clip to replace the three-clip centring of `K`.
-5. Decode the three ARM-code literals `0x3E600000` and the 14 of `0x40333333` in `bank0_CODE.bin` (`tools/fw_xref.py`) to rule an organ lane or bus gain in or out (D84).
+5. Decode the three ARM-code literals `0x3E600000` and the 14 of `0x40333333` in `bank0_CODE.bin` (`tools/fw_xref.py`) to rule an organ lane or bus gain in or out (D85).

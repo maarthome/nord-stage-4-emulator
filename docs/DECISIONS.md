@@ -888,7 +888,7 @@ Grand Pad best squared (1.24 1.46 2.69 1.0; RMS +0.6 +2.3), estimated contradict
 Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out document comparison switch).
 `engine/mod.rs`, `engine/mix.rs`, `render_opts.rs` (test `synth_layer_law_squares_the_fader_only_when_selected`), segment `pianopad_grand`, OQ22. renders hashes unchanged.
 
-### D84. Organ level `K = 2.8` stays EMPIRICAL: the image audit finds no `1 / 0.21875` lane word; the D72 lead is pinned by a test
+### D85. Organ level `K = 2.8` stays EMPIRICAL: the image audit finds no `1 / 0.21875` lane word; the D72 lead is pinned by a test
 - **Status:** accepted
 - **Decided by:** Claude (agent)
 - **Context:** D72 noted `K = 2.8` is within 0.23 dB of `1.6 * 0.3732 / 0.21875` (organ chain word times FX path over the piano SMP slew gain). The task was to replace `K` by a firmware-derived value, promoting it only if verified end to end (D22).

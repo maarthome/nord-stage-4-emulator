@@ -80,7 +80,7 @@ pub fn layer_level_gain(level: f32) -> f32 {
 /// the performance velocity nor the pedal. 2.8 centres the RMS errors of the three clips (B3
 /// -2.7, Vox -0.7, Pipe +2.9 dB). Open: the FX chain input trim of the organ unit.
 ///
-/// Audit (D84, `organ-output-law.md` s8): `K` equals `ORGAN_CHAIN_GAIN_WORD * 0.3732 / 0.21875`
+/// Audit (D85, `organ-output-law.md` s6): `K` equals `ORGAN_CHAIN_GAIN_WORD * 0.3732 / 0.21875`
 /// within 0.23 dB (test `k_is_within_a_quarter_db_of_the_chain_over_the_slew_gain`), but no word
 /// of the ORG, PNO or FX images or of the ARM code scales the organ lanes by `1 / 0.21875`
 /// (byte scan of the DSP images: `0x3E600000` and `0x40333333` occur only at non-word-aligned
