@@ -27,6 +27,7 @@ pub mod synth_osc;
 pub mod synth_pattern;
 pub mod synth_preset;
 pub mod synth_raw;
+pub mod synth_sustain;
 
 pub use backup::*;
 pub use backup_presets::*;

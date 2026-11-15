@@ -45,6 +45,8 @@ pub struct ProgramRouting {
     pub legacy_masks: [u8; 2],
     /// Raw `kKbZone` code per layer (Organ A, B, Piano A, B, Synth A, B, C).
     pub kb_zone: [u8; 7],
+    /// Synth layer A, B, C SUSTPED bits of the program (`cbin::synth_sustain`).
+    pub synth_sustain: [bool; 3],
     /// `split_enabled` and the Low / Mid / High point flag.
     pub split_active: [bool; 3],
 }
@@ -82,6 +84,7 @@ impl Default for ProgramRouting {
             exact_masks: [0; 2],
             legacy_masks: [0; 2],
             kb_zone: kb_zone::default_codes(),
+            synth_sustain: crate::cbin::synth_sustain::default_flags(),
             split_active: [false; 3],
         }
     }
@@ -173,10 +176,14 @@ impl Stage4Engine {
             ],
             legacy_masks: [self.scene.scene_1_mask, self.scene.scene_2_mask],
             kb_zone: prog.global.kb_zone,
+            synth_sustain: prog.global.synth_sustain,
             split_active: std::array::from_fn(|i| {
                 prog.global.split_enabled && prog.global.split_zone_enabled[i]
             }),
         };
+        if self.synth_sustain_program {
+            self.pedals.sustped[4..7].copy_from_slice(&prog.global.synth_sustain);
+        }
         self.install_scene_masks();
     }
 

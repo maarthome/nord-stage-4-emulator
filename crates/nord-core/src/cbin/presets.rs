@@ -285,6 +285,10 @@ pub struct GlobalProgramDecoded {
     /// read-only (`pack` keeps the stored bits).
     #[serde(default = "super::kb_zone::default_codes")]
     pub kb_zone: [u8; 7],
+    /// SUSTPED bit of the Synth layers A, B, C (`Edt_Syn_kSustainEnable`, firmware default on, see
+    /// [`super::synth_sustain`]). Filled by [`ProgramDecoded::from_cbin_file`]; read-only.
+    #[serde(default = "super::synth_sustain::default_flags")]
+    pub synth_sustain: [bool; 3],
     #[serde(skip)]
     raw_payload: Vec<u8>,
 }
@@ -308,6 +312,7 @@ impl Default for GlobalProgramDecoded {
             scene_1_mask: 0b0001_0101,
             scene_2_mask: 0b0111_1111,
             kb_zone: super::kb_zone::default_codes(),
+            synth_sustain: super::synth_sustain::default_flags(),
             raw_payload: Vec::new(),
         }
     }
@@ -387,6 +392,7 @@ impl GlobalProgramDecoded {
             scene_1_mask,
             scene_2_mask,
             kb_zone: super::kb_zone::default_codes(),
+            synth_sustain: super::synth_sustain::default_flags(),
             raw_payload: slice[..Self::PAYLOAD_LEN].to_vec(),
         })
     }
@@ -503,6 +509,7 @@ impl ProgramDecoded {
         );
 
         global.kb_zone = super::kb_zone::read_codes(&cbin.payload)?;
+        global.synth_sustain = super::synth_sustain::read_flags(&cbin.payload)?;
 
         let bank_letter = (b'A' + (cbin.header.bank_index as u8).min(7)) as char;
         let prog_num = (cbin.header.location_index % 48) + 1;
