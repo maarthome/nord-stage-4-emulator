@@ -105,7 +105,7 @@ fn draw_strip(
     let on_dim = ui_state::inventory_unsupported("piano.on");
     w::face(p, on, pr.down, on_dim);
     w::inside(p, on, "ON", on_dim);
-    w::legend(p, on, "SOLO", on_dim);
+    w::legend_right(p, on, "SOLO", on_dim);
     pr.resp.on_hover_text(
         "Piano ON/OFF. Hold roughly half a second for SOLO (only the Piano sounds while held).",
     );

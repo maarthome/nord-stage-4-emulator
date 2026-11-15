@@ -59,12 +59,16 @@ fn every_id_has_shapes_inside_its_layout_rect() {
                 .iter()
                 .any(|(b, _)| r.expand(2.5).contains(b.center()))
         } else {
-            // Shift / Hold functions print a legend text just below the shared button.
+            // Shift / Hold functions print a legend text just below the shared button, or (SOLO,
+            // as on the panel) just right of it.
             boxes.iter().any(|(b, text)| {
                 *text
-                    && b.top() >= r.bottom() - 1.0
-                    && b.top() <= r.bottom() + 4.0
-                    && (b.center().x - r.center().x).abs() < 14.0
+                    && ((b.top() >= r.bottom() - 1.0
+                        && b.top() <= r.bottom() + 4.0
+                        && (b.center().x - r.center().x).abs() < 14.0)
+                        || (b.left() >= r.right()
+                            && b.left() <= r.right() + 12.0
+                            && (b.center().y - r.center().y).abs() < 6.0))
             })
         };
         if !ok {

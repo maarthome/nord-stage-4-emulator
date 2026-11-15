@@ -81,12 +81,12 @@ def test_draw_overlay_and_side_by_side_sizes():
 
 def test_build_mapping_uses_outline_or_anchors():
     layout = {"sections": {"organ": RECT}}
-    m = lo.build_mapping(layout, "organ", "")
-    assert m.to_mm(250, 12) == pytest.approx((10.0, 20.0))
     m2 = lo.build_mapping(layout, "organ", "0,0,0,0;10,10,5,5")
     assert m2.ax == pytest.approx(0.5)
     with pytest.raises(SystemExit):
-        lo.build_mapping(layout, "piano", "")
+        lo.build_mapping(layout, "synth", "")
+    m3 = lo.Mapping(lo.outline_anchors((250.0, 12.0, 1948.0, 1168.0), RECT))
+    assert m3.to_mm(250, 12) == pytest.approx((10.0, 20.0))
 
 
 def test_find_crops_dir_walks_up_and_honours_env(tmp_path, monkeypatch):
@@ -139,3 +139,19 @@ def test_effects_anchor_csv_lists_every_inventory_effects_control():
     alias = lo.load_photo_anchors(os.path.join(lo.DATA_DIR, "photo_anchors_effects.csv"), True)
     assert len(owned) + len(alias) == 51 + 1  # 51 inventory ids plus program.shift.right
     assert set(owned).isdisjoint(alias)
+
+
+def test_organ_and_piano_crops_map_isotropically_onto_the_render():
+    """`organ` / `piano` / `master` use the crop registration onto the HA88 render (`ISO`)."""
+    for name in ("organ", "piano"):
+        m = lo.build_mapping({"sections": {}}, name, "")
+        assert m.anisotropy() == pytest.approx(1.0)
+        assert abs(m.ax - 0.1195) < 0.0015, name
+    assert lo.SECTION_CROP["master"] == "organ"
+    # The section top edge (render y 691 px = 25.0 mm) lands on the same mm row in both crops.
+    organ = lo.Mapping.isotropic(*lo.ISO["organ"])
+    piano = lo.Mapping.isotropic(*lo.ISO["piano"])
+    assert organ.to_mm(0, 12)[1] == pytest.approx(25.0, abs=0.3)
+    assert piano.to_mm(0, 17)[1] == pytest.approx(25.0, abs=0.3)
+    px = organ.to_px(*organ.to_mm(655.0, 895.0))
+    assert px == pytest.approx((655.0, 895.0))
