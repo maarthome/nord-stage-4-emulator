@@ -44,8 +44,8 @@ fn the_fast_speed_words_modulate_faster_than_the_slow_ones() {
         o.drum_rate_hz = drum;
         o
     };
-    let slow = envelope_peaks(&mut mk(RotarySpeed::Slow, 0.8, 0.67), 96_000);
-    let fast = envelope_peaks(&mut mk(RotarySpeed::Fast, 6.85, 5.7), 96_000);
+    let slow = envelope_peaks(&mut mk(RotarySpeed::Slow, 0.787, 0.719), 96_000);
+    let fast = envelope_peaks(&mut mk(RotarySpeed::Fast, 6.889, 6.299), 96_000);
     assert!(
         fast > 2 * slow.max(1),
         "slow {slow} fast {fast} envelope peaks in 2 s"
@@ -119,5 +119,37 @@ fn the_advancing_ring_lifts_the_firmware_leslie_to_the_level_of_its_input() {
     assert!(
         (-25.0..10.0).contains(&db),
         "within 25 dB of the input, got {db}"
+    );
+}
+
+#[test]
+fn the_rotary_follows_the_arm_ramp_in_real_time() {
+    use super::rotor_arm::{HORN, ROTOR};
+    use super::RotarySpeed;
+    let mut o = OrganLayer::new(FS);
+    o.rotary_speed = RotarySpeed::Fast;
+    let advance = |o: &mut OrganLayer, seconds: f32| {
+        for _ in 0..(seconds * FS) as usize {
+            o.process_rotary(0.0, 1.0 / FS);
+        }
+    };
+    advance(&mut o, 0.5);
+    // 50 updates of +0.06 Hz (ARM) at the physical ratio
+    let want = HORN.slow_hz() + 50.0 * 0.06 * super::rotor_arm::physical_ratio();
+    assert!((o.horn_rate_hz - want).abs() < 0.03, "{}", o.horn_rate_hz);
+    advance(&mut o, 0.7);
+    assert!(
+        (o.horn_rate_hz - HORN.fast_hz()).abs() < 1e-3,
+        "horn at 1.2 s"
+    );
+    assert!(
+        o.drum_rate_hz < 2.0,
+        "the rotor is still accelerating: {}",
+        o.drum_rate_hz
+    );
+    advance(&mut o, 4.6);
+    assert!(
+        (o.drum_rate_hz - ROTOR.fast_hz()).abs() < 1e-3,
+        "rotor at 5.8 s"
     );
 }
