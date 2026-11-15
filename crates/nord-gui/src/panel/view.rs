@@ -106,12 +106,13 @@ impl ViewState {
         }
         let before = *self;
         let moved = self.handle_viewport_keys(ctx);
+        let claimed = super::computer_keys::claimed(ctx);
         let (p, z, esc, digit, hover) = ctx.input(|i| {
             let digit =
                 (0..FOCUSABLE.len()).find(|n| i.key_pressed(digit_key(*n)) && !i.modifiers.any());
             (
-                i.key_pressed(egui::Key::P) && !i.modifiers.any(),
-                i.key_pressed(egui::Key::Z) && !i.modifiers.any(),
+                super::computer_keys::shortcut_pressed(i, egui::Key::P, claimed),
+                super::computer_keys::shortcut_pressed(i, egui::Key::Z, claimed),
                 i.key_pressed(egui::Key::Escape),
                 digit,
                 i.pointer.hover_pos(),

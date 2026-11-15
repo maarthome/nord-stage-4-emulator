@@ -30,6 +30,8 @@ pub(super) const KNOB_CAPTION_DROP: f32 = 10.8;
 /// Pitch of stacked caption lines (px): the 7.5 px minimum font plus a 2 px gap (audit rule `V`).
 pub(super) const CAPTION_LINE: f32 = 9.5;
 /// Colour of a dimmed (unsupported) control overlay.
+/// Height (px) from an Effects button top (2 px bezel) to its LED centre: bezel, 2.5 px gap, LED bezel (2.6).
+const LED_LIFT_FX: f32 = 7.1;
 const DIM: Color32 = Color32::from_black_alpha(140);
 /// Caption colour (silkscreen white-grey).
 pub(super) const CAPTION: Color32 = Color32::from_gray(215);
@@ -230,11 +232,11 @@ impl Fx<'_> {
         )
     }
 
-    /// Single LED just above the top edge of `rect`.
+    /// Single LED just above the top edge of `rect` (clear of its 2 px bezel by 2.5 px).
     pub fn led_above(&self, rect: Rect, on: bool, col: Color32, dim_col: Color32) {
         mini_led(
             self.p,
-            pos2(rect.center().x, rect.top() - 4.0),
+            pos2(rect.center().x, rect.top() - LED_LIFT_FX),
             on,
             col,
             dim_col,

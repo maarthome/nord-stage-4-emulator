@@ -48,6 +48,27 @@ impl Pending {
     }
 }
 
+/// ALU operations that set AN / AZ (float pass, add, sub, abs and the fixed add, sub, clip, and);
+/// the multiplier and the shifter leave them alone. VERIFIED: `if ne jump` of the Farfisa
+/// processor follows `pass` (research s16, 300 calls against `sharc-chain` in both branches).
+const fn sets_flags(op: i32) -> bool {
+    matches!(
+        op,
+        A::PASS | A::FADD | A::FSUB | A::ABS | A::IADD | A::ISUB | A::CLIP | A::AND | A::ADDI
+    )
+}
+
+/// `(AN, AZ)` of an ALU result `v` (40 bit word): float results are zero when the exponent is 0.
+fn alu_flags(op: i32, v: u64) -> (bool, bool) {
+    let float = matches!(op, A::PASS | A::FADD | A::FSUB | A::ABS);
+    let zero = if float {
+        (v >> 31) & 0xFF == 0
+    } else {
+        (v >> 8) as u32 == 0
+    };
+    (v >> 39 == 1, zero)
+}
+
 const fn twin(id: usize) -> usize {
     if id < 32 {
         id ^ 16
@@ -202,9 +223,11 @@ impl Machine {
         for &(ia, v) in &pd.wi[..pd.ni] {
             self.i[ia as usize] = v;
         }
+        let mut ran = [true; 2];
         if let Some(old) = keep {
-            for pe in 0..2 {
-                if !self.an[pe] || self.az[pe] {
+            for (pe, r) in ran.iter_mut().enumerate() {
+                *r = self.an[pe] && !self.az[pe];
+                if !*r {
                     self.d[pe * 16..pe * 16 + 16].copy_from_slice(&old[pe * 16..pe * 16 + 16]);
                 }
             }
@@ -214,7 +237,9 @@ impl Machine {
         }
         if let Some(fl) = pd.flags {
             for (pe, (an, az)) in fl.into_iter().enumerate() {
-                (self.an[pe], self.az[pe]) = (an, az);
+                if ran[pe] {
+                    (self.an[pe], self.az[pe]) = (an, az);
+                }
             }
         }
     }
@@ -287,9 +312,15 @@ impl Machine {
                 pd.w40(twin(r(1)), u64::from(v) << 8);
             }
             K::ALU => {
-                for pe in 0..2 {
+                let mut fl = [(false, false); 2];
+                for (pe, slot) in fl.iter_mut().enumerate() {
                     let id = if pe == 0 { r(1) } else { twin(r(1)) };
-                    pd.w40(id, self.alu(row, pe));
+                    let v = self.alu(row, pe);
+                    pd.w40(id, v);
+                    *slot = alu_flags(row[2], v);
+                }
+                if sets_flags(row[2]) {
+                    pd.flags = Some(fl);
                 }
             }
             K::MRF_SET => {

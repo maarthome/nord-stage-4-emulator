@@ -33,18 +33,23 @@ GEN = ("gen", 0x121BBE, 0x121E28, "GEN_ROWS")
 PROC = ("proc", 0x122296, 0x12261D, "PROC_ROWS")
 
 
-def rust_text(image: str, spec: tuple[str, int, int, str]) -> str:
+def rust_text(
+    image: str,
+    spec: tuple[str, int, int, str],
+    tool: str = "organ_bass_fw_gen.py",
+    paths: tuple[str, str] = ("super::Row", "super::super::rows_valid"),
+) -> str:
     name, entry, end, const = spec
-    rows = slr.decode(olc.disassemble(image, entry, end))
+    rows = slr.decode(olc.disassemble(image, entry, end), entry)
     out = [
         f"//! Decoded rows of the routine `{entry:#x}` ({name}), GENERATED.",
         "//!",
-        "//! `python tools/organ_bass_fw_gen.py rust target/PNO/core1_sram.bin` (`--check` fails when",
+        f"//! `python tools/{tool} rust target/PNO/core1_sram.bin` (`--check` fails when",
         "//! stale). Rows are `[kind, a, b, c, d, e, f, g]` (`tools/sharc_listing_rust.py`): decoded",
         "//! operations of the listing, not firmware bytes; research s15. VERIFIED: the same rules run",
         "//! bit exact against `sharc-chain` in `tools/organ_replay.py` (s14).",
         "",
-        "use super::Row;",
+        f"use {paths[0]};",
         "",
         "#[rustfmt::skip]",
         f"pub(in crate::organ) static {const}: [Row; {len(rows)}] = [",
@@ -60,7 +65,7 @@ def rust_text(image: str, spec: tuple[str, int, int, str]) -> str:
         "",
         "    #[test]",
         "    fn rows_are_structurally_valid() {",
-        f"        assert!(super::super::rows_valid(&{const}));",
+        f"        assert!({paths[1]}(&{const}));",
         "    }",
         "}",
         "",

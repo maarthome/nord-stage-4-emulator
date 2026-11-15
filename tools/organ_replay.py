@@ -32,6 +32,16 @@ import sharc_listing_vm as vm
 WINDOWS = ((0xC00EA, 4), (0xB32E8, 0xD0))
 
 
+def set_ranges(a: argparse.Namespace) -> None:
+    """`--dump` / `--window` replace the Bass ranges (the Farfisa processor uses other words)."""
+    global WINDOWS
+    pair = lambda t: tuple(int(x, 0) for x in t.split(":"))  # noqa: E731
+    if a.dump:
+        olc.DUMP_RANGES = tuple(pair(t) for t in a.dump)
+    if a.window:
+        WINDOWS = tuple(pair(t) for t in a.window)
+
+
 def parse_step(spec: str) -> tuple[int, int, dict[str, int]]:
     entry, end, *rest = spec.split(":")
     regs = dict(p.split("=") for p in rest[0].split(",")) if rest and rest[0] else {}
@@ -43,9 +53,9 @@ def preset(machine: vm.Vm, regs: dict[str, int]) -> None:
         machine.put(name, value)
 
 
-def run_step(machine: vm.Vm, prog: list[vm.Insn], regs: dict[str, int]) -> None:
+def run_step(machine: vm.Vm, prog: list[vm.Insn], regs: dict[str, int], base: int = 0) -> None:
     preset(machine, regs)
-    machine.run(prog)
+    machine.run(prog, base=base)
 
 
 def args_for(a: argparse.Namespace, steps: tuple[str, ...], calls: int) -> list[str]:
@@ -94,7 +104,7 @@ def cmd_gentrace(a: argparse.Namespace) -> int:  # pragma: no cover - runs the o
     bad = vm.check(mem, prog, rows, entry, ext.GenVm)
     print(f"{len(rows)} rows, {bad} register mismatches")
     machine = start_vm(mem, rows[0])
-    machine.run(prog[1:])
+    machine.run(prog[1:], base=entry)
     bad_mem = diff(memory(a, (a.gen,)), machine.mem)
     print(
         f"memory after the generator: {len(bad_mem)} words differ {[hex(k) for k in bad_mem[:8]]}"
@@ -125,8 +135,8 @@ def cmd_replay(a: argparse.Namespace) -> int:  # pragma: no cover - runs the ora
     want, want_mem = oracle_calls(a, a.calls)
     first_bad = None
     for call in range(a.calls):
-        run_step(machine, gen, g_regs)
-        run_step(machine, proc, p_regs)
+        run_step(machine, gen, g_regs, g_entry)
+        run_step(machine, proc, p_regs, p_entry)
         got = [machine.rd(base + k) for base, n in WINDOWS for k in range(n)]
         if first_bad is None and got != want[call].tolist():
             first_bad = call
@@ -148,7 +158,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--proc")
     ap.add_argument("--calls", type=int, default=1)
     ap.add_argument("--exe", default="sharc-chain")
+    ap.add_argument("--base", type=lambda v: int(v, 0), help="proc entry for absolute jumps")
+    ap.add_argument("--dump", action="append", help="BASE:LEN DM range to compare (repeatable)")
+    ap.add_argument("--window", action="append", help="BASE:LEN output window (repeatable)")
     a = ap.parse_args(argv)
+    set_ranges(a)
     return cmd_gentrace(a) if a.cmd == "gentrace" else cmd_replay(a)
 
 
