@@ -74,15 +74,12 @@ fn section_rects_do_not_overlap_and_fit_the_panel() {
     }
 }
 
-/// Organ / Piano / Synth rects that reach into the keybed's split-LED row: the Organ rects were placed from the
+/// Organ / Piano rects that reach into the keybed's split-LED row: the Organ rects were placed from the
 /// vertically stretched organ crop and sit up to ~10 mm below the real row (HA88 top-down render:
 /// LEDs at 165 mm, octave buttons at 148 mm). Remove when the Organ is re-placed from that render.
 fn known_overlap(a: &str, b: &str) -> bool {
     let organ_vs_leds = |x: &str, y: &str| {
-        ["organ.", "piano.", "synth."]
-            .iter()
-            .any(|p| x.starts_with(p))
-            && y == "keybed.split_leds"
+        ["organ.", "piano."].iter().any(|p| x.starts_with(p)) && y == "keybed.split_leds"
     };
     organ_vs_leds(root(a), root(b)) || organ_vs_leds(root(b), root(a))
 }
