@@ -121,11 +121,17 @@ impl PSpec {
         if v.eq_ignore_ascii_case("fitted") {
             return Ok(PSpec::Fitted);
         }
+        if v.eq_ignore_ascii_case("verified") {
+            return Ok(PSpec::Table(PTableSpec::verified()));
+        }
         if let Some(rest) = v.strip_prefix("table") {
             return PTableSpec::parse(rest).map(PSpec::Table);
         }
-        let bad =
-            || format!("invalid --synth-p '{v}' (expected fitted|table|gain,w2,r2,shape,cutoff)");
+        let bad = || {
+            format!(
+                "invalid --synth-p '{v}' (expected fitted|verified|table|gain,w2,r2,shape,cutoff)"
+            )
+        };
         let mut m = [0i32; 5];
         let mut it = v.split(',');
         for slot in &mut m {
