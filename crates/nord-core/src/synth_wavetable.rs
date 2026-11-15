@@ -20,7 +20,9 @@ const MIP_MAX_HARMONICS: [usize; WAVETABLE_MIPS] = [128, 64, 32, 16, 8, 4, 2, 1]
 
 /// Precomputed band-limited wavetable bank shared across all `SynthLayer` instances.
 pub(crate) struct WavetableBank {
-    pub(crate) tables: [[[f32; WAVETABLE_SIZE]; WAVETABLE_MIPS]; NUM_WAVETABLES],
+    /// Heap storage (512 KiB), filled in place: a stack temporary of this size overflowed 1 MiB
+    /// threads in debug builds (TD-05).
+    pub(crate) tables: Box<[[[f32; WAVETABLE_SIZE]; WAVETABLE_MIPS]; NUM_WAVETABLES]>,
 }
 
 static WAVETABLE_BANK: OnceLock<Box<WavetableBank>> = OnceLock::new();
@@ -101,9 +103,14 @@ fn wavetable_harmonic_amp(table_idx: usize, k: usize) -> (f32, f32) {
 
 pub(crate) fn wavetable_bank() -> &'static WavetableBank {
     WAVETABLE_BANK.get_or_init(|| {
-        let mut bank = Box::new(WavetableBank {
-            tables: [[[0.0; WAVETABLE_SIZE]; WAVETABLE_MIPS]; NUM_WAVETABLES],
-        });
+        let sets: Vec<[[f32; WAVETABLE_SIZE]; WAVETABLE_MIPS]> = (0..NUM_WAVETABLES)
+            .map(|_| [[0.0; WAVETABLE_SIZE]; WAVETABLE_MIPS])
+            .collect();
+        let tables = match sets.into_boxed_slice().try_into() {
+            Ok(t) => t,
+            Err(_) => unreachable!("NUM_WAVETABLES sets"),
+        };
+        let mut bank = Box::new(WavetableBank { tables });
         for (t_idx, mip_set) in bank.tables.iter_mut().enumerate() {
             let mut ref_norm = 1.0f32;
             for (mip_idx, &max_h) in MIP_MAX_HARMONICS.iter().enumerate() {
