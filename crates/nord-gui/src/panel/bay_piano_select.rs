@@ -215,13 +215,8 @@ fn draw_acoustics(
     );
     w::mini_led(
         p,
-<<<<<<< HEAD
         pos2(ped.left() - PED_LED_GAP, ped.center().y),
-        state.pedal_noise,
-=======
-        pos2(sr.right() + SIDE_LED, sr.center().y),
         state.pedal_noise && logic::acoustic_leds(state.piano_cat),
->>>>>>> origin/main
         AMBER.0,
         AMBER.1,
         2.2,

@@ -75,32 +75,8 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
 /// (`nord_panel::layout::frames`): the 2000 px photo leaves too little between rows for 7.5 px
 /// legends plus a frame border and its title.
 pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
-<<<<<<< HEAD
-    // Synth: the Arpeggiator/Gate row moves up (free space under the header), the LFO / Oscillators
-    // / Filter / Amp / Unison row moves down (free space above the section's lower edge).
-    ("synth.arp.rate", 0.0, -12.0),
-    ("synth.arp.mode", 0.0, -12.0),
-    ("synth.arp.range", 0.0, -12.0),
-    ("synth.arp.menu", 4.0, -12.0),
-    ("synth.filter.env_amt", -4.0, 0.0),
-    ("synth.arp.pattern", 0.0, -12.0),
-    ("synth.arp.group", 0.0, -12.0),
-    // The three OLED dials move up so their INFO / LIST names clear the LFO box below.
-    ("synth.dial", 0.0, -10.0),
-    // The Vibrato box moves right so its LEDs clear the Voice box (the glide scale numbers).
-    ("synth.vibrato.", 5.0, 0.0),
-    ("synth.lfo.", 0.0, 16.0),
-    ("synth.osc.", 0.0, 16.0),
-    ("synth.filter.", 0.0, 16.0),
-    ("synth.amp.", 0.0, 16.0),
-    ("synth.unison", 0.0, 16.0),
-=======
     // The OLED dials' LIST names touched the OSCILLATORS title.
     ("synth.dial", 0.0, -4.0),
-    // Rotary Speaker box: its controls sit on the frame's vertical centre line (the frame was
-    // built around the button column and grew to the left; now the column moves 11 px left).
-    ("rotary.", -11.0, 0.0),
->>>>>>> origin/main
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
     ("organ.perc_", 3.0, 0.0),
     // Layer Effects: Mod 1 clear of the header's ON button legend, Mod 2 and Amp Sim/EQ down,
