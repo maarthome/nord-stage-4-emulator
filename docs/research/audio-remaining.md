@@ -10,7 +10,7 @@ Tags: **VERIFIED** = matches firmware or oracle, **EMPIRICAL** = fitted to a rec
 
 | # | Item | State | Evidence so far | How to close | Check |
 |---|---|---|---|---|---|
-| 1 | Synth layer level law | default linear, squared opt-in (`--firmware-synth-layer-law`, D82); Leaky Stabs II after the noise row fix (D83) still reads presence +4.3 dB and brilliance +7.5 dB over the video (from +7.0 / +12.1) | Grand Pad fits better squared; handler `0xC011BB48` / `0xC0114588` disassembled, never run | run the handler in the ARM harness with fader values, read the level word, decide the law, flip the default (D22) | ARM harness run |
+| 1 | Synth layer level law | **closed (D87):** the handler `0xC011BB48` run live stores `(v / 127)^2`; squared is the default (`--legacy-synth-layer-law` restores linear); Leaky Stabs II score 3.19 to 1.95, Grand Pad 1.48 to 1.42 | [synth-layer-level-law](synth-layer-level-law.md) | open only: Reverb GLOBAL on (cell 3.25) and the DSoundman fader taper | ARM harness run (done) |
 | 2 | Sample pitch entry `e` | `--sample-pitch fw` stays opt-in (D65, OQ22) | join arithmetic and entry format verified, the ARM writer of the 16-bit table entry at `DM(0x9354A + index)` is not found | trace the ARM writer like the P words ([synth-p-writer](synth-p-writer.md)) | ARM harness |
 | 3 | Organ vs piano level `K = 2.8` | EMPIRICAL (OQ24); image audit found no `1 / 0.21875` lane word (D85, PR #394, not on main yet) | [organ-output-law](organ-output-law.md) s4 | find the gain chain (ORG image plus ARM level words) | oracle trace |
 | 4 | Touch velocity curves | emulator uses the raw MIDI velocity; bean `ns4-yp85` | listening test: key force changes the piano sound a lot | extract per-program curves from the firmware, apply opt-in | ARM harness |
