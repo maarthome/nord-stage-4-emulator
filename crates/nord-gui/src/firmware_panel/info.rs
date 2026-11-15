@@ -171,6 +171,14 @@ pub const PIANO_BUS: SwitchInfo = sw(
     Assumed,
     "Sample path scaled by the SMP bus convention 0.5 instead of 0.55 (Q31 receiver ASSUMED).",
 );
+/// Piano SMP voice-gain slew (`--piano-slew-fw`).
+pub const PIANO_SLEW: SwitchInfo = sw(
+    "Piano",
+    "--piano-slew-fw",
+    "SMP gain slew",
+    Mixed,
+    "Voice gain follows the firmware slew (0.21875 x level, slow decay, 44 ms release) instead of the engine envelope.",
+);
 /// Piano receiver chain scale (`--firmware-piano-chain`).
 pub const PIANO_CHAIN: SwitchInfo = sw(
     "Piano",
@@ -334,7 +342,7 @@ pub const ROUTING: SwitchInfo = sw(
 );
 
 /// All switches in bar order.
-pub const ALL: [SwitchInfo; 33] = [
+pub const ALL: [SwitchInfo; 34] = [
     TONE,
     B3_TAIL,
     FARFISA,
@@ -346,6 +354,7 @@ pub const ALL: [SwitchInfo; 33] = [
     LESLIE_GAIN,
     PIANO_LEVEL,
     PIANO_BUS,
+    PIANO_SLEW,
     PIANO_CHAIN,
     PIANO_LAYER_LAW,
     CHAIN,

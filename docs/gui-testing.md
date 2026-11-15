@@ -181,6 +181,7 @@ live in `panel/layout_tweaks.rs`, never in the `ASSUMED` photo tables (one excep
 | `--measured-laws` (Synth: Measured laws) | 16-voice Super Saw, envelope depth, decay, pitch, vibrato (`audible-genius-synth-lessons.md`) | EMPIRICAL |
 | `--synth-shape <0..1>` (Synth: Shape) | Shape word of the firmware SHAPE oscillator (strip chain); off keeps the saw placeholder | ASSUMED |
 | `--firmware-piano-level` / `--legacy-piano-level` (Piano: Level) | Firmware velocity level law for `.npno` (default on); legacy is the touch curve (`piano-engine.md`) | VERIFIED |
+| `--piano-slew-fw` (Piano: SMP gain slew) | `.npno` voices use the firmware slew: hold gain 0.21875 x level with a 2 to 5 s decay, 44 ms release, no extra voice (opt-in; the rate table is EMPIRICAL) | MIXED |
 | `--firmware-piano-chain` (Piano: FX path scale) | Sample path scaled 0.7464, the verified FX receiver path (engine unit = DAC fraction ASSUMED; Velvet Grand clip +10 to +12 dB over) | MIXED |
 | `--firmware-piano-layer-law` (Piano: Layer law) | Piano layer fader follows `(v / 127)^2` | ASSUMED |
 | `--firmware-piano-bus` (Piano: SMP bus scale) | Sample path scaled 0.5 instead of 0.55 (Q31 receiver convention) | ASSUMED |

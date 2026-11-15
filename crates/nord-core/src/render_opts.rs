@@ -294,6 +294,8 @@ pub struct FirmwareOptions {
     pub piano_firmware_level: bool,
     /// `--firmware-piano-bus`: `PianoLayer::firmware_bus_scale` (opt-in, ASSUMED receiver scale).
     pub piano_bus_scale: bool,
+    /// `--piano-slew-fw`: `PianoLayer::firmware_slew` (SMP voice-gain slew, opt-in; D22).
+    pub piano_slew: bool,
     /// `--firmware-piano-chain`: `PianoLayer::receiver_chain_scale` (verified FX path 0.7464 per
     /// `y / 8192`; opt-in, engine unit = DAC fraction ASSUMED).
     pub piano_chain_scale: bool,
@@ -362,6 +364,7 @@ impl Default for FirmwareOptions {
             fx: FirmwareFx::DEFAULT,
             piano_firmware_level: true,
             piano_bus_scale: false,
+            piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
             measured_laws: false,
@@ -411,6 +414,7 @@ impl FirmwareOptions {
             fx: FirmwareFx::ALL,
             piano_firmware_level: true,
             piano_bus_scale: false,
+            piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
             measured_laws: false,
@@ -481,6 +485,7 @@ impl FirmwareOptions {
             o.piano_firmware_level = false;
         }
         o.piano_bus_scale |= has("--firmware-piano-bus");
+        o.piano_slew |= has("--piano-slew-fw");
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
         o.measured_laws |= has("--measured-laws");
@@ -562,6 +567,8 @@ impl FirmwareOptions {
         apply_piano_level(engine, self.piano_firmware_level);
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
         engine.piano_b.firmware_bus_scale = self.piano_bus_scale;
+        engine.piano_a.firmware_slew = self.piano_slew;
+        engine.piano_b.firmware_slew = self.piano_slew;
         engine.piano_a.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_b.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
@@ -619,6 +626,8 @@ impl FirmwareOptions {
         engine.piano_b.firmware_velocity_level = self.piano_firmware_level;
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
         engine.piano_b.firmware_bus_scale = self.piano_bus_scale;
+        engine.piano_a.firmware_slew = self.piano_slew;
+        engine.piano_b.firmware_slew = self.piano_slew;
         engine.piano_a.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_b.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
@@ -771,6 +780,9 @@ impl FirmwareOptions {
         }
         if self.piano_bus_scale {
             parts.push("piano-bus".into());
+        }
+        if self.piano_slew {
+            parts.push("piano-slew".into());
         }
         if self.piano_chain_scale {
             parts.push("piano-chain".into());
