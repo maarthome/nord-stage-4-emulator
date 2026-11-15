@@ -261,6 +261,33 @@ python tools/organ_listing_check.py trace target/PNO/core1_sram.bin bass_m5.scri
 
 Limits. (1) One call: the generator `0x121BBE` also writes processor state words between calls (`DM 0x9559C..0x955AF`, `0xB45AE..`, `0xC0209`, found by diffing two generator-only runs), so a multi-call replay needs the generator listing in the interpreter (a model started from the oracle ring diverges from call 1). (2) The interpreter has no branches or flags: the Farfisa processor `0x122B85` stops at `if ne jump 0x122d88`. (3) The clean transliteration (a hand written recursion in Rust for the opt-in Bass stage) is not done: the part after the lane fold uses the PEy element as a helper (lane swaps `r13 <-> s14`, `s2 = r3`, a delay line shifted through `I0 / I1`), so it needs a derivation per section, not a copy of the listing. The Rust stage therefore keeps the EMPIRICAL magnitude FIR of s12 (+1.1 to +2.5 dB on the 60 64 67 goldens, unchanged) and the Farfisa stage its measured gain tables. Not decoded in this pass: the drawbar and percussion dependence of the key tables, the `G` resync after a key-up, Twin amp types 7 to 9, `0x122B1D`, the cabinet biquad bank.
 
+## 14. Generator in the VM and the multi-call replay: the chain runs bit-exact over whole chord scripts (2026-11-14)
+
+Tools: `tools/sharc_listing_ext.py` (`GenVm`: the generator instruction set on top of `sharc_listing_vm.py`), `tools/organ_replay.py` (`gentrace`, `replay`), tests `tools/tests/test_sharc_listing_ext.py`. Closes limit (1) of s13.
+
+```bash
+python tools/organ_replay.py gentrace target/PNO/core1_sram.bin bass_m5.script \
+    --gen 0x121bbe:0x121e28:I0=0xc00f2,I1=0xb52c7 --exe target/release/sharc-chain
+python tools/organ_replay.py replay target/PNO/core1_sram.bin bass_m5.script --calls 4696 \
+    --gen 0x121bbe:0x121e28:I0=0xc00f2,I1=0xb52c7 --proc 0x122296:0x12261d:I0=0xc00ea,I1=0xb472c \
+    --exe target/release/sharc-chain
+```
+
+Scripts: `tools/organ_fb_pass.py script ... --model 5 --keys K --drawbars D --cache target/settled.snap` (boot + model 5 install + key-down of the keys, as in s7).
+
+| Check | Result | Tag |
+|---|---|---|
+| Generator `0x121BBE`, call 0 (every instruction against `sharc-chain --trace`) | 1432 of 1432 rows, 0 register mismatches; 0 memory words differ after the generator | VERIFIED (run) |
+| Multi-call replay (generator then processor, per call, presets `I0 / I1` as the oracle), windows compared per call: the output stream `DM 0xC00EA..` (4 words) and the ring `DM 0xB32E8..` (0xD0 words); memory (16,128 words in four ranges) compared after the last call | keys 60 64 67, drawbars 888000000: **4696 calls** (the length of the 8192-point chord measurement of s11), 0 differing calls, 0 differing words; keys 36 43 48 52 55 60 64 67 72 76 (drawbars 888888888), keys 60 64 67 with drawbars 888888888 and with 008000000: 1200 calls each, 0 differing calls, 0 differing words | VERIFIED (run) |
+| What the generator writes between calls | everything is reproduced by the listing (processor state words `DM 0x9559C..0x955AF`, `0xB45AE..`, `0xC0209`, the ring, the scanner position words, the `i12 / i13` long word reload of `0xB32D6`): no hand written state is needed | VERIFIED (run) |
+| Speed | about 30 ms per call (generator + processor, about 1,900 instructions) in CPython | measured |
+
+New interpreter rules (each checked by the trace, nothing assumed): `fext / fdep Rx by Ry` take the length from `Ry[11:6]` and the position from `Ry[5:0]` (`0x1D9` = 7 bits at 25; the text form `by 0x19:0x7` is `pos:len`); `float Rx by Ry` converts the integer with the exponent offset `Ry` (signed); `clip Rx by Ry` clamps to `+-|Ry|`; fixed multiplies `(ssf / ssfr / ssi)` with `MRF` as source or destination, one `MRF` per PE (the `MR` of PEy is separate); `comp(Rx, Ry)` sets `AN / AZ` per PE and `if lt` executes per PE; a store of an index or modify register (`dm(a)=i2`) writes the PEy twin to `a + 1` as well; `dm(a)=i12 (LW)` stores the pair `i12, i13`.
+
+**Time variance of the processor (EMPIRICAL, one-off run with the replayed state).** With the ring zero, all weights zero except one word and the zero input response subtracted (the delay line and biquads hold the chord's state), the output to an impulse on one ring slot is linear (scale 2.0 gives 2.0 x the response to 1.4e-5 of the peak) and does not depend on the slot (slots 0 and 10 of window 1, 0 and 5 of window 2 give the same first samples and the same energy to 16 digits), but it is **not time invariant**: the same impulse 7 calls later differs from the shifted response by 25 % of the peak, because the delay taps that the scanner reads (`m3 = dm(0x10, i2)` ... and the circular buffer on `l6`) move from sample to sample. Consequence: no fixed FIR (the EMPIRICAL magnitude FIR of s12 included) can reproduce the processor; the line gains of s11 are averages over the scanner phase (bin spread up to 1.5 dB). The Rust recursion has to carry the scanner positions (`DM 0xB33BA..0xB33C0`, the per sample delay offsets that the generator writes) and the lattice sections.
+
+Not done in this pass (and why): (2) the Rust recursion and the oracle re-check (the part after the lane fold is a software pipelined sequence of about 280 instructions with PEy helpers; it needs the scanner phase law first, the Rust stage keeps the EMPIRICAL FIR, +1.1 to +2.5 dB on the chord goldens, unchanged); drawbar / percussion key tables and the `G` resync after a key-up (need the ARM capture with key-up, only the direct drawbar script is replayed here); (3) branches and flags for `0x122B85` (conditional execution and `comp` now exist, branches and a Farfisa model 2 install with weights are still missing), so the Farfisa gain-table FIRs stay; (4) Twin amp types 7 to 9, `0x122B1D` and the cabinet biquad bank.
+
 ## Implications
 
 - The Farfisa generator is fully decoded and ported; the Farfisa audio is not reachable until the ARM weights and the filter table are captured (OQ19). The documented structure (four weighted sums, biquads, 8 lattice sections, four gains) gives the model target.
@@ -271,6 +298,6 @@ Limits. (1) One call: the generator `0x121BBE` also writes processor state words
 ## Follow-ups
 
 1. Find the ARM writer of the Farfisa weights `DM 0x95FFC + 0x178 i`, filter tables `0x965FC..` and the lattice flag (the sender `0xC0224468` family with the record table `0xC0282ED0`, [pno-full-pass](pno-full-pass.md) s6), then replay the Farfisa chord and port the processor.
-2. Bit-exact Python models of `0x122296` and `0x121E2B` on random inputs (the layout is in section 4.2), then the scanner as a Rust stage on `B3Wheels`. Section 13: the listing of `0x122296` runs bit-exact in `tools/sharc_listing_vm.py` for one call; next are the generator listing (multi-call replay), branches for `0x122B85`, and the section by section recursion in Rust.
+2. Bit-exact Python models of `0x122296` and `0x121E2B` on random inputs (the layout is in section 4.2), then the scanner as a Rust stage on `B3Wheels`. Section 13: the listing of `0x122296` runs bit-exact in `tools/sharc_listing_vm.py` for one call; the generator listing and the multi-call replay are done (s14, 4696 calls bit-exact); next are branches for `0x122B85`, the scanner phase law and the section by section recursion in Rust.
 3. Identify what the second store of an organ layer edits (chan 1, 3).
 4. Record the real frame rate (a C0 / C4 recording) and re-anchor `DSP_FRAME_RATE`.
