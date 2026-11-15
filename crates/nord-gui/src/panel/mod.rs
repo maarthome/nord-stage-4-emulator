@@ -24,6 +24,7 @@ mod frame_cost_tests;
 mod frames;
 mod kb_zone;
 mod keybed;
+mod keybed_velocity;
 pub mod layout_px;
 mod layout_tweaks;
 #[cfg(test)]
