@@ -53,7 +53,7 @@ No new hardware evidence. The slew loop and the voice loops are the whole per-re
 
 ## 5. Level chain (item 6)
 
-The slew does not change the steady-state level of any stroke at the engine's unit of measure unless `F11`, `F19 / F20` and the ramp ceiling differ from unity, which the note-on message does not show. The master chain (`DM(0xB6518)` word, layer words 1.6 / 2.5 / 3.25) was not re-run against the clips in this pass: `tools/emu_vs_hw.py` now lists the verified-chain variants for the Velvet Grand segment (`piano-chain`, `vel-88-piano-chain`), and the standing result of [piano-receiver-scale](piano-receiver-scale.md) s6.3 (piano chain +10 to +12 dB, organ chain -14 to -15 dB, same video, same path) holds. Defaults stay (D62).
+The slew does not change the steady-state level of any stroke at the engine's unit of measure unless `F11`, `F19 / F20` and the ramp ceiling differ from unity, which the note-on message does not show. The master chain (`DM(0xB6518)` word, layer words 1.6 / 2.5 / 3.25) was not re-run against the clips in this pass: `tools/emu_vs_hw.py` now lists the verified-chain variants for the Velvet Grand segment (`piano-chain`, `vel-88-piano-chain`), and the standing result of [piano-receiver-scale](piano-receiver-scale.md) s6.3 (piano chain +10 to +12 dB, organ chain -14 to -15 dB, same video, same path) holds. Defaults stay (D66).
 
 ## Reproduce
 
@@ -65,14 +65,43 @@ target/release/sharc-ref target/oracle/smp.bin target/exp/slew.scn --out target/
 cargo test -p nord-core --lib piano::smp_slew piano::ext40
 ```
 
+## 6. The slew wired: ARM note and release values, voice gains (VERIFIED run, opt-in engine)
+
+**Method.** `tools/arm_smp_slew_init.py capture` runs the real firmware note-on (library stub, bound `.npno`, `arm_piano_load`) and keeps the path 1 messages; `replay` feeds them to the SMP image in `sharc-ref` (`msg` pairs in batches of 40 per vector 13 + audio interrupt: the SMP FIFO loses the tail of a longer batch, EMPIRICAL) and captures the slew fields of the voice records after every interrupt. Sounds: Velvet Grand (velocities 20, 64, 100, 127), Bright Grand, Wurlitzer 1, Amber Upright (velocity 90), note 60.
+
+| Item | Result | Tag |
+|---|---|---|
+| Records | Every note-on starts records 80 and 81 (the first one is the "extra" voice block `DM 0x9251C..21`, the second the main voice block `DM 0x92528..2D`); a note-off starts the release sample on another record (106 in the capture) and resets records 80 and 81 | VERIFIED (4 sounds) |
+| Extra voice | The ARM writes `F3 = 0` and `F-1 = 0` for it and its block word `DM 0x92521 = 0` (the initial ramp): the ramp stays 0, **the gain of the extra voice is 0 for every velocity and sound captured**; only the main voice is audible | VERIFIED (4 sounds, 4 velocities) |
+| Main voice at note-on | After the SMP voice-start handler (which overwrites the ARM words `F-1`, `F3`): `F-2 = 0.25` (block word `0x9252D`), `F-1 = 0`, `F2 = 0`, `F3 = 0.5`, `F11 = F12 = 0`, `F13 = F14 = F16 = F18 = 1.0`, `F19 = F20 = 0x70000000` (ARM, 0.875), `F15 = ` level word (`DM 0x9252A`, `level_q23 / 2^23`), `F17 = ` rate word (`DM 0x9252C`) | VERIFIED (oracle rows) |
+| Attack | No ramp: `w = max(clip(0.25 + 0, 0.5), 0) = 0.25` from the first update, so the gain is `fix31(0.25 * level) * 0.875`, i.e. **`0.21875 * level` of Q31 full scale** (`level` = the firmware level of `NpnoLevel`). The attack time is the stroke's own | VERIFIED (4 velocities, first 8 updates exact, `slew_voice::tests::note_on_gains`) |
+| Hold decay | `v' = v * F13 * F17` with `F13 = u = 1`: a slow geometric decay `1 - d / 2^24` per update (`d = 374 / 314 / 190 / 154` at velocity 20 / 64 / 100 / 127 on Velvet Grand: time constant 2.1 / 2.5 / 4.1 / 5.0 s at 43,402 Hz / 2). Other sounds at velocity 90: `d = 224` (Bright Grand), 444 (Wurlitzer 1), 284 (Amber Upright); Velvet interpolates to 221 | rate words VERIFIED per run; the law over velocity and sound is open (the engine interpolates the Velvet points for every sound, EMPIRICAL / ASSUMED) |
+| Release | The note-off write sets `F11 = F12 = 0`, `F14 = 1.0`, `F16 = 0x3F7FBB6E` (0.99958) on records 80 and 81, identical for all velocities and sounds: the decay factor per update becomes `0.99958 * F17` (time constant 44 ms for `F17 = 0x3F7FFF42`, 60 dB in 0.30 s). A poked reset on a held record read back from the oracle: 4 of 5 updates equal the model, one is +1 LSB (`slew_voice::tests::release_gains`) | VERIFIED (messages, run) |
+| Release sample | The key-up sample's own record gets `F15 = 0x3F7FFFFE` (about 1.0; `0x3F6C1CEA` = 0.922 at velocity 127), `F17 = 0x3F7FF38E` (time constant 0.23 s), the same `F-2 = 0.25`, `F19 = F20 = 0.875`: gain `0.21875` at most. Not wired (the engine keeps `amp * 0.30` with its 1.15 s decay) | VERIFIED messages, not modelled |
+| Update clock | One update per two audio interrupts; the DSP interrupt rate is `43,402.34 Hz` ([dsp-frame-rate](dsp-frame-rate.md); one interrupt per output frame is ASSUMED for the SMP, like SY) | ASSUMED |
+| Multiplier ties | 47 random records with fixed multipliers `0x10000000 .. 0x7FFFFFFF`: the model equals the oracle in 41; four are +1 LSB in the oracle (multipliers `0x50000000`, `0x10000000`, `0x7FFFFFFF` twice) and two are saturated `q` (`w v >= 1`: the oracle gives `-1` where the model gives `0x0FFFFFFF` / `0x1FFFFFFF`). The firmware multiplier `0x70000000` is exact in 6 of 6 of this set, but a release update shows the same +1 (the oracle `q` one above the model: the rounding of the 40-bit product by `FIX` differs in rare cases); the pattern follows no remainder threshold, so the tie rule is **not** decoded and the engine accepts +-1 LSB of Q31 (about -186 dB) (`piano/smp_slew.rs` test `multiplier_set_against_the_oracle`) | VERIFIED count, rule open |
+
+**Engine.** `piano/slew_voice.rs` (`PianoLayer::firmware_slew`, `ns4 render-patch --piano-slew-fw`, GUI Firmware bar Piano group "SMP gain slew"): the main voice runs `SlewRecord` at `43,402.34 / 2 / sample_rate` updates per sample; its gain is the slew gain `F0 / F1` instead of `amp * env`; the extra voice is not started; note-off (or pedal release, or a retrigger of the same note) applies the release write; the voice ends when the gain is below `1e-6`. Dynamics and una corda keep scaling. Not slewed: release samples, damper-down strokes (legacy path), SFZ / WAV / synthetic sounds.
+
+**Clip comparison: not run in this pass.** `tools/emu_vs_hw.py` on White Grand / Velvet Grand needs the local videos and a release build of `nord-tools`; the time box ended before it. The expected level effect is analytic: the slew gain is `0.21875 * level`, 13.2 dB below the amplitude `level` of the current default, against the standing +10 to +12 dB piano gap ([piano-receiver-scale](piano-receiver-scale.md) s6.3), so the opt-in is expected to land about 1 to 3 dB below the clips; that is a prediction, not a measurement. The default stays off (D22, D66).
+
+```bash
+uv run --with unicorn python tools/arm_smp_slew_init.py capture target/fw_unpacked/bank0_CODE.bin \
+    target/fw_unpacked/bank0_SRAM.bin --cache target/keydown.snap --ns4b ".reference/<backup>.ns4b" \
+    --npno "Piano/Grand/Velvet Grand Med 6.1.npno" --velocity 100 --out target/exp/on100.json
+python tools/arm_smp_slew_init.py replay target/exp/on100.json target/exp/on100.scn --records 81 --rows 30
+target/release/sharc-ref target/oracle/smp.bin target/exp/on100.scn --out target/exp/on100
+cargo test -p nord-core --lib piano::slew_voice piano::smp_slew
+```
+
 ## Implications
 
-- The voice gain the DSP applies is a product of a ramp and a decaying state, updated every second interrupt; a faithful engine envelope needs the ARM-side initial values (the other record writers), which are not decoded. The engine keeps its own envelope; `piano/smp_slew.rs` is the verified building block and is not wired into the render path.
+- The voice gain the DSP applies is a product of a ramp and a decaying state, updated every second interrupt. The note-on values are now known (section 6): constant ramp `0.25`, hold gain `0.21875 * level`, slow velocity dependent decay, 44 ms release; the extra voice is silent. The engine runs this as the opt-in `piano_slew`; the default envelope is unchanged.
 - Loop and end are position rules of the stroke, not sample repeats; the engine's edge-sample repeat is an approximation.
 
 ## Follow-ups
 
-1. Run the ARM writers `0xC00B6030`, `0xC00B61AC`, `0xC00B64D8` (settled emulator) to get `F-2, F-1, F2, F3, F13, F15, F17, F18, F19, F20` for a real note, then drive the slew model with them and compare with the engine envelope.
+1. ~~Run the ARM writers to get the slew inputs for a note~~ (done, section 6: the note-on and note-off message lists replayed through the SMP voice-start handler). Open: the law of the rate word `F17` over velocity, key and sound (`DM 0x9252C` writer), the page-switch fields `F-9 .. F-4` from the stroke descriptor, and the release sample record.
 2. Map the stroke descriptor fields to `F-9 .. F-4` (loop end, loop length, page words) on a real `.npno` and replay a page switch on the oracle.
-3. Re-run the clip comparison with the new `piano-chain` variants once the video is at hand (`tools/emu_vs_hw.py --only piano_dry`).
+3. Run the clip comparison (`tools/emu_vs_hw.py --only piano_dry`, White Grand / Velvet Grand) with `--piano-slew-fw` and the `piano-chain` variants once the video and a `nord-tools` release build are at hand; flip the default only if attack, decay and release hold (D22).
 4. Check the SIMD register swap and the SIMD long-word load of the oracle against the ADI simulator (the slew loop is the first consumer that depends on both).

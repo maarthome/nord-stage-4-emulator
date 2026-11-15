@@ -142,18 +142,53 @@ mod tests {
     /// Velvet Grand note-on (note 60), velocities 20, 64, 100 and 127 (`sharc-ref`, SMP image,
     /// `docs/research/smp-slew.md` section 6): `F0` read after every second interrupt.
     const NOTE_ON: [(u32, u32, [i32; 8]); 4] = [
-        (0x3D5C4D00, 0x3F7FFE8A, [25265292, 25264729, 25264165, 25263602, 25263038, 25262475, 25261911, 25261348]),
-        (0x3EE411F0, 0x3F7FFF42, [209252830, 209250450, 209248070, 209245690, 209243310, 209240930, 209238550, 209236170]),
-        (0x3E66B858, 0x3F7FFEC6, [105841323, 105839342, 105837361, 105835380, 105833399, 105831418, 105829437, 105827456]),
-        (0x3F28E5A2, 0x3F7FFF66, [309924507, 309921651, 309918795, 309915939, 309913083, 309910227, 309907371, 309904515]),
+        (
+            0x3D5C4D00,
+            0x3F7FFE8A,
+            [
+                25265292, 25264729, 25264165, 25263602, 25263038, 25262475, 25261911, 25261348,
+            ],
+        ),
+        (
+            0x3EE411F0,
+            0x3F7FFF42,
+            [
+                209252830, 209250450, 209248070, 209245690, 209243310, 209240930, 209238550,
+                209236170,
+            ],
+        ),
+        (
+            0x3E66B858,
+            0x3F7FFEC6,
+            [
+                105841323, 105839342, 105837361, 105835380, 105833399, 105831418, 105829437,
+                105827456,
+            ],
+        ),
+        (
+            0x3F28E5A2,
+            0x3F7FFF66,
+            [
+                309924507, 309921651, 309918795, 309915939, 309913083, 309910227, 309907371,
+                309904515,
+            ],
+        ),
     ];
 
     #[test]
     fn rate_table_hits_the_oracle_words_and_clamps() {
-        for (vel, word) in [(20u8, 0x3F7F_FE8Au32), (64, 0x3F7F_FEC6), (100, 0x3F7F_FF42), (127, 0x3F7F_FF66)] {
+        for (vel, word) in [
+            (20u8, 0x3F7F_FE8Au32),
+            (64, 0x3F7F_FEC6),
+            (100, 0x3F7F_FF42),
+            (127, 0x3F7F_FF66),
+        ] {
             assert_eq!(rate_for_velocity(vel).to_bits(), word, "velocity {vel}");
         }
-        assert_eq!(rate_for_velocity(1).to_bits(), rate_for_velocity(20).to_bits());
+        assert_eq!(
+            rate_for_velocity(1).to_bits(),
+            rate_for_velocity(20).to_bits()
+        );
         let mid = rate_for_velocity(80);
         assert!(mid > rate_for_velocity(64) && mid < rate_for_velocity(100));
     }
@@ -166,6 +201,35 @@ mod tests {
                 assert_eq!(r.step().left, w, "level {level:#x} update {}", n + 1);
             }
         }
+    }
+
+    /// Oracle: a held main voice (Velvet Grand, velocity 100) after the note-off write
+    /// (`F16 = 0x3F7FBB6E` poked, `sharc-ref`): `F0` at the next five updates.
+    #[test]
+    fn release_gains() {
+        let mut r = initial_record(f32::from_bits(0x3EE4_0E9E), f32::from_bits(0x3F7F_FF42));
+        r.x_coef = f32::from_bits(RELEASE_Y_STATE); // `F13` after the first update past the write
+        r.y_state = f32::from_bits(RELEASE_Y_STATE);
+        let want = [
+            0x0C75_6C32,
+            0x0C72_0C9B,
+            0x0C6E_ADF3,
+            0x0C6B_5038,
+            0x0C67_F36C,
+        ];
+        // One of the five is +1 LSB in the oracle (`q` one above the model: the rounding of the
+        // 40-bit product by `FIX`, open, `docs/research/smp-slew.md` section 6).
+        let mut exact = 0;
+        for (n, w) in want.into_iter().enumerate() {
+            let got = r.step().left;
+            assert!(
+                (got - w).abs() <= 1,
+                "release update {}: {got} vs {w}",
+                n + 1
+            );
+            exact += i32::from(got == w);
+        }
+        assert_eq!(exact, 4);
     }
 
     #[test]

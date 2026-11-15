@@ -26,9 +26,9 @@ pub mod velocity_curve;
 pub mod velocity_level;
 
 mod extra_voice;
-mod slew_voice;
 #[cfg(test)]
 mod interp_switch;
+mod slew_voice;
 
 pub use q31_kernel::{SampleInterp, SmpKernel};
 

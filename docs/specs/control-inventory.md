@@ -87,12 +87,13 @@ The old code-review gap list is replaced by the `Unsupported` entries, each tied
 
 | Piece | Rule | Status |
 |---|---|---|
-| Hold | 500 ms, fires once while held | `VERIFIED` (text, manual p.18 "roughly half a second") |
-| Double tap | second press within 300 ms of the previous tap's release | `ASSUMED`; manual p.39, p.43 describe the gesture without an interval |
+| Hold | 500 ms for most controls, fires once while held; the three Morph Assign buttons hold 1000 ms (`ButtonTracker::for_control`) | `VERIFIED` (firmware key table, 35 of 49 keys hold 500 ms, keys 48 / 49 / 81 hold 1000 ms: [firmware-gesture-timings](../research/firmware-gesture-timings.md); manual p.18 "roughly half a second") |
+| Auto-repeat | Program 1-4 hold 350 ms, then repeat every 80 ms; unlisted keys 300 ms then 80 ms; not modelled in the panel | `VERIFIED` (firmware table), poll step 6 ms `ASSUMED` |
+| Double tap | second press within 300 ms of the previous tap's release | `ASSUMED`; manual p.39, p.43 describe the gesture without an interval; the firmware's double-press word is 300 but its unit is unresolved ([firmware-gesture-timings](../research/firmware-gesture-timings.md) s3) |
 | SHIFT resolve | tap + SHIFT held on a control with a printed shifted function = shifted; hold on such a control = shifted (p.44); hold otherwise = Hold (Layer Off, SOLO) | manual p.44 |
 | Latch | double tap toggles; Shift/Exit clears (Morph Assign p.39, Section Edit p.43) | manual |
 | Selector | next/previous index wraps over the LED count | manual p.12 |
-| Pot pick-up | after a stored-value change the knob ignores input until it crosses or comes within 2 % of the stored value | `ASSUMED`, OQ13 |
+| Pot pick-up | after a stored-value change the knob ignores input until it crosses or comes within 2 % of the stored value | `ASSUMED`, OQ13; the host firmware has no pot reader (no ADC, no pick-up strings), see [firmware-gesture-timings](../research/firmware-gesture-timings.md) s5 |
 | Live Mode | Program buttons 1-8 pick slots; dirty slot is saved on switch or leave | manual p.13, p.44 |
 | `PanelHost` | `get`/`set`/`begin_gesture`/`end_gesture` by host parameter id; `PanelAction::Press` is panel-internal | design |
 

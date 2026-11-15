@@ -274,9 +274,22 @@ mod tests {
         let active: Vec<_> = layer.voices.iter().filter(|v| v.active).collect();
         assert_eq!(active.len(), 1, "the muted extra voice is not started");
         assert!(active[0].slew.is_active() && !active[0].extra);
-        assert!((active[0].amp - 1.0).abs() < 1e-6, "level lives in the slew");
-        let (gl, gr) = layer.voices.iter().find(|v| v.active).unwrap().slew.clone().tick();
-        assert!((gl - 0.21875 * level).abs() < 2e-3 * level && gl == gr, "{gl} vs {level}");
+        assert!(
+            (active[0].amp - 1.0).abs() < 1e-6,
+            "level lives in the slew"
+        );
+        let (gl, gr) = layer
+            .voices
+            .iter()
+            .find(|v| v.active)
+            .unwrap()
+            .slew
+            .clone()
+            .tick();
+        assert!(
+            (gl - 0.21875 * level).abs() < 2e-3 * level && gl == gr,
+            "{gl} vs {level}"
+        );
         for _ in 0..4800 {
             layer.render_frame();
         }

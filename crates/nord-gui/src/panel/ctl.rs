@@ -189,7 +189,7 @@ fn run_tracker(
     shift_fn: bool,
 ) -> Option<Trigger> {
     if !trackers.contains_key(id) {
-        trackers.insert(id.to_string(), ButtonTracker::new());
+        trackers.insert(id.to_string(), ButtonTracker::for_control(id));
     }
     let t = trackers.get_mut(id)?;
     let g = if down && !t.is_down() {
