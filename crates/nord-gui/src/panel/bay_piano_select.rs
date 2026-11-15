@@ -161,7 +161,7 @@ fn draw_acoustics(
 
     // STRING RES (tap) and PED NOISE (Shift): the layout lists them as one ACOUSTICS button on the
     // SOFT RELEASE rectangle; the STRING RES button sits just below it.
-    let sr = soft.translate(vec2(0.0, soft.height() + 11.0));
+    let sr = soft.translate(vec2(0.0, soft.height() + 1.0));
     let pr = w::press(
         ui,
         sr,
@@ -214,8 +214,9 @@ const LED_NAMES_TOUCH: [&str; 3] = ["HEAVY", "MED", "LIGHT"];
 const TOUCH_NAME_LINE: [usize; 3] = [0, 1, 0];
 /// Pitch (px) of those two lines (the 7.5 px font plus a 2 px gap, audit rule `V`).
 const NAME_LINE: f32 = 9.5;
-/// Distance (px) from the bottom of the button to the centre of those names.
-const LED_NAME_DROP: f32 = 15.5;
+/// Distance (px) from the top of the button up to the centre of those names (the real panel
+/// prints the LEDs and their names above the button, under the box title).
+const LED_NAME_RISE: f32 = 15.5;
 
 fn draw_option_buttons(
     ui: &mut Ui,
@@ -264,12 +265,9 @@ fn draw_option_buttons(
         }
         w::face(p, rect, pr.down, false);
         w::inside(p, rect, text, false);
-        let row = Rect::from_min_size(
-            pos2(rect.left(), rect.bottom() + 3.0),
-            vec2(rect.width(), 6.0),
-        );
+        let row = Rect::from_min_size(pos2(rect.left(), rect.top() - 9.0), vec2(rect.width(), 6.0));
         w::led_strip(p, row, 3, |i| i == lit, RED, false);
-        // Printed under the LEDs: 1 2 3 (UNISON, DYN COMP) and HEAVY / MED / LIGHT (KB TOUCH, on
+        // Printed above the LEDs: 1 2 3 (UNISON, DYN COMP) and HEAVY / MED / LIGHT (KB TOUCH, on
         // two staggered lines because the names are wider than the LED pitch).
         let names = if id == "piano.kb_touch" {
             LED_NAMES_TOUCH
@@ -285,7 +283,7 @@ fn draw_option_buttons(
             };
             crate::widgets::label(
                 p,
-                pos2(x, rect.bottom() + LED_NAME_DROP + NAME_LINE * line as f32),
+                pos2(x, rect.top() - LED_NAME_RISE - NAME_LINE * line as f32),
                 n,
                 crate::widgets::MIN_FONT_PX,
                 Color32::from_gray(205),

@@ -52,6 +52,25 @@ mod tests {
     }
 
     #[test]
+    fn photo_anchor_csv_covers_every_piano_control() {
+        let csv = include_str!("../../data/photo_anchors_piano.csv");
+        let ids: Vec<&str> = csv
+            .lines()
+            .skip(1)
+            .map(|l| l.split(',').next().unwrap())
+            .collect();
+        for c in crate::all_controls()
+            .iter()
+            .filter(|c| c.id.starts_with("piano."))
+        {
+            assert!(ids.contains(&c.id.as_str()), "{} has no photo anchor", c.id);
+        }
+        for id in &ids {
+            assert!(crate::layout::rect_for(id).is_some(), "{id} has no rect");
+        }
+    }
+
+    #[test]
     fn unknown_id_is_none() {
         assert!(rect("organ.on").is_none());
     }
