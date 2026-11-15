@@ -2,17 +2,42 @@
 //! `200 ... 8K`), as the panel prints them (photos `NS4-Panel-synth`, `NS4-Panel-effects`,
 //! `NS4-Panel-organ`). A user reads the range and the position of a knob without hovering it.
 //!
-//! Each numeral sits on the radial line of its tick, just outside the 5.5 px tick ring: the text
+//! Each numeral sits on the radial line of its tick, just outside the knob bezel: the text
 //! rectangle is pushed along the tick direction until its nearest corner is [`GAP`] px from the
-//! tick tip, so it never touches the ring (legibility rule `N`).
+//! bezel, so it never touches the knob (legibility rule `N`). The real panel prints no tick marks
+//! on these knobs, so none are drawn ([`tick_tip`]) and the numeral ring is as tight as the photo.
 
 use super::basic::{label, text_width};
 use egui::{pos2, Align2, Color32, Painter, Pos2};
 
-/// Free space (px) between a tick tip and the nearest edge of its numeral.
-const GAP: f32 = 1.2;
-/// Radius (px) of the tick tips beyond the knob body (`knob.rs`: ticks end at `radius + 5.5`).
-const TICK_TIP: f32 = 5.5;
+/// Free space (px) between the knob bezel and the nearest edge of its numeral.
+///
+/// EMPIRICAL: with [`BEZEL`] the numeral centres are 10.4 mm from the knob centre (top `5`
+/// 25.1 px at 2.419 px/mm). The straight-on HA88 render (`NS4_HA88_TopDown-01_241008.jpg`,
+/// 0.1195 mm/px) measures 8.2 mm (`5`) and 8.7 mm (`0`, `10`) on the OSC CTRL knob, but the
+/// photo's digits are about 5 px tall against the 7.5 px legibility minimum, so a tighter ring
+/// makes neighbouring numerals collide (rules `L`, `V`): 4.8 is the smallest gap with the audit
+/// at 0 (3.6 leaves 5 collisions; before this change the ring was 10.7 mm, with ticks).
+const GAP: f32 = 4.8;
+/// Radius (px) the bezel and its stroke reach beyond the knob body (`knob.rs`: `radius + 0.8`).
+const BEZEL: f32 = 1.0;
+/// Radius (px) the tick marks of a knob without numerals reach beyond its body (`knob.rs`).
+const TICK_OUT: f32 = 5.5;
+
+/// How far (px) the marks of knob `id` reach beyond its body: the tick ring for knobs that print
+/// no numerals, only the bezel for knobs that do (the photo draws no ticks next to numerals).
+pub fn tick_tip(id: &str) -> f32 {
+    if numerals(id).is_empty() {
+        TICK_OUT
+    } else {
+        BEZEL
+    }
+}
+
+/// Is the tick ring drawn on knob `id`? Not where numerals take its place.
+pub fn draws_ticks(id: &str) -> bool {
+    numerals(id).is_empty()
+}
 /// Scale text size (the 7.5 px legend minimum).
 const SIZE: f32 = 7.5;
 /// First tick angle and sweep, as in `knob.rs` (bottom left, 270 degrees clockwise).
@@ -76,7 +101,7 @@ pub fn numeral_centre(center: Pos2, radius: f32, frac: f32, w: f32, h: f32) -> P
     let (dx, dy) = (a.cos(), a.sin());
     // Distance from the text centre to its edge along the tick direction.
     let support = dx.abs() * w * 0.5 + dy.abs() * h * 0.5;
-    let d = radius + TICK_TIP + GAP + support;
+    let d = radius + BEZEL + GAP + support;
     pos2(center.x + dx * d, center.y + dy * d)
 }
 
@@ -130,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn a_numeral_keeps_clear_of_the_tick_tips() {
+    fn a_numeral_keeps_clear_of_the_bezel() {
         let c = pos2(0.0, 0.0);
         for i in 0..=10 {
             let (w, h) = (if i == 10 { 9.0 } else { 4.5 }, 7.5);
@@ -138,8 +163,24 @@ mod tests {
             // Nearest point of the text rectangle to the knob centre.
             let nx = (at.x.abs() - w * 0.5).max(0.0);
             let ny = (at.y.abs() - h * 0.5).max(0.0);
-            assert!(nx.hypot(ny) >= 18.0 + TICK_TIP + GAP - 1e-3, "tick {i}");
+            assert!(nx.hypot(ny) >= 18.0 + BEZEL + GAP - 1e-3, "tick {i}");
         }
+    }
+
+    #[test]
+    fn numeral_ring_is_tighter_than_before_and_near_the_legibility_floor() {
+        // Body 15.5 px (18.5 less SHRINK); before: 5.5 px ticks + 1.2 gap gave 10.7 mm (top).
+        let c = pos2(0.0, 0.0);
+        let top = numeral_centre(c, 15.5, 0.5, 4.5, 7.5);
+        let mm = top.to_vec2().length() / 2.419;
+        assert!(mm < 10.7 && mm > 8.7, "top {mm}");
+    }
+
+    #[test]
+    fn numeral_knobs_draw_no_ticks() {
+        assert!(!draws_ticks("synth.filter.freq"));
+        assert!(draws_ticks("master.level"));
+        assert!(tick_tip("synth.filter.freq") < tick_tip("master.level"));
     }
 
     #[test]

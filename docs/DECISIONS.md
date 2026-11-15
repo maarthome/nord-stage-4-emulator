@@ -68,7 +68,9 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D73](#d73-firmwarerouting-is-the-default-the-loader-rule-for-an-empty-layer-mask-is-verified) | 2026-11-14 | `FirmwareRouting` is the default; the loader rule for an empty layer mask is VERIFIED | accepted |
 | [D79](#d79-piano-comparisons-replay-transcribed-velocities-and-pedal) | 2026-11-15 | Piano comparisons replay transcribed velocities and pedal | proposed |
 | [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
+| [D89](#d89-the-sy-pitch-table-entry-writer-is-not-found-the-index-comes-from-an-arm-slot-object---sample-pitch-fw-stays-opt-in) | 2026-11-15 | The SY pitch table entry writer is not found; the index comes from an ARM slot object; `--sample-pitch fw` stays opt-in | accepted |
 | [D83](#d83-the-pure-noise-row-of-the-p-table-takes-the-saw-gain-verified-arm-word-the-synth-layer-level-law-stays-open) | 2026-11-15 | The PURE noise row of the P table takes the saw gain (VERIFIED ARM word); the synth layer level law stays open | proposed |
+| [D86](#d86-piano-decay-and-attack-no-engine-change-the-t60-gap-was-a-replay-artefact-per-octave-t60-is-measured-by-toolspiano_decaypy) | 2026-11-15 | Piano decay and attack: no engine change; the T60 gap was a replay artefact; per-octave T60 measured by `tools/piano_decay.py` | accepted |
 | [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | accepted |
 | [D78](#d78-library-drawer-loads-start-from-an-init-program-the-organ-ladders-follow-the-section-state) | 2026-11-15 | Library drawer loads start from an Init Program; the organ ladders follow the section state | accepted |
 | [D70](#d70-the-arm-p-words-drive-the-multi-and-super-stages-under---synth-p-verified-the-default-stays-the-empirical-table) | 2026-11-14 | The ARM P words drive the MULTI and SUPER stages under `--synth-p verified`; the default stays the EMPIRICAL table | accepted |
@@ -898,14 +900,29 @@ Grand Pad best squared (1.24 1.46 2.69 1.0; RMS +0.6 +2.3), estimated contradict
 Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out document comparison switch).
 `engine/mod.rs`, `engine/mix.rs`, `render_opts.rs` (test `synth_layer_law_squares_the_fader_only_when_selected`), segment `pianopad_grand`, OQ22. renders hashes unchanged.
 
-### D85. Organ level `K = 2.8` stays EMPIRICAL: the image audit finds no `1 / 0.21875` lane word; the D72 lead is pinned by a test
-- **Status:** accepted
-- **Decided by:** Claude (agent)
-- **Context:** D72 noted `K = 2.8` is within 0.23 dB of `1.6 * 0.3732 / 0.21875` (organ chain word times FX path over the piano SMP slew gain). The task was to replace `K` by a firmware-derived value, promoting it only if verified end to end (D22).
-- **Decision:** Audit the FX, PNO and ORG DSP images and the ARM code for a stored word equal to `2.8`, `0.21875` or `1 / 0.21875` ([organ-output-law](research/organ-output-law.md) s6). None is a stored float in a DSP image (all matches are at non-word-aligned offsets); the ARM matches are not decoded. `K` stays `EMPIRICAL`, `Chain` stays opt-in, no default moves. A unit test pins the lead so a later decode has the number to hit.
-- **Why:** A numerical coincidence of two unrelated words is not a derivation (provenance rule: do not upgrade a tag without new evidence); the clips cannot separate 2.73 from 2.8.
-- **Alternatives:** Add a `chain / 0.21875` law (rejected: same audio as `K` within 0.23 dB, would carry a false VERIFIED look); flip `Chain` as default (rejected: 13 dB under B3 / Vox clips).
-- **Impact:** Doc comment and test in `organ/output_level.rs`; research s6; OQ24 update. No audio change, `render_hash` unchanged.
+### D89. The SY pitch table entry writer is not found; the index comes from an ARM slot object; `--sample-pitch fw` stays opt-in
+
+- **Status:** accepted 2026-11-15
+- **Decided by:** Yuri Olive (task from the parent session; evidence [sy-pitch-entry-writer](research/sy-pitch-entry-writer.md))
+- **Context:** D65 left the writer of the 16-bit packed float `e` at `DM(0x9354A + index)` open; D22 needs the firmware path verified end to end before `--sample-pitch fw` becomes the default. The task was to trace the writer in the ARM harness the way [synth-p-writer](research/synth-p-writer.md) found the P words.
+- **Decision:** (1) No writer exists on any path the harness runs: no ARM message (boot, load, bind, note-on with the voice update), no ARM literal or table outside the DSP image streams, no DSP store in the SY listing, no SMP operand in the window. (2) New: the index is not the DSP reset value `0x36`; the ARM writes pair block word 0 as `slot | spec` (`0xC01E2B08`, `0xC01E2CC8`), the slot is copied from a two-word object (`0x9062F0F0`: `0, -1`, nothing writes it in the run), so the first SAMPLES voice reads `DM(0x9354A)`, which is zero in the image. (3) `--sample-pitch` stays off; `step_join::table_entry_for_key` stays a model; no engine change, no golden or `render_hash` moves. (4) New `tools/arm_sy_slot_probe.py` reproduces the chain and the watches.
+- **Why:** The entry value cannot be verified end to end, so D22 is not met; the modelled step is already within 0.5 % of the semitone law (below audibility), so a flip would change renders for no verified gain.
+- **Alternatives:** Flip on the model (rejected: same reason as D65); poke an invented slot allocator into the harness (rejected: it would only restate the model).
+- **Impact:** New research note, tool and test; OQ22, TD-08 and the ROADMAP item updated; section 14 of [synth-sample-kernel-rule](research/synth-sample-kernel-rule.md) gets a pointer (its "index stays `0x36`" is the DSP reset only).
+D86. Piano decay attack: change; T60 gap replay artefact; per-octave T60 measured by `tools/piano_decay.py`
+
+[piano-felt-upright-soft](research/piano-felt-upright-soft.md) s2 reported hardware T60 3.2 s against 1.3 s emulator, [piano-transcription](research/piano-transcription.md) s4 attack 121 / 99 ms (chain slew) against 64 / 56 ms. Both came uniform-velocity, pedal-less replay older build. forbids flipping defaults weak evidence.
+`piano.rs`, slew Add `tools/piano_decay.py` (per-octave fundamental T60 hardware clip against emulator transcribed notes pedal) commit derived numbers (`docs/research/data/piano_decay_per_octave.json`, [piano-decay-attack](research/piano-decay-attack.md)). `rate_for` (Velvet-only rate table, ASSUMED) absolute level slew gain stay open (OQ20).
+With transcribed pedal velocities median emulator-to-hardware T60 ratio default 1.00 over 9 octave groups four clips (0.59 2.86); Felt Upright tail 4.25 s against 3.34 s hardware, old "1.3 s" reproduced. Default attack about 10 ms faster than hardware (17 %); slew measures 47 70 ms against 56 64 ms this HEAD, 2x. Fitting decay release constant break octaves that now agree (Felt Upright 9.01 / 9.00 s) chase scatter (1 13 notes per octave).
+Fit damper / release time constant clips gap fit, EMPIRICAL lossy reverberant audio, D22); replace default release envelope by 44 ms release release slew path's, opt-in, its absolute level open); slew level 1 8 dB under default three clips, D72).
+**Update (same PR):** Single-note show slew follows velocity (0.238 dB per velocity unit, default) constant -19.4 dB (= 0.21875 muted extra voice, open bus scale), pedal down (and slew) bypassed 25 77 clip notes; that mix, wrong decay attack parameter, explains clip gap slew. Test `pedal_down_bypasses_the_slew_voice`; decoding damper-down list follow-up.
+tests (`tools/tests/test_piano_decay.py`), data file, spec paragraph `docs/specs/piano-engine.md`, OQ20 update, item. Rust change; every are D85. Organ level `K = 2.8` EMPIRICAL: audit finds `1 / 0.21875` lane word; D72 lead pinned by test
+Claude (agent)
+D72 noted `K = 2.8` 0.23 dB `1.6 * 0.3732 / 0.21875` (organ times FX over piano slew gain). replace `K` by firmware-derived value, promoting if (D22).
+Audit FX, PNO ORG images code stored equal `2.8`, `0.21875` `1 / 0.21875` ([organ-output-law](research/organ-output-law.md) s6). None stored (all matches are non-word-aligned offsets); matches are decoded. `K` `EMPIRICAL`, `Chain` opt-in, default A unit test pins lead later decode has number hit.
+A numerical coincidence two unrelated words derivation (provenance rule: do upgrade tag without new evidence); clips separate 2.73 2.8.
+Add `chain / 0.21875` audio `K` 0.23 dB, carry false VERIFIED look); `Chain` default 13 dB under B3 / Vox clips).
+Doc comment test `organ/output_level.rs`; s6; OQ24 update. audio 
 
 ### D90. Mod 2 parameter laws are verified on a dense ARM grid; the shared amount / rate words get their joint law; `mod2` stays opt-in
 
