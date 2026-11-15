@@ -40,7 +40,7 @@ impl FxSharing {
 
 /// Applies `f(dst, src)` for every `dst` in `dsts` except `src` (split borrow, no allocation).
 fn copy_to(
-    chains: &mut [LayerFxChain; 7],
+    chains: &mut [LayerFxChain],
     src: usize,
     dsts: std::ops::Range<usize>,
     f: fn(&mut LayerFxChain, &LayerFxChain),
@@ -85,7 +85,7 @@ impl Stage4Engine {
             self.global_reverb
                 .copy_reverb_settings_from(&self.fx_chains[src]);
         }
-        for fx in &mut self.fx_chains {
+        for fx in self.fx_chains.iter_mut() {
             fx.bypass_reverb = rev_src.is_some();
         }
     }
@@ -146,7 +146,7 @@ mod tests {
         e.fx_sharing.delay_global = Some(3);
         e.fx_sharing.comp_global = Some(3);
         e.apply_fx_sharing();
-        for fx in &e.fx_chains {
+        for fx in e.fx_chains.iter() {
             assert!(fx.delay_enabled && fx.comp_enabled);
             assert_eq!(fx.delay_time_ms, 123.0);
             assert_eq!(fx.comp_amount, 0.8);

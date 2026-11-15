@@ -63,8 +63,6 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("synth.arp.range", 5.0, 0.0),
     // The Rotary DRIVE knob moves up so its name fits between the numerals and the ORGAN legend.
     ("rotary.drive", 0.0, -4.0),
-    // "DECAY FAST" and "HARMONIC 3RD" touched; the third button moves right.
-    ("organ.perc_third", 12.0, 0.0),
 ];
 
 /// `(id prefix, dx, dy)`: shift of every control whose id starts with the prefix, added to its
@@ -90,8 +88,6 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     ("synth.filter.", 0.0, 16.0),
     ("synth.amp.", 0.0, 16.0),
     ("synth.unison", 0.0, 16.0),
-    // Organ: the VIB/CHORUS A / B buttons move down so their names clear the bottom type names.
-    ("organ.vibrato_on.", 0.0, 5.0),
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
     ("organ.perc_", 3.0, 0.0),
     // Piano: the PIANO SELECT box (type names, dial) moves under the KB TOUCH / DYN COMP LEDs; the

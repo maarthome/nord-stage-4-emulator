@@ -265,7 +265,7 @@ impl Stage4Engine {
             return;
         }
         self.master_clock.bpm = (60.0 / interval).clamp(30.0, 300.0);
-        for fx in &mut self.fx_chains {
+        for fx in self.fx_chains.iter_mut() {
             fx.snap_delay_time(self.master_clock.bpm);
         }
     }
