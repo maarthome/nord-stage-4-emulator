@@ -65,9 +65,21 @@ The decoded stream holds 26,615 zone records after the script (226 bytes, 462 of
 
 No group id exists inside the zone record (the only other varying bytes are 2-value flags), so group membership, per-group envelopes, filters and effect chains are not parsed yet.
 
+## Groups (tools/nki_groups.py)
+
+181 group records sit between the script and the zone array, each starting with `u32 n, UTF-16 name` (`astoria .grand #dn`) and about 4850 bytes long. Suffixes: `#dn` 28, `#up` 84, `#xx` 28, `#ko` 41. Each record holds length-prefixed ASCII identifiers: parameters (`volume`, `pan`, `pitch`, `frequency`, `intensity`, `filterCutoff`, `ahdsr_attack`, `ahdsr_release`) and modulators (`ENV_AHDSR_VOLUME`, `LFO_SAW_TREMOLO`, `LFO_SAW_AUTOPAN`, `LFO_TRI_PITCH`, `ENV_AHDSR_PITCH`, `VEL_VOLUME`, `KP_VOLUME`, `KSP_*`, `KP_*`).
+
+| Finding | Evidence |
+|---|---|
+| Group volume is the 3rd `volume` identifier's float | EMPIRICAL: the only occurrence that varies across groups; 0.780274 for all 28 `#dn`, 28 `#xx` and 84 `#up` groups, 0.840287 for all 41 `#ko` groups (release groups differ by a fixed amount). The dB meaning of the normalized value is not confirmed (ASSUMED: 0.78 is 0 dB). |
+| Same modulator set everywhere | 187 each of `ENV_AHDSR_VOLUME`, `LFO_SAW_TREMOLO`, `LFO_SAW_AUTOPAN`, `LFO_TRI_PITCH`, `ENV_AHDSR_PITCH`, `VEL_VOLUME`, `KP_VOLUME`, `KSP_VOLUME`, `KSP_CUTOFF` across the 181 groups (a few groups carry extra blocks); per-group differences were not compared. |
+| Zone to group membership | Not resolved. Zones are stored in group-like runs and a greedy suffix match (`#dn`/`#up`/`#xx`/`#ko` against `DN`/`UP`/`KO` sample names) lines up only the first 107 groups (grands and uprights), but electric pianos, digital sets and pads do not follow the group order, and the group names differ from the sample set names for some sets. No group id exists inside the 226-byte zone record. |
+
+Envelope times, LFO rates, modulation intensities and per-group effect values are stored as floats after these identifiers but are not decoded yet.
+
 ## Not verified / not done
 
-- Group records (membership, amp/filter envelopes, effect chains and their values, `ir_samples` convolution references) are not parsed. Zones and the file list are (see above).
+- Group envelope times, LFO rates, modulation intensities, effect chains and values, `ir_samples` convolution references, and zone-to-group membership are not decoded. Zones, the file list, group names, group volume and modulator inventory are (see above).
 - Kontakt versions other than 8.4 and protected libraries: untested.
 - Compression runs ~12x (1 MB to 12 MB); decode time ~1 s.
 
@@ -78,4 +90,4 @@ Velocity shaping and release-sample behaviour for the UP2 oracle can be taken fr
 ## Follow-ups
 
 - Parse the instrument tables after the script (groups, zones, per-group envelopes, effect chains, `%awued`-style arrays).
-- Confirm the formulas above by comparing against the WAV catalog (`tools/up2_oracle.py`).
+- The velocity and release-volume formulas cannot be confirmed against the WAV catalog: every exported file is peak-normalized (`peak_db` spread across velocities of one set and note is under 0.5 dB in 3,737 of 3,790 stacks, max 4.7 dB), so loudness-by-velocity and release gain are not in the audio. Only timbre (centroid, decay) varies with velocity there. Confirming the formulas needs Kontakt-rendered output, not the sample export.

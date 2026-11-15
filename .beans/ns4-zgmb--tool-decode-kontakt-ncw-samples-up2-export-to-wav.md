@@ -22,8 +22,8 @@ The user owns an Ultimate Pianos 2 Kontakt library and exported (from Kontakt ed
 - [x] Unit tests with synthetic fixtures for every tool
 - [x] Validated on the real export (zone frames equal WAV frames 26,405/26,405; names match 26,405/26,405)
 - [x] `docs/research/ncw-format.md` and `docs/research/nki-lz-stream.md`
-- [ ] Group records (envelopes, filters, effect chains with values, IR references) parsed
-- [ ] Script velocity/release formulas compared against the WAV catalog
+- [ ] Group records (envelopes, filters, effect chains with values, IR references) parsed (names, volume, modulator inventory done in ns4-ckiq; the rest tracked there)
+- [x] Script velocity/release formulas compared against the WAV catalog: not possible, samples are peak-normalized per file (documented in nki-lz-stream.md follow-ups)
 
 ## Out of Scope
 Decrypting `.nkx` or protected libraries; redistributing samples or derived third-party audio; chorus/phaser/flanger parameter values (set outside `on ui_control`).
