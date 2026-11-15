@@ -85,6 +85,10 @@ pub(super) const LED_BUTTON_GAP: f32 = 2.5;
 /// Height (px) from a button's top edge to the centre of its LED: bezel, gap, LED bezel radius.
 pub(super) const LED_LIFT: f32 = BUTTON_BEZEL_PX + LED_BUTTON_GAP + LED_ABOVE_R + 1.0;
 
+/// Lift (px) of a name printed above a button that has its LED above it: clears the LED bezel
+/// (audit rule `T`, 0.6 px) with the text baseline band.
+pub(super) const TAG_LIFT_LED: f32 = LED_LIFT + LED_ABOVE_R + 1.0 + 0.8;
+
 /// Centre of the state LED above `button`, clear of its bezel by [`LED_BUTTON_GAP`].
 pub(super) fn led_above(button: Rect) -> egui::Pos2 {
     pos2(button.center().x, button.top() - LED_LIFT)
@@ -182,8 +186,12 @@ pub(super) fn tag_fit(p: &Painter, rect: Rect, text: &str, lift: f32, max_w: f32
 /// Pitch of stacked [`tag_fit`] lines (px): the minimum font plus a 2 px gap (audit rule `V`).
 const TAG_LINE: f32 = 9.5;
 
+/// Distance (px) from the button bottom to the top of its Shift legend: with the legend LED
+/// (radius 1.4) beside the text it keeps 2.5 px clear of the bezel (audit rule `B`).
+const LEGEND_DROP: f32 = 2.3;
+
 /// Distance (px) from the start of a legend's text to the centre of its state LED.
-const LEGEND_LED_GAP: f32 = 5.0;
+pub(super) const LEGEND_LED_GAP: f32 = 5.0;
 
 /// Map a gesture to a trigger; a double tap is just a second primary tap on these buttons.
 fn trigger_of(g: Gesture, shift_held: bool, shift_fn: bool) -> Trigger {
@@ -262,14 +270,7 @@ pub(super) fn gesture_button(
         StrokeKind::Inside,
     );
     if let Some(lit) = face.led {
-        led_small(
-            p,
-            led_above(rect),
-            lit,
-            LED_RED,
-            LED_RED_DIM,
-            LED_ABOVE_R,
-        );
+        led_small(p, led_above(rect), lit, LED_RED, LED_RED_DIM, LED_ABOVE_R);
     }
     mark(ui, id);
     let tip = match face.dim {
@@ -297,7 +298,7 @@ pub(super) fn shift_legend(
     lit: Option<bool>,
     dim: Option<&str>,
 ) {
-    let pos = pos2(base.center().x, base.bottom() + 1.5);
+    let pos = pos2(base.center().x, base.bottom() + LEGEND_DROP);
     let col = if dim.is_some() {
         dim_legend(Color32::WHITE)
     } else {

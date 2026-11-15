@@ -36,14 +36,14 @@ fn circle(r: Rect) -> (Pos2, f32) {
 }
 
 /// Pixel rectangles of the panel's buttons (layout rectangles of `Button` controls).
-fn buttons() -> Vec<Rect> {
+fn buttons() -> Vec<(String, Rect)> {
     let mut seen = BTreeSet::new();
     nord_panel::all_controls()
         .iter()
         .filter(|c| c.kind == ControlKind::Button)
-        .filter_map(|c| super::layout_px::rect_of(&c.id, Pos2::ZERO))
-        .filter(|r| r.area() < MAX_BUTTON_PX2)
-        .filter(|r| seen.insert((r.min.x as i32, r.min.y as i32, r.max.x as i32)))
+        .filter_map(|c| Some((c.id.clone(), super::layout_px::rect_of(&c.id, Pos2::ZERO)?)))
+        .filter(|(_, r)| r.area() < MAX_BUTTON_PX2)
+        .filter(|(_, r)| seen.insert((r.min.x as i32, r.min.y as i32, r.max.x as i32)))
         .collect()
 }
 
@@ -62,13 +62,13 @@ fn led_button(a: &Audit, out: &mut BTreeSet<String>) {
     let btns = buttons();
     for led in a.recs.iter().filter(|r| r.kind == Kind::Led) {
         let (c, rad) = circle(led.rect);
-        for b in &btns {
+        for (id, b) in &btns {
             if b.contains(c) {
                 continue;
             }
             let gap = dist_to_rect(c, b.expand(BUTTON_BEZEL)) - rad;
             if gap < LED_BUTTON - 1e-3 {
-                out.insert(format!("B led@{:.0},{:.0} gap {gap:.1}", c.x, c.y));
+                out.insert(format!("B led@{:.0},{:.0} {id} gap {gap:.1}", c.x, c.y));
             }
         }
     }

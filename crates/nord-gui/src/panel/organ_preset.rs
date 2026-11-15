@@ -5,7 +5,7 @@
 //! into the stored preset. Engine side: `OrganEdit::{DrawbarLive, LiveDrawbars, SyncPreset}`
 //! (host `organz_drawbar_live_{n}`, `organz_live1..9_{n}`, `organz_sync_{n}`).
 
-use super::ctl::{gesture_button, shift_legend, tag, Face};
+use super::ctl::{gesture_button, shift_legend, tag, Face, TAG_LIFT_LED};
 use super::layout_px::rect_or_empty;
 use super::prelude::*;
 use crate::audio::OrganEdit;
@@ -57,7 +57,7 @@ pub(super) fn render_preset(
         Some(Trigger::Shifted) => sync_preset(state, audio),
         _ => {}
     }
-    tag(painter, btn, "PRESET", 8.0);
+    tag(painter, btn, "PRESET", TAG_LIFT_LED);
     shift_legend(ui, btn, "organ.sync", "SYNC", None, None);
 }
 

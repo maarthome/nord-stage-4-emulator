@@ -151,7 +151,8 @@ pub fn led_strip(
     } else {
         rect.width()
     } / n.max(1) as f32;
-    let r = (step * 0.42).clamp(1.2, 3.0);
+    // Bezels (r + 1) keep 2 px between neighbours (audit rule `D`).
+    let r = (step * 0.5 - 2.0).clamp(1.2, 2.4);
     for i in 0..n {
         let off = (i as f32 + 0.5) * step;
         let c = if vertical {
