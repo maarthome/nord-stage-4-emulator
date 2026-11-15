@@ -22,6 +22,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import synth_stage_super2 as super2
+import synth_stage_wave as wave_bank
 import synth_wave_model as m
 import synth_wave_oracle as o
 
@@ -65,6 +66,8 @@ def record(
         lanes = o.random_lanes(rng, stage in o.UNISON_STAGES)
         if stage == o.STAGE_SUPER24:
             super2.random_state(seed, lanes)
+        if stage == o.STAGE_WAVE:
+            wave_bank.random_state(seed, lanes)
         o.random_hp(rng, lanes, stage)
         o.random_misc(seed, lanes, stage)
         o.random_s5(seed, lanes, stage)

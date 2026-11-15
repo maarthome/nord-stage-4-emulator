@@ -5,7 +5,9 @@
 //! pointer crosses or comes within `SNAP_TOLERANCE` of the stored value.
 //!
 //! ASSUMED: the hardware pots are physical and behave this way ("pick-up");
-//! the manual does not describe it. Confirm on hardware (OQ13).
+//! the manual does not describe it. Searched in the host firmware and not found:
+//! no ADC peripheral, no pick-up / catch strings, the matrix scan has no analogue
+//! column (`docs/research/firmware-gesture-timings.md` s5). Confirm on hardware (OQ13).
 
 /// Normalized distance within which a knob picks up the stored value.
 /// ASSUMED: 2 % of the travel.
