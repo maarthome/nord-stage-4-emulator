@@ -67,6 +67,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D73](#d73-firmwarerouting-is-the-default-the-loader-rule-for-an-empty-layer-mask-is-verified) | 2026-11-14 | `FirmwareRouting` is the default; the loader rule for an empty layer mask is VERIFIED | accepted |
 | [D79](#d79-piano-comparisons-replay-transcribed-velocities-and-pedal) | 2026-11-15 | Piano comparisons replay transcribed velocities and pedal | proposed |
 | [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
+| [D84](#d84-the-sy-pitch-table-entry-writer-is-not-found-the-index-comes-from-an-arm-slot-object---sample-pitch-fw-stays-opt-in) | 2026-11-15 | The SY pitch table entry writer is not found; the index comes from an ARM slot object; `--sample-pitch fw` stays opt-in | accepted |
 | [D83](#d83-the-pure-noise-row-of-the-p-table-takes-the-saw-gain-verified-arm-word-the-synth-layer-level-law-stays-open) | 2026-11-15 | The PURE noise row of the P table takes the saw gain (VERIFIED ARM word); the synth layer level law stays open | proposed |
 | [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | accepted |
 | [D78](#d78-library-drawer-loads-start-from-an-init-program-the-organ-ladders-follow-the-section-state) | 2026-11-15 | Library drawer loads start from an Init Program; the organ ladders follow the section state | accepted |
@@ -887,3 +888,13 @@ accepted
 Grand Pad best squared (1.24 1.46 2.69 1.0; RMS +0.6 +2.3), estimated contradicts it, does meet bar flip.
 Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out document comparison switch).
 `engine/mod.rs`, `engine/mix.rs`, `render_opts.rs` (test `synth_layer_law_squares_the_fader_only_when_selected`), segment `pianopad_grand`, OQ22. renders hashes unchanged.
+
+### D84. The SY pitch table entry writer is not found; the index comes from an ARM slot object; `--sample-pitch fw` stays opt-in
+
+- **Status:** accepted 2026-11-15
+- **Decided by:** Yuri Olive (task from the parent session; evidence [sy-pitch-entry-writer](research/sy-pitch-entry-writer.md))
+- **Context:** D65 left the writer of the 16-bit packed float `e` at `DM(0x9354A + index)` open; D22 needs the firmware path verified end to end before `--sample-pitch fw` becomes the default. The task was to trace the writer in the ARM harness the way [synth-p-writer](research/synth-p-writer.md) found the P words.
+- **Decision:** (1) No writer exists on any path the harness runs: no ARM message (boot, load, bind, note-on with the voice update), no ARM literal or table outside the DSP image streams, no DSP store in the SY listing, no SMP operand in the window. (2) New: the index is not the DSP reset value `0x36`; the ARM writes pair block word 0 as `slot | spec` (`0xC01E2B08`, `0xC01E2CC8`), the slot is copied from a two-word object (`0x9062F0F0`: `0, -1`, nothing writes it in the run), so the first SAMPLES voice reads `DM(0x9354A)`, which is zero in the image. (3) `--sample-pitch` stays off; `step_join::table_entry_for_key` stays a model; no engine change, no golden or `render_hash` moves. (4) New `tools/arm_sy_slot_probe.py` reproduces the chain and the watches.
+- **Why:** The entry value cannot be verified end to end, so D22 is not met; the modelled step is already within 0.5 % of the semitone law (below audibility), so a flip would change renders for no verified gain.
+- **Alternatives:** Flip on the model (rejected: same reason as D65); poke an invented slot allocator into the harness (rejected: it would only restate the model).
+- **Impact:** New research note, tool and test; OQ22, TD-08 and the ROADMAP item updated; section 14 of [synth-sample-kernel-rule](research/synth-sample-kernel-rule.md) gets a pointer (its "index stays `0x36`" is the DSP reset only).
