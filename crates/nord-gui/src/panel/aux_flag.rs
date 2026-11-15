@@ -20,7 +20,21 @@ pub(super) fn aux_flag_from_telemetry(
     })
 }
 
-/// Draw one Aux KB LED in `rect`; returns `true` when it was clicked.
+/// Print the `AUX KB` legend left of the LED rectangle `rect` (panel photos: `A AUX KB (LED)` above the
+/// layer button), so the LED is not an unlabelled dot.
+fn aux_legend(p: &Painter, rect: Rect) {
+    let ink = Color32::from_gray(165);
+    crate::widgets::label(
+        p,
+        pos2(rect.left() - 3.5, rect.center().y),
+        "AUX KB",
+        7.5,
+        ink,
+        Align2::RIGHT_CENTER,
+    );
+}
+
+/// Draw one Aux KB LED in `rect`, with its `AUX KB` legend; returns `true` when it was clicked.
 pub(super) fn aux_led(ui: &mut Ui, rect: Rect, id: &str, lit: bool, tip: &str) -> bool {
     let r = (rect.width().min(rect.height()) * 0.5).clamp(1.2, 2.4);
     led_small(
@@ -31,6 +45,7 @@ pub(super) fn aux_led(ui: &mut Ui, rect: Rect, id: &str, lit: bool, tip: &str) -
         LED_GREEN_DIM,
         r,
     );
+    aux_legend(&ui.painter().clone(), rect);
     let resp = ui.interact(rect.expand(2.0), ui.id().with((id, "aux")), Sense::click());
     let clicked = resp.clicked();
     resp.on_hover_text(tip);
