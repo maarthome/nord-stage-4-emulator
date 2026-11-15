@@ -18,7 +18,7 @@ The SHARC routines of all six types are ported instruction by instruction and ch
 | 1 PHAS 1 | rate `c[-32]` | dense knots; no shared word |
 | 2, 3 FLANG | `c[-16]` both ids, `c[-15] = -100 - c[-16]` | product `A(a) R(r) / R(64)` VERIFIED on 3 x 44 (9.5e-8 relative); knots dense |
 | 6, 7 VIBE | amount `v / 128`, rate `0x3200 + 512 (v^2 >> 2)` | VERIFIED exactly at all 44 values (test) |
-| 8, 9 ENS | rate / amount words in the boot row | **not wired** (s5) |
+| 8, 9 ENS | none (one type-switch message) | wired in D95 with ASSUMED circular tap registers (s5) |
 | 10, 11 SPIN | rate `c[-16]`, amount words `c[-21]`, ... | dense knots; no shared word |
 
 `FirmwareFx::mod2` stays opt-in ([D90](../DECISIONS.md)): only CHOR has a hardware clip, and it did not close the delay ([fx-chorus-hw-clip](fx-chorus-hw-clip.md)). The ARM plus SHARC check is VERIFIED for the parameter mapping and the algorithm of every wired type.
@@ -56,9 +56,9 @@ Before: the PHAS 0 stage computed `A R / R(64)` (wrong by up to 8x at rate 0 and
 
 The 44 CHOR values show the amount law is exact through the knee: `c[-0x1E] = 117 + 39 (v - 63.5) / 63.5`, `c[-0x1D] = 171 + 9 r`, mix `c[-3]` ramps with slope `0.0111339` (not `0.011129`) to `0x3F34FDF4` = 0.7070000, `c[-2] = (v - 63.5) 0.0111339` (word at 64: 0.0055669). The firmware cap is 0.707, not `1/sqrt 2`. These are the words of the hardware clip's type 4; they do not change the delay finding of [fx-chorus-hw-clip](fx-chorus-hw-clip.md) (delay 1.7x, rate and wet gain agree).
 
-## 5. ENS is not wired: the left voice needs state the harness does not give
+## 5. ENS: the left voice needs state the harness does not give (wired ASSUMED, D95)
 
-ENS (types 8, 9, `0x123A7B`) is oracle-exact as a routine. Wiring needs the left voice. With the boot row its left output is exactly 0 (fx-mod2-types s8.3). Finding, reproduced by the test `the_ensemble_left_voice_needs_circular_tap_registers`: the routine sets `L6 = 0x200` only; the left and right taps are read through `I4` and `I7` (`dm(m6, i4)`, `m6 = 0x202`), whose `B` / `L` the routine never sets, and the writes wrap through `I6`. With `B4 = B7 = ring`, `L4 = L7 = 0x200` the left output runs (peak 1.6 against 0 with the boot row); with the registers at 0 (the oracle scenarios) it stays silent because the left mirror is never written. Whether the hardware dispatcher presets `B4 / L4 / B7 / L7` is not decoded (no `l4=` / `b4=` write in the core 2 listing, 12,616 lines), and no hardware clip has ENS (3 factory programs). ENS stays on the engine; the experiment is a switch in `Mod2State::circular_taps` that nothing sets. **ASSUMED**; closing it needs the dispatcher's register state at the call (a SHARC trace with a real ENS instance) or a clip.
+ENS (types 8, 9, `0x123A7B`) is oracle-exact as a routine. Wiring needs the left voice. With the boot row its left output is exactly 0 (fx-mod2-types s8.3). Finding, reproduced by the test `the_ensemble_left_voice_needs_circular_tap_registers`: the routine sets `L6 = 0x200` only; the left and right taps are read through `I4` and `I7` (`dm(m6, i4)`, `m6 = 0x202`), whose `B` / `L` the routine never sets, and the writes wrap through `I6`. With `B4 = B7 = ring`, `L4 = L7 = 0x200` the left output runs (peak 1.6 against 0 with the boot row); with the registers at 0 (the oracle scenarios) it stays silent because the left mirror is never written. Whether the hardware dispatcher presets `B4 / L4 / B7 / L7` is not decoded (no `l4=` / `b4=` write in the core 2 listing, 12,616 lines), and no hardware clip has ENS (3 factory programs). `FwLawStage::new` now sets `Mod2State::circular_taps` for ENS (D95). **ASSUMED**; closing it needs the dispatcher's register state at the call (a SHARC trace with a real ENS instance) or a clip.
 
 ## 6. Hardware clips
 

@@ -43,6 +43,18 @@ impl LayerFxChain {
         FwReverbMulti::TYPES.contains(&t).then_some(t)
     }
 
+    /// The `kRvbColor` value of the engine colour: Normal 0, Dark 1, Bright 2. VERIFIED: the
+    /// firmware value-name list after the type names is `Normal, Dark, Bright`
+    /// (`docs/research/fx-reverb-names.md`). `Chorale` is the engine's name of the type variation
+    /// flag (`type & 1`, already part of the `kRvbType`), so it keeps colour 0.
+    pub(super) fn fw_multi_color(color: ReverbColor) -> usize {
+        match color {
+            ReverbColor::Normal | ReverbColor::Chorale => 0,
+            ReverbColor::Dark => 1,
+            ReverbColor::Bright => 2,
+        }
+    }
+
     /// The firmware multi-tap reverb: like [`Self::process_fw_reverb`], the routine mixes dry and
     /// wet itself from the `kRvbAmt` words. A type change retypes the instance in place.
     fn process_fw_reverb_multi(&mut self, rvb_type: usize, l: f32, r: f32) -> [f32; 2] {
@@ -60,8 +72,12 @@ impl LayerFxChain {
                 });
             }
         }
+        let color = Self::fw_multi_color(self.reverb_color);
         match &mut self.fw_reverb_multi {
             Some(rv) => {
+                if rv.color() != color {
+                    rv.set_color(color);
+                }
                 rv.set_amount(ui, false);
                 rv.process_frame([l, r])
             }
