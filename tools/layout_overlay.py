@@ -13,8 +13,12 @@ For one section it
      (`<out>/<crop>_overlay.png`), and, with `--shots`, a side-by-side with our own screenshot
      (`python tools/gui_shots.py --scale 4 --sections <section>`),
   3. reads `crates/nord-panel/data/photo_anchors_<section>.csv` (id, photo_x, photo_y: the
-     real control's centre in crop px, read by eye from the crop) and prints per control the
-     offset in mm between our rectangle centre and the real centre, flagging |offset| > 2 mm.
+     real control's centre in crop px, read by eye from the crop; `#` comment lines; an optional
+     `shared_with` column marks ids that draw on another control's rectangle and are not
+     checked) and prints per control the offset in mm between our rectangle centre and the real
+     centre, flagging |offset| > 2 mm.
+
+The `effects` crop is mapped isotropically (`ISOTROPIC`), not onto the section rectangle.
 
 The crops live in `.reference/crops` (git-ignored, never committed); output goes to
 `target/layout_check/` (git-ignored). Needs Pillow.
@@ -70,9 +74,16 @@ TD_ORIGIN = (400.0, 482.0)
 # k on both axes (multi-scale `cv2.matchTemplate` of the crop against the render, TM_CCOEFF_NORMED:
 # organ 0.920 at k 0.995, piano 0.919 at k 0.990). Section top edge: render y 691 px = 25.0 mm.
 # The older affine outline mapping stretched the 137 mm tall sections onto the 179 mm panel height.
+# `synth`: outline x 12..1988 onto the section's x edges (k = 1.08978), outline top y 12 on the
+# plate top (691 px = 25.0 mm; the origin used to be 26.0 mm, 8.4 px lower). `program`, `keybed`
+# and `wheels` are crops of the render itself (k = 1, origin 0).
 ISO = {
     "organ": (2166.5, 678.75, 0.995),
     "piano": (4112.3, 674.2, 0.990),
+    "synth": (5955.69, 678.15, 1.08978),
+    "program": (0.0, 0.0, 1.0),
+    "keybed": (0.0, 0.0, 1.0),
+    "wheels": (0.0, 0.0, 1.0),
 }
 CROPS = {
     "program": (
@@ -113,6 +124,13 @@ CROPS = {
         None,
     ),
 }
+# Hero crops that are NOT stretched onto their section: crop -> (mm per crop px, panel x in mm of
+# crop x = 0, panel y in mm of crop y = 0). One scale on both axes; the crop shows the section
+# header strip but not the 26 mm connector strip above it or the 18 mm lip below it.
+#   effects: registered onto the straight-on HA88 render by FFT cross-correlation (peak 0.76 at
+#   1.0175 crop px per render px, offset (17.5, 10.0) crop px from render px (8138, 683)):
+#   0.119488 mm/px / 1.0175 = 0.11743 mm/px; panel mm = (render px - (400, 482)) * 0.119488.
+ISOTROPIC = {"effects": (0.11743, 922.55, 22.85)}
 SECTION_CROP = {
     "master": "organ",
     "organ": "organ",
@@ -190,10 +208,21 @@ def outline_anchors(outline, rect):
     ]
 
 
-def load_photo_anchors(path):
-    """`{id: (photo_x, photo_y)}` from the committed CSV."""
+def load_photo_anchors(path, shared=False):
+    """`{id: (photo_x, photo_y)}` from the committed CSV (`#` lines are comments).
+
+    Rows with a `shared_with` column value name an id that draws on another control's rectangle
+    (a Shift function or LED choice): they are left out unless `shared` is true, because their
+    real position cannot be checked against a rectangle that is not theirs.
+    """
     with open(path, newline="", encoding="utf-8") as f:
-        return {r["id"]: (float(r["photo_x"]), float(r["photo_y"])) for r in csv.DictReader(f)}
+        lines = (ln for ln in f if not ln.lstrip().startswith("#"))
+        rows = list(csv.DictReader(lines))
+    return {
+        r["id"]: (float(r["photo_x"]), float(r["photo_y"]))
+        for r in rows
+        if bool((r.get("shared_with") or "").strip()) == shared
+    }
 
 
 def pick_rect(control, source):
@@ -298,6 +327,9 @@ def build_mapping(layout, crop, anchors_text):
     _, sec, outline, _, _ = CROPS[crop]
     if anchors_text:
         return Mapping(parse_anchors(anchors_text))
+    if crop in ISOTROPIC:
+        scale, x0, y0 = ISOTROPIC[crop]
+        return Mapping([(0.0, 0.0, x0, y0), (1000.0, 1000.0, x0 + 1000 * scale, y0 + 1000 * scale)])
     if crop in ISO:
         return Mapping.isotropic(*ISO[crop])
     if outline is None:

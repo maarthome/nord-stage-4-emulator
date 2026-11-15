@@ -62,7 +62,7 @@ def test_load_photo_anchors(tmp_path):
 
 
 def test_committed_anchor_csvs_parse_and_match_the_inventory_naming():
-    for sec in ("organ", "master"):
+    for sec in ("organ", "master", "effects"):
         rows = lo.load_photo_anchors(os.path.join(lo.DATA_DIR, f"photo_anchors_{sec}.csv"))
         assert rows
         assert all(0 < x < 4000 and 0 < y < 4000 for x, y in rows.values())
@@ -79,12 +79,13 @@ def test_draw_overlay_and_side_by_side_sizes():
     assert both.width == 100 + 50 + 10
 
 
-def test_build_mapping_uses_outline_or_anchors():
+def test_build_mapping_uses_outline_or_anchors(monkeypatch):
     layout = {"sections": {"organ": RECT}}
     m2 = lo.build_mapping(layout, "organ", "0,0,0,0;10,10,5,5")
     assert m2.ax == pytest.approx(0.5)
     with pytest.raises(SystemExit):
-        lo.build_mapping(layout, "synth", "")
+        monkeypatch.setitem(lo.CROPS, "bare", ("x.png", "organ", None, ("organ",), None))
+        lo.build_mapping(layout, "bare", "")
     m3 = lo.Mapping(lo.outline_anchors((250.0, 12.0, 1948.0, 1168.0), RECT))
     assert m3.to_mm(250, 12) == pytest.approx((10.0, 20.0))
 
@@ -114,6 +115,33 @@ def test_topdown_crops_map_isotropically_onto_their_section():
         assert abs(m.ax - 0.1195) < 0.001, name
 
 
+def test_load_photo_anchors_skips_comments_and_splits_shared_rows(tmp_path):
+    p = tmp_path / "a.csv"
+    p.write_text(
+        "# comment line\nid,photo_x,photo_y,shared_with\nx.own,1,2\nx.alias,3,4,x.own\n",
+        encoding="utf-8",
+    )
+    assert lo.load_photo_anchors(str(p)) == {"x.own": (1.0, 2.0)}
+    assert lo.load_photo_anchors(str(p), shared=True) == {"x.alias": (3.0, 4.0)}
+
+
+def test_effects_crop_maps_isotropically_with_the_registered_scale():
+    m = lo.build_mapping({"sections": {}}, "effects", "")
+    assert abs(m.anisotropy() - 1.0) < 1e-9
+    assert abs(m.ax - 0.11743) < 1e-9
+    # crop (0, 0) is the registered origin; the crop is 1799 x 1192 px = 211 x 140 mm
+    assert m.to_mm(0, 0) == pytest.approx((922.55, 22.85))
+    x, y = m.to_mm(1799, 1192)
+    assert (x - 922.55, y - 22.85) == pytest.approx((211.2, 140.0), abs=0.1)
+
+
+def test_effects_anchor_csv_lists_every_inventory_effects_control():
+    owned = lo.load_photo_anchors(os.path.join(lo.DATA_DIR, "photo_anchors_effects.csv"))
+    alias = lo.load_photo_anchors(os.path.join(lo.DATA_DIR, "photo_anchors_effects.csv"), True)
+    assert len(owned) + len(alias) == 51 + 1  # 51 inventory ids plus program.shift.right
+    assert set(owned).isdisjoint(alias)
+
+
 def test_organ_and_piano_crops_map_isotropically_onto_the_render():
     """`organ` / `piano` / `master` use the crop registration onto the HA88 render (`ISO`)."""
     for name in ("organ", "piano"):
@@ -126,5 +154,11 @@ def test_organ_and_piano_crops_map_isotropically_onto_the_render():
     piano = lo.Mapping.isotropic(*lo.ISO["piano"])
     assert organ.to_mm(0, 12)[1] == pytest.approx(25.0, abs=0.3)
     assert piano.to_mm(0, 17)[1] == pytest.approx(25.0, abs=0.3)
+    # Synth: same plate top (was 26.0 mm, 8.4 px lower); program / keybed / wheels are render crops.
+    synth = lo.Mapping.isotropic(*lo.ISO["synth"])
+    assert synth.to_mm(0, 12)[1] == pytest.approx(25.0, abs=0.05)
+    assert synth.anisotropy() == pytest.approx(1.0)
+    for name in ("program", "keybed", "wheels"):
+        assert lo.Mapping.isotropic(*lo.ISO[name]).to_mm(400, 482) == pytest.approx((0.0, 0.0))
     px = organ.to_px(*organ.to_mm(655.0, 895.0))
     assert px == pytest.approx((655.0, 895.0))

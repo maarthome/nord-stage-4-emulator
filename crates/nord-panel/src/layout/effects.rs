@@ -1,51 +1,80 @@
-//! Layer Effects section (photo crop x 1401..1700): FX Focus column, Mod 1,
-//! Mod 2, Amp Sim/EQ on the left; Delay, Comp and Reverb on the right.
+//! Layer Effects section: FX Focus column, Mod 1, Mod 2, Amp Sim/EQ on the left; Delay, Comp and
+//! Reverb on the right.
 //!
-//! ASSUMED: read from the 2000 px photo; higher-resolution photo confirms.
+//! VERIFIED (centres): placed from `.reference/crops/NS4-Panel-effects.max-2000x2000.format-png.png`
+//! (1799 x 1192 px, git-ignored) mapped ISOTROPICALLY to panel mm: 0.11743 mm per crop px on both
+//! axes, crop (0, 0) at panel (922.55, 22.85) mm. The mapping comes from registering the crop onto the
+//! straight-on HA88 render ([`super::topdown`], 0.119488 mm/px): FFT cross-correlation peak 0.76 at
+//! 1.0175 crop px per render px. The crop shows the section header but not the 26 mm connector strip
+//! above it nor the 18 mm lip below, so it must not be stretched onto the section rectangle.
+//! The centres are `data/photo_anchors_effects.csv`; checked by
+//! `python tools/layout_overlay.py effects --source layout` (centre error 0 mm by construction, about
+//! 0.5 mm reading error, +-1.5 mm absolute y). Sizes keep the older hero-photo reads (`ASSUMED`, +-1 mm).
 
-use super::{px, Rect};
+use super::Rect;
+
+/// Millimetres per crop pixel (`0.119488 / 1.0175`).
+const MM_PER_CROP_PX: f32 = 0.11743;
+
+/// Panel position in mm of crop pixel (0, 0).
+const CROP_ORIGIN_MM: (f32, f32) = (922.55, 22.85);
+
+/// Rectangle of `w` x `h` mm centred on crop pixel `(cx, cy)`.
+fn cp(cx: f32, cy: f32, w: f32, h: f32) -> Rect {
+    let (mx, my) = (
+        CROP_ORIGIN_MM.0 + cx * MM_PER_CROP_PX,
+        CROP_ORIGIN_MM.1 + cy * MM_PER_CROP_PX,
+    );
+    Rect::new(mx - w / 2.0, my - h / 2.0, w, h)
+}
+
+/// Knob, button and rocker sizes in mm (hero-photo reads).
+const KNOB: f32 = 15.2;
+const BTN: (f32, f32) = (15.9, 9.0);
 
 pub fn rect(id: &str) -> Option<Rect> {
+    let knob = |x: f32, y: f32| cp(x, y, KNOB, KNOB);
+    let btn = |x: f32, y: f32| cp(x, y, BTN.0, BTN.1);
+    let rocker = |x: f32, y: f32, h: f32| cp(x, y, 8.8, h);
     Some(match id {
         // Header and FX Focus column.
-        "fx.layer_effects_on" => px(1502.0, 121.0, 1525.0, 134.0),
-        "fx.focus.organ" => px(1406.0, 166.0, 1429.0, 179.0),
-        "fx.focus.piano" => px(1405.0, 208.0, 1428.0, 221.0),
-        "fx.focus.synth" => px(1405.0, 251.0, 1428.0, 264.0),
-        "fx.focus.leds" => px(1404.0, 240.0, 1427.0, 245.0),
+        "fx.layer_effects_on" => btn(662.0, 60.0),
+        "fx.focus.organ" => btn(97.0, 323.0),
+        "fx.focus.piano" => btn(97.0, 575.0),
+        "fx.focus.synth" => btn(97.0, 828.0),
         // Mod 1 / Mod 2.
-        "mod1.rate" => px(1442.0, 147.0, 1464.0, 169.0),
-        "mod1.amount" => px(1482.0, 147.0, 1504.0, 169.0),
-        "mod1.selector" => px(1518.0, 166.0, 1541.0, 179.0),
-        "mod1.on" => px(1553.0, 157.0, 1567.0, 182.0),
-        "mod2.rate" => px(1442.0, 197.0, 1464.0, 219.0),
-        "mod2.amount" => px(1482.0, 197.0, 1504.0, 219.0),
-        "mod2.selector" => px(1517.0, 213.0, 1540.0, 226.0),
-        "mod2.on" => px(1553.0, 205.0, 1567.0, 229.0),
+        "mod1.rate" => knob(308.0, 257.0),
+        "mod1.amount" => knob(548.0, 257.0),
+        "mod1.selector" => btn(757.0, 331.0),
+        "mod1.on" => rocker(943.0, 312.0, 17.3),
+        "mod2.rate" => knob(308.0, 540.0),
+        "mod2.amount" => knob(548.0, 540.0),
+        "mod2.selector" => btn(757.0, 607.0),
+        "mod2.on" => rocker(943.0, 590.0, 16.6),
         // Amp Sim / EQ.
-        "amp.drive" => px(1441.0, 242.0, 1463.0, 264.0),
-        "amp.mid_freq" => px(1482.0, 242.0, 1504.0, 264.0),
-        "amp.model" => px(1522.0, 260.0, 1545.0, 273.0),
-        "amp.on" => px(1553.0, 280.0, 1567.0, 304.0),
-        "amp.bass" => px(1441.0, 283.0, 1463.0, 305.0),
-        "amp.mid" => px(1482.0, 283.0, 1504.0, 305.0),
-        "amp.treble" => px(1522.0, 283.0, 1544.0, 305.0),
+        "amp.drive" => knob(308.0, 808.0),
+        "amp.mid_freq" => knob(548.0, 808.0),
+        "amp.model" => btn(795.0, 885.0),
+        "amp.on" => rocker(943.0, 1050.0, 16.6),
+        "amp.bass" => knob(303.0, 1052.0),
+        "amp.mid" => knob(549.0, 1052.0),
+        "amp.treble" => knob(793.0, 1052.0),
         // Delay.
-        "delay.tempo" => px(1581.0, 152.0, 1603.0, 174.0),
-        "delay.feedback" => px(1658.0, 141.0, 1680.0, 163.0),
-        "delay.effects" => px(1617.0, 172.0, 1640.0, 185.0),
-        "delay.filter" => px(1653.0, 192.0, 1676.0, 205.0),
-        "delay.dry_wet" => px(1618.0, 204.0, 1640.0, 226.0),
-        "delay.tap_set" => px(1580.0, 206.0, 1603.0, 219.0),
-        "delay.on" => px(1657.0, 216.0, 1680.0, 228.0),
+        "delay.tempo" => knob(1135.0, 283.0),
+        "delay.feedback" => knob(1585.0, 215.0),
+        "delay.effects" => btn(1348.0, 368.0),
+        "delay.filter" => btn(1568.0, 488.0),
+        "delay.dry_wet" => knob(1357.0, 585.0),
+        "delay.tap_set" => btn(1130.0, 565.0),
+        "delay.on" => cp(1587.0, 622.0, 15.9, 8.3),
         // Comp.
-        "comp.amount" => px(1580.0, 252.0, 1602.0, 274.0),
-        "comp.on" => px(1580.0, 291.0, 1603.0, 303.0),
+        "comp.amount" => knob(1133.0, 865.0),
+        "comp.on" => cp(1133.0, 1073.0, 15.9, 8.3),
         // Reverb.
-        "reverb.bright_dark" => px(1616.0, 258.0, 1639.0, 271.0),
-        "reverb.type" => px(1651.0, 266.0, 1674.0, 279.0),
-        "reverb.dry_wet" => px(1619.0, 284.0, 1641.0, 306.0),
-        "reverb.on" => px(1656.0, 291.0, 1679.0, 303.0),
+        "reverb.bright_dark" => btn(1346.0, 873.0),
+        "reverb.type" => btn(1555.0, 918.0),
+        "reverb.dry_wet" => knob(1365.0, 1060.0),
+        "reverb.on" => cp(1587.0, 1073.0, 15.9, 8.3),
         _ => return None,
     })
 }
