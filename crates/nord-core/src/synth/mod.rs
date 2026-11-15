@@ -46,6 +46,7 @@ mod fw_sync1;
 mod fw_sync3;
 mod fw_sync6;
 mod fw_sync_table;
+mod fw_velocity;
 mod fw_wave;
 mod fw_wave_tables;
 mod gain_dezip;
@@ -89,6 +90,9 @@ pub use fw_shape::{fw_shape_wave, fw_shape_width};
 pub use fw_stages::{noise_sample, noise_step, saw_diff, spread_u, FwStage, FwStageState};
 pub use fw_strip_cutoff::{fw_cutoff_cycles_per_sample, fw_strip_cutoff_r, FW_CUTOFF_CLIP};
 pub use fw_super2::tables as boot_tables;
+pub use fw_velocity::{
+    amp_gain as fw_amp_velocity_gain, filter_factor as fw_filter_velocity_factor,
+};
 pub use fw_wave::{install_wave_tables, prepare_wave_bank, wave_table, WaveBankState};
 pub use fw_wave_tables::{tables_from_code, tables_from_file, WAVE_TABLES};
 pub use gain_dezip::{gain_pole_for, CONTROL_TICK_HZ, SY_FRAME_RATE_HZ, SY_GAIN_POLE};
@@ -123,6 +127,8 @@ pub use voice::SynthVoice;
 mod tests_envelope;
 #[cfg(test)]
 mod tests_fw_filter_golden;
+#[cfg(test)]
+mod tests_fw_velocity;
 #[cfg(test)]
 #[rustfmt::skip]
 mod tests_fw_fm_golden;
@@ -261,6 +267,10 @@ pub struct SynthLayer {
     /// Strip chain only: voice level from the key-down velocity series `g(vel) / 127` instead of the
     /// linear velocity (`key_velocity.rs`, default on; no effect on the legacy chain).
     pub strip_key_velocity: bool,
+    /// Velocity from the ORG core 2 pass (`fw_velocity.rs`, `--firmware-synth-velocity`, default off):
+    /// the amp gain `V(setting, g)` replaces the linear `amp_velocity` blend and the filter-envelope
+    /// depth follows `G / 128`, with `g` the ARM key byte of the velocity.
+    pub firmware_velocity: bool,
     /// Strip chain only: the ANALOG SHAPE category plays as the firmware stage `0x1212D3` with this
     /// shape word (`fw_shape.rs`; the idle frame holds 0.5, the knob scale is open); `None` keeps
     /// the ASSUMED saw placeholder.
@@ -440,6 +450,7 @@ impl SynthLayer {
             gain_dezipper: false,
             chain: SynthChain::FirmwareStrip,
             strip_key_velocity: true,
+            firmware_velocity: false,
             strip_shape: None,
             p_block: None,
             p_table: Some(PTable::FITTED),

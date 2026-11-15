@@ -349,6 +349,9 @@ pub struct FirmwareOptions {
     /// `--sample-pitch fw|equal`: the `SAMPLES` oscillator step follows the ARM exponent tables
     /// (`sinc::pitch_law`, VERIFIED law; root and sample-rate fields ASSUMED). Off by default.
     pub sample_pitch_fw: bool,
+    /// `--firmware-synth-velocity`: `SynthLayer::firmware_velocity` (amp and filter-envelope velocity
+    /// laws of the ORG core 2 pass, VERIFIED against `sharc-org`; opt-in, D22).
+    pub synth_velocity_fw: bool,
     /// `--firmware-routing` / `--legacy-routing`: section / layer enables and per-layer KB zones
     /// as the program stores them ([`FirmwareRouting`]). On by default since D73: the zone key
     /// ranges (D22 criterion 2, `zone-key-ranges.md`) and the loader's layer enable rule
@@ -404,6 +407,7 @@ impl Default for FirmwareOptions {
             synth_wave_bank: false,
             sample_kernel_key: true,
             sample_pitch_fw: false,
+            synth_velocity_fw: false,
             firmware_routing: true,
             amp_path: None,
             rotary_drive: RotaryDrive::Engine,
@@ -460,6 +464,7 @@ impl FirmwareOptions {
             synth_wave_bank: false,
             sample_kernel_key: true,
             sample_pitch_fw: false,
+            synth_velocity_fw: false,
             firmware_routing: true,
             amp_path: None,
             rotary_drive: RotaryDrive::Engine,
@@ -522,6 +527,7 @@ impl FirmwareOptions {
         }
         o.piano_bus_scale |= has("--firmware-piano-bus");
         o.piano_touch |= has("--firmware-piano-touch");
+        o.synth_velocity_fw |= has("--firmware-synth-velocity");
         o.piano_slew |= has("--piano-slew-fw");
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
@@ -774,6 +780,9 @@ impl FirmwareOptions {
         engine.synth_a.sample_pitch_fw = self.sample_pitch_fw;
         engine.synth_b.sample_pitch_fw = self.sample_pitch_fw;
         engine.synth_c.sample_pitch_fw = self.sample_pitch_fw;
+        engine.synth_a.firmware_velocity = self.synth_velocity_fw;
+        engine.synth_b.firmware_velocity = self.synth_velocity_fw;
+        engine.synth_c.firmware_velocity = self.synth_velocity_fw;
     }
 
     fn set_stages(&self, engine: &mut Stage4Engine) {
@@ -844,6 +853,9 @@ impl FirmwareOptions {
         }
         if self.piano_touch {
             parts.push("piano-touch".into());
+        }
+        if self.synth_velocity_fw {
+            parts.push("synth-velocity".into());
         }
         if self.piano_slew {
             parts.push("piano-slew".into());
@@ -1082,6 +1094,20 @@ mod tests {
         assert!(!FirmwareOptions::legacy_all().sample_kernel_key);
         assert!(FirmwareOptions::firmware_all().sample_kernel_key);
         assert!(parse_sample_kernel("bogus").is_err());
+    }
+
+    #[test]
+    fn synth_velocity_flag_is_opt_in_and_reaches_every_synth_layer() {
+        assert!(!FirmwareOptions::default().synth_velocity_fw);
+        let o = FirmwareOptions::from_args(&["--firmware-synth-velocity".into()]).unwrap();
+        assert!(o.synth_velocity_fw && o.summary().contains("synth-velocity"));
+        let mut e = Stage4Engine::new(48_000.0);
+        o.apply_to(&mut e);
+        assert!(
+            e.synth_a.firmware_velocity
+                && e.synth_b.firmware_velocity
+                && e.synth_c.firmware_velocity
+        );
     }
 
     #[test]
