@@ -40,6 +40,8 @@ impl Sim {
             visible: Rect::NOTHING,
             screen: vec2(1700.0, 600.0),
         };
+        // Legacy tests press P / Z as plain view shortcuts; the playing keys have their own tests.
+        s.state.computer_kb.enabled = false;
         s.frame(vec![], Modifiers::NONE);
         s
     }

@@ -11,11 +11,11 @@ use egui::{pos2, vec2, Align2, Color32, Pos2, Rect};
 /// Pitch (px) of the list rows (the 7.5 px minimum font plus a 2 px gap, audit rule `V`).
 pub(super) const ROW: f32 = 9.5;
 /// Distance (px) of a matrix LED column from the middle of the selector.
-pub(super) const COL_DX: f32 = 3.5;
+pub(super) const COL_DX: f32 = 4.0;
 /// Space (px) between an LED and the start of its name.
-const NAME_GAP: f32 = 4.5;
+const NAME_GAP: f32 = 5.5;
 /// Distance (px) from the top of the selector to the centre of the lowest row.
-const BOTTOM_ROW: f32 = 6.5;
+const BOTTOM_ROW: f32 = 7.2;
 
 /// Which side of the LED matrix a name is printed on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

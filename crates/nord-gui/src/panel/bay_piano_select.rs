@@ -12,6 +12,14 @@ use nord_panel::behaviour::Trigger;
 /// Type names in LED order (manual p.24).
 pub const TYPE_NAMES: [&str; 6] = ["Grand", "Upright", "Electric", "Clav", "Digital", "Misc"];
 
+/// Distance (px) from a button edge to the centre of a side LED of radius 2.2: button bezel 1.5,
+/// gap 2.5 (audit rule `B`), LED bezel 3.2.
+const SIDE_LED: f32 = 7.3;
+/// Distance (px) from a button edge to the bottom of its 6 px LED row (the row sits above KB
+/// TOUCH / DYN COMP / UNISON): the LED centres are 3 px inside, so the bezel (r + 1) keeps 2.5 px
+/// clear of the button bezel.
+const LED_ROW_DROP: f32 = 4.6;
+
 const RED: (Color32, Color32) = (LED_RED, LED_RED_DIM);
 const AMBER: (Color32, Color32) = (LED_AMBER, LED_AMBER_DIM);
 
@@ -138,7 +146,7 @@ fn draw_acoustics(
     w::inside(p, soft, "SOFT REL", clav);
     w::mini_led(
         p,
-        pos2(soft.left() - 5.0, soft.center().y),
+        pos2(soft.left() - SIDE_LED, soft.center().y),
         state.piano_ui.soft_release[l],
         LED_RED,
         LED_RED_DIM,
@@ -161,7 +169,7 @@ fn draw_acoustics(
 
     // STRING RES (tap) and PED NOISE (Shift): the layout lists them as one ACOUSTICS button on the
     // SOFT RELEASE rectangle; the STRING RES button sits just below it.
-    let sr = soft.translate(vec2(0.0, soft.height() + 11.0));
+    let sr = soft.translate(vec2(0.0, soft.height() + 1.0));
     let pr = w::press(
         ui,
         sr,
@@ -182,7 +190,7 @@ fn draw_acoustics(
     w::legend(p, sr, "PED NOISE", false);
     w::mini_led(
         p,
-        pos2(sr.left() - 5.0, sr.center().y),
+        pos2(sr.left() - SIDE_LED, sr.center().y),
         state.string_res,
         LED_RED,
         LED_RED_DIM,
@@ -191,7 +199,7 @@ fn draw_acoustics(
     );
     w::mini_led(
         p,
-        pos2(sr.right() + 5.0, sr.center().y),
+        pos2(sr.right() + SIDE_LED, sr.center().y),
         state.pedal_noise,
         AMBER.0,
         AMBER.1,
@@ -214,8 +222,9 @@ const LED_NAMES_TOUCH: [&str; 3] = ["HEAVY", "MED", "LIGHT"];
 const TOUCH_NAME_LINE: [usize; 3] = [0, 1, 0];
 /// Pitch (px) of those two lines (the 7.5 px font plus a 2 px gap, audit rule `V`).
 const NAME_LINE: f32 = 9.5;
-/// Distance (px) from the bottom of the button to the centre of those names.
-const LED_NAME_DROP: f32 = 15.5;
+/// Distance (px) from the top of the button up to the centre of those names (the real panel
+/// prints the LEDs and their names above the button, under the box title).
+const LED_NAME_RISE: f32 = 15.5;
 
 fn draw_option_buttons(
     ui: &mut Ui,
@@ -265,11 +274,11 @@ fn draw_option_buttons(
         w::face(p, rect, pr.down, false);
         w::inside(p, rect, text, false);
         let row = Rect::from_min_size(
-            pos2(rect.left(), rect.bottom() + 3.0),
+            pos2(rect.left(), rect.top() - 6.0 - LED_ROW_DROP),
             vec2(rect.width(), 6.0),
         );
         w::led_strip(p, row, 3, |i| i == lit, RED, false);
-        // Printed under the LEDs: 1 2 3 (UNISON, DYN COMP) and HEAVY / MED / LIGHT (KB TOUCH, on
+        // Printed above the LEDs: 1 2 3 (UNISON, DYN COMP) and HEAVY / MED / LIGHT (KB TOUCH, on
         // two staggered lines because the names are wider than the LED pitch).
         let names = if id == "piano.kb_touch" {
             LED_NAMES_TOUCH
@@ -285,7 +294,7 @@ fn draw_option_buttons(
             };
             crate::widgets::label(
                 p,
-                pos2(x, rect.bottom() + LED_NAME_DROP + NAME_LINE * line as f32),
+                pos2(x, rect.top() - LED_NAME_RISE - NAME_LINE * line as f32),
                 n,
                 crate::widgets::MIN_FONT_PX,
                 Color32::from_gray(205),
