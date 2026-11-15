@@ -190,7 +190,7 @@ Live slots: `.ns4l` files load back into the eight Live slots (`LiveSlots::impor
 | B3 Tonewheel Mode | crosstalk factor Clean 0, Vintage 1 1.0, Vintage 2 1.5 | factors `ASSUMED`; confirm with a hardware single-key spectrum |
 | B3 Click Level | High = 2x click amplitude | `ASSUMED` |
 | Rotary Bass/Horn | band gains `2 * share`, 50/50 = 1.0 | `ASSUMED` |
-| Rotor/Horn speed, acceleration | speed 0.85 / 1 / 1.15, time constant 1.5 / 1 / 0.67 | `ASSUMED`; confirm by timing a Slow-Fast change |
+| Rotor/Horn speed, acceleration | firmware tables per choice (Low / Normal / High): horn 0.74 / 0.80 / 0.86 and 6.5 / 7.0 / 7.5 Hz, rotor 0.65 / 0.73 / 0.76 and 5.7 / 6.4 / 6.65 Hz, ramp step ratios 0.5 / 1 / 2 (`organ/rotary_laws.rs`, [leslie-settings](../research/leslie-settings.md)) | `VERIFIED` (ARM `0xC0112AC0`); base ramp times 0.7 s / 4.2 s `ASSUMED` |
 | Mono output | both channels carry `(L+R)/2` | implemented |
 
 Program Levels (`prog_level_db`) and per-program Transpose already existed. Not honoured: LED intensity (`UiOnly`). The MIDI, Extern, Output, trigger point and SW B items are in section 2b.

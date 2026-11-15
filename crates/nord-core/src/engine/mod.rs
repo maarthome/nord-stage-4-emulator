@@ -30,7 +30,7 @@ pub use pedals::{
     ControlFunc, FootSwitchFunc, PedalSource, PedalState, RightPedal, RotorFunc, SwellFunc,
     B3_SWELL_FLOOR, HALF_PEDAL_MIN,
 };
-pub use pstick::{PSTICK_DEFAULT_RANGE, PSTICK_MAX_RANGE, PSTICK_MIN_RANGE};
+pub use pstick::{PSTICK_DEFAULT_RANGE, PSTICK_MAX_RANGE, PSTICK_MIN_RANGE, PSTICK_RANGE_LIST};
 
 mod aux_kb;
 mod clipboard;
