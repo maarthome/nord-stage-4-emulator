@@ -1,0 +1,7 @@
+id,photo_x,photo_y
+master.level,132,172
+rotary.drive,123,487
+rotary.organ,132,684
+rotary.stop_mode,132,880
+rotary.speed_leds,114,996
+rotary.speed,132,1062

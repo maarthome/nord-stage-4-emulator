@@ -46,3 +46,23 @@ def test_read_words_joins_halves_and_slew_updates_takes_every_second_row(tmp_pat
     words = m.read_words(csv_path, 81, 0)
     assert words == [(3 << 16) | 222, (3 << 16) | 1, 0xFFFF0002]
     assert m.slew_updates(words) == [(3 << 16) | 222, 0xFFFF0002 - (1 << 32)]
+
+
+def test_note_on_words_reads_level_and_rate_d():
+    # 0x3F7FFF42 is the Velvet Grand velocity 100 rate word: d = (1 - f) * 2^24 = 190.
+    d = 190
+    rate_bits = 0x3F800000 - ((d * 2**23) >> 24) - 0  # fixed below by struct, see assertion
+    import struct
+
+    rate = struct.unpack("<I", struct.pack("<f", 1.0 - d / 2**24))[0]
+    level = struct.unpack("<I", struct.pack("<f", 0.5))[0]
+    msgs = [
+        [1, 1, m.LEVEL_WORD_DM, 0],
+        [2, 1, m.LEVEL_WORD_DM, level],
+        [2, 1, m.RATE_WORD_DM, rate],
+        [2, 2, m.RATE_WORD_DM, 0],  # path 2 is ignored
+    ]
+    got = m.note_on_words(msgs)
+    assert got["level"] == 0.5 and abs(got["rate_d"] - d) < 1.0
+    assert rate_bits  # silence unused
+    assert m.note_on_words([]) == {"level": None, "rate_d": None}
