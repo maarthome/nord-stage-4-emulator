@@ -4,7 +4,9 @@
 The processor reads (and writes) a few windows of the PNO core 1 data memory: its row and context
 words, the 65-point rotor tables, the delay line state, the cabinet coefficient runs and the table
 pointers. The windows below were found by running the verified model for 3,000 calls with the
-rotor running (`touched` addresses, merged); the two cabinet windows `0xE2E08..0xE31E7` and
+rotor running (`touched` addresses, merged); the three 129 word drive tables `0xB0276`, `0xB02F7`,
+`0xB0378` and the block `0xE05D0..0xE0630` are whole (drive words above 0 index them,
+`organ-preamp-search.md` s10); the two cabinet windows `0xE2E08..0xE31E7` and
 `0xE3200..0xE35DF` (right and left) are the whole history ring, the context and the second buffer,
 because the advancing ring pointers (`fx-leslie.md` s10) reach every word of them. This tool
 reads their words from the flat PNO core 1 image under the boot log
@@ -33,9 +35,9 @@ FX_DIR = Path(__file__).resolve().parents[1] / "crates" / "nord-core" / "src" / 
 #: (first, last) data addresses of the touched windows; the signal pair window comes last.
 WINDOWS = (
     (0x965FC, 0x9660B), (0x967A6, 0x967D5), (0x96970, 0x96990), (0xB0078, 0xB008F),
-    (0xB00E5, 0xB00E5), (0xB0276, 0xB0277), (0xB02F7, 0xB02F8), (0xB0378, 0xB0379),
+    (0xB00E5, 0xB00E5), (0xB0276, 0xB02F6), (0xB02F7, 0xB0377), (0xB0378, 0xB03F8),
     (0xB2F0A, 0xB2FEE), (0xB474C, 0xB52A6), (0xB6000, 0xB6003), (0xC0142, 0xC0145),
-    (0xE05F4, 0xE060D), (0xE2E08, 0xE31E7), (0xE3200, 0xE35DF),
+    (0xE05D0, 0xE0630), (0xE2E08, 0xE31E7), (0xE3200, 0xE35DF),
 )  # fmt: skip
 #: window index ranges of the three files (the big table alone in `_b`).
 SPLIT = ((0, 9), (9, 10), (10, 15))

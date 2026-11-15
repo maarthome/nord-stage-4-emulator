@@ -165,6 +165,10 @@ pub struct OrganLayer {
     pub leslie_fw: Option<Box<crate::fx::FwLeslie>>,
     /// Linear gain after the firmware Leslie (`1.0` = the booted firmware level, about -50 dB).
     pub leslie_gain: f32,
+    /// Opt-in (`--leslie-drive program`): the program's Leslie drive (`rotary_drive`, 0..1 as the
+    /// firmware fraction `v / 127`) goes into the four drive words of the firmware Leslie like the
+    /// ARM does; `false` keeps the boot words (0). `docs/research/organ-preamp-search.md` s10.
+    pub leslie_fw_drive: bool,
     /// Rotary microphone placement (`false` = Normal distance with cabinet reflections, `true` = Close mic).
     pub rotary_close_mic: bool,
     /// Stereo virtual microphone separation angle in degrees (`0.0..=180.0`, default `120.0`).
@@ -290,6 +294,7 @@ impl OrganLayer {
             rotary_drive_scaled: false,
             leslie_fw: None,
             leslie_gain: 1.0,
+            leslie_fw_drive: false,
             rotary_close_mic: false,
             rotary_mic_angle_deg: 120.0,
             rotary_stop_mode: false,

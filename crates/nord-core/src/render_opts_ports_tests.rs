@@ -103,6 +103,37 @@ fn apply_exact_round_trips_farfisa_sample_and_piano_law_switches() {
 }
 
 #[test]
+fn leslie_drive_parses_and_reaches_both_organ_layers() {
+    let args = |v: &str| {
+        vec![
+            "--leslie".into(),
+            "firmware".into(),
+            "--leslie-drive".into(),
+            v.into(),
+        ]
+    };
+    assert!(
+        FirmwareOptions::from_args(&args("program"))
+            .unwrap()
+            .leslie_drive
+    );
+    assert!(
+        !FirmwareOptions::from_args(&args("boot"))
+            .unwrap()
+            .leslie_drive
+    );
+    assert!(FirmwareOptions::from_args(&args("x")).is_err());
+    let mut e = Stage4Engine::new(48_000.0);
+    let o = FirmwareOptions::from_args(&args("program")).unwrap();
+    o.apply_exact(&mut e);
+    assert!(e.organ_a.leslie_fw_drive && e.organ_b.leslie_fw_drive);
+    assert!(o.summary().contains("drive=program"));
+    let mut e2 = Stage4Engine::new(48_000.0);
+    o.apply_to(&mut e2);
+    assert!(e2.organ_a.leslie_fw_drive);
+}
+
+#[test]
 fn leslie_ring_names_invert_the_parser() {
     for n in ["firmware", "advance", "frozen"] {
         assert_eq!(leslie_ring_name(parse_leslie_ring(n).unwrap()), n);

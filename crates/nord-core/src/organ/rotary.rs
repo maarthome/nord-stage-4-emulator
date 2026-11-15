@@ -43,7 +43,7 @@ impl OrganLayer {
     ///
     /// VERIFIED (ARM state block, `docs/research/arm-part-activation.md`): `word = int(hz *
     /// 8388607 / 11025) << 8` for the ARM's nominal Hz (physical Hz / `F / 44,100`).
-    fn process_leslie_firmware(&mut self, x: f32) -> [f32; 2] {
+    pub(super) fn process_leslie_firmware(&mut self, x: f32) -> [f32; 2] {
         const FS_DSP: f64 = 44_444_000.0 / 1024.0;
         const SCALE: f64 = 8_388_607.0 / 11_025.0;
         const HORN_FOLLOW: f64 = 0.5748; // EMPIRICAL, fits 0xB2FA1 at 0.80 and 0.86 Hz
@@ -54,7 +54,13 @@ impl OrganLayer {
         let horn = f64::from(self.horn_rate_hz);
         let rotor = f64::from(self.drum_rate_hz);
         let gain = self.leslie_gain;
+        let drive = if self.leslie_fw_drive {
+            self.rotary_drive
+        } else {
+            0.0
+        };
         if let Some(l) = self.leslie_fw.as_mut() {
+            l.set_drive(drive);
             l.set_speed_words([
                 word(rotor).round() as u32,
                 word(horn).round() as u32,

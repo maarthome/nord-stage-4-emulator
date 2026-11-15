@@ -52,6 +52,8 @@ pub(super) const STATE: u32 = 0xB2F2A;
 /// Rotor phase limit word and the three speed words.
 pub(super) const LIMIT: u32 = 0xB2F21;
 pub(super) const SPEED_WORDS: [u32; 3] = [0xB2F25, 0xB2F26, 0xB2FA1];
+/// VERIFIED (ARM capture, `docs/research/organ-preamp-search.md` s10): drive words, all `v / 127`.
+pub(super) const DRIVE_WORDS: [u32; 4] = [0xB2F2D, 0xB2F2E, 0xB2F31, 0xB2F32];
 const MAX_WINDOWS: usize = 24;
 
 /// `Ii += Mm` honouring `Li` / `Bi` (`core/dag.rs::dag_next`, VERIFIED by the oracle).
@@ -189,6 +191,17 @@ impl<F: Fp> Core<F> {
     pub(super) fn set_speed_words(&mut self, w: [u32; 3]) {
         for (a, v) in SPEED_WORDS.into_iter().zip(w) {
             self.wr(a, v);
+        }
+    }
+
+    /// Sets the four Leslie drive words (`0xB2F2D / 0xB2F2E / 0xB2F31 / 0xB2F32`).
+    ///
+    /// VERIFIED: the ARM writes the same `f32` word `v / 127` into all four for
+    /// `Edt_OrgCom_kEffectsLeslieDrv` `v = 0..127` (`tools/fx_clients.py --slots`, unit 3,
+    /// PNO core 1, `docs/research/organ-preamp-search.md` s10).
+    pub(super) fn set_drive_words(&mut self, w: u32) {
+        for a in DRIVE_WORDS {
+            self.wr(a, w);
         }
     }
 

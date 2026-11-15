@@ -81,6 +81,19 @@ pub fn parse_on_off(name: &str, v: &str) -> Result<bool, String> {
     }
 }
 
+/// `--synth-sustain-pedal`: the synth layers follow the SUSTPED bits of the loaded program, or
+/// the firmware default (on) without a program; off keeps them released (engine default).
+fn apply_synth_sustain(engine: &mut Stage4Engine, on: bool) {
+    engine.synth_sustain_program = on;
+    let routing = engine.program_routing();
+    let flags = match (on, routing.loaded) {
+        (false, _) => [false; 3],
+        (true, true) => routing.synth_sustain,
+        (true, false) => [true; 3],
+    };
+    engine.pedals.sustped[4..7].copy_from_slice(&flags);
+}
+
 /// Selects the B3 processor-tail response of both organ layers' `B3Wheels` source (`None` leaves
 /// the engine untouched).
 pub fn apply_b3_tail(engine: &mut Stage4Engine, tail: Option<bool>) {
@@ -358,6 +371,9 @@ pub struct FirmwareOptions {
     /// (default `advance`: 4 words per call; `firmware`: re-based every 8 calls like the booted
     /// pass routine; `frozen`: the first oracle state, `fx-leslie.md` s10).
     pub leslie_ring: crate::fx::RingAdvance,
+    /// `--leslie-drive boot|program`: `program` writes the program's Leslie drive into the drive
+    /// words of the firmware Leslie as the ARM does (VERIFIED words; default `boot` = 0).
+    pub leslie_drive: bool,
 }
 
 /// The engine defaults: every opt-in path off, except the firmware piano level, which is the
@@ -395,6 +411,7 @@ impl Default for FirmwareOptions {
             leslie_firmware: false,
             leslie_gain_mdb: 0,
             leslie_ring: crate::fx::RingAdvance::ADVANCE,
+            leslie_drive: false,
         }
     }
 }
@@ -450,6 +467,7 @@ impl FirmwareOptions {
             leslie_firmware: false,
             leslie_gain_mdb: 0,
             leslie_ring: crate::fx::RingAdvance::ADVANCE,
+            leslie_drive: false,
         }
     }
 
@@ -559,6 +577,13 @@ impl FirmwareOptions {
         if let Some(v) = value("--leslie-ring") {
             o.leslie_ring = parse_leslie_ring(v)?;
         }
+        if let Some(v) = value("--leslie-drive") {
+            o.leslie_drive = match v {
+                "program" => true,
+                "boot" => false,
+                _ => return Err(format!("invalid --leslie-drive '{v}' (boot|program)")),
+            };
+        }
         if let Some(v) = value("--leslie-gain-db") {
             let db: f32 = v
                 .parse()
@@ -600,7 +625,7 @@ impl FirmwareOptions {
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
         engine.synth_layer_law = self.synth_layer_law;
-        engine.pedals.sustped[4..7].fill(self.synth_sustain_pedal);
+        apply_synth_sustain(engine, self.synth_sustain_pedal);
         apply_b3_tail(engine, self.b3_tail);
         apply_farfisa_processor(engine, self.farfisa_processor);
         apply_b3_bass_processor(engine, self.b3_bass_processor);
@@ -610,6 +635,9 @@ impl FirmwareOptions {
             self.leslie_gain_mdb as f32 / 1000.0,
             self.leslie_ring,
         );
+        for organ in [&mut engine.organ_a, &mut engine.organ_b] {
+            organ.leslie_fw_drive = self.leslie_drive;
+        }
         apply_synth_chain(engine, self.synth_chain);
         self.set_shape(engine);
         self.set_p_block(engine);
@@ -663,7 +691,7 @@ impl FirmwareOptions {
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
         engine.synth_layer_law = self.synth_layer_law;
-        engine.pedals.sustped[4..7].fill(self.synth_sustain_pedal);
+        apply_synth_sustain(engine, self.synth_sustain_pedal);
         self.set_rotary(engine);
         let bass = self.b3_bass_processor == Some(true);
         apply_b3_tail(engine, Some(!bass && self.b3_tail.unwrap_or(true)));
@@ -703,6 +731,7 @@ impl FirmwareOptions {
                 organ.leslie_fw = Some(Box::new(crate::fx::FwLeslie::with_ring(self.leslie_ring)));
             }
             organ.leslie_gain = 10f32.powf(self.leslie_gain_mdb as f32 / 20_000.0);
+            organ.leslie_fw_drive = self.leslie_drive;
         }
     }
 
@@ -848,9 +877,10 @@ impl FirmwareOptions {
         }
         if self.leslie_firmware {
             parts.push(format!(
-                "leslie=firmware ring={} gain={:+.1}dB",
+                "leslie=firmware ring={} gain={:+.1}dB drive={}",
                 leslie_ring_name(self.leslie_ring),
-                self.leslie_gain_mdb as f32 / 1000.0
+                self.leslie_gain_mdb as f32 / 1000.0,
+                if self.leslie_drive { "program" } else { "boot" }
             ));
         }
         if !self.sample_kernel_key {
@@ -896,6 +926,15 @@ mod tests {
             [false, false, true, true, true, true, true]
         );
         assert!(!FirmwareOptions::legacy_all().synth_sustain_pedal);
+        // a loaded program's own SUSTPED bits win over the blanket default
+        let mut prog = crate::cbin::ProgramDecoded::default();
+        prog.global.synth_sustain = [true, false, true];
+        let mut e = Stage4Engine::new(48_000.0);
+        e.apply_program(&prog);
+        on.apply_to(&mut e);
+        assert_eq!(e.pedals.sustped[4..7], [true, false, true]);
+        FirmwareOptions::default().apply_to(&mut e);
+        assert_eq!(e.pedals.sustped[4..7], [false; 3]);
     }
 
     #[test]

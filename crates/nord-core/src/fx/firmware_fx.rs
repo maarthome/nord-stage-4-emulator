@@ -80,7 +80,8 @@ pub struct FirmwareFx {
     /// Firmware Amp EQ (tone stack `0x1243F4` with the `kAmpTreble` / `kAmpBass` / `kAmpMid` /
     /// `kAmpMidFreq` words) in place of the engine's three biquads.
     pub eq: bool,
-    /// Firmware Mod 2 `CHOR` (`kFx2Type` 4, 5) with the `kFx2Amt` / `kFx2Rate` words.
+    /// Firmware Mod 2 (`kFx2Type` 0 to 11: `PHAS`, `FLANG`, `CHOR`, `VIBE`, `ENS`, `SPIN`) with the
+    /// `kFx2Amt` / `kFx2Rate` words. `ENS` runs with ASSUMED circular tap registers (D95).
     pub mod2: bool,
 }
 

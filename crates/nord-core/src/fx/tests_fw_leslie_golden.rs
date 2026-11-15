@@ -32,7 +32,14 @@ fn lcg(calls: usize) -> Vec<[f32; 4]> {
 }
 
 fn run(mult: u32, ring: RingAdvance) -> Vec<u32> {
+    run_drive(mult, ring, 0)
+}
+
+fn run_drive(mult: u32, ring: RingAdvance, drive: u32) -> Vec<u32> {
     let mut l = FwLeslieE40::with_ring(ring);
+    if drive != 0 {
+        l.set_drive(f32::from_bits(drive));
+    }
     l.set_speed_words(SLOW_SPEED_WORDS.map(|w| w * mult));
     lcg(g::CALLS)
         .into_iter()
@@ -125,4 +132,22 @@ fn the_arm_fast_speed_words_advance_the_rotor_phase_by_the_word_per_call() {
         c.call(row);
     }
     assert_eq!(c.rd(0xB2F23), p0.wrapping_add(100 * fast[0]));
+}
+
+#[test]
+fn the_drive_words_match_the_oracle_for_2000_calls() {
+    let got = run_drive(g::DRIVE_MULT, RingAdvance::FROZEN, g::DRIVE_DRIVE);
+    assert_eq!(got[..g::DRIVE_FIRST.len()], g::DRIVE_FIRST);
+    assert_eq!(fnv(&got), g::DRIVE_FNV);
+}
+
+#[test]
+fn zero_drive_is_the_boot_state_and_clamping_holds() {
+    let a = run_drive(1, RingAdvance::FROZEN, 0);
+    assert_eq!(fnv(&a), g::SLOW_FNV);
+    let mut l = FwLeslieE40::new();
+    l.set_drive(7.0);
+    let mut m = FwLeslieE40::new();
+    m.set_drive(1.0);
+    assert_eq!(l.process_block([0.3; 4]), m.process_block([0.3; 4]));
 }
