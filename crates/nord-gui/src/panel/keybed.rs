@@ -6,6 +6,7 @@
 
 #![cfg_attr(test, allow(clippy::field_reassign_with_default))]
 
+use super::keybed_velocity::velocity_at;
 use super::layout_px::rect_or_empty;
 use super::prelude::*;
 
@@ -22,7 +23,7 @@ fn is_black(midi: u8) -> bool {
 
 /// Black key geometry relative to the white key width.
 const BLACK_W: f32 = 0.64;
-const BLACK_H: f32 = 0.62;
+const BLACK_H: f32 = super::keybed_velocity::BLACK_H;
 
 /// Note under the point `(rel_x, rel_y)` of a keybed `white_w` per white key and `height` tall;
 /// black keys sit on top.
@@ -68,24 +69,14 @@ pub fn nearest_split_led(note: u8, white_w: f32) -> usize {
         .unwrap_or(0)
 }
 
-/// Key velocity of a mouse press on the on-screen keybed.
-///
-/// EMPIRICAL: 88, not 100. The factory piano strokes are velocity layered (VERIFIED firmware level
-/// law, `piano/velocity_level.rs`), so a fixed velocity of 100 plays the bright, loud layer on every
-/// click. Against the Part A demo video the best uniform replay velocity of the Velvet Grand clip is
-/// 88 and the Felt Upright clip reads +8.4 dB RMS at 88 against +7.3 dB for the Pipe organ yardstick
-/// (+11.0 dB at 100); see `docs/research/piano-felt-upright-soft.md`. A MIDI keyboard keeps its own
-/// velocity; only the mouse is fixed.
-const MOUSE_VELOCITY: u8 = 88;
-
-/// Sends a Note On of the on-screen keybed. It goes through the keyboard path
-/// (`AudioHandle::send_keyboard_midi`), so Local Control Off keeps the sound silent while the
-/// note is still transmitted.
-fn press_note(audio_handle: &AudioHandle, note: u8) {
+/// Sends a Note On of the on-screen keybed with the velocity from the hit position (D84,
+/// `keybed_velocity`). It goes through the keyboard path (`AudioHandle::send_keyboard_midi`), so
+/// Local Control Off keeps the sound silent while the note is still transmitted.
+fn press_note(audio_handle: &AudioHandle, note: u8, velocity: u8) {
     audio_handle.send_keyboard_midi(MidiEvent::NoteOn {
         channel: 0,
         note,
-        velocity: MOUSE_VELOCITY,
+        velocity,
     });
 }
 
@@ -126,7 +117,8 @@ pub(super) fn render_keybed(
                 release_held(state, audio_handle);
                 if let Some(n) = new {
                     state.mouse_held_note = Some(n);
-                    press_note(audio_handle, n);
+                    let vel = velocity_at(pos.y - keys.top(), is_black(n), keys.height());
+                    press_note(audio_handle, n, vel);
                     for c in state.program_ui.key_pressed(n) {
                         audio_handle.send_command(c);
                     }
@@ -233,7 +225,7 @@ mod tests {
     /// Plays Middle C through the keybed press path and applies every queued command to `e`.
     fn press_middle_c(e: &mut Stage4Engine) {
         let (audio, rx) = AudioHandle::new();
-        press_note(&audio, 60);
+        press_note(&audio, 60, 88);
         let mut vol = 0.8;
         for cmd in rx.try_iter() {
             crate::audio::apply_audio_command(cmd, e, &mut vol);
@@ -241,12 +233,12 @@ mod tests {
     }
 
     #[test]
-    fn mouse_press_uses_the_video_fitted_velocity_not_100() {
+    fn press_note_sends_the_given_velocity() {
         let (audio, rx) = AudioHandle::new();
-        press_note(&audio, 60);
+        press_note(&audio, 60, 37);
         match rx.try_recv() {
             Ok(AudioCommand::Keyboard(MidiEvent::NoteOn { velocity, .. })) => {
-                assert_eq!(velocity, 88);
+                assert_eq!(velocity, 37);
             }
             other => panic!("expected a keyboard Note On, got {other:?}"),
         }
@@ -255,7 +247,7 @@ mod tests {
     #[test]
     fn keybed_notes_are_keyboard_events_not_midi_in() {
         let (audio, rx) = AudioHandle::new();
-        press_note(&audio, 60);
+        press_note(&audio, 60, 88);
         assert!(matches!(
             rx.try_recv(),
             Ok(AudioCommand::Keyboard(MidiEvent::NoteOn { note: 60, .. }))

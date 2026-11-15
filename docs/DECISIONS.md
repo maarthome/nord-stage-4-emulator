@@ -830,12 +830,21 @@ writes synth oscillator P block; `--synth-p verified` opt-in
 
 ### D76. The on-screen keybed plays velocity 88, not 100
 
-- **Status:** proposed (pending the user's listening check)
+- **Status:** superseded by D84 (the constant 88 is replaced by a hit-position velocity; 88 stays as the computer-keyboard default)
 - **Context:** The user hears the GUI's Felt Upright (`A:13`) as much harsher and brighter than the Part A demo video. The program is piano only, Timbre Off, no FX; the sound and the firmware level law are the verified defaults. On the 150 to 190 s clip the spectral shape at velocity 100 matches the recording (3 to 8 kHz +0.5 dB), but the level is +11.0 dB over it, +3.7 dB over the Pipe yardstick ([piano-felt-upright-soft](research/piano-felt-upright-soft.md)). The GUI mouse press sent velocity 100.
 - **Decision:** `MOUSE_VELOCITY` of the on-screen keybed is 88. No DSP default, golden or `render_hash` changes; MIDI input keeps its own velocity.
 - **Why:** The Velvet Grand clip fits a uniform replay velocity of 88 ([piano-note-velocity](research/piano-note-velocity.md)); the Felt Upright clip is +1.1 dB against the yardstick at 88 (inside the 3 dB target). Velocity 100 plays the loud, bright layer of every velocity-layered piano on every click.
 - **Alternatives:** Flip `--piano-slew-fw` or the bus convention (rejected: the absolute level stays ASSUMED, D22); darken the piano with a filter (rejected: the spectrum matches at equal velocity, no evidence for a stage); a velocity-from-click-position control (kept as a follow-up).
 - **Impact:** `crates/nord-gui/src/panel/keybed.rs` constant and test; `emu_vs_hw_segments.json` gains `piano_felt`; OQ20 and the piano spec updated. A single-note hardware recording per velocity is needed to settle level and brightness ([piano-felt-upright-soft](research/piano-felt-upright-soft.md)).
+
+### D84. The mouse velocity of the on-screen keybed follows the hit position along the key
+
+- **Status:** proposed (pending the user's listening check). Supersedes D76.
+- **Context:** D76 fixed the mouse velocity at 88. The 2026-11-15 listening test showed that key force changes the piano sound a lot, and the hardware Felt Upright demo is played at a median velocity of about 43, so a constant 88 is too hard and leaves no way to play soft.
+- **Decision:** `keybed_velocity::velocity_at` maps the pointer position along the pressed key linearly to 20..127: top of the key (back) = 20, front tip = 127. A white key is `height` long, a black key `0.62 * height` (its own front tip is loud too). The computer keyboard (D80, default 88, C / V steps) and MIDI In are unchanged. No DSP default, golden or `render_hash` changes.
+- **Why:** A real key is struck harder near its front tip; the mouse has no force, so the hit position is the only free axis. It gives the whole range, including the soft layers the hardware demo uses.
+- **Alternatives:** Keep 88 (rejected: too hard); a velocity slider (rejected: slower to play, no per-note dynamics); a curve biased to soft values (rejected: no measured mouse-to-force law; the linear map is ASSUMED, a curve can follow the single-note hardware recordings); mouse speed (not available per click in egui).
+- **Impact:** `crates/nord-gui/src/panel/keybed.rs`, new `keybed_velocity.rs` with tests; `docs/specs/visual-style-and-panel.md` keybed section; `computer_keys.rs` comment. Open: the 20 / 127 ends and the linearity are ASSUMED.
 
 ### D81. The MULTI / SUPER stages read the verified ARM words by default; SUPER wave 0 on LP24 has its own cutoff factor
 
@@ -898,3 +907,13 @@ Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out doc
 - **Alternatives:** Fit a damper / release time constant to the clips (rejected: no gap to fit, EMPIRICAL on lossy reverberant audio, D22); replace the default release envelope by the firmware 44 ms release (rejected: the firmware release is the slew path's, already opt-in, and its absolute level is open); flip chain + slew (rejected: level 1 to 8 dB under the default on three clips, D72).
 - **Update (same PR):** Single-note renders show the slew follows the velocity law (0.238 dB per velocity unit, as the default) at a constant -19.4 dB (= 0.21875 and the muted extra voice, open bus scale), and with the pedal down the firmware voice path (and slew) is bypassed for 25 to 77 % of the clip notes; that mix, not a wrong decay or attack parameter, explains the clip gap of chain + slew. Test `pedal_down_bypasses_the_slew_voice`; decoding the damper-down voice list is the follow-up.
 - **Impact:** New tool and tests (`tools/tests/test_piano_decay.py`), research note, data file, spec paragraph in `docs/specs/piano-engine.md`, OQ20 update, ROADMAP item. No Rust change; `render_hash` and every golden are unchanged.
+
+### D85. Organ level `K = 2.8` stays EMPIRICAL: the image audit finds no `1 / 0.21875` lane word; the D72 lead is pinned by a test
+- **Status:** accepted
+- **Decided by:** Claude (agent)
+- **Context:** D72 noted `K = 2.8` is within 0.23 dB of `1.6 * 0.3732 / 0.21875` (organ chain word times FX path over the piano SMP slew gain). The task was to replace `K` by a firmware-derived value, promoting it only if verified end to end (D22).
+- **Decision:** Audit the FX, PNO and ORG DSP images and the ARM code for a stored word equal to `2.8`, `0.21875` or `1 / 0.21875` ([organ-output-law](research/organ-output-law.md) s6). None is a stored float in a DSP image (all matches are at non-word-aligned offsets); the ARM matches are not decoded. `K` stays `EMPIRICAL`, `Chain` stays opt-in, no default moves. A unit test pins the lead so a later decode has the number to hit.
+- **Why:** A numerical coincidence of two unrelated words is not a derivation (provenance rule: do not upgrade a tag without new evidence); the clips cannot separate 2.73 from 2.8.
+- **Alternatives:** Add a `chain / 0.21875` law (rejected: same audio as `K` within 0.23 dB, would carry a false VERIFIED look); flip `Chain` as default (rejected: 13 dB under B3 / Vox clips).
+- **Impact:** Doc comment and test in `organ/output_level.rs`; research s6; OQ24 update. No audio change, `render_hash` unchanged.
+

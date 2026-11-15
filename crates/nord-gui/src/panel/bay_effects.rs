@@ -17,11 +17,10 @@ mod reverb;
 #[cfg(test)]
 mod tests;
 
-use super::layout_px::to_px;
 use super::prelude::*;
 use super::ui_state::fx::{slot_for, StateEcho};
 use ctx::Fx;
-use nord_panel::{section_rect, Section};
+use nord_panel::Section;
 
 /// Draw this bay and apply its input to `state` / the audio thread.
 pub(super) fn render_bay_effects(
@@ -32,11 +31,7 @@ pub(super) fn render_bay_effects(
     audio_handle: &AudioHandle,
 ) {
     let origin = panel_rect.min;
-    section_frame(
-        painter,
-        to_px(section_rect(Section::Effects), origin),
-        "LAYER EFFECTS",
-    );
+    super::frames::paint_plate(painter, origin, Section::Effects, "LAYER EFFECTS");
     super::frames::paint_frames(painter, origin, Section::Effects);
 
     let (now_ms, shift) = ui.input(|i| ((i.time * 1000.0) as u32, i.modifiers.shift));

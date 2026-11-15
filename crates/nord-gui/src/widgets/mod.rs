@@ -8,6 +8,7 @@ mod basic;
 mod display;
 mod faders;
 mod knob;
+mod plate;
 #[cfg(test)]
 pub(crate) mod probe;
 pub mod scale;
@@ -22,6 +23,7 @@ pub use basic::{
 pub use display::{oled, triangle_matrix_selector};
 pub use faders::{drawbar, layer_strip};
 pub use knob::knob;
+pub use plate::plate_frame;
 pub use wheels::pitch_and_mod_wheels;
 
 /// Cycles to the next element of `items` after `cur` (wraps).
