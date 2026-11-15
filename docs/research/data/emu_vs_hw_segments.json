@@ -41,6 +41,11 @@
        {"label": "vel-88-piano-bus", "velocity": 88, "flags": ["--firmware-piano-bus"]},
        {"label": "piano-chain", "flags": ["--firmware-piano-chain"]},
        {"label": "vel-88-piano-chain", "velocity": 88, "flags": ["--firmware-piano-chain"]},
+       {"label": "piano-slew", "flags": ["--piano-slew-fw"]},
+       {"label": "piano-chain+slew", "flags": ["--firmware-piano-chain", "--piano-slew-fw"]},
+       {"label": "vel-88-piano-slew", "velocity": 88, "flags": ["--piano-slew-fw"]},
+       {"label": "vel-88-piano-chain+slew", "velocity": 88, "flags": ["--firmware-piano-chain", "--piano-slew-fw"]},
+       {"label": "piano-chain+law+slew", "flags": ["--firmware-piano-chain", "--firmware-piano-layer-law", "--piano-slew-fw"]},
        {"label": "routing", "flags": ["--firmware-routing"]}]},
     {"id": "piano_felt", "entry": "Program/Bank A/Felt Upright.ns4p", "engine": "piano Upright (Felt), no FX", "at_s": 150, "duration_s": 40,
      "variants": [
