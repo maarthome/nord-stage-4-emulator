@@ -16,7 +16,7 @@ Tags follow `.agents/rules/provenance-in-code.md`.
 | Does the SMP DSP write it? | No evidence. The SMP image has its own records at `0x93542`, `0x9354A`, `0x93578`, `0x93580` (pointer pairs `0x9404E, 0xE3A00`, a different table), and its program listing (`adi_dis.py` over short words `0x1C0300 .. 0x1C2800`, 3,618 instructions, incl. the ISRs at `0x1C0EE0`, `0x1C03FD`, `0x1C0A71`, `0x1C058C`) holds no operand in `0x93500..0x935A0` | VERIFIED (listing scan); SMP to SY link not checked (no SMP ISR run) |
 | Is a table of semitone entries stored in the ARM image? | **No.** A scan of `bank0_CODE` for runs of 16-bit values whose unpacked ratio (`unpack_ratio`) steps by `2^(1/12)` (halfword stride 1 and 2, up and down, 5 or more steps) finds only two 32-bit integer tables with a geometric ratio of 1.06 (84 and 78 entries at `0xC02B9EC8` and `0xC0441134`, values 521 .. 63348 and 900 .. 64355, purpose not identified, not packed floats) and short accidental runs; none is a 16-bit packed float table | VERIFIED (scan) |
 | What is new about the index? | The index is **not** the DSP reset value `0x36`: the ARM writes pair block word 0 itself (section 2). It is a per-layer slot that the ARM copies from a two-word slot object; in the harness the object holds `0, -1` and nothing writes it during load, bind or note-on | VERIFIED (run, listing) |
-| Verdict | **Writer not found.** The default of `--sample-pitch` stays off; no engine change, no re-baseline (D84) | open |
+| Verdict | **Writer not found.** The default of `--sample-pitch` stays off; no engine change, no re-baseline (D89) | open |
 
 ## 2. The index chain (new, listing and run)
 
@@ -61,7 +61,7 @@ The byte scans are plain: the 32-bit literals `0x93540..0x93591` in `bank0_CODE`
 
 ## Implications
 
-- `--sample-pitch fw` stays opt-in (D84); `step_join::table_entry_for_key` remains a model. No default, golden or `render_hash` moves.
+- `--sample-pitch fw` stays opt-in (D89); `step_join::table_entry_for_key` remains a model. No default, golden or `render_hash` moves.
 - Any future writer must be searched where the harness is blind: the slot allocator (who gives `0x9062F0F0 + 0` a non-zero slot and fills the table), the "go" state after the prepare answer, an SPI DMA into the SY.
 - A slot index chain exists, so the entry is indexed per slot, not per key: if a writer is found, check whether `e` carries the zone rate ratio and the key law separately.
 
