@@ -68,6 +68,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D79](#d79-piano-comparisons-replay-transcribed-velocities-and-pedal) | 2026-11-15 | Piano comparisons replay transcribed velocities and pedal | proposed |
 | [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
 | [D83](#d83-the-pure-noise-row-of-the-p-table-takes-the-saw-gain-verified-arm-word-the-synth-layer-level-law-stays-open) | 2026-11-15 | The PURE noise row of the P table takes the saw gain (VERIFIED ARM word); the synth layer level law stays open | proposed |
+| [D86](#d86-piano-decay-and-attack-no-engine-change-the-t60-gap-was-a-replay-artefact-per-octave-t60-is-measured-by-toolspiano_decaypy) | 2026-11-15 | Piano decay and attack: no engine change; the T60 gap was a replay artefact; per-octave T60 measured by `tools/piano_decay.py` | accepted |
 | [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | accepted |
 | [D78](#d78-library-drawer-loads-start-from-an-init-program-the-organ-ladders-follow-the-section-state) | 2026-11-15 | Library drawer loads start from an Init Program; the organ ladders follow the section state | accepted |
 | [D70](#d70-the-arm-p-words-drive-the-multi-and-super-stages-under---synth-p-verified-the-default-stays-the-empirical-table) | 2026-11-14 | The ARM P words drive the MULTI and SUPER stages under `--synth-p verified`; the default stays the EMPIRICAL table | accepted |
@@ -896,6 +897,16 @@ accepted
 Grand Pad best squared (1.24 1.46 2.69 1.0; RMS +0.6 +2.3), estimated contradicts it, does meet bar flip.
 Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out document comparison switch).
 `engine/mod.rs`, `engine/mix.rs`, `render_opts.rs` (test `synth_layer_law_squares_the_fader_only_when_selected`), segment `pianopad_grand`, OQ22. renders hashes unchanged.
+
+### D86. Piano decay and attack: no engine change; the T60 gap was a replay artefact; per-octave T60 is measured by `tools/piano_decay.py`
+
+- **Status:** accepted
+- **Context:** [piano-felt-upright-soft](research/piano-felt-upright-soft.md) s2 reported a hardware T60 of 3.2 s against 1.3 s in the emulator, and [piano-transcription](research/piano-transcription.md) s4 an attack of 121 / 99 ms (chain + slew) against 64 / 56 ms. Both came from the uniform-velocity, pedal-less replay or an older build. D22 forbids flipping defaults on weak evidence.
+- **Decision:** No change to `piano.rs`, the slew voice or any default. Add `tools/piano_decay.py` (per-octave fundamental T60 of a hardware clip against emulator renders of the same transcribed notes and pedal) and commit the derived numbers (`docs/research/data/piano_decay_per_octave.json`, [piano-decay-attack](research/piano-decay-attack.md)). `rate_for` (Velvet-only rate table, ASSUMED) and the absolute level of the slew gain stay open (OQ20).
+- **Why:** With the transcribed pedal and velocities the median emulator-to-hardware T60 ratio of the default engine is 1.00 over 9 octave groups of four clips (0.59 to 2.86); Felt Upright tail 4.25 s against 3.34 s hardware, so the old "1.3 s" is not reproduced. Default attack is about 10 ms faster than the hardware (17 %); chain + slew measures 47 to 70 ms against 56 to 64 ms at this HEAD, not 2x. Fitting a decay or release constant would break octaves that now agree (Felt Upright 9.01 / 9.00 s) to chase scatter (1 to 13 notes per octave).
+- **Alternatives:** Fit a damper / release time constant to the clips (rejected: no gap to fit, EMPIRICAL on lossy reverberant audio, D22); replace the default release envelope by the firmware 44 ms release (rejected: the firmware release is the slew path's, already opt-in, and its absolute level is open); flip chain + slew (rejected: level 1 to 8 dB under the default on three clips, D72).
+- **Update (same PR):** Single-note renders show the slew follows the velocity law (0.238 dB per velocity unit, as the default) at a constant -19.4 dB (= 0.21875 and the muted extra voice, open bus scale), and with the pedal down the firmware voice path (and slew) is bypassed for 25 to 77 % of the clip notes; that mix, not a wrong decay or attack parameter, explains the clip gap of chain + slew. Test `pedal_down_bypasses_the_slew_voice`; decoding the damper-down voice list is the follow-up.
+- **Impact:** New tool and tests (`tools/tests/test_piano_decay.py`), research note, data file, spec paragraph in `docs/specs/piano-engine.md`, OQ20 update, ROADMAP item. No Rust change; `render_hash` and every golden are unchanged.
 
 ### D85. Organ level `K = 2.8` stays EMPIRICAL: the image audit finds no `1 / 0.21875` lane word; the D72 lead is pinned by a test
 - **Status:** accepted
