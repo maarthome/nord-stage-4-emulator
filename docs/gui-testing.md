@@ -60,6 +60,23 @@ nord-stage4 --measured-laws --dump-options       # prints the active set
 The self-test prints peak, RMS and the RMS difference to the default engine (0 for defaults) and
 exits non-zero on non-finite samples. The window itself needs a display and an audio device.
 
+## Playing with the computer keyboard
+
+The GUI plays from the PC keyboard (group "Computer keyboard" in the bar under the panel, default on). Keys are physical positions, so the same on QWERTY and ABNT2.
+
+| Keys | Action |
+|---|---|
+| `A S D F G H J K L ; '` | white keys C D E F G A B C D E F from the base octave (default C4 = MIDI 60) |
+| `W E T Y U O P` | black keys C# D# F# G# A# C# D# |
+| `Z` / `X` | base octave down / up (C0..C7) |
+| `C` / `V` | velocity down / up by 8 (1..127, default 88 like a mouse click) |
+| `Space` | sustain pedal (CC 64 down while held) |
+| `Shift` + `P` / `Z` / `L` | panorama, focus zoom, library drawer while the keyboard is on (plain keys play) |
+
+Key down is a Note On, key up a Note Off; auto-repeat is ignored. Notes go through the keyboard path like the on-screen keybed (Local Control Off silences them, the MIDI-in thread is not used) and light the on-screen keys. Everything is released when the window loses focus, a text field (library search) has the keyboard, or the checkbox is cleared. Visual check: run `nord-stage4`, hold `A` and `G` (two lit keys at C4 and G4), press `X` then `A` (C5), tap `Space` with a piano program to hear the sustain, click the bar's Velocity slider to change the dynamics. Tests: `panel/computer_keys.rs` (map), `panel/computer_kb.rs` (state machine), `panel/computer_kb_tests.rs` (headless key events through the full panel, commands in the audio queue). Decision D80.
+
+MIDI input: the bar under the panel also has a "MIDI input" group (port combo box, Rescan button, status text). At start-up the first port is opened as before; pick another port or "Off", or plug a keyboard in and press Rescan (hot plug; a replaced or removed port sends All Notes Off and clears the lit keys). A MIDI keyboard plays with its own velocity (the Note On velocity is passed to the engine unchanged); only the mouse (88) and the computer keyboard (slider, default 88) use a fixed value. Code: `audio/midi_ports.rs` (list, choice, GUI side), `audio/io.rs` (MIDI thread); tests in both files.
+
 ## Screenshots, focus view and the legibility check
 
 ```bash
@@ -77,14 +94,14 @@ a child that runs over 30 s. A whole-panel shot is limited by the OS window size
 is capped at 1x for that reason). F12 still saves the live window to `screenshot.png`. Code:
 `crates/nord-gui/src/screenshot.rs`.
 
-Focus view (B12): click a section header or press `Z` (section under the pointer, else the last
+Focus view (B12): click a section header or press `Z` (`Shift+Z` while the Computer keyboard is on; section under the pointer, else the last
 one) to zoom that section to fill the window (up to 4x, crisp text: the egui zoom factor, not a
 bitmap scale); `Esc` returns, `1`-`5` jump to Organ, Piano, Program, Synth, Layer Effects. In the
 overview the window scale-to-fits the panel. Code: `crates/nord-gui/src/panel/view.rs`.
 
-Panorama (B12): `P` shows a pannable / zoomable part of the panel with a strip of the whole
+Panorama (B12): `P` (`Shift+P` while the Computer keyboard is on) shows a pannable / zoomable part of the panel with a strip of the whole
 instrument under it (drag or click the strip, wheel or `+` / `-` zoom, arrows pan, `Esc` leaves);
-`L` toggles the library drawer. `--screenshot` never enters the panorama and never draws the
+`L` (`Shift+L` while the Computer keyboard is on) toggles the library drawer. `--screenshot` never enters the panorama and never draws the
 drawer, so `gui_shots.py` output is unchanged. Code: `panel/panorama.rs`, tests
 `panel/panorama_tests.rs`.
 
@@ -130,6 +147,15 @@ Round 4 adds knob numerals (`widgets/scale.rs`) and the Effects variation lists 
 Round 6 adds the VIB/CHORUS type names (`panel/organ_vib_matrix.rs`) and the Rotary Speaker tab with no new rule; the first run gave 2 E, 2 G, 6 L (frame too narrow, names 8 px apart, A / B names under the lower row), 0 after the 11.5 px column pitch, a wider frame, the A / B nudge and the percussion box 3 px right.
 
 Round 5 adds LED names (`bay_synth/names.rs`), KB TOUCH full names and the amp second list column with no new rule; first run 1 L (MED against the PIANO SELECT title), then 1 S (LIST at the section edge) while nudging, 0 after.
+
+Round 7 (`panel/legibility_leds.rs`, LED spacing; records `Kind::Led` and the ladder bars `Kind::LedSeg`) adds:
+
+| Rule | Meaning |
+|---|---|
+| `B` | an LED bezel is closer than 2.5 px to a button bezel (button layout rectangle + 1.5 px); LEDs whose centre lies on the button are exempt |
+| `D` | two LED bezels closer than 2 px (centre pitch under diameter + 2), or two ladder bars / an LED and a ladder bar closer than 1.5 px (2 px for LED to bar) |
+
+First run 53 `B` + 21 `D` (+ 40 bars at the old 1.0 px gap), 0 after; the allow-list stays empty. Shared fixes: `ctl::led_above` / `LED_LIFT`, `ctl::TAG_LIFT_LED`, `ctl_led_tag::tag_led`, `SEG_GAP` of the ladders, list pitch `COL_DX` and `NAME_GAP` of the Effects lists, plus nudges in `layout_tweaks.rs`.
 
 `legibility_allow.txt` lists tolerated violations (empty now; the test also fails on stale
 entries). Run with `NS4_WRITE_COLLISIONS=<file> cargo test -p nord-gui collisions_match` to dump

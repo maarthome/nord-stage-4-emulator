@@ -84,13 +84,15 @@ impl BackupLibraryState {
         }
     }
 
-    /// L toggles the library drawer (like Z / P for the view). Ignored while a text field has
+    /// L (Shift+L while the Computer keyboard is on) toggles the library drawer (like Z / P for the view). Ignored while a text field has
     /// the keyboard. Returns `true` when it toggled.
     pub fn handle_keys(&mut self, ctx: &egui::Context) -> bool {
         if ctx.wants_keyboard_input() {
             return false;
         }
-        let l = ctx.input(|i| i.key_pressed(egui::Key::L) && !i.modifiers.any());
+        let claimed = crate::panel::computer_keys::claimed(ctx);
+        let l =
+            ctx.input(|i| crate::panel::computer_keys::shortcut_pressed(i, egui::Key::L, claimed));
         if l {
             self.drawer_open = !self.drawer_open;
         }

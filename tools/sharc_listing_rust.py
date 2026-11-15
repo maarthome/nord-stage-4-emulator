@@ -7,8 +7,10 @@ text with regular expressions; this module applies the **same** rules once and e
 integer rows, so `crates/nord-core/src/organ/b3_bass_fw/` can run the same routine without text:
 
 * row `[kind, a, b, c, d, e, f, g]` (eight `i32`),
-* `INS n cond` opens an instruction of `n` item rows (reads see the old state, writes land at the
-  end, `cond` = `if lt`), `LOOP count n` repeats the next `n` rows (`lcntr` / `do ... until lce`).
+* `INS n cond jcond target` opens an instruction of `n` item rows (reads see the old state, writes
+  land at the end, `cond` = `if lt`); a jump is an `INS` with no items, `jcond` 1 = always, 2 =
+  `if ne`, 3 = `if eq` and `target` the absolute index of the row it continues at (forward, inside
+  the same loop body); `LOOP count n` repeats the next `n` rows (`lcntr` / `do ... until lce`).
 
 Rows carry no firmware bytes, only the decoded operation of each instruction (D22: derived).
 """
@@ -146,18 +148,34 @@ def item_row(item: str) -> list[int]:
     return [MOVE_NI, reg_id(dst), vm.sx(int(src, 0)), 0, 0, 0, 0, 0]
 
 
-def decode(prog: list[vm.Insn]) -> list[list[int]]:
-    """Rows of a listing up to its `rts` (loops become `LOOP count n` + `n` rows)."""
+JUMP_COND = {None: 1, "ne": 2, "eq": 3}
+
+
+def decode(prog: list[vm.Insn], base: int = 0) -> list[list[int]]:
+    """Rows of a listing up to its `rts` (loops become `LOOP count n` + `n` rows).
+
+    `base` is the word address of the first instruction (absolute `jump` targets).
+    """
     at = {p.addr: k for k, p in enumerate(prog)}
     rows: list[list[int]] = []
+    row_of: dict[int, int] = {}  # listing offset -> index of the instruction's first row
+    fixups: list[tuple[int, int]] = []  # (row index of a jump, target offset)
     open_loops: list[tuple[int, int]] = []  # (row index of LOOP, index of the last instruction)
     for k, ins in enumerate(prog):
+        row_of[ins.addr] = len(rows)
         if ins.text.startswith("rts"):
             break
         if m := re.fullmatch(r"lcntr=(\w+), do \(pc,(\w+)\) until lce", ins.text):
             end = at[ins.addr + (int(m[2], 0) & 0x7FFFFF)]
             open_loops.append((len(rows), end))
             rows.append([LOOP, int(m[1], 0), 0, 0, 0, 0, 0, 0])
+            continue
+        if j := vm.JUMP.fullmatch(ins.text):
+            fixups.append((len(rows), int(j[2], 0) - base))
+            rows.append([INS, 0, 0, JUMP_COND[j[1]], 0, 0, 0, 0])
+            while open_loops and open_loops[-1][1] == k:
+                start, _ = open_loops.pop()
+                rows[start][2] = len(rows) - start - 1
             continue
         text, cond = ins.text, 0
         if c := re.match(r"if (\w+) (.*)", text):
@@ -171,4 +189,6 @@ def decode(prog: list[vm.Insn]) -> list[list[int]]:
             start, _ = open_loops.pop()
             rows[start][2] = len(rows) - start - 1
     assert not open_loops
+    for at_row, target in fixups:
+        rows[at_row][4] = row_of[target]
     return rows

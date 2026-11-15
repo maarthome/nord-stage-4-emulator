@@ -11,7 +11,13 @@ mod bay_piano_names;
 mod bay_piano_select;
 pub(crate) mod bay_program;
 mod bay_synth;
+pub mod computer_kb;
+pub mod computer_kb_bar;
+#[cfg(test)]
+mod computer_kb_tests;
+pub mod computer_keys;
 mod ctl;
+mod ctl_led_tag;
 #[cfg(test)]
 mod frame_cost_tests;
 mod frames;
@@ -22,6 +28,8 @@ mod layout_tweaks;
 #[cfg(test)]
 mod legibility_caps;
 #[cfg(test)]
+mod legibility_leds;
+#[cfg(test)]
 mod legibility_rules;
 #[cfg(test)]
 mod legibility_tests;
@@ -29,6 +37,7 @@ mod organ_drawbars;
 mod organ_logic;
 #[cfg(test)]
 mod organ_master_tests;
+mod organ_model;
 mod organ_preset;
 #[cfg(test)]
 mod organ_rewire_tests;
@@ -103,6 +112,8 @@ pub fn render_stage4_panel(ui: &mut Ui, state: &mut Stage4PanelState, audio_hand
             .request_repaint_after(std::time::Duration::from_millis(33));
     }
     let ctx = ui.ctx().clone();
+    // Before the shortcut handlers: it publishes whether the playing keys are claimed.
+    computer_kb::drive(&ctx, state, audio_handle);
     let cursor = ui.cursor().min;
     state.view.handle_keys(&ctx, state.view.origin(cursor));
     view::apply_zoom(&ctx, &state.view);
@@ -163,7 +174,7 @@ fn render_panel_at(
         let hdr = view::header_px(s, panel_rect.min);
         let resp = ui
             .interact(hdr, ui.id().with(("section_header", s)), Sense::click())
-            .on_hover_text("Click or press Z: zoom this section (Esc: back, 1-5: jump)");
+            .on_hover_text("Click or press Z (Shift+Z while the Computer keyboard is on): zoom this section (Esc: back, 1-5: jump)");
         if resp.clicked() {
             state.view.toggle(s);
         }

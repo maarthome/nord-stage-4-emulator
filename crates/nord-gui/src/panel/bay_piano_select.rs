@@ -12,6 +12,13 @@ use nord_panel::behaviour::Trigger;
 /// Type names in LED order (manual p.24).
 pub const TYPE_NAMES: [&str; 6] = ["Grand", "Upright", "Electric", "Clav", "Digital", "Misc"];
 
+/// Distance (px) from a button edge to the centre of a side LED of radius 2.2: button bezel 1.5,
+/// gap 2.5 (audit rule `B`), LED bezel 3.2.
+const SIDE_LED: f32 = 7.3;
+/// Distance (px) from a button's bottom edge to the top of its 6 px LED row: the LED centres sit
+/// 3 px lower, so the bezel (r + 1) keeps 2.5 px clear of the button bezel.
+const LED_ROW_DROP: f32 = 4.6;
+
 const RED: (Color32, Color32) = (LED_RED, LED_RED_DIM);
 const AMBER: (Color32, Color32) = (LED_AMBER, LED_AMBER_DIM);
 
@@ -138,7 +145,7 @@ fn draw_acoustics(
     w::inside(p, soft, "SOFT REL", clav);
     w::mini_led(
         p,
-        pos2(soft.left() - 5.0, soft.center().y),
+        pos2(soft.left() - SIDE_LED, soft.center().y),
         state.piano_ui.soft_release[l],
         LED_RED,
         LED_RED_DIM,
@@ -182,7 +189,7 @@ fn draw_acoustics(
     w::legend(p, sr, "PED NOISE", false);
     w::mini_led(
         p,
-        pos2(sr.left() - 5.0, sr.center().y),
+        pos2(sr.left() - SIDE_LED, sr.center().y),
         state.string_res,
         LED_RED,
         LED_RED_DIM,
@@ -191,7 +198,7 @@ fn draw_acoustics(
     );
     w::mini_led(
         p,
-        pos2(sr.right() + 5.0, sr.center().y),
+        pos2(sr.right() + SIDE_LED, sr.center().y),
         state.pedal_noise,
         AMBER.0,
         AMBER.1,
@@ -265,7 +272,7 @@ fn draw_option_buttons(
         w::face(p, rect, pr.down, false);
         w::inside(p, rect, text, false);
         let row = Rect::from_min_size(
-            pos2(rect.left(), rect.bottom() + 3.0),
+            pos2(rect.left(), rect.bottom() + LED_ROW_DROP),
             vec2(rect.width(), 6.0),
         );
         w::led_strip(p, row, 3, |i| i == lit, RED, false);
