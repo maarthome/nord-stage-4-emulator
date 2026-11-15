@@ -6,6 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
+| [D97](#d97-the-synth-sustped-default-is-on-in-the-firmware-and-stored-per-program-the-opt-in-follows-the-program-bit-the-default-render-stays) | 2026-11-15 | The Synth SUSTPED default is on in the firmware and stored per program; `--synth-sustain-pedal` follows the program bit, the default render stays | accepted |
 | [D93](#d93-grand-pad-leftovers-the-pedal-replay-closes-most-of-the-width-and-tail-gap-the-synth-fx-rack-is-irrelevant-here---synth-sustain-pedal-is-opt-in) | 2026-11-15 | Grand Pad leftovers: pedal replay closes most of the width and tail gap, the synth FX rack is irrelevant here; `--synth-sustain-pedal` opt-in | accepted |
 | [D90](#d90-mod-2-parameter-laws-are-verified-on-a-dense-arm-grid-the-shared-amountrate-words-get-their-joint-law-mod2-stays-opt-in) | 2026-11-15 | Mod 2 parameter laws are verified on a dense ARM grid; the shared amount / rate words get their joint law; `mod2` stays opt-in | accepted |
 | [D1](#d1-rust-core-for-dsp-engines-and-cbin-parsers) | 2026-11-10 | Rust core (`nord-core`) for DSP engines and `CBIN` binary parsers | accepted |
@@ -994,3 +995,13 @@ Record trace ([organ-preamp-search](research/organ-preamp-search.md) s6.1): `0xB
 realistic set Leslie presence +1.5 .. +2.8 presence was replay, stage; remaining sub +14 flat 0..90 rumble surrogate history ring (ring it +4.1 +13.7), stays 4.9 under, +3.1 .. +3.8 brilliance +4.5 .. +5.8 outside bar, there with an unknown speed history.
 Add `tanh` preamp or gain before Leslie stage exists, it would be fitted clip); flip `--leslie firmware` D22); keep 525-note it Leslie amplitude chatter, re-triggering key click envelope).
 `tools/note_offsets.py` tests; docs otherwise; goldens Open (OQ21): DMA ring Leslie history, `DM(0xB00EE)`, lone-note clip.
+
+### D97. The Synth SUSTPED default is on in the firmware and stored per program; the opt-in follows the program bit, the default render stays
+
+- **Status:** accepted
+- **Decided by:** Claude (agent); no default render changes (D22)
+- **Context:** D93 added `--synth-sustain-pedal` and left the hardware default of the Synth SUSTPED flag open ([synth-sustped](research/synth-sustped.md)).
+- **Decision:** (1) Record the firmware default (`Edt_Syn_kSustainEnable` `0xF8`: 0..1, default 1) and the per-program bit (Synth layer block offset +71, blocks at section byte 327 bits 248 / 656 / 1064; 381 / 383 / 383 of 384 factory programs store 1, five exceptions). (2) Decode the bit (`cbin/synth_sustain.rs`, `synth_sustain` in `GlobalProgramDecoded`, serde default on) and let `--synth-sustain-pedal` apply the program bits (the firmware default without a program). (3) `tools/synth_sustped.py` and `data/synth-sustped-programs.csv` (derived numbers). (4) The engine default of `sustped` for the synth layers stays off.
+- **Why:** The hardware default is on and Grand Pad stores 1, so the opt-in is the hardware behaviour for factory programs. D22 is not met for a default flip: the ARM note logic that consumes the flag is not traced (the DSP side is silent) and the clip is mixed (tail and hold closer, spectral score 1.42 to 1.68).
+- **Alternatives:** Flip the default now (rejected: hold logic untraced, one mixed clip); keep the blanket opt-in without the program bit (rejected: it would hold the five programs whose bit is 0).
+- **Impact:** `cbin/synth_sustain.rs` (tests), `cbin/presets.rs`, `engine/routing.rs`, `engine/mod.rs`, `render_opts.rs` (`apply_synth_sustain`, test), `tools/synth_sustped.py` (tests), `docs/research/synth-sustped.md`, `data/synth-sustped-programs.csv`, `midi-and-control.md`, OQ21b, [audio-remaining](research/audio-remaining.md) item 8, ROADMAP. Default renders and `render_hash` unchanged.

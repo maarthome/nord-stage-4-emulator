@@ -178,6 +178,9 @@ pub struct Stage4Engine {
     /// `(v / 127)^2` (`-0.05` at 0) for v = 0..127, checked by `tools/arm_layer_level.py`
     /// (D87, `docs/research/synth-layer-level-law.md`).
     pub synth_layer_law: bool,
+    /// Opt-in (`--synth-sustain-pedal`): the Synth layers follow the SUSTPED bit of the loaded
+    /// program (`cbin::synth_sustain`), and the firmware default (on) when no program is loaded.
+    pub synth_sustain_program: bool,
     /// Copy/Paste buffer; survives program changes. Control thread only.
     pub clipboard: Option<Clip>,
     /// Single-level Undo snapshot. Control thread only.
@@ -250,6 +253,7 @@ impl Stage4Engine {
             program_level_db: 0.0,
             program_gain: 1.0,
             synth_layer_law: true,
+            synth_sustain_program: false,
             clipboard: None,
             undo: undo::UndoSlot::default(),
             undo_hint: UndoHint::default(),
