@@ -92,7 +92,7 @@ pub use live_slots::{LiveSlots, LIVE_SLOT_COUNT};
 pub use morph_clip::MorphClip;
 pub use program_fx_export::{invert_fx_chain, LOSSY_FX_FIELDS};
 pub use program_ops::{PROGRAM_LEVEL_DB_RANGE, TRANSPOSE_RANGE};
-pub use routing::{zone_leds, FirmwareRouting, ProgramRouting};
+pub use routing::{zone_leds, zone_leds_for, FirmwareRouting, ProgramRouting};
 pub use section_edit::Section;
 pub use settings::{
     GlobalSettings, Level3, TonewheelMode, FINE_TUNE_RANGE_CENTS, GLOBAL_TRANSPOSE_RANGE,

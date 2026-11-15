@@ -17,9 +17,7 @@ impl Stage4PanelState {
                 self.organ_b_active = o.layer_b_enabled;
                 self.organ_a_level = o.layer_a_level;
                 self.organ_b_level = o.layer_b_level;
-                self.organ_model = o.model;
-                self.organ_drawbars = o.drawbars_a;
-                self.scanner_on = o.vibrato_on;
+                self.mirror_organ(o);
             }
             SectionPreset::Piano(p) => {
                 match single {

@@ -52,7 +52,7 @@ impl HeadlessLoad {
             }
             return true;
         }
-        !state.program_ui.requests.is_empty()
+        !state.program_ui.requests.is_empty() || library.is_busy()
     }
 }
 

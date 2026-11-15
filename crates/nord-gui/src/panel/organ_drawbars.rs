@@ -87,6 +87,19 @@ fn is_white(i: usize) -> bool {
     matches!(i, 2 | 3 | 5 | 8)
 }
 
+/// Sends the stored preset of layer `l` to the engine.
+pub(super) fn send_drawbars(state: &Stage4PanelState, audio: &AudioHandle, l: usize) {
+    let bars = state.organ_drawbars_of(l);
+    audio.send_command(if l == 0 {
+        AudioCommand::SetDrawbars(bars)
+    } else {
+        AudioCommand::Organ(OrganEdit::Drawbars {
+            layer: l as u8,
+            bars,
+        })
+    });
+}
+
 /// LEDs lit on a ladder: the stored value, none in Drawbar Live.
 pub(super) fn ladder_value(value: u8, live: bool) -> u8 {
     if live {
@@ -104,10 +117,10 @@ pub(super) fn render_drawbars(
     audio: &AudioHandle,
 ) {
     let live = state.organ_ui.drawbar_live;
-    if !live {
-        // Preset mode: the physical drawbars follow the stored preset (program loads, SYNC).
-        state.organ_ui.live_bars = state.organ_drawbars;
-    }
+    let focus = state.organ_ui.focus_layer;
+    // The ladders show the stored preset of the focused layer. The sliders are physical: they stay
+    // where they are on a program load (demo video: every cap sits at the bottom on every program).
+    let before = state.organ_ui.live_bars;
     let mut changed = false;
     for i in 0..9 {
         let slot = rect_or_empty(SLOT_IDS[i], origin);
@@ -120,7 +133,9 @@ pub(super) fn render_drawbars(
         ) {
             changed = true;
         }
-        let shown = state.telemetry.drawbar(false, i, state.organ_drawbars[i]);
+        let shown = state
+            .telemetry
+            .drawbar(focus == 1, i, state.organ_drawbars_of(focus)[i]);
         let lit = ladder_value(shown, live);
         let ladder = rect_or_empty(LADDER_IDS[i], origin);
         drawbar_ladder(ui, ladder, LADDER_IDS[i], lit);
@@ -136,8 +151,15 @@ pub(super) fn render_drawbars(
     }
     if changed {
         if !live {
-            state.organ_drawbars = state.organ_ui.live_bars;
-            audio.send_command(AudioCommand::SetDrawbars(state.organ_drawbars));
+            // Preset mode: a moved bar writes its value into the focused layer's preset (every
+            // layer under SECTION EDIT).
+            let moved = (0..9).find(|&i| state.organ_ui.live_bars[i] != before[i]);
+            for l in state.edit_layers(focus, 2) {
+                if let Some(i) = moved {
+                    state.set_organ_drawbar(l, i, state.organ_ui.live_bars[i]);
+                }
+                send_drawbars(state, audio, l);
+            }
         }
         audio.send_command(AudioCommand::Organ(OrganEdit::LiveDrawbars(
             state.organ_ui.live_bars,

@@ -246,6 +246,11 @@ impl BackupLibraryState {
         Ok(())
     }
 
+    /// A decode of a piano / sample bank is still running (the OLED shows `Please wait...`).
+    pub fn is_busy(&self) -> bool {
+        self.pending_jobs > 0
+    }
+
     /// An `.ns4b` archive is open.
     pub fn is_open(&self) -> bool {
         self.archive.is_some()

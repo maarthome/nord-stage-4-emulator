@@ -237,20 +237,17 @@ impl Stage4PanelState {
         self.organ_b_active = (scene_mask & (1 << 1)) != 0;
         self.organ_a_level = prog.organ.layer_a_level;
         self.organ_b_level = prog.organ.layer_b_level;
-        self.organ_model = prog.organ.model;
-        self.organ_drawbars = prog.organ.drawbars_a;
-        self.scanner_on = prog.organ.vibrato_on;
+        self.mirror_organ(&prog.organ);
+        let split = prog.global.split_enabled;
+        self.mirror_organ_zones(
+            &prog.global.kb_zone,
+            prog.global.split_zone_enabled.map(|z| z && split),
+        );
 
         // Piano section
         self.piano_a_active = (scene_mask & (1 << 2)) != 0;
         self.piano_b_active = (scene_mask & (1 << 3)) != 0;
-        self.piano_a_level = prog.piano.layer_a.level;
-        self.piano_b_level = prog.piano.layer_b.level;
-        self.piano_cat = prog.piano.layer_a.category;
-        self.piano_timbre = prog.piano.layer_a.timbre;
-        self.piano_touch = prog.piano.layer_a.touch;
-        self.string_res = prog.piano.layer_a.string_res;
-        self.pedal_noise = prog.piano.layer_a.pedal_noise;
+        self.mirror_piano(&prog.piano);
 
         // Synth section
         self.synth_a_active = (scene_mask & (1 << 4)) != 0;

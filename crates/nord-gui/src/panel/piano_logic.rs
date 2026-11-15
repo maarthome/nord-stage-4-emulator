@@ -215,6 +215,15 @@ pub fn zone_step(s: &mut Stage4PanelState, forward: bool, out: &mut Vec<PianoEdi
     }
 }
 
+/// The ACOUSTICS LEDs (SOFT REL, STRING RES, PED NOISE) light only on the acoustic types.
+///
+/// VERIFIED (partly) against the demo video: `Felt Upright` (A:13) lights STRING RES and PED NOISE
+/// from its stored flags, `Classic Wurly` (A:22, Electric) shows both dark although the program
+/// stores them on. ASSUMED: the same for Clav, Digital and Misc (not shown in the video).
+pub fn acoustic_leds(cat: PianoCategory) -> bool {
+    matches!(cat, PianoCategory::Grand | PianoCategory::Upright)
+}
+
 /// SOFT RELEASE of the focused layer.
 pub fn soft_release_toggle(s: &mut Stage4PanelState, out: &mut Vec<PianoEdit>) {
     let l = s.piano_ui.layer();

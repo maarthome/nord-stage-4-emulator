@@ -319,6 +319,10 @@ Each key routes 9 contact switches to the 9 drawbar buses (`0..=8` level steps).
 - **Volume Switch:** `Normal` ($0\text{ dB}$ percussion boost, $-3\text{ dB}$ main drawbar attenuation) or `Soft` ($-6\text{ dB}$ percussion level, $0\text{ dB}$ drawbar attenuation).
 - **Single-Trigger Logic:** Percussion fires only when transitioning from 0 keys held on the layer to $\ge 1$ key held; legato playing does not re-trigger the percussion envelope until all keys in the layer are released.
 
+### 3.3.0 Percussion per layer (ns4-6c08)
+
+`apply_organ_section` loads layer A's percussion set (`percussion_on`, `_soft`, `_fast`, `_third`) into `organ_a` and layer B's (`percussion_on_b`, ...) into `organ_b`; `program_export` writes both back. VERIFIED against the demo video: `B3 Chords n Solo` (A:14) stores layer A `off, soft, fast, 3rd` and layer B `on, normal, slow, 3rd`, and the panel with layer B focused lights ON and 3RD only. Before this change layer A's set drove both layers (OQ31: "layer B percussion not played"). GUI edits go through `OrganEdit::Percussion { layer, .. }` and `OrganEdit::Drawbars { layer, bars }` (layer A keeps `SetPercussion` / `SetDrawbars`). The sound of layers that store different percussion sets is not compared with the hardware.
+
 ### 3.3.1 POLY percussion, Preset / Drawbar Live, shared vibrato (manual p.20-21, OS v1.6x)
 
 All three are opt-in; defaults reproduce the previous render bit for bit (`render_hash` and the golden tests are unchanged).
