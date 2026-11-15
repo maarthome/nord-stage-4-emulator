@@ -114,6 +114,7 @@
        {"label": "legacy-routing", "flags": ["--legacy-routing"]},
        {"label": "firmware-all", "flags": ["--firmware-all"]},
        {"label": "routing", "flags": ["--firmware-routing"]},
+       {"label": "synth-layer-law", "flags": ["--firmware-synth-layer-law"]},
        {"label": "synth-lvl-sq", "edits": {"synth.layer_a.level": 0.3214}},
        {"label": "synth-lvl-sq+p", "flags": ["--synth-p", "verified"], "edits": {"synth.layer_a.level": 0.3214}},
        {"label": "synth-lvl-1", "edits": {"synth.layer_a.level": 1.0}},
