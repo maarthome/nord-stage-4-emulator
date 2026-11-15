@@ -52,6 +52,7 @@ mod hw_saw;
 mod key_velocity;
 mod measured;
 mod p_block;
+mod p_stage_words;
 mod p_table;
 mod p_type;
 mod p_words;
@@ -96,6 +97,7 @@ pub use measured::{
     SUPERSAW_VOICES, VIBRATO_DEPTH_SCALE_MEASURED,
 };
 pub use p_block::{PBlock, PSpec};
+pub use p_stage_words::StageWords;
 pub use p_table::{PTable, PTableSpec, PWave, PWAVE_COUNT};
 pub use p_type::type_cutoff_scale;
 pub use p_words::{type_count, type_of, words_for, words_of_type, PWords, GAIN_PER_P16};
@@ -126,6 +128,8 @@ mod tests_fw_shape_golden;
 mod tests_fw_stage_golden;
 #[cfg(test)]
 mod tests_fw_stage_golden10;
+#[cfg(test)]
+mod tests_fw_stage_golden11;
 #[cfg(test)]
 mod tests_fw_stage_golden2;
 #[cfg(test)]
@@ -260,6 +264,9 @@ pub struct SynthLayer {
     pub p_table: Option<PTable>,
     /// Row of the table the decoded oscillator plays through (set from `(category, wave)`).
     pub p_wave: PWave,
+    /// P words of the unison stage of the oscillator (MULTI, SUPER), used when the table is the
+    /// verified-words one (`PTable::words`, `--synth-p verified`).
+    pub stage_words: Option<StageWords>,
     /// ANALOG category / wave of the decoded oscillator as a modelled firmware stage (`fw_stages.rs`).
     pub strip_stage: Option<FwStage>,
     /// Strip chain only, opt-in (default off): play `strip_stage` (noise, Shape Square, SUPER, MULTI)
@@ -429,6 +436,7 @@ impl SynthLayer {
             p_block: None,
             p_table: Some(PTable::FITTED),
             p_wave: PWave::Other,
+            stage_words: None,
             strip_stage: None,
             strip_stages: true,
             wave_bank: false,
