@@ -34,16 +34,16 @@ impl SynthLayer {
             return;
         }
 
-        // Arp speed: 16th note at arp_rate_bpm, or a Master Clock subdivision when synced.
-        let sixteenth_sec = self.step_seconds();
+        // Arp speed: a 1/8 note at arp_rate_bpm, or a Master Clock subdivision when synced.
+        let step_sec = self.step_seconds();
         self.arp_sample_counter += inv_fs;
 
-        if self.arp_sample_counter < sixteenth_sec {
+        if self.arp_sample_counter < step_sec {
             if self.perf.pattern_on {
-                self.pattern_release(sixteenth_sec);
+                self.pattern_release(step_sec);
             }
         } else {
-            self.arp_sample_counter -= sixteenth_sec;
+            self.arp_sample_counter -= step_sec;
 
             // Release the previous arp note, unless a `Q` step ties it into this one.
             let keep = self.pattern_keeps_notes();
@@ -163,7 +163,7 @@ mod tests {
     fn test_arpeggiator_generation() {
         let mut synth = SynthLayer::new(48_000.0);
         synth.arp_mode = ArpMode::Up;
-        synth.arp_rate_bpm = 240.0;
+        synth.arp_rate_bpm = 480.0;
         synth.note_on(60, 100);
         synth.note_on(64, 100);
         synth.note_on(67, 100);
@@ -178,10 +178,35 @@ mod tests {
     }
 
     #[test]
+    fn arpeggiator_steps_every_thirty_over_bpm_seconds() {
+        // VERIFIED step length (`arp_rate.rs`): a step is a 1/8 note at the displayed tempo, so
+        // 120 BPM steps every 250 ms = 12000 samples at 48 kHz (not the 16th it used to be).
+        let mut synth = SynthLayer::new(48_000.0);
+        synth.arp_mode = ArpMode::Up;
+        synth.arp_rate_bpm = 120.0;
+        synth.note_on(60, 100);
+        synth.note_on(64, 100);
+        let mut changes = Vec::new();
+        let mut last = synth.arp_step;
+        for n in 0..40_000usize {
+            synth.render_frame();
+            if synth.arp_step != last {
+                changes.push(n);
+                last = synth.arp_step;
+            }
+        }
+        assert_eq!(changes.len(), 3, "steps in 40000 samples: {changes:?}");
+        for pair in changes.windows(2) {
+            assert!((pair[1] - pair[0]).abs_diff(12_000) <= 1, "{changes:?}");
+        }
+        assert!(changes[0].abs_diff(12_000) <= 1, "{changes:?}");
+    }
+
+    #[test]
     fn poly_arpeggiator_triggers_held_chord_simultaneously() {
         let mut synth = SynthLayer::new(48_000.0);
         synth.arp_mode = ArpMode::Poly;
-        synth.arp_rate_bpm = 240.0;
+        synth.arp_rate_bpm = 480.0;
         synth.note_on(60, 70);
         synth.note_on(64, 90);
         synth.note_on(67, 110);
@@ -202,7 +227,7 @@ mod tests {
         synth.note_on(40, 100);
         synth.note_off(40);
         synth.arp_mode = ArpMode::Up;
-        synth.arp_rate_bpm = 240.0;
+        synth.arp_rate_bpm = 480.0;
         synth.note_on(60, 100);
         synth.note_on(64, 100);
         for _ in 0..3_200 {
