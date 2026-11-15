@@ -27,9 +27,13 @@ fn delay(frames: f32, ds: f64) -> f32 {
 const K: u32 = 0x3F7D_A3C2;
 /// Sine polynomial `1.57033, -0.641942, 0.0716143` of the image.
 const POLY: [u32; 3] = [0x3FC9_0069, 0xBF24_5655, 0x3D92_AA8A];
-/// Ramp slope and knee of the soft chorus mix words (`c[-3]`, `c[-2]`): `0x3C366ACA`, 0.7071.
-const MIX_SLOPE: f32 = 0.011_129;
-const MIX_MAX: f32 = std::f32::consts::FRAC_1_SQRT_2;
+/// Slope and cap of the soft chorus mix words `c[-3] = min(MIX_MAX, MIX_SLOPE v)`, `c[-2] =
+/// clamp((v - MIX_MAX / MIX_SLOPE) MIX_SLOPE, 0, MIX_MAX)`.
+/// VERIFIED: the ARM words at the 44 dense values (`docs/research/data/fx-mod2-dense.csv`, test
+/// `the_closed_forms_follow_the_arm_words_at_every_dense_value`): slope `0.0111338589` (every
+/// word within 1e-7), cap `0x3F34FDF4` = 0.7070000172 (the earlier fit had 0.011129 and 1/sqrt 2).
+const MIX_SLOPE: f32 = 0.011_133_859;
+const MIX_MAX: f32 = f32::from_bits(0x3F34_FDF4);
 
 /// Longest delay the 256 frame ring holds (a pair of taps and the interpolation need a margin).
 const MAX_DELAY_FRAMES: f64 = 250.0;
@@ -151,10 +155,25 @@ impl FwMod2Stage {
                 let (hi, lo) = (f32::from_bits(0x3F7F_F2E5), f32::from_bits(0x3F7F_3B64));
                 self.core
                     .set_value(-0x1E, hi + (lo - hi) * rate as f32 / 127.0);
-                self.core
-                    .set_value(-0x1C, delay(116.023_62 - 0.636_121_3 * vf, ds));
-                self.core
-                    .set_value(-0x1B, delay(17.952_756 + 1.272_242_5 * vf, ds));
+                // VERIFIED bilinear in rate and amount (both ids write these two words; ARM
+                // harness grid of 3 rates x 44 amounts, max error 1.4e-5 frames, test
+                // `the_variation_delays_follow_the_joint_arm_words`). The 11 sample fit of the
+                // amount alone (`116.02 - 0.636 v`, `17.95 + 1.272 v`) holds only at rate 64.
+                let rf = rate as f32;
+                self.core.set_value(
+                    -0x1C,
+                    delay(
+                        113.0 - 0.850_393_7 * vf + 0.047_244_09 * rf + 0.003_348_007 * vf * rf,
+                        ds,
+                    ),
+                );
+                self.core.set_value(
+                    -0x1B,
+                    delay(
+                        24.0 + 1.700_787_4 * vf - 0.094_488_19 * rf - 0.006_696_013_5 * vf * rf,
+                        ds,
+                    ),
+                );
             }
         }
     }
@@ -198,6 +217,7 @@ impl FwMod2Stage {
 
 #[cfg(test)]
 mod tests {
+    use super::super::tests_mod2_dense_golden as g;
     use super::*;
 
     fn run(variation: bool, rate: u32, amount: u32, n: usize) -> Vec<[f32; 2]> {
@@ -235,7 +255,7 @@ mod tests {
         );
         assert!((f32::from_bits(st.core.word(-2)) - MIX_MAX).abs() < 1.0e-3);
         assert!((f32::from_bits(st.core.word(-0x1E)) - 156.0).abs() < 1.0e-3);
-        let v = FwMod2Stage::new(true, 127, 127, fs);
+        let v = FwMod2Stage::new(true, 64, 127, fs);
         assert!(
             (f32::from_bits(v.core.word(-0x1C)) - 35.2).abs() < 0.1,
             "0x420cf1e4"
@@ -283,5 +303,55 @@ mod tests {
             st.core.word(-0x18)
         };
         assert_ne!(phase(0), phase(100));
+    }
+
+    /// Relative difference of two words read as floats (`float`) or signed integers.
+    fn rel(a: u32, b: u32, float: bool) -> f64 {
+        let (x, y) = if float {
+            (f64::from(f32::from_bits(a)), f64::from(f32::from_bits(b)))
+        } else {
+            (f64::from(a as i32), f64::from(b as i32))
+        };
+        (x - y).abs() / x.abs().max(y.abs()).max(1.0)
+    }
+
+    #[test]
+    fn the_closed_forms_follow_the_arm_words_at_every_dense_value() {
+        // VERIFIED: the CHOR words at the 44 dense values (0, 1, 2, 3, every 8th, 60..=80, 126,
+        // 127), including the knee at 63.5 between the original samples (v = 64 .. 78); the
+        // quadratic rate word of the variation is within 5e-5 (`docs/research/fx-mod2-validation.md`).
+        let fs = crate::organ::FIRMWARE_FRAME_RATE_HZ as f32;
+        let mut worst = 0.0f64;
+        for &(ty, kind, off, pts) in g::ARM_WORDS.iter().filter(|w| w.0 < 6) {
+            for &(v, word) in pts {
+                // the other id stays at its type switch value 64 (the capture's default)
+                let st = if kind == "Amt" {
+                    FwMod2Stage::new(ty == 5, 64, v, fs)
+                } else {
+                    FwMod2Stage::new(ty == 5, v, 64, fs)
+                };
+                let float = !(kind == "Rate" && (ty == 4 || off == -0x1D));
+                // `settle` copies targets to the smoothed words, so compare the target words.
+                let e = rel(st.core.word(off), word, float);
+                assert!(e < 5e-5, "type {ty} {kind} c[{off}] v {v}: {e}");
+                worst = worst.max(e);
+            }
+        }
+        assert!(worst > 0.0, "the variation rate fit is not exact");
+    }
+
+    #[test]
+    fn the_variation_delays_follow_the_joint_arm_words() {
+        let fs = crate::organ::FIRMWARE_FRAME_RATE_HZ as f32;
+        for &(ty, off, pts) in g::ARM_JOINT.iter().filter(|w| w.0 == 5) {
+            for &(r, a, word) in pts {
+                let st = FwMod2Stage::new(true, r, a, fs);
+                let (got, want) = (f32::from_bits(st.core.word(off)), f32::from_bits(word));
+                assert!(
+                    (got - want).abs() < 1e-3,
+                    "type {ty} c[{off}] rate {r} amount {a}"
+                );
+            }
+        }
     }
 }

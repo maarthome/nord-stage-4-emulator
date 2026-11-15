@@ -6,18 +6,20 @@
 //! rate words are in DSP frames at `FIRMWARE_FRAME_RATE_HZ`: phase increments are scaled by
 //! `F / fs`, the delay words listed per type by `fs / F` (a delay keeps its duration in seconds).
 //!
-//! Provenance (`docs/research/fx-mod2-types.md` s8): the routines are VERIFIED against the
-//! oracle; the instance row, the type words and the 11 samples of every `kFx2Amt` / `kFx2Rate`
-//! law are the derived values of [`super::fw_mod2_data`] (VERIFIED at the samples, EMPIRICAL
-//! between them: linear interpolation). Words that both laws write (`FLANG` `c[-16]`, `PHAS 0`
-//! `c[-28]`) use `A(amt) R(rate) / R(64)`, 64 being the value of the type switch (ASSUMED: the
-//! captures vary one parameter at a time). `FLANG` `c[-15] = -100 - c[-16]` holds at all 22
-//! samples (VERIFIED, test `flang_center_plus_swing_is_constant`).
+//! Provenance (`docs/research/fx-mod2-types.md` s8, `docs/research/fx-mod2-validation.md`): the
+//! routines are VERIFIED against the oracle; the instance row and the type words are derived
+//! from the ARM capture; the `kFx2Amt` / `kFx2Rate` laws are the 44 knot words of
+//! [`super::fw_mod2_dense`] (VERIFIED at every knot, EMPIRICAL between them: linear). Words that
+//! both laws write: `PHAS 0` `c[-28]` is bilinear in the rate (joint law, VERIFIED on 3 rates x
+//! 44 amounts to 1.3e-7), `FLANG` `c[-16]` is `A(amt) R(rate) / R(64)` (VERIFIED on the same
+//! grid to 1e-7). `FLANG` `c[-15] = -100 - c[-16]` (VERIFIED, test
+//! `flang_center_plus_swing_is_constant`).
 
 use super::fw_chorus::{CTX_I1, RING_BASE};
 use super::fw_mod1_data as boot;
 use super::fw_mod2_data as d;
-use super::fw_mod2_data::Law;
+use super::fw_mod2_dense as dn;
+use super::fw_mod2_dense::DenseLaw;
 use super::fw_mod2_run::{process, Mod2State, Routine, RING2_BASE};
 use super::fw_mod2_tables::PHAS_TABLE;
 
@@ -33,8 +35,8 @@ struct Spec {
     base: u32,
     row: &'static [(i32, u32)],
     words: &'static [(i32, u32)],
-    amt: &'static [Law],
-    rate: &'static [Law],
+    amt: &'static [DenseLaw],
+    rate: &'static [DenseLaw],
     /// Integer words that are phase increments per call (scaled by `F / fs`).
     phase: &'static [i32],
     /// Words that are delays in DSP frames (float; scaled by `fs / F`).
@@ -49,8 +51,8 @@ fn spec(ty: u8) -> Option<Spec> {
                 0,
                 d::ROW_PHAS0,
                 d::WORDS_0,
-                d::AMT_0,
-                d::RATE_0,
+                dn::AMT_0,
+                dn::RATE_0,
                 &[-32],
                 &[],
             ),
@@ -59,8 +61,8 @@ fn spec(ty: u8) -> Option<Spec> {
                 0,
                 d::ROW_FLANG,
                 d::WORDS_2,
-                d::AMT_2,
-                d::RATE_2,
+                dn::AMT_2,
+                dn::RATE_2,
                 &[-20],
                 &[-16, -15],
             ),
@@ -69,8 +71,8 @@ fn spec(ty: u8) -> Option<Spec> {
                 0,
                 d::ROW_FLANG,
                 d::WORDS_3,
-                d::AMT_3,
-                d::RATE_3,
+                dn::AMT_3,
+                dn::RATE_3,
                 &[-20],
                 &[-16, -15],
             ),
@@ -79,8 +81,8 @@ fn spec(ty: u8) -> Option<Spec> {
                 0xB0432,
                 boot::ROW_PHAS1,
                 d::WORDS_1,
-                d::AMT_1,
-                d::RATE_1,
+                dn::AMT_1,
+                dn::RATE_1,
                 &[-32],
                 &[],
             ),
@@ -89,8 +91,8 @@ fn spec(ty: u8) -> Option<Spec> {
                 0xC129E,
                 boot::ROW_ENS,
                 if ty == 8 { d::WORDS_8 } else { d::WORDS_9 },
-                if ty == 8 { d::AMT_8 } else { d::AMT_9 },
-                if ty == 8 { d::RATE_8 } else { d::RATE_9 },
+                &[],
+                &[],
                 &[-6],
                 &[],
             ),
@@ -99,8 +101,8 @@ fn spec(ty: u8) -> Option<Spec> {
                 0xC1174,
                 boot::ROW_SPIN,
                 if ty == 10 { d::WORDS_10 } else { d::WORDS_11 },
-                if ty == 10 { d::AMT_10 } else { d::AMT_11 },
-                if ty == 10 { d::RATE_10 } else { d::RATE_11 },
+                if ty == 10 { dn::AMT_10 } else { dn::AMT_11 },
+                if ty == 10 { dn::RATE_10 } else { dn::RATE_11 },
                 &[],
                 &[],
             ),
@@ -122,14 +124,18 @@ fn index(offset: i32) -> usize {
     (offset + 0x20) as usize
 }
 
-/// A law at parameter `v` (`0..=127`): linear between the neighbouring samples, exact at them.
-fn eval(law: &Law, v: u32) -> f32 {
+/// Linear interpolation of `words` between the neighbouring knots at `v` (`0..=127`).
+fn knot_value(words: &[u32], float: bool, v: u32) -> f32 {
     let v = v.min(127);
-    let k = d::SAMPLES.iter().rposition(|&s| s <= v).unwrap_or(0).min(9);
-    let (x0, x1) = (d::SAMPLES[k], d::SAMPLES[k + 1]);
+    let k = dn::KNOTS
+        .iter()
+        .rposition(|&s| s <= v)
+        .unwrap_or(0)
+        .min(dn::KNOTS.len() - 2);
+    let (x0, x1) = (dn::KNOTS[k], dn::KNOTS[k + 1]);
     let t = (v - x0) as f32 / (x1 - x0) as f32;
-    let (a, b) = (law.words[k], law.words[k + 1]);
-    if law.float {
+    let (a, b) = (words[k], words[k + 1]);
+    if float {
         let (a, b) = (f32::from_bits(a), f32::from_bits(b));
         a + (b - a) * t
     } else {
@@ -138,7 +144,19 @@ fn eval(law: &Law, v: u32) -> f32 {
     }
 }
 
-fn to_word(law: &Law, x: f32) -> u32 {
+/// A law at parameter `v` (`0..=127`): linear between the neighbouring knots, exact at them.
+fn eval(law: &DenseLaw, v: u32) -> f32 {
+    knot_value(&law.words, law.float, v)
+}
+
+/// A joint law at `(rate, amount)`: linear in the rate between the words at rate 0 and 127.
+fn eval_joint(law: &dn::JointLaw, rate: u32, amount: u32) -> f32 {
+    let f0 = knot_value(&law.rate0, true, amount);
+    let f1 = knot_value(&law.rate127, true, amount);
+    f0 + (f1 - f0) * rate.min(127) as f32 / 127.0
+}
+
+fn to_word(law: &DenseLaw, x: f32) -> u32 {
     if law.float {
         x.to_bits()
     } else {
@@ -164,10 +182,15 @@ impl FwLawStage {
     /// `fs`; `None` for the other types.
     pub(super) fn new(ty: u8, rate: u32, amount: u32, fs: f32) -> Option<Self> {
         // ENS (8, 9) is not wired: with the boot row its left output element stays exactly 0
-        // (`docs/research/fx-mod-types.md` s8).
+        // unless the tap registers are circular (`docs/research/fx-mod2-validation.md` s5).
         if matches!(ty, 8 | 9) {
             return None;
         }
+        Self::build(ty, rate, amount, fs)
+    }
+
+    /// [`Self::new`] without the ENS guard (the experiment of the validation note).
+    fn build(ty: u8, rate: u32, amount: u32, fs: f32) -> Option<Self> {
         let sp = spec(ty)?;
         let ratio = crate::organ::FIRMWARE_FRAME_RATE_HZ / f64::from(fs);
         let mut st = Mod2State::new();
@@ -250,12 +273,20 @@ impl FwLawStage {
     pub(super) fn set_params(&mut self, rate: u32, amount: u32) {
         let Some(sp) = spec(self.ty) else { return };
         let (rate, amount) = (rate.min(127), amount.min(127));
-        let norm = |laws: &[Law], off: i32| {
+        let norm = |laws: &[DenseLaw], off: i32| {
             laws.iter()
                 .find(|l| l.off == off)
                 .map(|l| eval(l, DEFAULT_PARAM))
         };
+        let joint: &[dn::JointLaw] = if self.ty == 0 { dn::JOINT_0 } else { &[] };
+        for j in joint {
+            // VERIFIED bilinear in the rate (every dense amount, 1.3e-7 of the range).
+            self.st.ctx[index(j.off)] = eval_joint(j, rate, amount).to_bits();
+        }
         for law in sp.amt.iter().chain(sp.rate) {
+            if joint.iter().any(|j| j.off == law.off) {
+                continue;
+            }
             let both =
                 sp.amt.iter().any(|l| l.off == law.off) && sp.rate.iter().any(|l| l.off == law.off);
             let is_amt = sp.amt.iter().any(|l| std::ptr::eq(l, law));
@@ -305,6 +336,7 @@ impl FwLawStage {
 
 #[cfg(test)]
 mod tests {
+    use super::super::tests_mod2_dense_golden as g;
     use super::*;
 
     const TYPES: [u8; 6] = [0, 1, 2, 3, 10, 11];
@@ -314,6 +346,10 @@ mod tests {
         (0..n)
             .map(|i| st.process_frame([((i as f32) * 0.05).sin(), ((i as f32) * 0.031).cos()]))
             .collect()
+    }
+
+    fn word_of(st: &FwLawStage, off: i32) -> u32 {
+        st.st.ctx[index(off)]
     }
 
     fn word(st: &FwLawStage, off: i32) -> u32 {
@@ -347,8 +383,8 @@ mod tests {
 
     #[test]
     fn the_laws_hit_the_captured_samples() {
-        for law in d::AMT_0.iter().chain(d::RATE_2) {
-            for (k, &v) in d::SAMPLES.iter().enumerate() {
+        for law in dn::AMT_0.iter().chain(dn::RATE_2) {
+            for (k, &v) in dn::KNOTS.iter().enumerate() {
                 assert_eq!(
                     to_word(law, eval(law, v)),
                     law.words[k],
@@ -358,7 +394,7 @@ mod tests {
             }
         }
         // PHAS 0 rate: the phase increment `0x27cf` at 0 and 1, `0x256145` at 127.
-        let l = &d::RATE_0[0];
+        let l = &dn::RATE_0[0];
         assert_eq!(
             (eval(l, 0), eval(l, 127)),
             (0x27cf as f32, 0x25_6145 as f32)
@@ -371,16 +407,16 @@ mod tests {
     #[test]
     fn flang_center_plus_swing_is_constant() {
         // VERIFIED at the samples of both laws: c[-16] + c[-15] = -100 (organ / piano).
-        for (a, b) in d::AMT_2
+        for (a, b) in dn::AMT_2
             .iter()
             .find(|l| l.off == -16)
-            .zip(d::AMT_2.iter().find(|l| l.off == -15))
+            .zip(dn::AMT_2.iter().find(|l| l.off == -15))
             .into_iter()
             .chain(
-                d::RATE_2
+                dn::RATE_2
                     .iter()
                     .find(|l| l.off == -16)
-                    .zip(d::RATE_2.iter().find(|l| l.off == -15)),
+                    .zip(dn::RATE_2.iter().find(|l| l.off == -15)),
             )
         {
             for k in 0..11 {
@@ -438,6 +474,30 @@ mod tests {
     }
 
     #[test]
+    fn the_ensemble_left_voice_needs_circular_tap_registers() {
+        // Boot row, no registers set by the caller: the left output is exactly 0 (why ENS is
+        // not wired). With B4 = B7 = ring and L4 = L7 = 0x200 both outputs run: the left voice
+        // reads a mirror of the ring that only a circular tap pointer reaches. Whether the
+        // hardware has these register values is open (OQ21), so this stays a test, not a stage.
+        let peak = |circular: bool| {
+            let mut st = FwLawStage::build(8, 64, 100, 48_000.0).unwrap();
+            st.st.circular_taps = circular;
+            let mut p = [0.0f32; 2];
+            for i in 0..3000 {
+                let out = st.process_frame([((i as f32) * 0.05).sin(), ((i as f32) * 0.031).cos()]);
+                p[0] = p[0].max(out[0].abs());
+                p[1] = p[1].max(out[1].abs());
+            }
+            p
+        };
+        let linear = peak(false);
+        assert_eq!(linear[0], 0.0, "left stays silent");
+        assert!(linear[1] > 0.1);
+        let circular = peak(true);
+        assert!(circular[0] > 0.1 && circular[1] > 0.1);
+    }
+
+    #[test]
     fn the_variation_types_keep_the_words_of_their_base_type() {
         let fs = 48_000.0;
         let f3 = FwLawStage::new(3, 64, 64, fs).unwrap();
@@ -482,6 +542,26 @@ mod tests {
                 run(ty, 60, 120, 48_000.0, 3000),
                 "amount {ty}"
             );
+        }
+    }
+
+    #[test]
+    fn the_shared_words_follow_the_joint_arm_words() {
+        // PHAS 0 `c[-28]` (bilinear in the rate) and FLANG `c[-16]` (`A(amt) R(rate) / R(64)`)
+        // at rate 0, 64, 127 against every dense amount (`tests_mod2_dense_golden`).
+        for &(ty, off, pts) in g::ARM_JOINT.iter().filter(|w| w.0 == 0 || w.0 == 2) {
+            for &(r, a, word) in pts {
+                let st =
+                    FwLawStage::new(ty, r, a, crate::organ::FIRMWARE_FRAME_RATE_HZ as f32).unwrap();
+                let got = f64::from(f32::from_bits(word_of(&st, off)));
+                let want = f64::from(f32::from_bits(word));
+                // FLANG stores swings in engine frames (`fs / F`), here 1.0
+                let tol = 5e-4 * want.abs().max(1.0);
+                assert!(
+                    (got - want).abs() < tol,
+                    "type {ty} c[{off}] r {r} a {a}: {got} {want}"
+                );
+            }
         }
     }
 }
