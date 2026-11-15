@@ -16,6 +16,7 @@
 use std::sync::OnceLock;
 
 use super::fw_stages::{fade, SUPER_SPREAD_MAX};
+use super::p_stage_words::{spread_word, StageWords};
 
 const TABLE_TEXT: &str = include_str!("../../../../docs/research/data/synth-super24-tables.txt");
 
@@ -94,6 +95,8 @@ pub fn prepare() {
 pub struct Super24State {
     /// Voice phases (2^32 = one cycle).
     pub phase: [u32; SUPER24_VOICES],
+    /// Lane y voice phases (verified-words mode only).
+    pub phase_y: [u32; SUPER24_VOICES],
     /// The mixed value held for two output samples.
     pub held: f32,
     /// Second sample of the hold.
@@ -180,8 +183,47 @@ pub fn super24_sample(st: &mut Super24State, dt: f32, i_sy: f32, ctrl: f32) -> f
         // ASSUMED: equal voice weights summing to one, P[16] = 1 (the P block is open, OQ22)
         st.held = sum * 0.25 * fade(2.0 * i_sy);
     }
+    smooth(st)
+}
+
+/// The stage with the P words (`--synth-p verified`): the four voices of both lanes at the ratios
+/// `P[-32 + 2 j + lane]`, mixed by the groups (`own` / `cross`) and scaled by `P[16] g`; the
+/// spread word is the Osc Ctrl knob (`spread_word`).
+pub fn super24_sample_words(
+    st: &mut Super24State,
+    dt: f32,
+    i_sy: f32,
+    ctrl: f32,
+    w: &StageWords,
+) -> f32 {
+    let t = tables();
+    if !st.second {
+        let f = 2.0 * i_sy;
+        let idx = band_index(f.min(0.5)).min(t.rows.len() / 4 - 1);
+        let (offset, count) = (t.rows[4 * idx] as usize, t.rows[4 * idx + 1] as usize);
+        let tt = spread_word(ctrl) + SPREAD_OFFSET;
+        let q = tt * tt;
+        let v = SPREAD_SCALE * (tt + 2.0 * q * q);
+        let mut sum = 0.0;
+        let advance = |ph: &mut u32, rho: f32| {
+            let step = 2.0 * dt * (rho * v + 1.0 - v);
+            *ph = ph.wrapping_add((step.fract() as f64 * 4_294_967_296.0) as u64 as u32);
+            voice_value(t, *ph, offset, count)
+        };
+        for (j, (px, py)) in st.phase.iter_mut().zip(st.phase_y.iter_mut()).enumerate() {
+            sum += w.own[j] * advance(px, w.ratios[0][j]);
+            let y = advance(py, w.ratios[1][j]);
+            sum += w.cross[j] * y;
+        }
+        st.held = sum * w.gain * fade(2.0 * i_sy);
+    }
+    smooth(st)
+}
+
+/// The two-sample hold and the three smoothing biquads.
+fn smooth(st: &mut Super24State) -> f32 {
+    let c = &tables().lattice;
     st.second = !st.second;
-    let c = &t.lattice;
     let mut x = st.held;
     for n in 0..3 {
         let (s1, s2) = (st.bq[2 * n], st.bq[2 * n + 1]);

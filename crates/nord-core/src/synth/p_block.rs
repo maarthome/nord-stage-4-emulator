@@ -113,6 +113,9 @@ pub enum PSpec {
     Custom([i32; 5]),
     /// The per-wave table (`p_table.rs`), optionally with rows overridden (fit sweeps).
     Table(PTableSpec),
+    /// The verified ARM words (`p_words.rs`): [`PTableSpec::verified`], a unit variant so the GUI
+    /// choice list and the option defaults stay `const`.
+    Verified,
 }
 
 impl PSpec {
@@ -122,7 +125,10 @@ impl PSpec {
             return Ok(PSpec::Fitted);
         }
         if v.eq_ignore_ascii_case("verified") {
-            return Ok(PSpec::Table(PTableSpec::verified()));
+            return Ok(PSpec::Verified);
+        }
+        if v.is_char_boundary(8) && v[..8].eq_ignore_ascii_case("verified") {
+            return PTableSpec::parse_over(PTableSpec::verified(), &v[8..]).map(PSpec::Table);
         }
         if let Some(rest) = v.strip_prefix("table") {
             return PTableSpec::parse(rest).map(PSpec::Table);
@@ -155,7 +161,7 @@ impl PSpec {
             PSpec::Fitted => PBlock::FITTED,
             PSpec::Custom(m) => PBlock::from_milli(m),
             // the single-block view of a table is the idle block; use `table()`
-            PSpec::Table(_) => PBlock::IDLE,
+            PSpec::Table(_) | PSpec::Verified => PBlock::IDLE,
         }
     }
 
@@ -163,6 +169,7 @@ impl PSpec {
     pub fn table(self) -> Option<PTable> {
         match self {
             PSpec::Table(t) => Some(t.table()),
+            PSpec::Verified => Some(PTableSpec::verified().table()),
             _ => None,
         }
     }

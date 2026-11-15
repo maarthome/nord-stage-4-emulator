@@ -6,8 +6,8 @@
 use crate::cbin::{cutoff_hz_to_norm, SynthLayerDecoded};
 use crate::morph::MorphParameter;
 use crate::synth::{
-    FwStage, NotePriority, PWave, SynthLayer, SynthOscMode, VaWaveform, VibratoMode, FM_RATIOS,
-    NUM_WAVETABLES,
+    FwStage, NotePriority, PWave, StageWords, SynthLayer, SynthOscMode, VaWaveform, VibratoMode,
+    FM_RATIOS, NUM_WAVETABLES,
 };
 
 /// Envelope time floor/ceiling shared by every ADR: OS v1.66 table range `0.5 ms..45 s`.
@@ -63,6 +63,11 @@ fn apply_oscillator(synth: &mut SynthLayer, dec: &SynthLayerDecoded) {
         PWave::from_category_wave(dec.osc_category, dec.osc_wave)
     } else {
         PWave::Other
+    };
+    synth.stage_words = if dec.osc_mode == SynthOscMode::Analog {
+        StageWords::for_wave(dec.osc_category, dec.osc_wave)
+    } else {
+        None
     };
     synth.strip_stage = if dec.osc_mode == SynthOscMode::Analog {
         FwStage::from_category_wave(dec.osc_category, dec.osc_wave)
