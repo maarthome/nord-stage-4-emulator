@@ -27,6 +27,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sharc_text_vm as svm
 import synth_fm_tables as ft
+import synth_stage_fm as sfm
 import synth_wave_oracle as wo
 
 STAGES = {0x124269: (0x2484D2, 0x248A7E), 0x12453F: (0x248A7E, 0x248F6C)}
@@ -155,6 +156,37 @@ def compare(
     return equal, total
 
 
+def model_py(stage: int, image_bytes: bytes, pre: dict[int, int]) -> dict[int, int]:
+    """Words the equation model (`synth_stage_fm`) writes, from the memory `model` uses."""
+    overlay = dict(pre)
+    written: dict[int, int] = {}
+
+    def write(a: int, w: int) -> None:
+        overlay[a] = w
+        written[a] = w
+
+    fn = {0x124269: sfm.stage1, 0x12453F: sfm.stage2}[stage]
+    fn(flat_reader(image_bytes, overlay), write, I0_BASE, REGS[1], REGS[2], REGS[3])
+    return written
+
+
+def compare_model(
+    disasm: str, image: str, trials: int, stage: int, table_type: int, csv_path: Path
+) -> tuple[int, int]:  # pragma: no cover
+    """Equation model against the listing interpreter on random pokes: `(equal, total)` words."""
+    table = ft.load_csv(csv_path)[table_type]
+    words_csv = wo_words(table_type)
+    lines = listing(disasm, image, stage)
+    img = Path(image).read_bytes()
+    equal = total = 0
+    for seed in range(1, trials + 1):
+        pre = random_pokes(seed, table, words_csv)
+        want, got = model(lines, img, pre), model_py(stage, img, pre)
+        total += len(want | got)
+        equal += sum(1 for a in want | got if want.get(a) == got.get(a))
+    return equal, total
+
+
 def wo_words(table_type: int) -> dict[int, int]:
     """ARM words of the FM type outside the P block window (`data/synth-p-words.csv`)."""
     path = Path(__file__).resolve().parents[1] / "docs/research/data/synth-p-words.csv"
@@ -179,7 +211,14 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI
         type=Path,
         default=Path(__file__).resolve().parents[1] / "docs/research/data/synth-fm-tables.csv",
     )
+    ap.add_argument("--model", action="store_true", help="compare the equation model, no oracle")
     ns = ap.parse_args(argv)
+    if ns.model:
+        equal, total = compare_model(
+            ns.sharc_disasm, ns.image, ns.trials, ns.stage, ns.type, ns.tables
+        )
+        print(f"{equal} of {total} written words equal (equation model against the listing)")
+        return 0 if equal == total else 1
     equal, total = compare(
         ns.sharc_org, ns.sharc_disasm, ns.image, ns.trials, ns.stage, ns.type, ns.tables
     )
