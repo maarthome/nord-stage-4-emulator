@@ -15,6 +15,7 @@ use super::synth_osc::map_osc_mode_and_wave;
 use super::synth_osc::wave_from_flat_index;
 use super::synth_pattern::SynthPatternDecoded;
 use super::synth_raw::{filter_model_of_type, filter_type_bits, hinted_idx, SynthLayerRaw};
+use crate::synth::arp_rate::{arp_bpm_from_raw, arp_raw_from_bpm};
 use crate::synth::{EnvKnobs, FilterModel, StripKnobs, SynthOscMode, VaWaveform};
 use serde::{Deserialize, Serialize};
 
@@ -87,7 +88,13 @@ pub struct SynthLayerDecoded {
     /// Stored table indices and filter type behind the decoded values (`None`: built in code).
     pub raw: Option<SynthLayerRaw>,
     pub arp_enabled: bool,
+    /// Arpeggiator / Gate rate as the displayed tempo (quarter notes per minute, firmware table
+    /// `synth::arp_rate`). Master Clock sync stores the subdivision in the same field, see
+    /// `arp_rate_raw`.
     pub arp_bpm: f32,
+    /// The stored 7-bit Rate value (`0..=127`); `arp_bpm` is `arp_bpm_from_raw(arp_rate_raw)` unless
+    /// it was edited, then the packer writes the dial position nearest to `arp_bpm`.
+    pub arp_rate_raw: u8,
     /// Arpeggiator / Gate pattern words (`cbin::synth_pattern`); the engine imports them as the
     /// layer's custom pattern.
     pub pattern: SynthPatternDecoded,
@@ -139,6 +146,20 @@ pub struct SynthLayerDecoded {
     pub vibrato_amount: f32,
 }
 
+impl SynthLayerDecoded {
+    /// The 7-bit Rate value the packer writes: the stored `arp_rate_raw` while `arp_bpm` still
+    /// is its tempo (so an unedited value, including the second of a duplicate pair that the
+    /// dial never writes, stays bit-identical), else the dial position nearest to `arp_bpm`.
+    pub fn packed_arp_rate(&self) -> u32 {
+        let raw = u32::from(self.arp_rate_raw.min(127));
+        if arp_bpm_from_raw(raw) == self.arp_bpm {
+            raw
+        } else {
+            arp_raw_from_bpm(self.arp_bpm)
+        }
+    }
+}
+
 /// Vibrato delay in seconds of the stored 5-bit value `0..=29`: `0.1 s` steps from `0.1 s` to `3.0 s`.
 pub(crate) fn vibrato_delay_for_raw(raw: u32) -> f32 {
     0.1 + (3.0 - 0.1) * raw as f32 / 29.0
@@ -187,6 +208,7 @@ impl Default for SynthLayerDecoded {
             raw: None,
             arp_enabled: false,
             arp_bpm: 120.0,
+            arp_rate_raw: 54,
             pattern: SynthPatternDecoded::default(),
             arp: SynthArpDecoded::default(),
             filter_env_dedicated: false,
@@ -329,7 +351,7 @@ fn unpack_synth_layer_pair(
     r.set_bit_pos(layer_base + 135)?;
     let arp_enabled = r.read_bool()?;
     let (arp_rate_raw, _) = read_morph(r, layer_base + 175, 7, 127)?;
-    let arp_bpm = 30.0 + (arp_rate_raw as f32 / 127.0) * 270.0;
+    let arp_bpm = arp_bpm_from_raw(arp_rate_raw);
     let pattern = SynthPatternDecoded::read(r, layer_base)?;
     let arp = SynthArpDecoded::read(r, layer_base)?;
     r.set_bit_pos(layer_base + 306)?;
@@ -456,6 +478,7 @@ fn unpack_synth_layer_pair(
         }),
         arp_enabled,
         arp_bpm,
+        arp_rate_raw: arp_rate_raw.min(127) as u8,
         pattern,
         arp,
         filter_env_dedicated: true,
@@ -538,7 +561,7 @@ fn pack_synth_layer_pair(
     )?;
     w.set_bit_pos(layer_base + 135)?;
     w.write_bool(layer.arp_enabled)?;
-    let arp_rate = (((layer.arp_bpm - 30.0) / 270.0).clamp(0.0, 1.0) * 127.0).round() as u32;
+    let arp_rate = layer.packed_arp_rate();
     write_morph(
         w,
         layer_base + 175,
@@ -1123,5 +1146,42 @@ mod tests {
         assert!((unpacked.layer_a.filter_drive - 0.67).abs() < 0.05);
         assert!(unpacked.layer_a.arp_enabled);
         assert!((unpacked.layer_a.arp_bpm - 135.0).abs() < 3.0);
+    }
+
+    #[test]
+    fn arp_rate_raw_round_trips_for_all_128_dial_values() {
+        // VERIFIED table `synth::arp_rate`: the stored Rate value survives decode + pack, also
+        // the second value of a duplicate pair (the dial never writes it, a file may hold it).
+        for raw in 0..=127u8 {
+            let original = SynthPresetDecoded {
+                layer_a: SynthLayerDecoded {
+                    arp_enabled: true,
+                    arp_bpm: arp_bpm_from_raw(u32::from(raw)),
+                    arp_rate_raw: raw,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let packed = original.pack().expect("pack synth");
+            let unpacked = SynthPresetDecoded::unpack(&packed).expect("unpack synth");
+            assert_eq!(unpacked.layer_a.arp_rate_raw, raw);
+            assert_eq!(unpacked.layer_a.arp_bpm, arp_bpm_from_raw(u32::from(raw)));
+        }
+    }
+
+    #[test]
+    fn an_edited_arp_bpm_packs_the_nearest_dial_position() {
+        let layer = SynthLayerDecoded {
+            arp_bpm: 121.0,
+            arp_rate_raw: 3,
+            ..Default::default()
+        };
+        assert_eq!(layer.packed_arp_rate(), 54, "121 BPM is dial 54 (120 BPM)");
+        let kept = SynthLayerDecoded {
+            arp_bpm: 78.0,
+            arp_rate_raw: 29,
+            ..Default::default()
+        };
+        assert_eq!(kept.packed_arp_rate(), 29, "an unedited N.A. value stays");
     }
 }
