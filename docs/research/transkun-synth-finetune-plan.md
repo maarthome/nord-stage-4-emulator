@@ -1,7 +1,7 @@
 # Transkun adapter for synth clips: feasibility and plan (LoRA vs LoKr vs full)
 
 - **Checked:** 2026-11-15
-- **Sources (local, never committed):** installed Transkun 2.0.1 in `C:\tmp\ns4-transcribe\venv` (`transkun/ModelTransformer.py`, `LayersTransformer.py`, `Data.py`, `train.py`, `pretrained/2.0.conf`, `pretrained/2.0.pt`, `transkun-2.0.1.dist-info/LICENSE`, `METADATA`), upstream [github.com/Yujia-Yan/Skipping-The-Frame-Level](https://github.com/Yujia-Yan/Skipping-The-Frame-Level) (named in the package metadata; **not cloned**, the installed wheel is the source), ISMIR 2024 paper arXiv 2404.09466; `target/release/ns4.exe` (`render-patch`), `.reference/` factory backup `Nord Stage 4 Factory Restore RevK v1.66.ns4b`; earlier work [piano-transcription](piano-transcription.md), [synth-transcription-muscriptor](synth-transcription-muscriptor.md), [emu_vs_hw_segments.json](data/emu_vs_hw_segments.json); probe scripts in `C:\tmp\ns4-ft-probe` (`inspect_model.py`, `bench_step.py`, `lora_count.py`, listed in section 9).
+- **Sources (local, never committed):** installed Transkun 2.0.1 in `C:\tmp\ns4-transcribe\venv` (`transkun/ModelTransformer.py`, `LayersTransformer.py`, `Data.py`, `train.py`, `pretrained/2.0.conf`, `pretrained/2.0.pt`, `transkun-2.0.1.dist-info/LICENSE`, `METADATA`), upstream [github.com/Yujia-Yan/Skipping-The-Frame-Level](https://github.com/Yujia-Yan/Skipping-The-Frame-Level) (named in the package metadata; **not cloned**, the installed wheel is the source), ISMIR 2024 paper arXiv 2404.09466; `target/release/ns4.exe` (`render-patch`), `.reference/` factory backup `Nord Stage 4 Factory Restore RevK v1.66.ns4b`; earlier work [piano-transcription](piano-transcription.md), [synth-transcription-muscriptor](synth-transcription-muscriptor.md), [emu_vs_hw_segments.json](data/emu_vs_hw_segments.json); probe scripts in `C:\tmp\ns4-ft-probe` (`inspect_model.py`, `bench_step.py`, `lora_count.py`, `peft_check.py`, listed in section 9).
 - **Question:** Can a small adapter on Transkun, trained on deterministic emulator renders of synth programs, raise note recall and give per-note velocity on hardware synth clips (Horizon Whl, Leaky Stabs II, Grand Pad), fits the RTX 4070 SUPER (12 GB), and which of LoRA, LoKr and full fine-tuning should be tried first?
 
 Tags: **VERIFIED** = run in this session (command and number given); **ASSUMED** = not checked, with what would confirm it. Phase 0 trains nothing.
@@ -9,10 +9,10 @@ Tags: **VERIFIED** = run in this session (command and number given); **ASSUMED**
 ## 1. Result in five lines
 
 1. Transkun 2.0 is a 13.6 M parameter model (VERIFIED), small enough that **even a full fine-tune fits** the GPU (peak 6.7 GiB at 4 x 16 s, VERIFIED). The adapter choice is about forgetting and file separation, not memory.
-2. Its attention uses raw `nn.Parameter` q/k/v matrices, not `nn.Linear` (VERIFIED, 36 tensors, 2.36 M params). Stock PEFT `target_modules` reaches only the other 50 Linear and 5 Conv2d layers (6.9 M weights); q/k/v needs `target_parameters` (ASSUMED, PEFT version dependent) or a 20-line wrapper that turns the three tensors into Linear layers.
+2. Its attention uses raw `nn.Parameter` q/k/v matrices, not `nn.Linear` (VERIFIED, 36 tensors, 2.36 M params). Stock PEFT `target_modules` reaches only the other 50 Linear and 5 Conv2d layers (6.9 M weights); q/k/v needs `target_parameters` (VERIFIED with PEFT 0.21.3) or a 20-line wrapper.
 3. The velocity output is a 128-way categorical per detected note, trained by log-likelihood (VERIFIED in `log_prob`). That is the head to adapt; velocity is only scored on notes the CRF finds, so recall and velocity are two separate problems.
 4. Rendering is not the bottleneck: the heaviest tested program (Horizon Whl) renders at 4.9x real time on one core and about 90x aggregate with 32 workers (VERIFIED). Training eats about 60 s of audio per second (bf16, VERIFIED on dummy audio).
-5. **Recommendation:** start with **LoRA rank 16** on all Linear and Conv2d layers plus q/k/v (via wrapper), full training of the velocity and refined onset/offset heads; run **LoKr as the second arm with the same data and seed**; hold full fine-tune back unless both plateau (section 6). PEFT / LyCORIS support is **not yet verified** (not installed, section 4).
+5. **Recommendation:** start with **LoRA rank 16** on all Linear and Conv2d layers plus q/k/v (via wrapper), full training of the velocity and refined onset/offset heads; run **LoKr as the second arm with the same data and seed**; hold full fine-tune back unless both plateau (section 6). PEFT supports both on every layer except `ConvTranspose1d`, and raw q/k/v via `target_parameters` (VERIFIED, section 4).
 
 ## 2. Model facts (VERIFIED, `inspect_model.py`, `lora_count.py`)
 
@@ -49,22 +49,27 @@ The decoded transcription (`transcribeFrames`, `transcribe.py`) keeps the CRF pa
 - The pretrained `2.0.pt` has no separate licence file in the wheel. The README says only that it is the shipped checkpoint. **ASSUMED:** MIT applies to the weights as part of the package. The checkpoint was trained on MAESTRO (CC BY-NC-SA 4.0 audio and MIDI) per the training instructions; whether that restricts the weights is unsettled (ASSUMED: non-commercial research use is safe).
 - **Decision for this repo:** adapters and any derived weights stay local (`C:\tmp`), never committed, consistent with the repo rule; only scripts, configs, numbers and docs go in git. Non-commercial research use only. Confirm with the upstream author before any redistribution.
 
-## 4. PEFT / LyCORIS support (ASSUMED, to verify in the first hour of Phase 1)
+## 4. PEFT / LyCORIS support (VERIFIED, `peft_check.py`)
 
-Not installed. `pip` is absent in the venv, so any check needs a new venv and downloads (peft, lycoris-lora, accelerate, safetensors, huggingface-hub; a few tens of MB, torch can be shared). Asked to the coordinating session before installing; **no install done** in this phase unless noted in section 9.
+Environment: new venv `C:	mp
+s4-ft-venv` (Python 3.12, `uv`), reusing torch 2.6.0+cu124 and transkun from the transcription venv through a `.pth`; installed `peft` 0.21.3, `lycoris-lora`, `accelerate`, `transformers`, `toml`, `einops`. The existing venvs are untouched. Gotcha: `uv pip install peft` pulls a second torch (2.15.0) into the new venv; it was uninstalled so the `.pth` torch wins. `lycoris-lora` 4.1.3 fails to import on torch 2.6 (custom op schema); 3.2.0.post2 imports. LyCORIS itself is not needed: PEFT ships LoKr.
 
-What the Transkun layers need, and what stock PEFT is believed to support (ASSUMED from the library docs, confirm by `get_peft_model` plus one forward and backward):
+One forward, backward and optimizer-free step on a dummy batch (8 s audio, 15 notes), base weights loaded from `2.0.pt`:
 
-| Layer | Count | LoRA | LoKr |
+| Config | Result | Trainable | Tensors with grad |
 |---|---|---|---|
-| `nn.Linear` (FFN, `out_proj`, scorer, velocity / refined heads) | 50 | yes | yes |
-| `nn.Conv2d` (input conv, down-path) | 5 | yes (`Conv2d`) | yes (`Conv2d`) |
-| `nn.ConvTranspose1d` (`upConv1dSkip`, 0.52 M) | 1 | not supported (likely): leave frozen or train it fully | not supported (likely) |
-| raw `nn.Parameter` q/k/v | 36 | only via `target_parameters` (PEFT 0.17+, ASSUMED) or a wrapper | wrapper |
+| `LoraConfig(r=16, alpha=32)` on Linear + Conv2d (regex below) + `modules_to_save` heads | works | 1,574,900 | 50 |
+| `LoKrConfig(r=8, alpha=16)` same targets and heads | works | 892,468 (adapters about 37 k, heads 855 k) | 50 |
+| `target_parameters` on the 36 raw q/k/v tensors (+ `inputConv` LoRA) | **works** in PEFT 0.21.3 | 296,800 (q/k/v LoRA r=16 = 294,912, matches the arithmetic below) | 37 |
+| LoRA on `ConvTranspose1d` (`upConv1dSkip`) | **not supported** (`ValueError`) | n/a | n/a |
+| regex that also matches `downConv.0/2/3/...` | fails: `ConstantPad2d` / `ReLU`-type modules are not adaptable; list only `downConv.(1|5|9|13)` | n/a | n/a |
 
-The wrapper (recommended, no dependence on new PEFT features): replace each `MultiHeadAttentionKernel` q/k/v parameter by three bias-free `nn.Linear` layers whose weights are the transposed tensors, load the checkpoint, then assert the logits of one dummy batch equal the original to 1e-5. This is code in `tools/` with a unit test, Phase 1.
+- Raw q/k/v need **no wrapper**: `target_parameters` works, so the 20-line wrapper is only a fallback. Their LoKr support is unchecked.
+- With the default reentrant activation checkpoint, a forward whose inputs do not require grad gives "does not require grad". An adapter on `backbone.inputConv` (or `use_reentrant=False`) avoids it; the real configs include `inputConv`, so it does not bite. Keep in mind for a q/k/v-only arm.
+- `ConvTranspose1d` (0.52 M) stays frozen or fully trained.
+- LoRA, LoKr and LoHa for Conv2d and Linear are in PEFT itself (`LoKrConfig`), LyCORIS is optional.
 
-**Config I would use (ASSUMED until Phase 1 runs it):**
+**Config used in the check (regex VERIFIED):**
 
 ```python
 LoraConfig(r=16, lora_alpha=32, lora_dropout=0.05, bias="none",
@@ -175,24 +180,25 @@ Checks 1 and 2 are cheap and automated; check 3 is the true target and is noisy 
 | Reverb tails and overlapping notes cap recall | include reverb programs and long releases; report recall by program class |
 | Pedal symbols never appear on synth clips | train with pedal events only on piano renders; ignore pedal on synth in evaluation |
 | `ncls` missing, `Data.py` indexing | own iterator (section 2.1) |
-| Raw q/k/v parameters not PEFT-addressable | wrapper with a bit-equality test |
+| Raw q/k/v with LoKr untested; reentrant checkpoint needs grad-requiring input | LoRA via `target_parameters`; keep `inputConv` adapted |
 | bf16 and the CRF normaliser | compare fp32 vs bf16 loss on one batch before using bf16 |
 | Weight licence uncertainty (MAESTRO lineage) | local only, non-commercial, no redistribution (section 3) |
 | Scope creep: more tools than the project needs | the stop rule in section 7 |
 
 ## 9. Reproduce (probe scripts, local only)
 
-`C:\tmp\ns4-ft-probe\inspect_model.py` (params, layer census), `lora_count.py` (adapter parameter arithmetic), `bench_step.py` (dummy-batch step: builds `Note` lists with no same-pitch overlap, calls `model.log_prob`, backward, `AdamW.step`, reports `torch.cuda.max_memory_allocated`). Run with `C:\tmp\ns4-transcribe\venv\Scripts\python.exe -I <script>`. Render timing: `ns4 render-patch` as in section 6, workers via `xargs -P`. These are throw-away measurement scripts and are not committed; the numbers above are the record.
+`C:\tmp\ns4-ft-probe\inspect_model.py` (params, layer census), `lora_count.py` (adapter parameter arithmetic), `peft_check.py` (section 4, run with `C:	mp
+s4-ft-venv\Scripts\python.exe -I`), `bench_step.py` (dummy-batch step: builds `Note` lists with no same-pitch overlap, calls `model.log_prob`, backward, `AdamW.step`, reports `torch.cuda.max_memory_allocated`). Run with `C:\tmp\ns4-transcribe\venv\Scripts\python.exe -I <script>`. Render timing: `ns4 render-patch` as in section 6, workers via `xargs -P`. These are throw-away measurement scripts and are not committed; the numbers above are the record.
 
 ## Implications
 
 - Adapter training is practical on the existing GPU in hours, with rendering a small share of the budget.
-- The first real engineering step is a q/k/v wrapper plus an own dataset iterator (both small, testable); PEFT config after that is hours, not days.
+- The first real engineering step is an own dataset iterator (small, testable); PEFT configs already run.
 - Success is decided on hardware clips, not on held-out emulator renders.
 
 ## Follow-ups
 
-- [ ] Install `peft` and `lycoris-lora` in a separate venv and confirm section 4 (Linear, Conv2d, `target_parameters`, LoKr on Conv2d); replace ASSUMED with VERIFIED.
+- [x] Confirm PEFT LoRA / LoKr on Linear, Conv2d and raw q/k/v (section 4).
 - [ ] Phase 1: `tools/ns4_synth_dataset.py` (extract, phrase generator, render, write dataset) with tests; 20 h.
 - [ ] fp32 vs bf16 loss comparison on one real batch.
 - [ ] Phase 2 and 3 as above; record a decision (next free D) with the chosen arm and the hardware-clip scores.
