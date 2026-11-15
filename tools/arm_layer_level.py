@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the layer level handlers of the firmware (organ `0xC011AB8C`, piano `0xC011A7A4`) live.
+"""Run the layer level handlers of the firmware (organ `0xC011AB8C`, piano `0xC011A7A4`, synth `0xC011BA38`) live.
 
 The handlers turn the q16 edit value `v << 16` of the layer level ids into the gain word that the
 ARM stores for the DSP (`docs/research/organ-output-law.md` s3, `piano-note-velocity.md` s4:
@@ -15,6 +15,12 @@ Fabricated fields (read from the listing, VERIFIED by the run): `[this + 0x64]` 
 to the q16 value, store at `table[7 * layer + slot_word + 0x34]` where `slot_word =
 [0xC0 + 4 * [this + 0x64] + 0x658 literal]`, then the tail call `0xC023195C` (stubbed to record its
 arguments).
+
+The synth handler (`0xC011BA38`, ids `0xA4..0xA6`, the code at `0xC011BB48`) has the same body (VERIFIED
+by the run: `(v / 127)^2`, sentinel `-0.05`) with other field offsets: layer `[this + 0x90]`, table
+`[this + 0xB0]`, event kind 8, slots 4 / 5 / 6 for `[this + 0x64]` in {0, 1} / {2, 3} / {4, 5}.
+`0xC0114588` (ids `0xA4..0xA6` of a different dispatcher) is not a level store: it keeps a 16-bit
+rounded `v * k` for the display and never reaches the sender.
 """
 
 from __future__ import annotations
@@ -27,6 +33,7 @@ from pathlib import Path
 
 PIANO_HANDLER = 0xC011A7A4
 ORGAN_HANDLER = 0xC011AB8C
+SYNTH_HANDLER = 0xC011BA38
 SENDER = 0xC023195C
 # VERIFIED (run): (handler, id) -> (valid `[this + 0x64]` values, valid `[event + 0xC]` values).
 CASES = {
@@ -34,7 +41,13 @@ CASES = {
     (PIANO_HANDLER, 0xB8): ((2, 3), (7, 0xC)),
     (ORGAN_HANDLER, 0xB1): ((0, 1), (9,)),
     (ORGAN_HANDLER, 0xB2): ((2, 3), (10,)),
+    (SYNTH_HANDLER, 0xA4): ((0, 1), (8,)),
+    (SYNTH_HANDLER, 0xA5): ((2, 3), (8,)),
+    (SYNTH_HANDLER, 0xA6): ((4, 5), (8,)),
 }
+# VERIFIED (run): controller field offsets (layer index, table base) per handler.
+OFFSETS = {SYNTH_HANDLER: (0x90, 0xB0)}
+DEFAULT_OFFSETS = (0x8C, 0x98)
 MUTE = -0.05  # VERIFIED: sentinel `0xBD4CCCCD` stored for a level of 0
 SCRATCH = 0x98000000
 
@@ -73,8 +86,9 @@ def run_handler(emu, handler: int, edit_id: int, value: int, selector: int | Non
     emu.write_bytes(event, bytes(0x40))
     emu.write_bytes(table, bytes(0x1000))
     emu.write32(this + 0x64, selectors[0] if selector is None else selector)
-    emu.write32(this + 0x8C, layer)
-    emu.write32(this + 0x98, table)
+    layer_off, table_off = OFFSETS.get(handler, DEFAULT_OFFSETS)
+    emu.write32(this + layer_off, layer)
+    emu.write32(this + table_off, table)
     emu.write32(event + 0xC, kinds[0])
     emu.write32(cell, (value << 16) & 0xFFFFFFFF)
     sent: list[tuple[int, int, int]] = []
