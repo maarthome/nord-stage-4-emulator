@@ -67,7 +67,7 @@ The solo difference (-2.7 dB) agrees with the linear law (-3.1 dB) and not with 
 ## 5. Implications
 
 - The default balance of piano and synth layers needs no change from this clip (error 0 to -2 dB, inside the scatter).
-- The synth layer level law stays open (OQ22); the layered clip does not support a square law, but a clean test (same chord, fader at 127 / 90 / 64, no other edits) on hardware is needed.
+- **Update (D87):** the firmware handler stores `(v / 127)^2` ([synth-layer-level-law](synth-layer-level-law.md)); this clip's fader taper is unknown, so its -2.7 dB reading does not move the default. Earlier text: the synth layer level law stays open (OQ22); the layered clip does not support a square law, but a clean test (same chord, fader at 127 / 90 / 64, no other edits) on hardware is needed.
 - The pad's reverb and the filter-envelope attack of 1 to 2 s were not compared; only levels and the spectral tilt were.
 
 ## 6. Follow-ups

@@ -304,7 +304,8 @@ pub struct FirmwareOptions {
     pub piano_chain_scale: bool,
     /// `--firmware-piano-layer-law`: the piano layer fader follows `(v / 127)^2` (opt-in).
     pub piano_layer_law: bool,
-    /// `--firmware-synth-layer-law`: the synth layer faders follow `(v / 127)^2` (opt-in, EMPIRICAL).
+    /// The synth layer faders follow `(v / 127)^2` (default on, VERIFIED: the handler `0xC011BB48`
+    /// run in the ARM harness, D87); `--legacy-synth-layer-law` turns it off.
     pub synth_layer_law: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,
@@ -373,7 +374,7 @@ impl Default for FirmwareOptions {
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
-            synth_layer_law: false,
+            synth_layer_law: true,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -402,6 +403,7 @@ impl FirmwareOptions {
             synth_stages: false,
             synth_knob_laws: false,
             piano_firmware_level: false,
+            synth_layer_law: false,
             sample_kernel_key: false,
             firmware_routing: false,
             ..Self::default()
@@ -425,7 +427,7 @@ impl FirmwareOptions {
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
-            synth_layer_law: false,
+            synth_layer_law: true,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -499,6 +501,9 @@ impl FirmwareOptions {
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
         o.synth_layer_law |= has("--firmware-synth-layer-law");
+        if has("--legacy-synth-layer-law") {
+            o.synth_layer_law = false;
+        }
         o.measured_laws |= has("--measured-laws");
         o.synth_stages |= has("--synth-stages");
         o.synth_knob_laws |= has("--synth-knob-laws");
@@ -810,8 +815,8 @@ impl FirmwareOptions {
         if self.piano_layer_law {
             parts.push("piano-layer-law".into());
         }
-        if self.synth_layer_law {
-            parts.push("synth-layer-law".into());
+        if !self.synth_layer_law {
+            parts.push("legacy-synth-layer".into());
         }
         if let Some(m) = self.synth_shape_milli {
             parts.push(format!("shape={:.2}", f32::from(m) / 1000.0));
@@ -919,12 +924,24 @@ mod tests {
         assert!(!o.piano_layer_law, "the layer law is opt-in");
         let law = FirmwareOptions::from_args(&args(&["--firmware-piano-layer-law"])).unwrap();
         assert!(law.piano_layer_law && law.summary().contains("piano-layer-law"));
-        assert!(!o.synth_layer_law, "the synth layer law is opt-in");
-        let sl = FirmwareOptions::from_args(&args(&["--firmware-synth-layer-law"])).unwrap();
-        assert!(sl.synth_layer_law && sl.summary().contains("synth-layer-law"));
+        assert!(
+            o.synth_layer_law,
+            "the verified synth layer law is the default"
+        );
+        assert!(!o.summary().contains("synth-layer"));
+        assert!(!FirmwareOptions::legacy_all().synth_layer_law);
+        let sl = FirmwareOptions::from_args(&args(&["--legacy-synth-layer-law"])).unwrap();
+        assert!(!sl.synth_layer_law && sl.summary().contains("legacy-synth-layer"));
         let mut e = Stage4Engine::new(48_000.0);
+        assert!(
+            e.synth_layer_law,
+            "the engine default follows the verified law"
+        );
         sl.apply_to(&mut e);
-        assert!(e.synth_layer_law);
+        assert!(!e.synth_layer_law);
+        let again = FirmwareOptions::from_args(&args(&["--firmware-synth-layer-law"])).unwrap();
+        again.apply_to(&mut e);
+        assert!(e.synth_layer_law, "the old opt-in flag stays accepted");
         let mut e = Stage4Engine::new(48_000.0);
         bus.apply_to(&mut e);
         assert!(e.piano_a.firmware_bus_scale && e.piano_b.firmware_bus_scale);
