@@ -292,7 +292,12 @@ impl SynthLayer {
             };
 
             // Filter envelope: dedicated ADR, or mirror the amp decay (legacy).
-            let fenv_peak = 1.0 - self.filter_env_vel_amount.clamp(0.0, 1.0) * (1.0 - v.velocity);
+            let fenv_vel = if self.firmware_velocity {
+                super::fw_velocity::filter_factor(super::fw_velocity::key_byte(v.velocity))
+            } else {
+                v.velocity
+            };
+            let fenv_peak = 1.0 - self.filter_env_vel_amount.clamp(0.0, 1.0) * (1.0 - fenv_vel);
             let filter_env_level = if strip.is_some() && self.filter_env_dedicated {
                 v.fenv * fenv_peak
             } else if self.filter_env_dedicated {
@@ -549,8 +554,13 @@ impl SynthLayer {
             } else {
                 v.velocity
             };
-            let amp_vel = (1.0 - self.amp_velocity.clamp(0.0, 1.0))
-                + self.amp_velocity.clamp(0.0, 1.0) * vel_level;
+            let amp_vel = if self.firmware_velocity {
+                let setting = (self.amp_velocity.clamp(0.0, 1.0) * 3.0).round() as u8;
+                super::fw_velocity::amp_gain(setting, super::fw_velocity::key_byte(v.velocity))
+            } else {
+                (1.0 - self.amp_velocity.clamp(0.0, 1.0))
+                    + self.amp_velocity.clamp(0.0, 1.0) * vel_level
+            };
             let voice_gain = if dezip {
                 v.smoothed_gain(dezip_pole)
             } else {

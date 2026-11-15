@@ -3,7 +3,7 @@
 //! program, the resolved sounds, the routing facts and the output-health statistics.
 //!
 //! Usage: `cargo run --release -p nord-tools --bin program_sweep -- <backup.ns4b>
-//! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V]`;
+//! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V] [--synth-velocity]`;
 //! `tools/program_sweep.py` drives it. Output
 //! holds derived numbers only (no audio, no firmware or sample content). Release build only: a
 //! debug build overflows the stack in the FX chains.
@@ -167,7 +167,7 @@ fn main() -> Result<(), String> {
         .take(limit)
         .collect();
     std::panic::set_hook(Box::new(|_| {}));
-    let modes = [
+    let mut modes = [
         ("default", FirmwareOptions::default()),
         (
             "firmware",
@@ -177,6 +177,11 @@ fn main() -> Result<(), String> {
             },
         ),
     ];
+    if args.iter().any(|a| a == "--synth-velocity") {
+        for (_, o) in &mut modes {
+            o.synth_velocity_fw = true;
+        }
+    }
     for name in names {
         let bytes = archive
             .read_entry(&mut file, &name)
