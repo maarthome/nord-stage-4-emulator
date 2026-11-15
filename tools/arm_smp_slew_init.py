@@ -110,7 +110,7 @@ TWO24 = float(1 << 24)
 
 
 def note_on_words(msgs: Iterable[Sequence[int]]) -> dict[str, float | None]:
-    """Level (`F15`) and rate (`F17`) float words the ARM stores for a note, from its path 1 messages.
+    """Level (`F15`) and rate (`F17`) words the ARM stores for a note (path 1 messages).
 
     The last write to each DM word wins. Returns the levels as floats, and the rate as the decay
     count `d` of `1 - d / 2^24` (the per-update hold decay), `None` when the word was not written.

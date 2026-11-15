@@ -21,8 +21,8 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
-import numpy as np
 import emu_env
+import numpy as np
 import video_ref
 
 DEFAULT_SPEC = Path("docs/research/data/emu_vs_hw_segments.json")
@@ -349,7 +349,8 @@ def run_all(args: argparse.Namespace) -> dict[str, Any]:
 def markdown_table(result: dict[str, Any]) -> str:
     head = (
         "| Segment | Variant | " + " | ".join(BAND_NAMES) + " | centroid Hz | RMS dB | "
-        "width hw/emu | attack hw/emu ms | T60 hw/emu s | hold dB hw/emu | release dB hw/emu | score |"
+        "width hw/emu | attack hw/emu ms | T60 hw/emu s | "
+        "hold dB hw/emu | release dB hw/emu | score |"
     )
     lines = [head, "|" + "---|" * (head.count("|") - 1)]
     for seg in result["segments"]:

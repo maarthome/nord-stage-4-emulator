@@ -62,9 +62,7 @@ def release_drop_db(
     onsets = sorted(a for a, _ in intervals)
     out: list[float] = []
     for on, off in intervals:
-        if off - on < 0.2 or any(
-            a != on and off - 0.05 < a < off + POST_S[1] for a in onsets
-        ):
+        if off - on < 0.2 or any(a != on and off - 0.05 < a < off + POST_S[1] for a in onsets):
             continue
         pre = window_db(mono, sr, off, PRE_S)
         post = window_db(mono, sr, off, POST_S)
