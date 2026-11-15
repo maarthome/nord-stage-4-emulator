@@ -4,25 +4,29 @@
 //!
 //! VERIFIED: every control centre is the real centre listed in `data/photo_anchors_synth.csv`
 //! (crop `NS4-Panel-synth.max-2000x2000.format-png.png`, read by eye, +-3 crop px = +-0.4 mm),
-//! mapped affinely from the crop's panel outline (x 12..1988, y 12..1066) onto
-//! [`super::section_rect`]; checked by the test `centres_match_the_photo_anchors` and by
+//! mapped isotropically from the crop's panel outline (x 12..1988 onto the section's left/right
+//! edges, y 12 = panel y 26.0 mm, the same mm per crop px on both axes); checked by the test `centres_match_the_photo_anchors` and by
 //! `python tools/layout_overlay.py synth`. Only the centres were verified: sizes are the old
-//! hero-photo reads, except the faders and level ladders (heights from the crop).
-//! ASSUMED: the crop's section is 1.29x taller in mm than the real one would be at the
-//! horizontal scale (see the spec).
+//! hero-photo reads, except the faders and level ladders (heights from the crop, same scale).
+//! The layer sections are about 137 mm tall (y 26..163 mm); the 26 mm above are the printed
+//! connector strip (see the spec).
 
-use super::{px, Rect, KEYBED_TOP_PX, ORIGIN_PX};
+use super::{px, Rect, MM_PER_PX, ORIGIN_PX};
 
 /// Crop px of the panel outline (left, top, width, height).
 const CROP: (f32, f32, f32, f32) = (12.0, 12.0, 1976.0, 1054.0);
-/// Section frame in hero-photo px (left, width); the height is the control area.
+/// Section frame in hero-photo px (left, width).
 const SECTION_X: (f32, f32) = (1029.0, 372.0);
-const SECTION_H: f32 = KEYBED_TOP_PX - ORIGIN_PX.1;
+/// Panel y (mm) of the crop's top edge: the layer sections start under the 26 mm connector strip
+/// (HA88 straight-on render, 0.1195 mm/px on both axes).
+const CROP_TOP_MM: f32 = 26.0;
 
 /// Rectangle `w` x `h` hero px centred on crop pixel `(cx, cy)`.
 fn c(cx: f32, cy: f32, w: f32, h: f32) -> Rect {
     let x = SECTION_X.0 + (cx - CROP.0) / CROP.2 * SECTION_X.1;
-    let y = ORIGIN_PX.1 + (cy - CROP.1) / CROP.3 * SECTION_H;
+    // Isotropic: the horizontal scale (mm per crop px) applies to both axes.
+    let mm_per_crop_px = SECTION_X.1 * MM_PER_PX / CROP.2;
+    let y = ORIGIN_PX.1 + (CROP_TOP_MM + (cy - CROP.1) * mm_per_crop_px) / MM_PER_PX;
     px(x - w / 2.0, y - h / 2.0, x + w / 2.0, y + h / 2.0)
 }
 
@@ -31,12 +35,12 @@ pub fn rect(id: &str) -> Option<Rect> {
         // Header, layer strip.
         "synth.on" => c(668.0, 55.0, 23.0, 9.0),
         "synth.fx_focus_led" => c(467.0, 67.0, 5.0, 5.0),
-        "synth.fader.a" => c(66.0, 285.0, 13.0, 91.0),
-        "synth.fader.b" => c(228.0, 285.0, 14.0, 91.0),
-        "synth.fader.c" => c(389.0, 285.0, 14.0, 91.0),
-        "synth.ladder.a" => c(144.0, 280.0, 9.0, 80.0),
-        "synth.ladder.b" => c(305.0, 280.0, 9.0, 80.0),
-        "synth.ladder.c" => c(467.0, 280.0, 9.0, 80.0),
+        "synth.fader.a" => c(66.0, 285.0, 13.0, 69.0),
+        "synth.fader.b" => c(228.0, 285.0, 14.0, 69.0),
+        "synth.fader.c" => c(389.0, 285.0, 14.0, 69.0),
+        "synth.ladder.a" => c(144.0, 280.0, 9.0, 61.0),
+        "synth.ladder.b" => c(305.0, 280.0, 9.0, 61.0),
+        "synth.ladder.c" => c(467.0, 280.0, 9.0, 61.0),
         "synth.focus_led.a" => c(59.0, 545.0, 6.0, 6.0),
         "synth.aux_led.a" => c(158.0, 506.0, 6.0, 6.0),
         "synth.focus_led.b" => c(220.0, 545.0, 6.0, 6.0),
@@ -128,7 +132,7 @@ mod tests {
             let (cx, cy): (f32, f32) = (f[1].parse().unwrap(), f[2].parse().unwrap());
             let r = rect(f[0]).unwrap_or_else(|| panic!("no rect for {}", f[0]));
             let mx = sec.x + (cx - CROP.0) / CROP.2 * sec.w;
-            let my = sec.y + (cy - CROP.1) / CROP.3 * sec.h;
+            let my = CROP_TOP_MM + (cy - CROP.1) * sec.w / CROP.2;
             let (rx, ry) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
             assert!((rx - mx).abs() < 0.05 && (ry - my).abs() < 0.05, "{}", f[0]);
             n += 1;

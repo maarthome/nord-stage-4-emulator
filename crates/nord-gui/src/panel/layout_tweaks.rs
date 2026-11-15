@@ -10,7 +10,14 @@ use egui::{vec2, Vec2};
 /// `(control id, dx, dy)`: shift of the control's rectangle in logical px.
 pub const TWEAKS: &[(&str, f32, f32)] = &[
     // The ON name printed above its button, outside the section (legibility rule K).
-    ("synth.on", 0.0, 2.0),
+    // Real-panel positions (isotropic crop mapping) leave 7.5 px legends touching their
+    // neighbours: these nudges stay within 2.5 mm of the crop.
+    ("synth.zone_leds", 0.0, 3.0), // the KB ZONE legends sit between the buttons and the LEDs
+    ("synth.lfo.waveform", 0.0, -1.0), // clears the GROUP legend from the RATE numerals
+    ("synth.lfo.rate", 0.0, 4.5),  // the RATE numerals touched the LFO GROUP legend above
+    ("synth.lfo.rate_mst_clk", 0.0, 4.5),
+    ("synth.osc.ctrl", 0.0, 3.0), // the OSC CTRL numerals touched the ENV TO PITCH legend
+    ("synth.filter.freq", 0.0, 3.0), // the FREQ numerals touched the GROUP legend
     // The PROG VIEW name printed into the PANIC legend of the TRANSP button above.
     ("program.prog_view", 0.0, 5.0),
     ("program.preset_name", 0.0, 5.0),
@@ -26,8 +33,6 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     // The MON/COPY name sat 1.5 px under the LAYER INIT legend of SECT EDIT.
     ("program.mon_copy", 0.0, 3.0),
     ("program.paste", 0.0, 3.0),
-    // The piano ZONE -/+ legends (now clear of the OCT bezels) printed into the zone LEDs.
-    ("piano.zone_leds", 0.0, 3.0),
     // The SPLIT name touched the L M H LED strip above its button.
     ("split.leds", 0.0, -2.0),
     // The Mod 1 numerals need the room the LAYER FX button legend used (round 4).
@@ -69,18 +74,13 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
 /// (`nord_panel::layout::frames`): the 2000 px photo leaves too little between rows for 7.5 px
 /// legends plus a frame border and its title.
 pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
+    // The OLED dials' LIST names touched the OSCILLATORS title.
+    ("synth.dial", 0.0, -4.0),
     // Rotary Speaker box: its controls sit on the frame's vertical centre line (the frame was
     // built around the button column and grew to the left; now the column moves 11 px left).
     ("rotary.", -11.0, 0.0),
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
     ("organ.perc_", 3.0, 0.0),
-    // Piano: the PIANO SELECT box (type names, dial) moves under the KB TOUCH / DYN COMP LEDs; the
-    // TIMBRE button moves left so its two name columns end before the box.
-    ("piano.type", 0.0, 52.0),
-    ("piano.select_dial", 0.0, 45.0),
-    ("piano.info", 0.0, 52.0),
-    ("piano.list", 0.0, 45.0),
-    ("piano.timbre", -9.0, 0.0),
     // Layer Effects: Mod 1 clear of the header's ON button legend, Mod 2 and Amp Sim/EQ down,
     // Comp and Reverb down under the Delay box.
     ("mod1.", 0.0, 6.0),
@@ -101,9 +101,6 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     ("split.", 0.0, -14.0),
     ("mst_clk.", 0.0, -14.0),
     ("transp.", 0.0, -14.0),
-    // Piano: KB TOUCH and DYN COMP clear of the PED NOISE legend above their titles.
-    ("piano.kb_touch", 0.0, 20.0),
-    ("piano.dyn_comp", 0.0, 20.0),
     ("comp.", 0.0, 14.0),
     ("reverb.dry_wet", 6.0, 0.0),
     ("reverb.", 8.0, 14.0),

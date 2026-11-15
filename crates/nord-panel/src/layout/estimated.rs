@@ -7,9 +7,9 @@
 //! or replaces each one. Everything not listed here is placed from visible
 //! control outlines (about +-3 px).
 //!
-//! VERIFIED against the real-panel crops (and so removed from the list): the Master / Rotary and
-//! Organ LEDs and the Synth layer-strip LEDs, see `docs/specs/control-inventory.md` section 7 (photo anchors in
-//! `crates/nord-panel/data/photo_anchors_{master,organ,synth}.csv`).
+//! VERIFIED against the real-panel crops (and so removed from the list): the Master / Rotary,
+//! Organ, Piano and Synth layer-strip LEDs, see `docs/specs/control-inventory.md` section 7 (photo
+//! anchors in `crates/nord-panel/data/photo_anchors_{master,organ,piano,synth}.csv`).
 //!
 //! Shared entries ([`super::SHARED`]) inherit the accuracy of their base;
 //! the "(direct)" rows there are listed here as well.
@@ -21,12 +21,6 @@ pub const ESTIMATED: &[&str] = &[
     // (`organ_rewire_tests`) loses the click to the hover tooltip when they are higher.
     "organ.aux_led.a",
     "organ.aux_led.b",
-    "piano.aux_led.a",
-    "piano.aux_led.b",
-    "piano.focus_led.a",
-    "piano.focus_led.b",
-    "piano.fx_focus_led",
-    "piano.zone_leds",
     "synth.zone_leds",
     // LEDs and LED groups placed near their control.
     "fx.focus.leds",
@@ -58,6 +52,6 @@ mod tests {
         for id in ESTIMATED {
             assert!(seen.insert(*id), "duplicate {id}");
         }
-        assert_eq!(ESTIMATED.len(), 24);
+        assert_eq!(ESTIMATED.len(), 18);
     }
 }
