@@ -78,6 +78,19 @@ Sources: `clip.srt` (narration subtitles of the clip), `docs/research/nki-lz-str
 * **Channel roles (from the narration, user-confirmed):** `L.wav` is the Nord Stage 4 chorus recording, `R.wav` is Ultimate Pianos 2 (Kontakt) playing the same notes; on the scope the yellow trace is the Nord and the purple one is UP2. The UP2 library was sampled from the Nord Stage 4. This replaces the section 2 inference that both channels are "wet" without a reference: both are wet, one is hardware, one is the Kontakt chorus.
 * **UP2 chorus knob table:** the script sets Choral rate from `%idia3[pos]` (0 to 691137 of 1,000,000, 21 positions) and amount from `%gg3op[pos]`, with delay 30000, width 1,000,000 and mix `level * 46000`. KONTRA's law `rate_Hz = 7.4 r^3 + 0.25` with `r = value / 1e6` gives 0.250 Hz at positions 0 and 1, 0.333 at 2, 0.478 at 3, 0.602 at 4, 1.0 Hz at 7, 2.69 Hz at 20.
 * **Check against the clip:** the scope LFO of section 3 is 0.336 Hz; position 2 gives 0.333 Hz (0.9 % apart, nearest of the 21 positions), and Nord type 4 word `v = 30` gives 0.343 Hz. The two rates agree, which supports "UP2 reproduces the Nord rate at the lowest nonzero knob position". It is one data point, with the scope calibration still ASSUMED (87.31 Hz), so it is EMPIRICAL support, not VERIFIED.
+* **L (Nord) against R (UP2), 23 to 37 s, 8192-point windows, mean over the note** (scratch script, not committed; run again with the two WAVs):
+
+  | Band (Hz) | L - R level (dB) | Mean coherence |
+  |---|---|---|
+  | 60 to 200 | 0.00 | 0.997 |
+  | 200 to 500 | -0.15 | 0.885 |
+  | 500 to 1000 | -0.21 | 0.880 |
+  | 1000 to 2000 | -1.01 | 0.695 |
+  | 2000 to 4000 | +0.64 | 0.721 |
+  | 4000 to 8000 | -0.11 | 0.525 |
+  | 8000 to 16000 | +0.03 | 0.533 |
+
+  The long-term spectrum of the two chorus recordings agrees within 1 dB in every band, so the UP2 sample set plus its Kontakt chorus has the Nord level balance (consistent with UP2 being sampled from the Nord). The coherence drop with frequency is what two choruses with independent LFO phase produce; it does not measure the delay depth. The harmonic amplitude tracks (harmonics 1 to 18 over 23 to 37 s) are within 1 dB of each other too and show no LFO line in either channel (the performance dominates), so the LFO rate still rests on the scope reading.
 * The Phasis rate law of KONTRA (`440 * 2^((lerp(-120, 20, r) - 69) / 12)` Hz) gives 0.051 Hz to 12.2 Hz over the `%pwbo1` table; Flair's rate law is unread in KONTRA.
 
 ## Follow-ups
