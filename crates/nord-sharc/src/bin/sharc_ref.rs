@@ -35,7 +35,11 @@ fn run(args: &[String]) -> Result<String, String> {
             "--out" => prefix = Some(it.next().ok_or("--out needs PREFIX")?.clone()),
             "--wav" => wav = true,
             "--lenient" => lenient = true,
-            "--watch" => watch = Some(parse_watch(it.next().ok_or("--watch needs LO:LEN[:LIMIT]")?)?),
+            "--watch" => {
+                watch = Some(parse_watch(
+                    it.next().ok_or("--watch needs LO:LEN[:LIMIT]")?,
+                )?)
+            }
             _ => positional.push(a.clone()),
         }
     }
@@ -47,7 +51,11 @@ fn run(args: &[String]) -> Result<String, String> {
     let cmds = script::parse_script(&text)?;
     let mut runner = exec::Runner::new(&data, lenient);
     if let Some((lo, len, limit)) = watch {
-        (runner.core.watch, runner.core.watch_len, runner.core.watch_limit) = (lo, len, limit);
+        (
+            runner.core.watch,
+            runner.core.watch_len,
+            runner.core.watch_limit,
+        ) = (lo, len, limit);
     }
     runner.exec(&cmds)?;
     let log = watch_log(&runner.core);
@@ -152,17 +160,24 @@ mod tests {
 
     #[test]
     fn watch_logs_scenario_writes_into_the_window() {
-        assert_eq!(parse_watch("0x9354A:0x46").unwrap(), (0x9354A, 0x46, 100_000));
+        assert_eq!(
+            parse_watch("0x9354A:0x46").unwrap(),
+            (0x9354A, 0x46, 100_000)
+        );
         assert_eq!(parse_watch("10:2:5").unwrap(), (10, 2, 5));
         assert!(parse_watch("zz:1").is_err() && parse_watch("1").is_err());
         let dir = std::env::temp_dir().join("nord_sharc_ref_watch");
         std::fs::create_dir_all(&dir).unwrap();
         let (image, scen) = (dir.join("img.bin"), dir.join("s.txt"));
         std::fs::write(&image, vec![0u8; 64]).unwrap();
-        std::fs::write(&scen, "poke 0xA0000 7
+        std::fs::write(
+            &scen,
+            "poke 0xA0000 7
 poke 0xA0005 9
 capture L 0xA0000 1
-").unwrap();
+",
+        )
+        .unwrap();
         let args = [
             image.to_string_lossy().to_string(),
             scen.to_string_lossy().to_string(),
@@ -170,7 +185,10 @@ capture L 0xA0000 1
             "0xA0000:2".into(),
         ];
         let text = run(&args).unwrap();
-        assert!(text.contains("watch step=0 pc=0x0 addr=0xA0000 value=0x00000007"), "{text}");
+        assert!(
+            text.contains("watch step=0 pc=0x0 addr=0xA0000 value=0x00000007"),
+            "{text}"
+        );
         assert!(!text.contains("0xA0005"), "{text}");
         std::fs::remove_dir_all(&dir).ok();
     }

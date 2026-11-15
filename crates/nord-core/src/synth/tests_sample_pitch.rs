@@ -34,7 +34,10 @@ fn firmware_pitch_law_is_off_by_default_and_near_native_at_the_root_key() {
 fn firmware_pitch_law_follows_the_semitone_law_within_half_a_percent() {
     for note in [24u8, 36, 60, 72, 96] {
         let (eq, fw) = (step(false, note), step(true, note));
-        assert!(eq != fw && (fw / eq - 1.0).abs() < 5e-3, "{note}: {eq} {fw}");
+        assert!(
+            eq != fw && (fw / eq - 1.0).abs() < 5e-3,
+            "{note}: {eq} {fw}"
+        );
     }
 }
 

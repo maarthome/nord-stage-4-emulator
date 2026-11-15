@@ -6,9 +6,7 @@
 //! SY1SY2 image writes `e` (`docs/research/synth-sample-kernel-rule.md` section 14), so the played
 //! key enters the step through an entry this module only **models**: `e` = the key's pitch word
 //! over the unity word, packed to 16 bits.
-use super::pitch_law::{
-    dsp_step, pitch_q16, pitch_word, zone_word, SY_FRAME_RATE_HZ, UNITY_WORD,
-};
+use super::pitch_law::{dsp_step, pitch_q16, pitch_word, zone_word, SY_FRAME_RATE_HZ, UNITY_WORD};
 
 /// Ratio of a 16-bit table entry: with `E = e >> 11` (5 bits) and `m = (e & 0x7FF) / 2048`,
 /// `0.625 * 2^(E - 1) * (1 + m)` for `E >= 1` and the denormal `0.625 * m` for `E = 0`.
@@ -153,7 +151,10 @@ mod tests {
         for (key, root, rate, word) in ORACLE {
             let native = rate / SY_FRAME_RATE_HZ * 2f64.powf(f64::from(key - root) / 12.0);
             let step = f64::from(word) / 16_777_216.0;
-            assert!((step / native - 1.0).abs() < 5e-3, "key {key}: {step} vs {native}");
+            assert!(
+                (step / native - 1.0).abs() < 5e-3,
+                "key {key}: {step} vs {native}"
+            );
         }
     }
 }
