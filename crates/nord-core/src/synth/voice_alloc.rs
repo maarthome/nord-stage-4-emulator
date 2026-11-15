@@ -100,12 +100,17 @@ impl SynthLayer {
         let (sample_zone_idx, sample_step) = if let Some(sound) = &self.sample_sound {
             if let Some(z_idx) = sound.zone_for_note(note) {
                 let zone = &sound.zones[z_idx];
-                let semis = if self.sample_pitch_fw {
-                    crate::sinc::pitch_law::key_ratio(i32::from(note), i32::from(zone.root_key))
+                let step = if self.sample_pitch_fw {
+                    crate::sinc::step_join::output_step(
+                        i32::from(note),
+                        i32::from(zone.root_key),
+                        f64::from(zone.sample_rate),
+                        f64::from(self.sample_rate),
+                    )
                 } else {
-                    2.0f64.powf((f64::from(note) - f64::from(zone.root_key)) / 12.0)
+                    let semis = 2.0f64.powf((f64::from(note) - f64::from(zone.root_key)) / 12.0);
+                    (f64::from(zone.sample_rate) / f64::from(self.sample_rate)) * semis
                 };
-                let step = (f64::from(zone.sample_rate) / f64::from(self.sample_rate)) * semis;
                 (Some(z_idx), step)
             } else {
                 (None, 1.0)

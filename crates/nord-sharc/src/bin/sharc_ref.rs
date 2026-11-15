@@ -1,11 +1,13 @@
-//! `sharc-ref IMAGE SCENARIO [--out PREFIX] [--wav] [--lenient] [--regs]`: oracle reference render.
+//! `sharc-ref IMAGE SCENARIO [--out PREFIX] [--wav] [--lenient] [--watch LO:LEN[:LIMIT]]`: oracle reference render.
 //!
 //! Loads a flat SRAM image (`python tools/ns4_dsp_raw.py IMG --sram DIR`), executes a scenario
 //! file (data pokes, test-signal fills, voice records, handler runs, captures; format in
 //! `script.rs` and `docs/research/oracle-vs-engine.md`) on the SHARC core and writes the captured
 //! series to `PREFIX.csv` (with a metadata header) and, with `--wav`, `PREFIX.wav`. Without
 //! `--out` the CSV goes to standard output. `tools/ns4_oracle_compare.py` compares the dump with
-//! a reference render of the Rust engine.
+//! a reference render of the Rust engine. `--watch LO:LEN[:LIMIT]` appends a log of every data
+//! write into `[LO, LO+LEN)` (core step, pc, address, value; scenario pokes show the pc of the
+//! previous store) to the output message.
 #[path = "sharc_ref/exec.rs"]
 mod exec;
 #[path = "sharc_ref/isr.rs"]
@@ -26,23 +28,37 @@ fn run(args: &[String]) -> Result<String, String> {
     let mut prefix: Option<String> = None;
     let mut wav = false;
     let mut lenient = false;
+    let mut watch: Option<(u32, u32, usize)> = None;
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--out" => prefix = Some(it.next().ok_or("--out needs PREFIX")?.clone()),
             "--wav" => wav = true,
             "--lenient" => lenient = true,
+            "--watch" => {
+                watch = Some(parse_watch(
+                    it.next().ok_or("--watch needs LO:LEN[:LIMIT]")?,
+                )?)
+            }
             _ => positional.push(a.clone()),
         }
     }
     let [image, scenario] = positional.as_slice() else {
-        return Err("usage: sharc-ref IMAGE SCENARIO [--out PREFIX] [--wav] [--lenient]".into());
+        return Err("usage: sharc-ref IMAGE SCENARIO [--out PREFIX] [--wav] [--lenient] [--watch LO:LEN[:LIMIT]]".into());
     };
     let data = std::fs::read(image).map_err(|e| format!("{image}: {e}"))?;
     let text = std::fs::read_to_string(scenario).map_err(|e| format!("{scenario}: {e}"))?;
     let cmds = script::parse_script(&text)?;
     let mut runner = exec::Runner::new(&data, lenient);
+    if let Some((lo, len, limit)) = watch {
+        (
+            runner.core.watch,
+            runner.core.watch_len,
+            runner.core.watch_limit,
+        ) = (lo, len, limit);
+    }
     runner.exec(&cmds)?;
+    let log = watch_log(&runner.core);
     let render = &runner.render;
     let extra = vec![
         ("tool".to_string(), "sharc-ref".to_string()),
@@ -62,7 +78,7 @@ fn run(args: &[String]) -> Result<String, String> {
         .and_then(|m| m.1.parse().ok())
         .unwrap_or(48_000);
     match prefix {
-        None => Ok(csv),
+        None => Ok(format!("{csv}{log}")),
         Some(p) => {
             std::fs::write(format!("{p}.csv"), &csv).map_err(|e| e.to_string())?;
             let mut msg = format!("wrote {p}.csv ({} series)", render.series.len());
@@ -71,9 +87,39 @@ fn run(args: &[String]) -> Result<String, String> {
                     .map_err(|e| e.to_string())?;
                 msg.push_str(&format!(", {p}.wav"));
             }
+            msg.push_str(&log);
             Ok(msg)
         }
     }
+}
+
+/// `LO:LEN[:LIMIT]` (numbers decimal or `0x` hex; limit defaults to 100000 hits).
+fn parse_watch(spec: &str) -> Result<(u32, u32, usize), String> {
+    let num = |t: &str| {
+        let t = t.trim();
+        match t.strip_prefix("0x") {
+            Some(h) => u32::from_str_radix(h, 16),
+            None => t.parse::<u32>(),
+        }
+        .map_err(|_| format!("bad --watch number {t:?}"))
+    };
+    let mut f = spec.split(':');
+    let lo = num(f.next().unwrap_or(""))?;
+    let len = num(f.next().ok_or("--watch needs LO:LEN[:LIMIT]")?)?;
+    let limit = f.next().map_or(Ok(100_000), num)? as usize;
+    Ok((lo, len, limit))
+}
+
+/// One line per logged write: `watch step=.. pc=0x.. addr=0x.. value=0x..`.
+fn watch_log(core: &nord_sharc::core::Core) -> String {
+    let mut out = String::new();
+    for ((step, pc, value), addr) in core.watch_hits.iter().zip(&core.watch_addrs) {
+        out.push_str(&format!(
+            "
+watch step={step} pc=0x{pc:X} addr=0x{addr:X} value=0x{value:08X}"
+        ));
+    }
+    out
 }
 
 fn main() -> ExitCode {
@@ -110,6 +156,41 @@ mod tests {
             }
         }
         assert!(seen >= 4, "expected the Stage B scenarios, found {seen}");
+    }
+
+    #[test]
+    fn watch_logs_scenario_writes_into_the_window() {
+        assert_eq!(
+            parse_watch("0x9354A:0x46").unwrap(),
+            (0x9354A, 0x46, 100_000)
+        );
+        assert_eq!(parse_watch("10:2:5").unwrap(), (10, 2, 5));
+        assert!(parse_watch("zz:1").is_err() && parse_watch("1").is_err());
+        let dir = std::env::temp_dir().join("nord_sharc_ref_watch");
+        std::fs::create_dir_all(&dir).unwrap();
+        let (image, scen) = (dir.join("img.bin"), dir.join("s.txt"));
+        std::fs::write(&image, vec![0u8; 64]).unwrap();
+        std::fs::write(
+            &scen,
+            "poke 0xA0000 7
+poke 0xA0005 9
+capture L 0xA0000 1
+",
+        )
+        .unwrap();
+        let args = [
+            image.to_string_lossy().to_string(),
+            scen.to_string_lossy().to_string(),
+            "--watch".into(),
+            "0xA0000:2".into(),
+        ];
+        let text = run(&args).unwrap();
+        assert!(
+            text.contains("watch step=0 pc=0x0 addr=0xA0000 value=0x00000007"),
+            "{text}"
+        );
+        assert!(!text.contains("0xA0005"), "{text}");
+        std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
