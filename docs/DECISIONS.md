@@ -67,6 +67,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D73](#d73-firmwarerouting-is-the-default-the-loader-rule-for-an-empty-layer-mask-is-verified) | 2026-11-14 | `FirmwareRouting` is the default; the loader rule for an empty layer mask is VERIFIED | accepted |
 | [D79](#d79-piano-comparisons-replay-transcribed-velocities-and-pedal) | 2026-11-15 | Piano comparisons replay transcribed velocities and pedal | proposed |
 | [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
+| [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | accepted |
 | [D78](#d78-library-drawer-loads-start-from-an-init-program-the-organ-ladders-follow-the-section-state) | 2026-11-15 | Library drawer loads start from an Init Program; the organ ladders follow the section state | accepted |
 | [D70](#d70-the-arm-p-words-drive-the-multi-and-super-stages-under---synth-p-verified-the-default-stays-the-empirical-table) | 2026-11-14 | The ARM P words drive the MULTI and SUPER stages under `--synth-p verified`; the default stays the EMPIRICAL table | accepted |
 
@@ -857,3 +858,17 @@ Playing primary use app DAW layout users already know; three view shortcuts have
 Drop P L map breaks black-key row second white octave); push-to-play key hidden stuck silences keys); remap view shortcuts letters more collisions).
 **Update (same PR):** (4) bar also gets MIDI input port selector Rescan button (`audio/midi_ports.rs`): MIDI connection, GUI sends `Rescan` `Select` messages snapshot, nothing locks thread. MIDI-in untouched.
 `view.rs` `library/ui.rs` use `computer_keys::shortcut_pressed`; tests `panel/computer_kb_tests.rs`; [GUI testing](gui-testing.md) lists keys. step map `ASSUMED` (no Nord source).
+
+**Update (same PR):** (4) bar also gets MIDI input port selector Rescan button (`audio/midi_ports.rs`): MIDI connection, GUI sends `Rescan` `Select` messages reads snapshot, nothing locks thread. MIDI-in velocity untouched.
+`view.rs` `library/ui.rs` use `computer_keys::shortcut_pressed`; tests `panel/computer_kb_tests.rs`; [GUI testing](gui-testing.md) lists keys. velocity step map `ASSUMED` (no Nord source).
+
+
+### D82. The synth layer level law is an opt-in `(v / 127)^2` (Grand Pad clip)
+
+- **Status:** accepted
+- **Decided by:** Claude (agent), pending the user's listening check
+- **Context:** The factory program `A:43 Grand Pad` (piano Grand + SuperSaw pad, synth layer level 0.567) sounds odd against the Part A video at 1169 s ([grand-pad-vs-video](research/grand-pad-vs-video.md)). With the Transkun notes the default render is within 2.3 dB RMS, but the pad is +4.1 dB hot below 130 Hz. The piano and organ layer faders follow the verified `(v / 127)^2` (D26); the synth layer handler (`0xC011BB48`) was not run and the DSoundman fader move at 0.7 reads linear (-2.7 dB against -3.1).
+- **Decision:** `Stage4Engine::synth_layer_law` and `--firmware-synth-layer-law` apply `(v / 127)^2` to the synth layers (`piano::downstream::layer_gain`). Off by default; `firmware_all` does not set it.
+- **Why:** The Grand Pad score is best at the squared level (1.24 against 1.46 linear and 2.69 at level 1.0; RMS +0.6 dB against +2.3), but it is one clip with estimated notes and the other clip contradicts it, so the evidence does not meet the D22 bar for a flip.
+- **Alternatives:** Flip the default (rejected: conflicting clips, Space Drama II and the 15 synth validation clips not re-run); leave the flag out and only document (rejected: the clip comparison needs the switch).
+- **Impact:** `engine/mod.rs`, `engine/mix.rs`, `render_opts.rs` (test `synth_layer_law_squares_the_fader_only_when_selected`), `emu_vs_hw_segments.json` segment `pianopad_grand`, OQ22. Default renders and golden hashes unchanged.

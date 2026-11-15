@@ -59,6 +59,15 @@ pub fn note_x(note: u8, white_w: f32) -> f32 {
     }
 }
 
+/// Index (0..11) of the fixed split LED nearest to `note`.
+pub fn nearest_split_led(note: u8, white_w: f32) -> usize {
+    let pos = note_x(note, white_w) / white_w - 0.5;
+    let dist = |k: usize| (f32::from(nord_panel::layout::SPLIT_LED_WHITE_KEYS[k]) - pos).abs();
+    (0..nord_panel::layout::SPLIT_LED_WHITE_KEYS.len())
+        .min_by(|&a, &b| dist(a).total_cmp(&dist(b)))
+        .unwrap_or(0)
+}
+
 /// Key velocity of a mouse press on the on-screen keybed.
 ///
 /// EMPIRICAL: 88, not 100. The factory piano strokes are velocity layered (VERIFIED firmware level
@@ -89,9 +98,6 @@ fn release_held(state: &mut Stage4PanelState, audio_handle: &AudioHandle) {
         });
     }
 }
-
-/// Letters printed beside the three split-point LEDs (low, middle, high).
-const SPLIT_NAMES: [&str; 3] = ["L", "M", "H"];
 
 /// 88-key keyboard with mouse playing and the three split-point LEDs.
 pub(super) fn render_keybed(
@@ -189,24 +195,22 @@ pub(super) fn render_keybed(
     // Split-point LEDs (green): lit for each active point while the split is on (manual p.15, p.39).
     let split = &state.program_ui.split;
     let lit = split.leds();
-    for (i, note) in split.notes.into_iter().enumerate() {
-        let c = pos2(keys.left() + note_x(note, white_w), led_strip.center().y);
-        let (core, bloom) = (if lit[i] { LED_GREEN } else { LED_GREEN_DIM }, lit[i]);
+    // The hardware has 11 fixed LEDs (HA88 render); a split point lights the one nearest its key.
+    let led_at = |k: usize| {
+        let white = f32::from(nord_panel::layout::SPLIT_LED_WHITE_KEYS[k]);
+        pos2(keys.left() + (white + 0.5) * white_w, led_strip.center().y)
+    };
+    for k in 0..nord_panel::layout::SPLIT_LED_WHITE_KEYS.len() {
+        let c = led_at(k);
         painter.circle_filled(c, 3.5, Color32::from_rgb(14, 16, 19));
-        painter.circle_filled(c, 2.6, core);
-        if bloom {
+        painter.circle_filled(c, 2.6, LED_GREEN_DIM);
+    }
+    for (i, note) in split.notes.into_iter().enumerate() {
+        let c = led_at(nearest_split_led(note, white_w));
+        if lit[i] {
+            painter.circle_filled(c, 2.6, LED_GREEN);
             painter.circle_stroke(c, 4.2, Stroke::new(1.2_f32, LED_GREEN.gamma_multiply(0.4)));
         }
-        // L / M / H: which split point the LED belongs to (manual p.15; the Program area prints
-        // the same letters over the SPLIT button).
-        label(
-            &painter,
-            c + vec2(6.5, 0.0),
-            SPLIT_NAMES[i],
-            7.5,
-            Color32::from_gray(235),
-            Align2::LEFT_CENTER,
-        );
     }
     resp.on_hover_text("88 keys: click or drag to play. SET KEY then a key moves the split point");
     state.program_ui.mark("keybed.keys");
@@ -290,17 +294,33 @@ mod tests {
     }
 
     #[test]
-    fn split_leds_are_labelled_l_m_h() {
+    fn a_split_point_lights_the_nearest_of_the_11_leds() {
+        // White key 8 = B1 (MIDI 35): its own LED 0; C4 (60) is white index 23: LED 5 (index 25) or
+        // 4 (index 22); index 22 is nearer.
+        assert_eq!(nearest_split_led(35, 10.0), 0);
+        assert_eq!(nearest_split_led(60, 10.0), 4);
+        assert_eq!(
+            nearest_split_led(21, 10.0),
+            0,
+            "below the row clamps to the first"
+        );
+        assert_eq!(
+            nearest_split_led(108, 10.0),
+            10,
+            "above the row clamps to the last"
+        );
+    }
+
+    /// The hardware prints no letters beside its LED row (and the row lies under the Organ / Synth
+    /// legends), so the keybed paints none: no L / M / H label near the strip.
+    #[test]
+    fn split_led_row_prints_no_letters() {
         let strip = rect_or_empty("keybed.split_leds", egui::pos2(0.0, 0.0));
         let (labs, _) = crate::panel::legibility_tests::labels_of(None, vec2(3300.0, 900.0));
-        for name in SPLIT_NAMES {
-            assert!(
-                labs.iter().any(|l| l.text == name
-                    && l.size >= crate::widgets::MIN_FONT_PX
-                    && strip.expand(2.0).contains(l.rect.center())),
-                "{name} not printed beside its LED"
-            );
-        }
+        assert!(!labs
+            .iter()
+            .any(|l| ["L", "M", "H"].contains(&l.text.as_str())
+                && strip.expand(10.0).contains(l.rect.center())));
     }
 
     #[test]

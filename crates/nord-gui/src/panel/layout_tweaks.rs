@@ -9,7 +9,6 @@ use egui::{vec2, Vec2};
 
 /// `(control id, dx, dy)`: shift of the control's rectangle in logical px.
 pub const TWEAKS: &[(&str, f32, f32)] = &[
-    // The ON name printed above its button, outside the section (legibility rule K).
     // Real-panel positions (isotropic crop mapping) leave 7.5 px legends touching their
     // neighbours: these nudges stay within 2.5 mm of the crop.
     ("synth.zone_leds", 0.0, 3.0), // the KB ZONE legends sit between the buttons and the LEDs
@@ -18,10 +17,10 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("synth.lfo.rate_mst_clk", 0.0, 4.5),
     ("synth.osc.ctrl", 0.0, 3.0), // the OSC CTRL numerals touched the ENV TO PITCH legend
     ("synth.filter.freq", 0.0, 3.0), // the FREQ numerals touched the GROUP legend
-    // The PROG VIEW name printed into the PANIC legend of the TRANSP button above.
-    ("program.prog_view", 0.0, 5.0),
-    ("program.preset_name", 0.0, 5.0),
-    // Program buttons 5-8: their numbers touched the legends (System, Sound, ...) of buttons 1-4.
+    // Program: the PROG VIEW legend touched PANIC above; buttons 5-8 / MON-COPY legends touched the
+    // names above them; the SPLIT legend touched the LED strip (all <= 1.7 mm).
+    ("program.prog_view", 0.0, 4.0),
+    ("program.preset_name", 0.0, 4.0),
     ("program.button.5", 0.0, 3.0),
     ("program.button.6", 0.0, 3.0),
     ("program.button.7", 0.0, 3.0),
@@ -30,11 +29,9 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("program.menu.pedal", 0.0, 3.0),
     ("program.menu.midi", 0.0, 3.0),
     ("program.menu.extern", 0.0, 3.0),
-    // The MON/COPY name sat 1.5 px under the LAYER INIT legend of SECT EDIT.
     ("program.mon_copy", 0.0, 3.0),
     ("program.paste", 0.0, 3.0),
-    // The SPLIT name touched the L M H LED strip above its button.
-    ("split.leds", 0.0, -2.0),
+    ("split.leds", 0.0, -4.0),
     // The Mod 1 numerals need the room the LAYER FX button legend used (round 4).
     ("fx.layer_effects_on", 0.0, -10.0),
     // The "VAR" legend under the amp model button printed into the TREBLE numeral `0`.
@@ -86,21 +83,16 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     ("mod1.", 0.0, 6.0),
     ("mod2.", 0.0, 12.0),
     ("amp.", 0.0, 30.0),
-    // Program area: the Morph / Split / Mst Clk / Transp row moves up into the free space above
-    // it, so the Preset Library box fits between it and the display.
-    ("preset_library.", 0.0, -6.0),
-    // The PROGRAM title sits on the frame top edge left of the display, so the dial and the page
-    // buttons move down 6 px to clear it.
-    ("program.live_mode", 0.0, 6.0),
-    ("program.num_pad", 0.0, 6.0),
-    ("program.dial", 0.0, 6.0),
-    ("program.list", 0.0, 6.0),
-    ("program.page_", 0.0, 6.0),
-    ("program.bank_", 0.0, 6.0),
-    ("morph.", 0.0, -14.0),
-    ("split.", 0.0, -14.0),
-    ("mst_clk.", 0.0, -14.0),
-    ("transp.", 0.0, -14.0),
+    // Program area: small nudges (at most 4 px = 1.7 mm, inside the 2 mm photo tolerance) that keep
+    // the legends of neighbouring controls apart.
+    ("preset_library.", 0.0, 4.0),
+    ("program.shift.right", 0.0, 4.0),
+    ("program.live_mode", 0.0, 4.0),
+    ("program.num_pad", 0.0, 4.0),
+    ("program.dial", 0.0, 4.0),
+    ("program.list", 0.0, 4.0),
+    ("program.page_", 0.0, 4.0),
+    ("program.bank_", 0.0, 4.0),
     ("comp.", 0.0, 14.0),
     ("reverb.dry_wet", 6.0, 0.0),
     ("reverb.", 8.0, 14.0),
