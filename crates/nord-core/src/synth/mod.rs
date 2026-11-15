@@ -99,7 +99,7 @@ pub use measured::{
 pub use p_block::{PBlock, PSpec};
 pub use p_stage_words::StageWords;
 pub use p_table::{PTable, PTableSpec, PWave, PWAVE_COUNT};
-pub use p_type::type_cutoff_scale;
+pub use p_type::{row_type_cutoff_scale, type_cutoff_scale};
 pub use p_words::{type_count, type_of, words_for, words_of_type, PWords, GAIN_PER_P16};
 pub use pattern::{pan_gains, CustomPattern, PatternPan, ACCENT_VELOCITY_BOOST, PATTERN_MAX_STEPS};
 pub use perf::{
