@@ -67,7 +67,7 @@ impl Stage4Engine {
                 1 => self.organ_b.level_law().layer_gain(level),
                 2 => crate::piano::downstream::layer_gain(level, self.piano_a.firmware_layer_law),
                 3 => crate::piano::downstream::layer_gain(level, self.piano_b.firmware_layer_law),
-                _ => level,
+                _ => crate::piano::downstream::layer_gain(level, self.synth_layer_law),
             };
             let gain = level * self.program_gain;
             // TO ROTARY (Piano / Synth layers): the mono sum after the fader feeds the shared rotary.
@@ -145,6 +145,34 @@ mod tests {
             sub_differs |= f[2] != f[3];
         }
         assert!(sub_differs, "the sub pair keeps its stereo image");
+    }
+
+    #[test]
+    fn synth_layer_law_squares_the_fader_only_when_selected() {
+        let rms = |law: bool| {
+            let mut e = Stage4Engine::new(44_100.0);
+            e.scene.scene_1_mask = 1 << LayerId::SynthA as u8;
+            e.synth_layer_law = law;
+            e.layer_levels[LayerId::SynthA as usize] = MorphParameter::new(0.5);
+            e.handle_midi(MidiEvent::NoteOn {
+                channel: 0,
+                note: 60,
+                velocity: 100,
+            });
+            let mut sum = 0.0f64;
+            for _ in 0..8192 {
+                let f = e.render_frame_multi();
+                sum += f64::from(f[0]) * f64::from(f[0]) + f64::from(f[1]) * f64::from(f[1]);
+            }
+            sum.sqrt()
+        };
+        let (linear, squared) = (rms(false), rms(true));
+        assert!(linear > 0.0, "the synth sounds");
+        assert!(
+            (squared / linear - 0.5).abs() < 0.02,
+            "{}",
+            squared / linear
+        );
     }
 
     #[test]
