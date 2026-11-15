@@ -25,6 +25,18 @@ pub struct OrganPresetDecoded {
     pub percussion_soft: bool,
     pub percussion_fast: bool,
     pub percussion_third: bool,
+    /// Layer B percussion flags (`Edt_Org_kPercEnable`, `Soft`, `Fast`, `Third` of the layer B
+    /// block, bits `+233..+236`). The engine has one percussion for the section (layer A); the
+    /// factory programs store a non-zero layer B set in 181 of 384 programs (EMPIRICAL:
+    /// `ns4 preset-check --bits`), kept so the program re-packs to its own bits.
+    #[serde(default)]
+    pub percussion_on_b: bool,
+    #[serde(default)]
+    pub percussion_soft_b: bool,
+    #[serde(default)]
+    pub percussion_fast_b: bool,
+    #[serde(default)]
+    pub percussion_third_b: bool,
     pub vibrato_on: bool,
     pub vibrato_on_b: bool,
     pub vibrato_type: u8,
@@ -60,6 +72,10 @@ impl Default for OrganPresetDecoded {
             percussion_soft: false,
             percussion_fast: false,
             percussion_third: false,
+            percussion_on_b: false,
+            percussion_soft_b: false,
+            percussion_fast_b: false,
+            percussion_third_b: false,
             vibrato_on: false,
             vibrato_on_b: false,
             vibrato_type: 5, // C3 default
@@ -95,6 +111,10 @@ impl PartialEq for OrganPresetDecoded {
             && self.percussion_soft == other.percussion_soft
             && self.percussion_fast == other.percussion_fast
             && self.percussion_third == other.percussion_third
+            && self.percussion_on_b == other.percussion_on_b
+            && self.percussion_soft_b == other.percussion_soft_b
+            && self.percussion_fast_b == other.percussion_fast_b
+            && self.percussion_third_b == other.percussion_third_b
             && self.vibrato_on == other.vibrato_on
             && self.vibrato_on_b == other.vibrato_on_b
             && self.vibrato_type == other.vibrato_type
@@ -284,6 +304,10 @@ impl OrganPresetDecoded {
             percussion_soft: lay_a.perc_soft,
             percussion_fast: lay_a.perc_fast,
             percussion_third: lay_a.perc_third,
+            percussion_on_b: lay_b.perc_on,
+            percussion_soft_b: lay_b.perc_soft,
+            percussion_fast_b: lay_b.perc_fast,
+            percussion_third_b: lay_b.perc_third,
             vibrato_on: lay_a.vibrato_on,
             vibrato_on_b: lay_b.vibrato_on,
             vibrato_type,
@@ -377,10 +401,10 @@ impl OrganPresetDecoded {
                 drawbars: self.drawbars_b,
                 drawbar_morphs: self.drawbars_b_morph,
                 vibrato_on: self.vibrato_on_b,
-                perc_on: false,
-                perc_third: false,
-                perc_fast: false,
-                perc_soft: false,
+                perc_on: self.percussion_on_b,
+                perc_third: self.percussion_third_b,
+                perc_fast: self.percussion_fast_b,
+                perc_soft: self.percussion_soft_b,
             },
         )?;
 
@@ -454,5 +478,21 @@ mod tests {
         assert_eq!(unpacked.layer_a_octave, -1);
         assert_eq!(unpacked.drawbars_a, original.drawbars_a);
         assert_eq!(unpacked.drawbars_b, original.drawbars_b);
+    }
+
+    #[test]
+    fn layer_b_percussion_flags_round_trip() {
+        let original = OrganPresetDecoded {
+            percussion_on_b: true,
+            percussion_third_b: true,
+            percussion_soft_b: true,
+            percussion_fast_b: false,
+            ..Default::default()
+        };
+        let packed = original.pack().unwrap();
+        let back = OrganPresetDecoded::unpack(&packed).unwrap();
+        assert!(back.percussion_on_b && back.percussion_third_b && back.percussion_soft_b);
+        assert!(!back.percussion_fast_b && !back.percussion_on);
+        assert_eq!(back.pack().unwrap(), packed);
     }
 }

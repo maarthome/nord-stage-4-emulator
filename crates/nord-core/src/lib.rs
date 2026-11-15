@@ -10,6 +10,7 @@ pub mod morph;
 pub mod organ;
 pub mod phase_wrap;
 pub mod piano;
+pub mod preset_bits;
 pub mod preset_cli;
 pub mod program_check;
 pub mod render;
