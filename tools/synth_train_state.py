@@ -31,12 +31,14 @@ def save_state(
     best: float,
     elapsed: float,
     sampler_rng: Any,
+    schedule: str = "onecycle",
 ) -> None:
     import torch
 
     torch.save(
         {
             "step": step,
+            "schedule": schedule,
             "total_steps": total_steps,
             "opt": opt.state_dict(),
             "sched": sched.state_dict(),
@@ -60,17 +62,34 @@ def load_state(folder: Path) -> dict[str, Any]:
     return torch.load(path, map_location="cpu", weights_only=False)
 
 
+def check_schedule(state: dict[str, Any], schedule: str, total_steps: int) -> None:
+    """OneCycle states resume only into OneCycle with the same length; WSD takes any state."""
+    saved = state.get("schedule", "onecycle")
+    if schedule == "wsd":
+        return  # the rate depends on the step only, so any length or earlier schedule works
+    if saved != schedule:
+        raise ValueError(f"state was saved with the {saved} schedule, got --schedule {schedule}")
+    if state["total_steps"] != total_steps:
+        raise ValueError(
+            f"run was saved for {state['total_steps']} steps, got --steps {total_steps}: "
+            "the learning-rate schedule would differ (use --schedule wsd to extend)"
+        )
+
+
 def apply_state(
-    state: dict[str, Any], *, total_steps: int, opt: Any, sched: Any, history: Any, sampler_rng: Any
+    state: dict[str, Any],
+    *,
+    total_steps: int,
+    opt: Any,
+    sched: Any,
+    history: Any,
+    sampler_rng: Any,
+    schedule: str = "onecycle",
 ) -> tuple[int, float, float]:
     """Restores optimizer, scheduler, history, RNGs; returns ``(step, best, elapsed)``."""
     import torch
 
-    if state["total_steps"] != total_steps:
-        raise ValueError(
-            f"run was saved for {state['total_steps']} steps, got --steps {total_steps}: "
-            "the learning-rate schedule would differ"
-        )
+    check_schedule(state, schedule, total_steps)
     opt.load_state_dict(state["opt"])
     sched.load_state_dict(state["sched"])
     history.clear()

@@ -43,7 +43,9 @@ def arm_settings(arm: str, r: int | None, factor: int | None) -> dict[str, Any]:
         return {"r": r, "alpha": 2 * r, "decompose_factor": factor or 4, "rank_dropout": 0.0}
     if arm == "lora":
         r = r or 16
-        return {"r": r, "lora_alpha": 2 * r, "lora_dropout": 0.05, "bias": "none"}
+        # VERIFIED: PEFT 0.21.3 raises "ParamWrapper does not work with lora_dropout != 0"
+        # as soon as ``target_parameters`` (the raw q/k/v tensors) is set, so dropout is 0.
+        return {"r": r, "lora_alpha": 2 * r, "lora_dropout": 0.0, "bias": "none"}
     raise ValueError(f"unknown arm {arm!r}, expected one of {ARMS}")
 
 

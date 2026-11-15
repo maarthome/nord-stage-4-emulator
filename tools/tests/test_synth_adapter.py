@@ -50,6 +50,7 @@ def test_arm_settings_defaults_and_errors():
     assert sa.arm_settings("lokr", 8, 2)["decompose_factor"] == 2
     lora = sa.arm_settings("lora", 32, None)
     assert lora["r"] == 32 and lora["lora_alpha"] == 64
+    assert lora["lora_dropout"] == 0.0  # PEFT rejects dropout together with target_parameters
     with pytest.raises(ValueError):
         sa.arm_settings("loha", None, None)
 

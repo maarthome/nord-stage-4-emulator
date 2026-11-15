@@ -10,6 +10,8 @@ intervals + velocity + refined onset/offset + presence). The optimizer is AdamW 
 schedule (5 % warm-up, ``div_factor`` 20, ``final_div_factor`` 2, as upstream); gradient norms
 are clipped at the 0.8 quantile of the last 100 norms, as upstream's adaptive clipping.
 ASSUMED: AdamW instead of upstream's AdaBelief (same state size), weight decay 1e-4 as upstream.
+``--schedule wsd`` (``synth_train_sched.py``) keeps the rate constant and cools down only at the
+end, so a run can be extended: ``--resume <snapshot> --steps <step + N> --cooldown N``.
 
 Every ``--nll-every`` steps: validation NLL on fixed held-out segments. Every ``--eval-every``
 steps: NLL plus onset F1 / velocity MAE on ``--eval-items`` held-out items (``synth_eval``) and
@@ -33,6 +35,7 @@ import numpy as np
 import synth_adapter
 import synth_eval
 import synth_train_data as std
+import synth_train_sched as sched_mod
 import synth_train_state as sts
 
 GRAD_WINDOW = 100
@@ -135,6 +138,23 @@ def run_eval(
     return new_best
 
 
+def make_schedule(opt: Any, args: argparse.Namespace) -> Any:
+    """OneCycle (fixed length, the plan's default) or the extendable WSD schedule."""
+    if args.schedule == "wsd":
+        return sched_mod.WsdSchedule(opt, args.lr, args.steps, args.warmup, args.cooldown)
+    import torch
+
+    return torch.optim.lr_scheduler.OneCycleLR(
+        opt,
+        args.lr,
+        total_steps=args.steps,
+        pct_start=0.05,
+        div_factor=20,
+        final_div_factor=2,
+        cycle_momentum=False,
+    )
+
+
 def train(args: argparse.Namespace) -> None:
     import torch
 
@@ -152,15 +172,7 @@ def train(args: argparse.Namespace) -> None:
     f1_entries = val_entries[:: max(1, len(val_entries) // args.eval_items)][: args.eval_items]
     params = [p for p in peft_model.parameters() if p.requires_grad]
     opt = torch.optim.AdamW(params, lr=args.lr, weight_decay=1e-4)
-    sched = torch.optim.lr_scheduler.OneCycleLR(
-        opt,
-        args.lr,
-        total_steps=args.steps,
-        pct_start=0.05,
-        div_factor=20,
-        final_div_factor=2,
-        cycle_momentum=False,
-    )
+    sched = make_schedule(opt, args)
     history: collections.deque = collections.deque(maxlen=GRAD_WINDOW)
     start, best, elapsed = 0, float("inf"), 0.0
     if args.resume:
@@ -174,6 +186,7 @@ def train(args: argparse.Namespace) -> None:
             sched=sched,
             history=history,
             sampler_rng=train_s.rng,
+            schedule=args.schedule,
         )
         print(f"resumed from {src} at step {start}", flush=True)
     t0 = time.time() - elapsed
@@ -192,6 +205,7 @@ def train(args: argparse.Namespace) -> None:
         "t0": t0,
         "state_fn": lambda: {
             "total_steps": args.steps,
+            "schedule": args.schedule,
             "opt": opt,
             "sched": sched,
             "history": history,
@@ -244,7 +258,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--steps", type=int, default=8000)
     p.add_argument("--bs", type=int, default=4)
     p.add_argument("--seg", type=float, default=std.SEG_S)
-    p.add_argument("--lr", type=float, default=2e-4)
+    p.add_argument("--lr", type=float, default=2e-4, help="Peak rate.")
+    p.add_argument(
+        "--schedule",
+        choices=("onecycle", "wsd"),
+        default="onecycle",
+        help="onecycle: fixed length. wsd: warm-up, constant, cool-down; can be extended.",
+    )
+    p.add_argument("--warmup", type=int, default=150, help="wsd warm-up steps.")
+    p.add_argument(
+        "--cooldown", type=int, default=0, help="wsd: decay over the last N steps (0 = never)."
+    )
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--bf16", action="store_true")
     p.add_argument("--log-every", type=int, default=20)

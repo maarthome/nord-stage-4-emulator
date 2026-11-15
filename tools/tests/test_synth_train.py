@@ -48,3 +48,16 @@ def test_parser_defaults_follow_the_plan():
     assert c.resume == "run/last"
     b = st.build_parser().parse_args(["data", "--out", "run", "--arm", "lora", "--r", "32"])
     assert b.arm == "lora" and b.r == 32
+
+
+def test_schedule_flags_and_make_schedule():
+    torch = pytest.importorskip("torch")
+    d = st.build_parser().parse_args(["data", "--out", "run"])
+    assert (d.schedule, d.warmup, d.cooldown) == ("onecycle", 150, 0)
+    a = st.build_parser().parse_args(
+        ["data", "--out", "run", "--schedule", "wsd", "--steps", "1000", "--cooldown", "200"]
+    )
+    opt = torch.optim.AdamW(torch.nn.Linear(2, 2).parameters(), lr=a.lr)
+    wsd = st.make_schedule(opt, a)
+    assert type(wsd).__name__ == "WsdSchedule" and wsd.cooldown == 200
+    assert type(st.make_schedule(opt, d)).__name__ == "OneCycleLR"

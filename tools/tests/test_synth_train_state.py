@@ -99,3 +99,15 @@ def test_step_count_mismatch_is_rejected(tmp_path):
 def test_missing_state_file_names_the_problem(tmp_path):
     with pytest.raises(FileNotFoundError, match="resume state"):
         sts.load_state(tmp_path)
+
+
+def test_check_schedule_rules():
+    onecycle = {"schedule": "onecycle", "total_steps": 100}
+    legacy = {"total_steps": 100}  # states saved before the schedule key existed
+    sts.check_schedule(onecycle, "onecycle", 100)
+    sts.check_schedule(legacy, "onecycle", 100)
+    with pytest.raises(ValueError, match="wsd"):
+        sts.check_schedule(onecycle, "onecycle", 200)
+    sts.check_schedule(onecycle, "wsd", 200)  # extending a OneCycle run is allowed
+    with pytest.raises(ValueError, match="schedule"):
+        sts.check_schedule({"schedule": "wsd", "total_steps": 9}, "onecycle", 9)
