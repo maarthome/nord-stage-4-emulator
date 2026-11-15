@@ -56,27 +56,13 @@ impl Stage4Engine {
     /// Reads layer `id` with notes released (control thread).
     pub fn capture_layer(&self, id: LayerId) -> LayerClip {
         let panel = match id {
-            LayerId::OrganA => {
-                LayerPanel::Organ(Box::new(released(&self.organ_a, |l, n| l.note_off(n))))
-            }
-            LayerId::OrganB => {
-                LayerPanel::Organ(Box::new(released(&self.organ_b, |l, n| l.note_off(n))))
-            }
-            LayerId::PianoA => {
-                LayerPanel::Piano(Box::new(released(&self.piano_a, |l, n| l.note_off(n))))
-            }
-            LayerId::PianoB => {
-                LayerPanel::Piano(Box::new(released(&self.piano_b, |l, n| l.note_off(n))))
-            }
-            LayerId::SynthA => {
-                LayerPanel::Synth(Box::new(released(&self.synth_a, |l, n| l.note_off(n))))
-            }
-            LayerId::SynthB => {
-                LayerPanel::Synth(Box::new(released(&self.synth_b, |l, n| l.note_off(n))))
-            }
-            LayerId::SynthC => {
-                LayerPanel::Synth(Box::new(released(&self.synth_c, |l, n| l.note_off(n))))
-            }
+            LayerId::OrganA => LayerPanel::Organ(released(&self.organ_a, |l, n| l.note_off(n))),
+            LayerId::OrganB => LayerPanel::Organ(released(&self.organ_b, |l, n| l.note_off(n))),
+            LayerId::PianoA => LayerPanel::Piano(released(&self.piano_a, |l, n| l.note_off(n))),
+            LayerId::PianoB => LayerPanel::Piano(released(&self.piano_b, |l, n| l.note_off(n))),
+            LayerId::SynthA => LayerPanel::Synth(released(&self.synth_a, |l, n| l.note_off(n))),
+            LayerId::SynthB => LayerPanel::Synth(released(&self.synth_b, |l, n| l.note_off(n))),
+            LayerId::SynthC => LayerPanel::Synth(released(&self.synth_c, |l, n| l.note_off(n))),
         };
         let synth_idx = (id as usize).checked_sub(LayerId::SynthA as usize);
         LayerClip {
@@ -92,13 +78,13 @@ impl Stage4Engine {
             return Err(ClipboardError::Mismatch);
         }
         match (&clip.panel, id) {
-            (LayerPanel::Organ(l), LayerId::OrganA) => self.organ_a = (**l).clone(),
-            (LayerPanel::Organ(l), LayerId::OrganB) => self.organ_b = (**l).clone(),
-            (LayerPanel::Piano(l), LayerId::PianoA) => self.piano_a = (**l).clone(),
-            (LayerPanel::Piano(l), LayerId::PianoB) => self.piano_b = (**l).clone(),
-            (LayerPanel::Synth(l), LayerId::SynthA) => self.synth_a = (**l).clone(),
-            (LayerPanel::Synth(l), LayerId::SynthB) => self.synth_b = (**l).clone(),
-            (LayerPanel::Synth(l), LayerId::SynthC) => self.synth_c = (**l).clone(),
+            (LayerPanel::Organ(l), LayerId::OrganA) => self.organ_a = l.clone(),
+            (LayerPanel::Organ(l), LayerId::OrganB) => self.organ_b = l.clone(),
+            (LayerPanel::Piano(l), LayerId::PianoA) => self.piano_a = l.clone(),
+            (LayerPanel::Piano(l), LayerId::PianoB) => self.piano_b = l.clone(),
+            (LayerPanel::Synth(l), LayerId::SynthA) => self.synth_a = l.clone(),
+            (LayerPanel::Synth(l), LayerId::SynthB) => self.synth_b = l.clone(),
+            (LayerPanel::Synth(l), LayerId::SynthC) => self.synth_c = l.clone(),
             _ => return Err(ClipboardError::Mismatch),
         }
         clip.fx.apply(&mut self.fx_chains[id as usize]);

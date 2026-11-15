@@ -91,14 +91,14 @@ pub fn apply_audio_command(cmd: AudioCommand, engine: &mut Stage4Engine, master_
         AudioCommand::SetSynthDecay(dec) => engine.synth_a.decay_sec = dec,
         AudioCommand::SetSynthRelease(rel) => engine.synth_a.release_sec = rel,
         AudioCommand::SetFxMod1 { kind, rate, amount } => {
-            for fx in &mut engine.fx_chains {
+            for fx in engine.fx_chains.iter_mut() {
                 fx.mod1_type = kind;
                 fx.mod1_rate_hz = rate;
                 fx.mod1_amount = amount;
             }
         }
         AudioCommand::SetFxMod2 { kind, rate, amount } => {
-            for fx in &mut engine.fx_chains {
+            for fx in engine.fx_chains.iter_mut() {
                 fx.mod2_type = kind;
                 fx.mod2_rate_hz = rate;
                 fx.mod2_amount = amount;
@@ -111,7 +111,7 @@ pub fn apply_audio_command(cmd: AudioCommand, engine: &mut Stage4Engine, master_
             mid_freq,
             treble,
         } => {
-            for fx in &mut engine.fx_chains {
+            for fx in engine.fx_chains.iter_mut() {
                 fx.drive_amount = drive;
                 fx.eq_bass_db = bass;
                 fx.eq_mid_db = mid;
@@ -124,14 +124,14 @@ pub fn apply_audio_command(cmd: AudioCommand, engine: &mut Stage4Engine, master_
             feedback,
             mix,
         } => {
-            for fx in &mut engine.fx_chains {
+            for fx in engine.fx_chains.iter_mut() {
                 fx.delay_enabled = enabled;
                 fx.delay_feedback = feedback;
                 fx.delay_mix = mix;
             }
         }
         AudioCommand::SetFxReverb { model, mix } => {
-            for fx in &mut engine.fx_chains {
+            for fx in engine.fx_chains.iter_mut() {
                 fx.reverb_model = model;
                 fx.reverb_mix = mix;
             }

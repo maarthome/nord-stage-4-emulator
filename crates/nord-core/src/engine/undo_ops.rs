@@ -52,7 +52,7 @@ impl Stage4Engine {
     pub fn all_fx_off(&mut self) {
         self.begin_undoable(UndoOp::AllFxOff);
         self.fx_sharing = FxSharing::default();
-        for fx in &mut self.fx_chains {
+        for fx in self.fx_chains.iter_mut() {
             fx.mod1_type = crate::fx::Mod1Type::Off;
             fx.mod2_type = crate::fx::Mod2Type::Off;
             fx.amp_cabinet = AmpCabinet::Off;
