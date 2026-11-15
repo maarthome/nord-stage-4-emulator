@@ -299,3 +299,8 @@ pub const CASES: [Case; 20] = [
         out: [[0xbfc6d3a9, 0xbfce0a2f], [0xbfc77ecf, 0xbfcdacd5], [0xbfc82125, 0xbfcd4ace], [0xbfc8ba93, 0xbfcce413]],
     },
 ];
+
+#[test]
+fn the_golden_table_has_the_generated_case_count() {
+    assert_eq!(CASES.len(), 20);
+}

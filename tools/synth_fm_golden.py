@@ -137,6 +137,11 @@ def main() -> None:
     for c in CASES:
         print(case(*c), end="")
     print("];")
+    print()
+    print("#[test]")
+    print("fn the_golden_table_has_the_generated_case_count() {")
+    print(f"    assert_eq!(CASES.len(), {len(CASES)});")
+    print("}")
 
 
 if __name__ == "__main__":
