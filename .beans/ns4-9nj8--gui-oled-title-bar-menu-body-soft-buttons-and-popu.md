@@ -51,3 +51,25 @@ The Program OLED of the GUI matches every screen measured so far.
 ## Out of Scope
 
 Typing a name in Store As on the unit; effect-type popups; a bar-beat counter in the engine telemetry.
+
+## Context (eighth pass: Undo item name)
+
+The Undo dialog showed `Undo to before` / `the last edit?` for any history. The firmware dialog (`0xC01327BC`) fills `%s?` with the item.
+
+## Higher Goal
+
+The Undo dialog names what it will revert.
+
+## Acceptance Criteria
+
+- [x] `Nothing to Undo` unchanged when the engine reports no history
+- [x] With history: `Undo to before` and `<operation>?` from the engine's last undoable operation (`PanelTelemetry::undo_label`, `UndoOp::label`), `Ok`, and `Redo` after an Undo (ASSUMED item strings: manual p.43 names)
+- [x] Tests: `oled_tests::undo_and_paste_messages_use_the_firmware_wording`, `telemetry` undo label
+
+## Out of Scope
+
+The firmware's own item strings (the dialog is still unreachable in the ARM harness).
+
+## Summary of Changes
+
+`telemetry.rs` (`undo_label`), `ui_state/program.rs` (`undo_op`), `bay_program.rs` (wiring), `bay_program/oled.rs` (`Undo to before` + `<name>?`).
