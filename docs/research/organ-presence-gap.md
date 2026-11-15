@@ -95,6 +95,6 @@ The "amp" rows above already include the ported Twin drive stage and cabinet (`F
 
 ## Follow-ups
 
-1. B3: a replay note list for `organ_b3` with the right-hand register (audio-line tracking of the 0.8 to 3 kHz partials), then repeat the table; if lines are still 12 dB short, the tail table with the type-5 vibrato (OQ16) is the next suspect.
+1. (Done in part 2026-11-15, [organ-preamp-search](organ-preamp-search.md) s4.2: the Transkun stream puts firmware Leslie presence at +2.7 .. +5.4 dB; note durations still open.) B3: a replay note list for `organ_b3` with the right-hand register (audio-line tracking of the 0.8 to 3 kHz partials), then repeat the table; if lines are still 12 dB short, the tail table with the type-5 vibrato (OQ16) is the next suspect.
 2. Vox: done with the ported Twin amp (s4b); next, Mod 2 type 6 of the program and a Vox clip without an amp program (none known in the factory set or the course clips).
 3. A clip of a lone Vox or B3 note with the amp / rotary off would separate bank from post chain; none of the local clips has one.
