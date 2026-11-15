@@ -93,6 +93,27 @@ Sources: `clip.srt` (narration subtitles of the clip), `docs/research/nki-lz-str
   The long-term spectrum of the two chorus recordings agrees within 1 dB in every band, so the UP2 sample set plus its Kontakt chorus has the Nord level balance (consistent with UP2 being sampled from the Nord). The coherence drop with frequency is what two choruses with independent LFO phase produce; it does not measure the delay depth. The harmonic amplitude tracks (harmonics 1 to 18 over 23 to 37 s) are within 1 dB of each other too and show no LFO line in either channel (the performance dominates), so the LFO rate still rests on the scope reading.
 * The Phasis rate law of KONTRA (`440 * 2^((lerp(-120, 20, r) - 69) / 12)` Hz) gives 0.051 Hz to 12.2 Hz over the `%pwbo1` table; Flair's rate law is unread in KONTRA.
 
+## 7. UP2 table positions against the emulator FX (2026-11-15, no Kontakt run)
+
+Source of the UP2 side: `tools/ksp_arrays.py` on the UP2 script (`arrays.csv`, local). Source of the Hz and ms laws for the UP2 chorus: KONTRA `choral.rs` (third party, not run, not downloaded; **ASSUMED**). Emulator side: `fw_mod2.rs` (rate `12800 + 4096 v`, `F = 43,402.34375 Hz`, `Hz = word * F / (4 * 2^32)`, VERIFIED words, no hardware recording of the Hz, see [fx-mod2-types](fx-mod2-types.md)). Scratch script, not committed; all numbers below recompute from the two sources.
+
+**Chorus rate.** The type 4 range is 0.0323 to 1.3465 Hz (`v = 0..127`). Table `%idia3` through the ASSUMED law `7.4 r^3 + 0.25` gives 0.250 Hz (positions 0, 1) to 2.693 Hz (position 20):
+
+| UP2 position | 0, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 to 20 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| UP2 rate (Hz) | 0.250 | 0.333 | 0.478 | 0.602 | 0.727 | 0.870 | 0.996 | 1.118 | 1.265 | 1.388 to 2.693 |
+| nearest type 4 `v` | 21 | 29 | 43 | 55 | 67 | 81 | 93 | 105 | 119 | above range (`v = 127` gives 1.347) |
+
+Positions 0 to 9 fall inside type 4 and step by 12 to 14 `v` each (the 128 `v` steps are about 1.5 % apart, so the 0.2 % residuals say nothing by themselves; the near-uniform spacing is the only signal). Positions 10 to 20 (1.39 to 2.69 Hz) exceed type 4; type 5 spans 0.25 to 4.0 Hz, so either the UP2 upper positions imitate the variation type or the ASSUMED law is wrong above 1.3 Hz. Not decidable without a Kontakt readout.
+
+**Chorus depth and delay.** The UP2 script fixes delay 30000 and width 1,000,000; the amount comes from `%gg3op` (0.263 to 0.929). KONTRA's reading (ASSUMED: mode 0, voice 0 only, `span = 5 * Delay + 0.1`, `R = 2^(0.025 (0.99 a^2 + 0.01))`, delay `G0 * span`, swing `(R - 1) / (2 f)`) gives base 0.75 ms and a swing of 2.75 to 2.80 ms at positions 2, 7, 12, 20, so 0.75 to about 3.5 ms nearly independent of position. The firmware stage at `v = 30` gives 0.87 to 3.28 ms (section 4), the clip scope 0.62 to 1.78 ms. The UP2 reading and the firmware agree within about 15 % at the low end and 8 % at the high end; the scope is 1.7 times shorter on the swing (section 5), so the scope calibration (ASSUMED 87.31 Hz) stays the weak point, not the firmware.
+
+**Phaser and flanger.** The UP2 phaser rate table `%pwbo1` through KONTRA's law (ASSUMED) gives 0.051 to 12.2 Hz. The firmware PHAS 0 rate word is a phase increment `0x27CF` (`v = 0`) to `0x256145` (`v = 127`) per DSP call (fx-mod2-types s.8); read as a 32-bit phase accumulator at `F / 4` that is 0.026 to 6.2 Hz (ASSUMED reading, not checked against a recording). The two ranges overlap from 0.05 to 6 Hz; the UP2 positions above 6 Hz have no firmware counterpart. No firmware type was mapped to the UP2 flanger (rate law unread in KONTRA); amounts and feedback tables (`%us0tu`, `%hdvpr`, `%zopuj`, `%01udi`) were not compared.
+
+**EQ `FREQ2`.** The 33 labels of `!ekn0u` (200 Hz to 8 kHz) pair with `%liluo` (333,333 to 867,353). `20 * 1000^(v / 1e6)` Hz fits all 33 points within 6.0 % (exact at 333,333 and 767,010: 200 and 4000 Hz); the 6 % is label rounding of the display steps, so the law is EMPIRICAL. The emulator mid sweep spans about 0.2 to 6.8 kHz (`fx-eq-words.md`, VERIFIED words, ASSUMED joint law): the same decade as the UP2 labels, but the endpoints differ (6.8 against 8 kHz); the 200 Hz bottom matches.
+
+**What this does not give.** No emulator output was compared with a UP2 render: that needs the official Kontakt Player or a Kontakt readout of `CHORAL_RATE`, `CHORAL_DELAY` and `get_engine_par_disp`. Reverb has no IR here (the `.nkr` `ir_samples` folder is empty).
+
 ## Follow-ups
 
 1. From the user: the Nord Mod 2 settings of the recording (Rate knob position and the Amount knob, VARIATION on or off, program or sound, Mod 2 B and which layer), the plugin knob values, and what the scope shows (the signal source, its frequency, the time axis of the scope window).
