@@ -5,10 +5,14 @@
 //! `vibrato_bank` (12-TET ladder, detune table, group gains), `tonewheel` (91-wheel
 //! generator), `keyclick`, `scanner`, `rotary`.
 
+mod b3_bass_fw;
 mod b3_bass_gen;
 mod b3_bass_keys;
 mod b3_bass_stage;
+#[cfg(test)]
+mod b3_bass_stage_tests;
 mod b3_bass_state;
+mod b3_bass_voice;
 mod b3_keys;
 mod b3_tail;
 mod b3_weights;

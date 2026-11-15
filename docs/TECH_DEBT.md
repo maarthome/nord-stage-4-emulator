@@ -109,6 +109,13 @@ This document tracks deliberate trade-offs, structural compromises, temporary wo
 - **Remediation Plan:** (1) keep `ns4 bench --scenario worst|typical|idle` and its hash as the gate for any optimisation; (2) if the worst case must reach 0.8 ms, take the bit-changing options above one at a time with an error bound and `VERIFIED` / `EMPIRICAL` tags; (3) the PRD table now states the budget per scenario (typical met, worst case not).
 - **Status:** Partly resolved (typical case within budget, worst case real time at about 1.2x, over the 0.8 ms figure).
 
+### TD-15: B3 Bass Firmware Stage Is Not Real Time
+
+- **Description:** The opt-in B3 Bass stage (`organ/b3_bass_stage.rs`, D71) runs the decoded firmware generator and processor in a row interpreter with a 40 bit float executor: about 21.7 k calls per second, 70 ns per decoded instruction, 3.6 s of CPU per second of audio in a release build (measured with `cargo test --release`, one key).
+- **Impact:** Usable for offline rendering and the oracle comparisons only; with the flag off nothing changes.
+- **Remediation Plan:** (1) keep the rows and the oracle goldens as the reference; (2) generate straight line Rust from the rows (no per instruction decode) and benchmark; (3) try a single precision path against the goldens (s13: 1 ulp drift after about 70 instructions, so it needs an error bound and an `EMPIRICAL` tag).
+- **Status:** Open.
+
 ---
 
 ## 3. Maintenance Policy

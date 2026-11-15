@@ -1,101 +1,109 @@
-//! B3 Bass stage: the processor `0x122296` on the B3 wheel bus (opt-in).
+//! B3 Bass stage: the firmware generator `0x121BBE` and processor `0x122296` at the DSP rate (opt-in).
 //!
 //! Spec: `docs/specs/organ-engine.md` section 3.1.9. Research: `docs/research/organ-farfisa-bass.md`
-//! s11 / s12. Opt-in (`OrganLayer::set_b3_bass_processor`, `--b3-bass-processor on`), only on the
-//! `B3` model in Bass mode with `ToneWheelSource::B3Wheels` and no processor tail (the stage is the
-//! tail of this model).
+//! s15. Opt-in (`OrganLayer::set_b3_bass_processor`, `--b3-bass-processor on`), only on the `B3`
+//! model in Bass mode and without a processor tail (the stage is the tail of this model).
 //!
-//! `ring[s] = wheel(note s + 12) * gen_weight(note)` (`b3_bass_gen.rs`), the processor sums
-//! `x1 = sum W1[k] ring[k]` and `x2 = sum W2[k] ring[12 + k]` (`b3_bass_state.rs`), filters both
-//! with the measured line gain of their window (two linear-phase FIRs) and scales by
-//! `1 - 0.84 G`. All three state words are functions of the held keys, so the stage folds them
-//! into one coefficient per wheel and window, ramped over 2 ms.
+//! The stage runs the decoded firmware routines (`b3_bass_fw`: scanner, lattice sections, delay
+//! taps, biquads, DC blocker, 40 bit float) on a DM image of the installed model 5 and feeds them
+//! the key-down state the ARM would write: the weight windows and `G`
+//! ([`super::b3_bass_state`]), the generator weights ([`super::b3_bass_gen`]) and the voice records
+//! ([`super::b3_bass_voice`]). Two output samples per call at the DSP frame rate
+//! ([`super::farfisa_wheels::DSP_FRAME_RATE`]) are resampled to the host rate (cubic Hermite).
 //!
-//! Tags: key-down state VERIFIED (research s11 / s12); gain tables EMPIRICAL (magnitude only);
-//! the linear-phase FIR realisation, the key ramp and the 888888888 key tables (the real default
-//! program writes smaller window steps) ASSUMED. Not modelled: drawbar and percussion settings
-//! (the tables are the `888888888` key-down), the scanner inside the processor.
+//! Tags: routines and window / weight / `G` state VERIFIED (bit exact against `sharc-chain` for the
+//! recorded states); voice record jitter, the slot reuse, `DM 0xB44CB`, the drawbar and percussion
+//! settings (the tables are the `888888888` key-down) and the `G` resync after a key-up ASSUMED.
 
+use super::b3_bass_fw::Machine;
 use super::b3_bass_gen::GenWeights;
-use super::b3_bass_state::{BassState, W2_RING_OFFSET};
-use super::gain_fir;
-use super::types::NUM_TONEWHEELS;
+use super::b3_bass_state::BassState;
+use super::b3_bass_voice::{word_addr, VoiceTable, SLOTS};
+use super::farfisa_wheels::DSP_FRAME_RATE;
 use super::{OrganLayer, OrganModel, ToneWheelSource};
 
-/// Taps of each gain FIR (odd). ASSUMED: 511 resolves the 1/6 octave table down to about 94 Hz at
-/// 48 kHz; the Bass table starts at 74 Hz and is smooth below.
-pub(super) const TAPS: usize = 511;
-/// Wheel 0 of the bus is note 24 (`b3_wheels.rs`).
-const WHEEL0_NOTE: usize = 24;
-/// Ring slot of note `n` is `n - 12` (VERIFIED: slot 48 = 259.6 Hz = C4, research s11).
-const RING_NOTE0: usize = 12;
-/// ASSUMED: coefficient ramp time constant in seconds (as the Farfisa stage).
-const RAMP_TAU: f32 = 0.002;
 /// Keys `24..=108` carry key-down tables.
 const MIN_KEY: i32 = 24;
 const MAX_KEY: i32 = 108;
+/// Window 1 / window 2 / generator weight / `G` words (VERIFIED, research s11 / s12).
+const W1_ADDR: u32 = 0x9_51F1;
+const W2_ADDR: u32 = 0x9_5241;
+const GEN_ADDR: u32 = 0x9_5122;
+const G_ADDR: u32 = 0xB_44C9;
+/// Generator weight wheels `36..=114`.
+const GEN_NOTES: std::ops::RangeInclusive<usize> = 36..=114;
+/// ASSUMED: calls to keep running after the last key-up (about 0.46 s) before the stage idles.
+const RING_DOWN_CALLS: u32 = 10_000;
+/// Image of the installed model 5 (`tools/organ_bass_fw_gen.py image`).
+const IMAGE: &str = include_str!("../../../../docs/research/data/bass-fw-image.csv");
 
-/// State of the stage: key tables, folded coefficients, the two gain filters with histories.
+/// Catmull-Rom interpolation between `h[1]` and `h[2]` at `mu` in `[0, 1)`.
+fn cubic(h: &[f32; 4], mu: f32) -> f32 {
+    let (a, b, c, d) = (h[0], h[1], h[2], h[3]);
+    let m1 = 0.5 * (c - a);
+    let m2 = 0.5 * (d - b);
+    let (mu2, mu3) = (mu * mu, mu * mu * mu);
+    (2.0 * mu3 - 3.0 * mu2 + 1.0) * b
+        + (mu3 - 2.0 * mu2 + mu) * m1
+        + (-2.0 * mu3 + 3.0 * mu2) * c
+        + (mu3 - mu2) * m2
+}
+
+/// State of the stage: the firmware machine, the key tables and the resampler.
 #[derive(Debug, Clone)]
 pub(super) struct B3BassStage {
+    machine: Machine,
     state: BassState,
     gen: GenWeights,
-    fir: [Vec<f32>; 2],
-    hist: [Vec<f32>; 2],
-    pos: usize,
-    designed_for: f32,
-    coef_ramp: f32,
-    target: [[f32; NUM_TONEWHEELS]; 2],
-    coef: [[f32; NUM_TONEWHEELS]; 2],
+    voices: VoiceTable,
     /// Transposed key registered by `note_on` of each note (`-1` = none).
     keys: [i16; 128],
-    ring_down: usize,
+    /// Key-downs since the last idle period (selects the voice slot).
+    presses: usize,
+    /// Calls left to run after the last key-up.
+    cooldown: u32,
+    /// Output samples of the last call not yet consumed (`pending` of them, oldest first).
+    queue: [f32; 2],
+    pending: usize,
+    hist: [f32; 4],
+    /// Position of the next host sample between `hist[1]` and `hist[2]`.
+    pos: f64,
 }
 
 impl B3BassStage {
-    /// Parses the derived tables and allocates the filters (setup time only).
+    /// Builds the machine from the derived image (setup time only: allocates).
     pub(super) fn new() -> Self {
+        let mut machine = Machine::new();
+        machine.load_image(IMAGE);
         Self {
+            machine,
             state: BassState::new(),
             gen: GenWeights::new(),
-            fir: [vec![0.0; TAPS], vec![0.0; TAPS]],
-            hist: [vec![0.0; 2 * TAPS], vec![0.0; 2 * TAPS]],
-            pos: 0,
-            designed_for: 0.0,
-            coef_ramp: 1.0,
-            target: [[0.0; NUM_TONEWHEELS]; 2],
-            coef: [[0.0; NUM_TONEWHEELS]; 2],
+            voices: VoiceTable::new(),
             keys: [-1; 128],
-            ring_down: 0,
+            presses: 0,
+            cooldown: 0,
+            queue: [0.0; 2],
+            pending: 0,
+            hist: [0.0; 4],
+            pos: 0.0,
         }
     }
 
-    fn design(&mut self, sample_rate: f32) {
-        for (i, fir) in self.fir.iter_mut().enumerate() {
-            let state = &self.state;
-            gain_fir::design(fir, sample_rate, |hz| state.window_gain(i + 1, hz));
-        }
-        self.coef_ramp = 1.0 - (-1.0 / (RAMP_TAU * sample_rate)).exp();
-        self.designed_for = sample_rate;
-    }
-
-    /// Re-folds the window words, the generator weights and `1 - 0.84 G` into one coefficient per
-    /// wheel and window.
-    fn refold(&mut self) {
-        let scale = self.state.output_scale();
+    /// Writes the held-key state words into the machine DM.
+    fn push_state(&mut self) {
+        let m = &mut self.machine;
         let (w1, w2) = self.state.windows();
-        for i in 0..NUM_TONEWHEELS {
-            let note = WHEEL0_NOTE + i;
-            let slot = note - RING_NOTE0;
-            let g = self.gen.weight(note) * scale;
-            self.target[0][i] = w1.get(slot).copied().unwrap_or(0.0) * g;
-            self.target[1][i] = slot
-                .checked_sub(W2_RING_OFFSET)
-                .and_then(|k| w2.get(k))
-                .copied()
-                .unwrap_or(0.0)
-                * g;
+        for (k, &v) in w1.iter().enumerate() {
+            m.wr_f(W1_ADDR + k as u32, v);
         }
+        for (k, &v) in w2.iter().enumerate() {
+            m.wr_f(W2_ADDR + k as u32, v);
+        }
+        for note in GEN_NOTES {
+            m.wr_f(GEN_ADDR + (note - 36) as u32, self.gen.weight(note));
+        }
+        m.wr_f(G_ADDR, self.state.g());
     }
 
     /// Key-down of `note` at the transposed `key`.
@@ -103,11 +111,21 @@ impl B3BassStage {
         if !(MIN_KEY..=MAX_KEY).contains(&key) || self.keys[note] >= 0 {
             return;
         }
+        if !self.keys.iter().any(|&k| k >= 0) {
+            self.presses = 0;
+        }
         self.keys[note] = key as i16;
         self.state.key_down(key as u8);
         self.gen.key_down(key as usize);
-        self.refold();
-        self.ring_down = TAPS + 16 * (1.0 / self.coef_ramp.max(1e-4)) as usize;
+        if let Some(words) = self.voices.words(key as usize) {
+            let slot = self.presses % SLOTS;
+            for (i, &w) in words.iter().enumerate() {
+                self.machine.wr(word_addr(slot, i), w);
+            }
+        }
+        self.presses += 1;
+        self.push_state();
+        self.cooldown = u32::MAX;
     }
 
     /// Key-up of `note` (the key registered at its key-down).
@@ -119,44 +137,54 @@ impl B3BassStage {
         self.keys[note] = -1;
         self.state.key_up(key as u8);
         self.gen.key_up(key as usize);
-        self.refold();
+        self.push_state();
+        if !self.keys.iter().any(|&k| k >= 0) {
+            self.cooldown = RING_DOWN_CALLS;
+        }
     }
 
-    /// `true` while a key is held or the ramps and filters still carry signal.
+    /// `true` while a key is held or the machine still rings down.
     pub(super) fn active(&self) -> bool {
-        self.ring_down > 0 || self.keys.iter().any(|&k| k >= 0)
+        self.cooldown > 0
     }
 
-    /// One output sample (before the level law) from the 91 bus wheels.
-    pub(super) fn process(&mut self, wheels: &[f32; NUM_TONEWHEELS], sample_rate: f32) -> f32 {
-        if (sample_rate - self.designed_for).abs() > 0.5 {
-            self.design(sample_rate);
+    /// One call of the firmware (two output samples at the DSP rate).
+    fn call(&mut self) -> [f32; 2] {
+        if self.cooldown != u32::MAX {
+            self.cooldown = self.cooldown.saturating_sub(1);
         }
-        let mut x = [0.0f32; 2];
-        for (w, xw) in x.iter_mut().enumerate() {
-            let (coef, target) = (&mut self.coef[w], &self.target[w]);
-            let mut acc = 0.0;
-            for ((c, t), v) in coef.iter_mut().zip(target).zip(wheels) {
-                *c += (t - *c) * self.coef_ramp;
-                acc += *c * v;
-            }
-            *xw = acc;
+        self.machine.step()
+    }
+
+    /// Next output sample at the DSP rate.
+    fn dsp_sample(&mut self) -> f32 {
+        if self.pending == 0 {
+            self.queue = self.call();
+            self.pending = 2;
         }
-        if self.keys.iter().any(|&k| k >= 0) {
-            self.ring_down = TAPS + 16 * (1.0 / self.coef_ramp.max(1e-4)) as usize;
-        } else if self.ring_down > 0 {
-            self.ring_down -= 1;
+        let v = self.queue[2 - self.pending];
+        self.pending -= 1;
+        v
+    }
+
+    /// One output sample (before the level law) at the host rate.
+    pub(super) fn process(&mut self, sample_rate: f32) -> f32 {
+        if self.cooldown == 0 && self.pending == 0 {
+            return 0.0;
         }
-        let mut y = 0.0;
-        let pos = self.pos;
-        for ((fir, hist), xi) in self.fir.iter().zip(self.hist.iter_mut()).zip(x) {
-            hist[pos] = xi;
-            hist[pos + TAPS] = xi;
-            let window = &hist[pos + 1..pos + 1 + TAPS];
-            y += fir.iter().zip(window).map(|(h, v)| h * v).sum::<f32>();
+        while self.pos >= 1.0 {
+            self.hist = [self.hist[1], self.hist[2], self.hist[3], self.dsp_sample()];
+            self.pos -= 1.0;
         }
-        self.pos = (self.pos + 1) % TAPS;
+        let y = cubic(&self.hist, self.pos as f32);
+        self.pos += DSP_FRAME_RATE / f64::from(sample_rate);
         y
+    }
+
+    /// `n` raw output samples at the DSP rate (tests).
+    #[cfg(test)]
+    pub(super) fn dsp_block(&mut self, n: usize) -> Vec<f32> {
+        (0..n).map(|_| self.dsp_sample()).collect()
     }
 }
 
@@ -205,11 +233,11 @@ impl OrganLayer {
         }
     }
 
-    /// Output of the Bass stage for the current wheel bus (level law of the B3 weight path).
-    pub(super) fn sum_b3_bass(&mut self, wheels: &[f32; NUM_TONEWHEELS]) -> f32 {
+    /// Output of the Bass stage (level law of the B3 weight path).
+    pub(super) fn sum_b3_bass(&mut self) -> f32 {
         let level = super::b3_weights::DRY_GAIN * self.level_law().bus_gain();
         let fs = self.sample_rate;
-        level * self.b3_bass.as_mut().map_or(0.0, |b| b.process(wheels, fs))
+        level * self.b3_bass.as_mut().map_or(0.0, |b| b.process(fs))
     }
 }
 
@@ -217,123 +245,31 @@ impl OrganLayer {
 mod tests {
     use super::*;
 
-    const FS: f32 = 48_000.0;
-
-    fn layer() -> OrganLayer {
-        let mut o = OrganLayer::new(FS);
-        o.model = OrganModel::B3;
-        o.b3_bass_mode = true;
-        o.tonewheel_source = ToneWheelSource::B3Wheels;
-        o.set_b3_bass_processor(true);
-        o.rotary_enabled = false;
-        o.key_click_enabled = false;
-        o.percussion_enabled = false;
-        o
+    #[test]
+    fn cubic_reproduces_a_line_and_the_end_points() {
+        let h = [0.0, 1.0, 2.0, 3.0];
+        assert!((cubic(&h, 0.5) - 1.5).abs() < 1e-6);
+        assert_eq!(cubic(&h, 0.0), 1.0);
+        assert!((cubic(&h, 0.999_999) - 2.0).abs() < 1e-4);
     }
 
-    fn render(o: &mut OrganLayer, n: usize) -> Vec<f32> {
-        (0..n).map(|_| o.render_frame()[0]).collect()
-    }
-
-    /// Hann Goertzel amplitude of `x` at `hz`.
-    fn line(x: &[f32], hz: f32) -> f32 {
-        let (mut re, mut im, mut win) = (0.0f64, 0.0f64, 0.0f64);
-        for (n, v) in x.iter().enumerate() {
-            let h = 0.5 - 0.5 * (std::f64::consts::TAU * n as f64 / x.len() as f64).cos();
-            let a = std::f64::consts::TAU * f64::from(hz) / f64::from(FS) * n as f64;
-            re += f64::from(*v) * h * a.cos();
-            im += f64::from(*v) * h * a.sin();
-            win += h;
+    #[test]
+    fn voice_slots_cycle_over_five_presses() {
+        let mut s = B3BassStage::new();
+        for (n, k) in [
+            (60usize, 60i32),
+            (64, 64),
+            (67, 67),
+            (72, 72),
+            (76, 76),
+            (79, 79),
+        ] {
+            s.note_on(n, k);
         }
-        (2.0 * re.hypot(im) / win) as f32
-    }
-
-    #[test]
-    fn stage_is_off_by_default_and_needs_bass_mode_and_b3_wheels() {
-        let o = OrganLayer::new(FS);
-        assert!(!o.b3_bass_active());
-        let mut o = layer();
-        assert!(o.b3_bass_active());
-        o.b3_bass_mode = false;
-        assert!(!o.b3_bass_active());
-        o.b3_bass_mode = true;
-        o.set_b3_tail(true);
-        assert!(!o.b3_bass_active());
-    }
-
-    #[test]
-    fn chord_lines_follow_the_oracle_goldens() {
-        // Oracle lines of the chord 60 64 67 (`bass-chord-goldens.csv`, rows `g3`: boot + install +
-        // the ARM key-down, `sharc-chain` generator + processor, 8192 point Hann line amplitude of
-        // the output stream). The stage runs on the plain B3 wheel tables, at the host rate and
-        // with the project tuning (lines read at `b3_note_hz`); the oracle values carry a Hann
-        // scalloping of up to 1.4 dB. Measured: +1.1 to +2.5 dB per line (research s12); the test
-        // bounds it at 3.5 dB so a regression of the key state (6 to 15 dB per rule) fails.
-        let csv = include_str!("../../../../docs/research/data/bass-chord-goldens.csv");
-        let mut o = layer();
-        for k in [60u8, 64, 67] {
-            o.note_on(k);
-        }
-        let x = render(&mut o, 48_000);
-        let seg = &x[8_192..8_192 + 16_384];
-        let mut worst = 0.0f32;
-        let mut seen = 0;
-        for l in csv.lines().filter(|l| l.starts_with("g3,")) {
-            let f: Vec<&str> = l.split(',').collect();
-            let slot: usize = f[2].parse().unwrap();
-            let want: f32 = f[5].parse().unwrap();
-            let got = line(seg, super::super::b3_note_hz(slot + 12) as f32);
-            let err = 20.0 * (got / want).log10();
-            worst = worst.max(err.abs());
-            seen += 1;
-        }
-        assert_eq!(seen, 6);
-        assert!(worst < 3.5, "worst line error {worst} dB");
-    }
-
-    #[test]
-    fn more_keys_pull_the_coefficient_of_a_wheel_down() {
-        // generator weights shrink on shared wheels and G grows (ring amplitude of slot 48 0.262
-        // after 3 keys against 0.061 after 85, research s11): the folded coefficient of wheel 60
-        // (bus index 36, window 2) is far below its single key value with all 85 keys held.
-        let mut single = B3BassStage::new();
-        single.note_on(60, 60);
-        let mut all = B3BassStage::new();
-        for k in 24..=108 {
-            all.note_on(k as usize, k);
-        }
-        let (one, many) = (single.target[1][36], all.target[1][36]);
-        assert!(one > 0.0 && many > 0.0);
-        assert!(many < 0.5 * one, "{many} vs {one}");
-    }
-
-    #[test]
-    fn release_rings_down_to_silence_and_stays_finite() {
-        let mut o = layer();
-        o.note_on(48);
-        o.note_on(55);
-        let held = render(&mut o, 4_000);
-        assert!(held.iter().all(|v| v.is_finite()));
-        assert!(held.iter().any(|v| v.abs() > 1e-4));
-        o.note_off(48);
-        o.note_off(55);
-        let tail = render(&mut o, 30_000);
-        assert!(tail.iter().all(|v| v.is_finite()));
-        assert!(tail[29_000..].iter().all(|v| v.abs() < 1e-7));
-        assert!(!o.b3_bass_sounding());
-    }
-
-    #[test]
-    fn octave_shift_registers_the_transposed_key_and_releases_it() {
-        let mut o = layer();
-        o.octave_shift = 1;
-        o.note_on(60);
-        o.octave_shift = 0;
-        o.note_off(60);
-        let x = render(&mut o, 30_000);
-        assert!(x[29_000..].iter().all(|v| v.abs() < 1e-7));
-        // a key outside the decoded range 24..=108 does nothing
-        o.note_on(10);
-        assert!(render(&mut o, 2_000).iter().all(|v| v.abs() < 1e-7));
+        // the sixth press reuses slot 0: the record of key 79 sits at `0x954E6`
+        let first = s.machine.rd(super::super::b3_bass_voice::word_addr(0, 4));
+        let want = s.voices.words(79).unwrap()[4];
+        assert_eq!(first, want);
+        assert!(s.active());
     }
 }
