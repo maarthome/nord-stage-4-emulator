@@ -6,6 +6,8 @@ use super::ctx::{Fx, CAPTION};
 use crate::panel::prelude::Stage4PanelState;
 use crate::panel::ui_state::fx::{section_of_slot, slot_for, FocusSection, Unit};
 use crate::style::{LED_AMBER, LED_AMBER_DIM, LED_RED, LED_RED_DIM};
+use crate::widgets::label;
+use egui::{pos2, Align2};
 use nord_panel::behaviour::Trigger;
 
 /// Units re-sent when LAYER EFFECTS ON flips (the engine gets neutral values while it is off).
@@ -42,7 +44,15 @@ pub(super) fn focus(f: &mut Fx, st: &mut Stage4PanelState) {
         }
         f.send(edits);
     }
-    f.caption(on, 0, "LAYER FX", CAPTION);
+    // Printed to the left of the button (the panel prints its ON legend there), clear of the MOD 1 box.
+    label(
+        f.p,
+        pos2(on.left() - 5.0, on.center().y),
+        "LAYER FX",
+        6.5,
+        CAPTION,
+        Align2::RIGHT_CENTER,
+    );
 
     for (id, group_id, section, name) in [
         ("fx.focus.organ", "", FocusSection::Organ, "ORGAN"),

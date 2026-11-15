@@ -201,17 +201,17 @@ pub const FRAMES: &[FrameDef] = &[
         Effects,
         "MOD 1",
         &["mod1.rate", "mod1.amount", "mod1.selector", "mod1.on"],
-        [6.0, 9.7, 6.0, 7.0],
+        [9.4, 11.9, 3.3, 4.3],
     )
-    .at(0.80),
+    .at(0.28),
     boxed(
         "fx.frame.mod2",
         Effects,
         "MOD 2",
         &["mod2.rate", "mod2.amount", "mod2.selector", "mod2.on"],
-        [6.0, 9.0, 6.0, 8.0],
+        [9.4, 9.4, 3.3, 4.0],
     )
-    .at(0.80),
+    .at(0.31),
     boxed(
         "fx.frame.amp",
         Effects,
@@ -225,9 +225,9 @@ pub const FRAMES: &[FrameDef] = &[
             "amp.mid",
             "amp.treble",
         ],
-        [12.0, 12.0, 4.0, 10.5],
+        [8.5, 9.4, 3.3, 9.2],
     )
-    .at(0.25),
+    .at(0.28),
     boxed(
         "fx.frame.delay",
         Effects,
@@ -241,14 +241,14 @@ pub const FRAMES: &[FrameDef] = &[
             "delay.tap_set",
             "delay.on",
         ],
-        [6.0, 8.0, 10.0, 10.0],
+        [10.1, 7.2, 4.8, 10.0],
     ),
     boxed(
         "fx.frame.comp",
         Effects,
         "COMP",
         &["comp.amount", "comp.on"],
-        [8.0, 14.0, 12.0, 12.0],
+        [10.6, 11.1, 8.4, 13.0],
     ),
     boxed(
         "fx.frame.reverb",
@@ -260,7 +260,7 @@ pub const FRAMES: &[FrameDef] = &[
             "reverb.dry_wet",
             "reverb.on",
         ],
-        [3.0, 14.0, 6.0, 8.9],
+        [4.3, 16.9, 4.8, 10.2],
     ),
     // Program area (the red central block). VERIFIED against the HA88 top-down render: the pads
     // reproduce the printed boxes (MORPH ASSIGN x 4905..5348 y 697..885 px, PRESET LIBRARY

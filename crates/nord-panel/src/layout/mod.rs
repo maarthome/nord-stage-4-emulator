@@ -136,17 +136,9 @@ pub const SECTION_TOP_MM: f32 = 25.0;
 /// columns 161.3..162.3 mm, same mask); 162.3 mm is the Organ / Piano reading.
 pub const SECTION_BOTTOM_MM: f32 = 162.3;
 
-/// Bottom edge (mm) of the Layer Effects section frame.
-///
-/// ASSUMED (TECH_DEBT): the real plate ends at [`SECTION_BOTTOM_MM`]. The Effects controls are
-/// still the 2000 px photo reads (no crop pass yet) and the GUI spreads them with large nudges
-/// (`layout_tweaks::GROUP_TWEAKS`, Amp Sim/EQ +12 mm) so that 7.5 px legends fit; the lowest frame
-/// (AMP SIM/EQ) ends at 174.6 mm. An Effects crop pass would bring this back to 162.3 mm.
-pub const EFFECTS_BOTTOM_MM: f32 = 175.0;
-
 /// Frame of a panel section.
 ///
-/// The four other layer sections span `SECTION_TOP_MM ..= SECTION_BOTTOM_MM` (the bounding box of the
+/// The five layer sections span `SECTION_TOP_MM ..= SECTION_BOTTOM_MM` (the bounding box of the
 /// plate including the header tab). Master has no plate and keeps the full control height; Keybed
 /// is the strip below the control area.
 ///
@@ -175,10 +167,7 @@ pub fn section_rect(section: Section) -> Rect {
         Section::Piano => layer(445.0, 531.9),
         Section::Program => hero(841.0, 1029.0),
         Section::Synth => hero(1029.0, 1401.0),
-        Section::Effects => {
-            let r = hero(1401.0, 1700.0);
-            Rect::new(r.x, r.y, r.w, EFFECTS_BOTTOM_MM - r.y)
-        }
+        Section::Effects => hero(1401.0, 1700.0),
         Section::Keybed => px(67.0, KEYBED_TOP_PX, 1932.0, KEYBED_BOTTOM_PX),
     }
 }
@@ -221,6 +210,7 @@ mod unit_tests {
             Section::Piano,
             Section::Program,
             Section::Synth,
+            Section::Effects,
         ] {
             let r = section_rect(sec);
             assert!(
@@ -231,8 +221,6 @@ mod unit_tests {
         }
         let (o, p) = (section_rect(Section::Organ), section_rect(Section::Piano));
         assert!((p.right() - 531.9).abs() < 1e-3 && o.right() < p.x);
-        let fx = section_rect(Section::Effects);
-        assert!((fx.y - 25.0).abs() < 1e-3 && (fx.bottom() - EFFECTS_BOTTOM_MM).abs() < 1e-3);
         // Master keeps the full control height; Keybed starts where the panel ends.
         assert!(section_rect(Section::Master).y.abs() < 1e-3);
     }
