@@ -60,7 +60,14 @@ pub fn note_x(note: u8, white_w: f32) -> f32 {
 }
 
 /// Key velocity of a mouse press on the on-screen keybed.
-const MOUSE_VELOCITY: u8 = 100;
+///
+/// EMPIRICAL: 88, not 100. The factory piano strokes are velocity layered (VERIFIED firmware level
+/// law, `piano/velocity_level.rs`), so a fixed velocity of 100 plays the bright, loud layer on every
+/// click. Against the Part A demo video the best uniform replay velocity of the Velvet Grand clip is
+/// 88 and the Felt Upright clip reads +8.4 dB RMS at 88 against +7.3 dB for the Pipe organ yardstick
+/// (+11.0 dB at 100); see `docs/research/piano-felt-upright-soft.md`. A MIDI keyboard keeps its own
+/// velocity; only the mouse is fixed.
+const MOUSE_VELOCITY: u8 = 88;
 
 /// Sends a Note On of the on-screen keybed. It goes through the keyboard path
 /// (`AudioHandle::send_keyboard_midi`), so Local Control Off keeps the sound silent while the
@@ -224,6 +231,18 @@ mod tests {
         let mut vol = 0.8;
         for cmd in rx.try_iter() {
             crate::audio::apply_audio_command(cmd, e, &mut vol);
+        }
+    }
+
+    #[test]
+    fn mouse_press_uses_the_video_fitted_velocity_not_100() {
+        let (audio, rx) = AudioHandle::new();
+        press_note(&audio, 60);
+        match rx.try_recv() {
+            Ok(AudioCommand::Keyboard(MidiEvent::NoteOn { velocity, .. })) => {
+                assert_eq!(velocity, 88);
+            }
+            other => panic!("expected a keyboard Note On, got {other:?}"),
         }
     }
 
