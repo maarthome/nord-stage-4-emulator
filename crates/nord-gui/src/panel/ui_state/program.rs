@@ -90,6 +90,8 @@ pub struct ProgramUi {
     /// Engine telemetry: nothing to undo (UNDO soft button disabled) / an undone edit to redo.
     pub undo_blocked: bool,
     pub redo_available: bool,
+    /// Name of the operation Undo would revert (shown as `Undo to before <name>?`).
+    pub undo_op: Option<&'static str>,
     /// Keys seen last frame (MIDI activity detection).
     pub prev_keys: [bool; 128],
     /// Transient OLED message and its end time (ms).
@@ -164,6 +166,7 @@ impl Default for ProgramUi {
             extern_led_until: 0,
             undo_blocked: false,
             redo_available: false,
+            undo_op: None,
             prev_keys: [false; 128],
             message: None,
             confirming: None,

@@ -45,6 +45,32 @@ pub(super) fn frame_rect(o: egui::Pos2) -> Rect {
     )
 }
 
+/// Height of the light tab behind the title (px).
+const TAB_H: f32 = 13.0;
+
+/// The light tab at the top of the box with the title in dark print inside it.
+/// VERIFIED: the real panel prints `ROTARY SPEAKER` on a light blue-grey plate that spans the box
+/// top with rounded upper corners (photo `NS4_Panel-crop-left.jpg`, local reference).
+fn paint_tab(painter: &Painter, frame: Rect) {
+    let tab = Rect::from_min_size(frame.min, vec2(frame.width(), TAB_H));
+    let round = egui::CornerRadius {
+        nw: 4,
+        ne: 4,
+        sw: 0,
+        se: 0,
+    };
+    painter.rect_filled(tab, round, crate::style::MODULE_HEADER_BAR);
+    label_fit(
+        painter,
+        tab.center(),
+        "ROTARY SPEAKER",
+        5.0,
+        tab.width() - 6.0,
+        Color32::from_rgb(20, 24, 30),
+        Align2::CENTER_CENTER,
+    );
+}
+
 /// Draw the Rotary Speaker box and apply its input.
 pub(super) fn render_rotary(
     ui: &mut Ui,
@@ -68,15 +94,7 @@ pub(super) fn render_rotary(
         Stroke::new(1.0_f32, GROUP_BORDER),
         StrokeKind::Inside,
     );
-    label_fit(
-        painter,
-        pos2(frame.center().x, frame.top() + 6.0),
-        "ROTARY SPEAKER",
-        5.0,
-        frame.width() - 6.0,
-        Color32::WHITE,
-        Align2::CENTER_CENTER,
-    );
+    paint_tab(painter, frame);
 
     let drive = rect_or_empty("rotary.drive", o);
     if knob(
@@ -304,6 +322,18 @@ mod tests {
                 ..
             }))
         ));
+    }
+
+    #[test]
+    fn tab_is_painted_inside_the_frame_top() {
+        let o = pos2(0.0, 0.0);
+        let frame = frame_rect(o);
+        let n = crate::panel::support::shapes_painted(|_, p, _, _, _| paint_tab(p, frame));
+        assert!(n >= 2, "tab painted {n} shapes");
+        assert!(
+            frame.height() > TAB_H * 4.0,
+            "tab leaves room for the controls"
+        );
     }
 
     #[test]

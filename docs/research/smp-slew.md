@@ -53,7 +53,7 @@ No new hardware evidence. The slew loop and the voice loops are the whole per-re
 
 ## 5. Level chain (item 6)
 
-The slew does not change the steady-state level of any stroke at the engine's unit of measure unless `F11`, `F19 / F20` and the ramp ceiling differ from unity, which the note-on message does not show. The master chain (`DM(0xB6518)` word, layer words 1.6 / 2.5 / 3.25) was not re-run against the clips in this pass: `tools/emu_vs_hw.py` now lists the verified-chain variants for the Velvet Grand segment (`piano-chain`, `vel-88-piano-chain`), and the standing result of [piano-receiver-scale](piano-receiver-scale.md) s6.3 (piano chain +10 to +12 dB, organ chain -14 to -15 dB, same video, same path) holds. Defaults stay (D61).
+The slew does not change the steady-state level of any stroke at the engine's unit of measure unless `F11`, `F19 / F20` and the ramp ceiling differ from unity, which the note-on message does not show. The master chain (`DM(0xB6518)` word, layer words 1.6 / 2.5 / 3.25) was not re-run against the clips in this pass: `tools/emu_vs_hw.py` now lists the verified-chain variants for the Velvet Grand segment (`piano-chain`, `vel-88-piano-chain`), and the standing result of [piano-receiver-scale](piano-receiver-scale.md) s6.3 (piano chain +10 to +12 dB, organ chain -14 to -15 dB, same video, same path) holds. Defaults stay (D62).
 
 ## Reproduce
 

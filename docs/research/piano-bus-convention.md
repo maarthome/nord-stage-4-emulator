@@ -57,7 +57,7 @@ Fabricated: `[this + 0x64]` (slot selector), `[this + 0x8C]` (layer index), `[th
 
 ## 4. SMP slew, stream edges, damper-down strokes
 
-Not worked on in this pass (time box); the listing facts of [smp-voice](smp-voice.md) s7 and [piano-dsp-path](piano-dsp-path.md) stand. The ARM slew inputs (record fields `+11..+16`) are written by `0xC00B5F20`, `0xC00B6030`, `0xC00B61AC`; `0xC023195C` (above) is the per-slot slew routine that consumes the layer level word, which is where the time constant would be read. Update 2026-11-14: the slew itself is the SMP loop `0x1C06B9`, decoded in [smp-slew](smp-slew.md) (D61).
+Not worked on in this pass (time box); the listing facts of [smp-voice](smp-voice.md) s7 and [piano-dsp-path](piano-dsp-path.md) stand. The ARM slew inputs (record fields `+11..+16`) are written by `0xC00B5F20`, `0xC00B6030`, `0xC00B61AC`; `0xC023195C` (above) is the per-slot slew routine that consumes the layer level word, which is where the time constant would be read. Update 2026-11-14: the slew itself is the SMP loop `0x1C06B9`, decoded in [smp-slew](smp-slew.md) (D62).
 
 ## Decision
 
