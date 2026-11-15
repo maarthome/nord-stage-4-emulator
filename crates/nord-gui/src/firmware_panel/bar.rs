@@ -237,7 +237,7 @@ fn fx_row(ui: &mut egui::Ui, o: &mut FirmwareOptions) {
 fn presets_and_status(ui: &mut egui::Ui, o: &mut FirmwareOptions) {
     if ui
         .button("Firmware preset")
-        .on_hover_text("--firmware-all: every verified path on (not measured laws, routing)")
+        .on_hover_text("--firmware-all: every verified path on (not measured laws)")
         .clicked()
     {
         *o = presets::firmware();

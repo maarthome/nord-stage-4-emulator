@@ -192,8 +192,8 @@ live in `panel/layout_tweaks.rs`, never in the `ASSUMED` photo tables (one excep
 | `--firmware-fx-ports mod1` (FX: Mod 1) | A-PAN and TREM firmware routines, free running only | MIXED |
 | `--firmware-fx-ports mod2` (FX: Mod 2) | Firmware CHOR, PHAS, FLANG, ENS and SPIN stages | MIXED |
 | `--firmware-fx-ports eq` (FX: Amp EQ) | Firmware tone stack `0x1243F4` instead of the engine's three biquads, 2 frames latency | MIXED |
-| `--firmware-routing` (Global: Firmware routing) | Section/layer enables and per-layer KB zones as stored (D22); zone codes open | ASSUMED |
-| `--firmware-all` / `--legacy-all` | Presets: verified paths on (not measured laws, routing, Vox/Farfisa/B3) / all defaults | - |
+| `--firmware-routing` (Global: Firmware routing) | Section/layer enables (a mask of 0 reads as layer A, as the loader does) and per-layer KB zones as stored; on by default since D61, `--legacy-routing` turns it off | VERIFIED |
+| `--firmware-all` / `--legacy-all` | Presets: verified paths on (not measured laws, Vox/Farfisa/B3) / all defaults | - |
 
 Defaults are unchanged: with no flag the engine and the `render_hash` stay as before. The same flags
 work for `ns4 render-patch`; both parse them with `FirmwareOptions::from_args`, so a switch added to
