@@ -10,7 +10,7 @@ Tags follow `.agents/rules/provenance-in-code.md`. All scores are against the vi
 
 | Item | Value |
 |---|---|
-| Install | isolated venv outside the repo (`C:\tmp\ns4-muscriptor`, Python 3.12, `uv pip install --torch-backend=cu124 muscriptor`), RTX 4070 SUPER; weights fetched from the gated HF repos with the user's existing HF login (small 0.41 GB, medium 1.23 GB; large 5.47 GB **not** downloaded) |
+| Install | isolated venv outside the repo (`C:\tmp\ns4-muscriptor`, Python 3.12, `uv pip install --torch-backend=cu124 muscriptor`), RTX 4070 SUPER; weights fetched from the gated HF repos with the user's existing HF login (small 0.41 GB, medium 1.23 GB; large 5.47 GB, added after the user approved it) |
 | Licence | code MIT; weights **CC BY-NC 4.0**: fine for this non-commercial research use, weights stay out of git, results are derived numbers only |
 | Audio | `ffmpeg` 44.1 kHz mono clip per segment |
 | Run | `muscriptor transcribe --model {small,medium} -f json` (note start/end events with `instrument`), then `python tools/muscriptor_events.py convert ... --offset <at_s> --drop-instruments drums` |
@@ -21,15 +21,15 @@ Tags follow `.agents/rules/provenance-in-code.md`. All scores are against the vi
 
 Recall / precision lower bound at +-150 ms (exact MIDI number); the +-80 ms and pitch-class numbers are in `data/muscriptor_agreement.json`. MuScriptor rows drop the `drums` label.
 
-| Clip | Transkun 2.0 | MuScriptor small | MuScriptor medium | medium + `--instruments synth_lead,synth_pad,electric_bass` |
-|---|---|---|---|---|
-| Horizon Whl (172 confirmed) | 0.20 / 0.12 (275 notes) | 0.13 / 0.08 (291) | 0.19 / 0.09 (351) | 0.14 / 0.08 |
-| Leaky Stabs II (288) | 0.14 / 0.25 (162) | 0.17 / 0.30 (166) | **0.23 / 0.32** (203) | 0.23 / 0.28 |
-| Grand Pad (146) | 0.25 / 0.28 (127) | 0.24 / 0.27 (128) | 0.21 / 0.30 (105) | 0.25 / 0.26 |
+| Clip | Transkun 2.0 | MuScriptor small | MuScriptor medium | MuScriptor large | medium + `--instruments synth_lead,synth_pad,electric_bass` |
+|---|---|---|---|---|---|
+| Horizon Whl (172 confirmed) | 0.20 / 0.12 (275 notes) | 0.13 / 0.08 (291) | 0.19 / 0.09 (351) | 0.12 / 0.06 (326) | 0.14 / 0.08 |
+| Leaky Stabs II (288) | 0.14 / 0.25 (162) | 0.17 / 0.30 (166) | 0.23 / 0.32 (203) | **0.24 / 0.24** (291) | 0.23 / 0.28 |
+| Grand Pad (146) | 0.25 / 0.28 (127) | 0.24 / 0.27 (128) | 0.21 / 0.30 (105) | 0.25 / 0.31 (117) | 0.25 / 0.26 |
 
 At +-80 ms recall: Transkun 0.145 / 0.115 / 0.178, medium 0.116 / 0.163 / 0.164 (Horizon / Leaky / Grand Pad).
 
-- **Recall stays low for every model (0.13 to 0.25).** MuScriptor medium is on par with Transkun, better on Leaky (+9 points), worse on Grand Pad, equal on Horizon. It is not the hoped-for step up; the small model is slightly worse than medium.
+- **Recall stays low for every model (0.13 to 0.25).** MuScriptor medium is on par with Transkun, better on Leaky (+9 points), worse on Grand Pad, equal on Horizon. It is not the hoped-for step up; the small model is slightly worse than medium and the **large model (1.4B) is no better than medium** (worse on Horizon, equal on Leaky and Grand Pad), so size does not help on synth timbres.
 - **Same-pitch onset bias** against the video key-down (median over matched pairs): Transkun +46 / +23 / +34 ms, MuScriptor medium +15 / +57 / +9 ms. Both are late, as in the piano clips; neither is clean enough to retime events.
 - **Instrument labels are guesses** (Horizon: electric_bass + string_ensemble, Leaky: distorted_electric_guitar + electric_bass, Grand Pad: acoustic_piano), so they do not identify the engine. The small model puts **1,476 `drums` notes** on Leaky (noise bursts): drop `drums` (precision 0.02 with them, 0.30 without). An `--instruments` hint changes counts, not recall in a consistent direction.
 - **No velocity.** The model card states velocity and dynamics are not produced, the JSON events hold only pitch, start, end and instrument, and the MIDI output has a fixed velocity. No ordinal levels either. A sustain pedal is not produced.
@@ -47,5 +47,5 @@ At +-80 ms recall: Transkun 0.145 / 0.115 / 0.178, medium 0.116 / 0.163 / 0.164 
 ## Follow-ups
 
 - Union / intersection of Transkun and MuScriptor notes against the video-confirmed set (does the intersection reach useful precision?).
-- Large model (5.5 GB, not downloaded) and Aria-AMT / ByteDance piano transcription for the piano clips.
+- Aria-AMT / ByteDance piano transcription for the piano clips.
 - Emulator-known events (a rendered MIDI with known notes) would give a true ground truth; none exists for the demo performance.

@@ -65,6 +65,21 @@
      "precision_lower_bound": 0.083
     },
     "estimated": 289
+   },
+   "muscriptor-large": {
+    "tol_80ms": {
+     "matched_exact": 15,
+     "recall": 0.087,
+     "recall_pitch_class": 0.169,
+     "precision_lower_bound": 0.046
+    },
+    "tol_150ms": {
+     "matched_exact": 20,
+     "recall": 0.116,
+     "recall_pitch_class": 0.203,
+     "precision_lower_bound": 0.061
+    },
+    "estimated": 326
    }
   },
   "synth_leaky": {
@@ -131,6 +146,21 @@
      "precision_lower_bound": 0.276
     },
     "estimated": 243
+   },
+   "muscriptor-large": {
+    "tol_80ms": {
+     "matched_exact": 46,
+     "recall": 0.16,
+     "recall_pitch_class": 0.194,
+     "precision_lower_bound": 0.158
+    },
+    "tol_150ms": {
+     "matched_exact": 69,
+     "recall": 0.24,
+     "recall_pitch_class": 0.302,
+     "precision_lower_bound": 0.237
+    },
+    "estimated": 291
    }
   },
   "pianopad_grand": {
@@ -197,6 +227,21 @@
      "precision_lower_bound": 0.255
     },
     "estimated": 145
+   },
+   "muscriptor-large": {
+    "tol_80ms": {
+     "matched_exact": 24,
+     "recall": 0.164,
+     "recall_pitch_class": 0.205,
+     "precision_lower_bound": 0.205
+    },
+    "tol_150ms": {
+     "matched_exact": 36,
+     "recall": 0.247,
+     "recall_pitch_class": 0.329,
+     "precision_lower_bound": 0.308
+    },
+    "estimated": 117
    }
   }
  }
