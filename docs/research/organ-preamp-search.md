@@ -152,7 +152,50 @@ D22 bar not met (sub, mid and brilliance outside 3 dB, RMS 4.9 dB under, one cli
 
 **Caveat (point 4 of the review).** Transkun is a piano model on a sustained organ clip: the +1.5 .. +5.4 dB presence and the sub excess are partly note-set artefacts (s6.2 shows 525 notes are 96 keys); durations are an upper bound.
 
-## 9. Not run (follow-ups)
+## 9. Not run (follow-ups; items 1 and 2 answered in s10)
 
 1. Boot-installed chain elements `[0x1250CF, 0x125371, 0x121BBA]` at `0xB0476` and `[0x1250CF, 0x1235AA, 0x1236F8]` at `0xB047E` through `sharc-pass` with noise / sine at 0.03, 0.3, 1.0 (`0x125371` nonlinear resonant filter; `0x1235AA` shares the 0.9908 smoothing constant of row `0xB2F39`). Needs a pass harness with the organ lane wired: not cheap here.
 2. Sweep `kEffectsLeslieDrv` 0..127 from the settled snapshot (`tools/arm_edit_capture.py`) and log which DSP words it writes; then re-run s8 with the real word values and the B3 program value.
+
+## 10. Drive sweep, port and the boot elements (2026-11-15, task `org-leslie-drive`)
+
+### 10.1 What `Edt_OrgCom_kEffectsLeslieDrv` writes
+
+`tools/fx_clients.py --slots` on the settled snapshot (organ unit, `--slot Leslie`, window 600,000): every value `v = 0, 1, 2, 15, 31 .. 127` produces exactly four `DM` writes on **PNO core 1** (chip 1, call stage, `pc 0xC0062D54`): `0xB2F2D`, `0xB2F2E`, `0xB2F31`, `0xB2F32`, all with the `f32` word `v / 127` (`v = 31`: `0x3E79F3E8` = 0.24409; `v = 127`: `0x3F800000`). Nothing goes to the FX cores, `0xB0476`, `0xB047E` or any other address; the mic distance id writes only `0xB2F8A / B`. The generic sweep `arm_edit_capture.py` sees no message for these ids (they live on the FX unit clients). VERIFIED (run, 11 values x 4 words).
+
+The factory B3 program stores `rotary_drive` 2.44 of 10, i.e. `v = 31` and word 0.244 (`engine/program.rs`).
+
+### 10.2 Port
+
+`FwLeslie::set_drive(fraction)` writes the four words. The first golden run diverged from call 3: with drive above 0 the routine indexes three 129 word tables (`0xB0276`, `0xB02F7`, `0xB0378`) and a block at `0xE05D5..0xE062D` that the old windows (2 and 26 words) did not hold, so the port read zeros. The windows are now whole (`tools/fx_leslie_words.py`, `tests_fw_leslie_data.rs` fingerprints, 5,734 words). Result: the `DRIVE` golden (LCG noise, drive `0x3E79F3E8` in all four words, frozen ring, 2,000 calls) is **bit exact** against the oracle (`tests_fw_leslie_golden.rs`); the four earlier scenarios are unchanged (same FNV). Opt-in: `--leslie-drive program` (default `boot` = 0, `OrganLayer::leslie_fw_drive`).
+
+### 10.3 The two boot elements
+
+| Element | Result | Tag |
+|---|---|---|
+| `0x1250CF` (`0xB0479`, state `0xE376A` / `0xE38DC`) | an in-place stereo filter (state at `I1 - 32 .. -5`); boot state, noise at 0.03 / 0.3 / 1.0: output 0.0132 / 0.132 / 0.439 rms, ratios 10.0 and 3.33, **linear**, -2.4 dB | VERIFIED (run) |
+| `0x125371` (`0xB047A`) | `sharc-fx` stops at `0x1253D3` (unimplemented, parcels `0D00 0080 0090`) | blocked |
+| `0x1235AA` (`0xB0482`) | stops at its `DO ... UNTIL LCE, LCNTR = Rn` ([pno-module-chain](pno-module-chain.md) s6, the known limit) | blocked |
+
+No saturation was seen in what runs. `0x125371` and `0x1235AA` need two instruction forms added to the oracle (`crates/nord-sharc`) before they can be driven; their role (organ amp unit chain versus Mod rows, [pno-module-chain](pno-module-chain.md) s5) is still ASSUMED.
+
+### 10.4 B3 clip with the program drive
+
+Gaps emulator minus hardware, dB re RMS, same options as s6, binary of this branch (it includes main's later changes, so `fw-boot` differs a little from s6):
+
+| Stream | Variant | sub | low | mid | presence | brilliance | RMS | score |
+|---|---|---|---|---|---|---|---|---|
+| merged 96 | firmware advance, boot drive 0 | +13.7 | -1.4 | +3.6 | -0.5 | +1.2 | -8.2 | 4.06 |
+| merged 96 | firmware advance, `--leslie-drive program` | +14.2 | -1.8 | +3.5 | +1.4 | +4.2 | -7.1 | 5.02 |
+| merged 96 | program drive, pass-routine ring | +3.9 | -8.1 | -0.8 | +8.1 | +22.4 | -14.1 | 8.66 |
+| audio offsets | firmware advance, boot drive 0 | +13.2 | -1.7 | +4.4 | -0.7 | +1.1 | -6.4 | 4.22 |
+| audio offsets | firmware advance, `--leslie-drive program` | +13.4 | -1.9 | +4.2 | +2.1 | +6.9 | -5.5 | 5.69 |
+| audio offsets | program drive, pass-routine ring | +3.5 | -7.5 | 0.0 | +8.9 | +23.4 | -12.5 | 8.65 |
+
+Reading (EMPIRICAL, one clip): the drive stage adds +1.9 .. +2.8 dB presence, +3 .. +5.8 dB brilliance and about +1 dB RMS and leaves mid (+3.5 .. +4.4) and sub (+13) where they were; the score gets worse. **The drive is not the missing piece for mid, brilliance or RMS**, and with the surrogate ring the sub and the RMS are dominated by the unmodelled DMA ring (s6.2). No default changes (D22, D98).
+
+## 11. Follow-ups after section 10
+
+1. Implement the two missing instruction forms in `sharc-fx` and run `0x125371` / `0x1235AA` with the real state (`0xE376A`, `0xE38DC`) at 0.03 / 0.3 / 1.0 and a sine.
+2. The DMA ring of the Leslie history (still the largest open item for sub, brilliance and RMS).
+3. A hardware recording with Leslie drive 0 and 127 on a held note: only that fixes the real drive of the clip program.

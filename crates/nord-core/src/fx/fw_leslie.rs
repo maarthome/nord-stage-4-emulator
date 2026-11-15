@@ -61,6 +61,15 @@ impl<F: Fp> Leslie<F> {
         self.core.set_speed_words(words);
     }
 
+    /// Sets the Leslie drive as the ARM does for `Edt_OrgCom_kEffectsLeslieDrv`: the fraction
+    /// `v / 127` (0..1, clamped) as an `f32` word in `0xB2F2D / 0xB2F2E / 0xB2F31 / 0xB2F32`.
+    /// 0 is the boot state; non-zero values add a saturating stage (about +10 dB small signal
+    /// and a hard knee at drive 1, `docs/research/organ-preamp-search.md` s8).
+    pub fn set_drive(&mut self, fraction: f32) {
+        self.core
+            .set_drive_words(fraction.clamp(0.0, 1.0).to_bits());
+    }
+
     /// One call: frames `[L0, R0, L1, R1]` processed in place by the firmware routine.
     pub fn process_block(&mut self, io: [f32; 4]) -> [f32; 4] {
         self.core.call(io)
