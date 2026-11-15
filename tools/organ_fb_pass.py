@@ -151,7 +151,7 @@ def capture_chord(  # pragma: no cover
 def cmd_script(a: argparse.Namespace) -> int:  # pragma: no cover - needs the ARM harness
     import organ_b3_pass as ob
 
-    keys = [int(k) for k in a.keys.split(",")]
+    keys = [int(k) for k in a.keys.split(",") if k]
     rows = capture_ctor(a.code, a.sram, a.cache) + ob.capture_boot(a.code, a.sram)
     rows += capture_chord(a.code, a.sram, a.cache, a.model, keys, a.drawbars)
     a.out.write_text("\n".join(script_lines(rows)) + "\n", encoding="utf-8")
