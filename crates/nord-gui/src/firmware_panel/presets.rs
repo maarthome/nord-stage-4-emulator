@@ -63,6 +63,7 @@ pub fn copy_engine(dst: &mut FirmwareOptions, src: &FirmwareOptions, engine: Eng
             dst.sample_kernel_key = src.sample_kernel_key;
             dst.sample_pitch_fw = src.sample_pitch_fw;
             dst.synth_layer_law = src.synth_layer_law;
+            dst.synth_sustain_pedal = src.synth_sustain_pedal;
         }
         Engine::Fx => {
             dst.fx = src.fx;
