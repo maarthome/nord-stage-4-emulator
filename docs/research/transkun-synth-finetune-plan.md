@@ -51,8 +51,7 @@ The decoded transcription (`transcribeFrames`, `transcribe.py`) keeps the CRF pa
 
 ## 4. PEFT / LyCORIS support (VERIFIED, `peft_check.py`)
 
-Environment: new venv `C:	mp
-s4-ft-venv` (Python 3.12, `uv`), reusing torch 2.6.0+cu124 and transkun from the transcription venv through a `.pth`; installed `peft` 0.21.3, `lycoris-lora`, `accelerate`, `transformers`, `toml`, `einops`. The existing venvs are untouched. Gotcha: `uv pip install peft` pulls a second torch (2.15.0) into the new venv; it was uninstalled so the `.pth` torch wins. `lycoris-lora` 4.1.3 fails to import on torch 2.6 (custom op schema); 3.2.0.post2 imports. LyCORIS itself is not needed: PEFT ships LoKr.
+Environment: new venv `C:/tmp/ns4-ft-venv` (Python 3.12, `uv`), reusing torch 2.6.0+cu124 and transkun from the transcription venv through a `.pth`; installed `peft` 0.21.3, `lycoris-lora`, `accelerate`, `transformers`, `toml`, `einops`. The existing venvs are untouched. Gotcha: `uv pip install peft` pulls a second torch (2.15.0) into the new venv; it was uninstalled so the `.pth` torch wins. `lycoris-lora` 4.1.3 fails to import on torch 2.6 (custom op schema); 3.2.0.post2 imports. LyCORIS itself is not needed: PEFT ships LoKr.
 
 One forward, backward and optimizer-free step on a dummy batch (8 s audio, 15 notes), base weights loaded from `2.0.pt`:
 
@@ -187,8 +186,7 @@ Checks 1 and 2 are cheap and automated; check 3 is the true target and is noisy 
 
 ## 9. Reproduce (probe scripts, local only)
 
-`C:\tmp\ns4-ft-probe\inspect_model.py` (params, layer census), `lora_count.py` (adapter parameter arithmetic), `peft_check.py` (section 4, run with `C:	mp
-s4-ft-venv\Scripts\python.exe -I`), `bench_step.py` (dummy-batch step: builds `Note` lists with no same-pitch overlap, calls `model.log_prob`, backward, `AdamW.step`, reports `torch.cuda.max_memory_allocated`). Run with `C:\tmp\ns4-transcribe\venv\Scripts\python.exe -I <script>`. Render timing: `ns4 render-patch` as in section 6, workers via `xargs -P`. These are throw-away measurement scripts and are not committed; the numbers above are the record.
+`C:\tmp\ns4-ft-probe\inspect_model.py` (params, layer census), `lora_count.py` (adapter parameter arithmetic), `peft_check.py` (section 4, run with `C:/tmp/ns4-ft-venv\Scripts\python.exe -I`), `bench_step.py` (dummy-batch step: builds `Note` lists with no same-pitch overlap, calls `model.log_prob`, backward, `AdamW.step`, reports `torch.cuda.max_memory_allocated`). Run with `C:\tmp\ns4-transcribe\venv\Scripts\python.exe -I <script>`. Render timing: `ns4 render-patch` as in section 6, workers via `xargs -P`. These are throw-away measurement scripts and are not committed; the numbers above are the record.
 
 ## Implications
 
