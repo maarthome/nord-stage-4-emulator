@@ -1,5 +1,6 @@
 //! Library drawer and top-bar rendering.
 
+use super::init_load::InitTarget;
 use super::{BackupLibraryState, BackupTab};
 use crate::audio::AudioHandle;
 use crate::panel::Stage4PanelState;
@@ -83,13 +84,15 @@ impl BackupLibraryState {
         }
     }
 
-    /// L toggles the library drawer (like Z / P for the view). Ignored while a text field has
+    /// L (Shift+L while the Computer keyboard is on) toggles the library drawer (like Z / P for the view). Ignored while a text field has
     /// the keyboard. Returns `true` when it toggled.
     pub fn handle_keys(&mut self, ctx: &egui::Context) -> bool {
         if ctx.wants_keyboard_input() {
             return false;
         }
-        let l = ctx.input(|i| i.key_pressed(egui::Key::L) && !i.modifiers.any());
+        let claimed = crate::panel::computer_keys::claimed(ctx);
+        let l =
+            ctx.input(|i| crate::panel::computer_keys::shortcut_pressed(i, egui::Key::L, claimed));
         if l {
             self.drawer_open = !self.drawer_open;
         }
@@ -193,6 +196,17 @@ impl BackupLibraryState {
                         ui.selectable_value(&mut self.synth_layer_idx, 1, "Synth B");
                         ui.selectable_value(&mut self.synth_layer_idx, 2, "Synth C");
                     }
+                    if self.active_tab != BackupTab::Programs {
+                        ui.checkbox(&mut self.merge_into_program, "Merge into current program")
+                            .on_hover_text(
+                                "Off: the sound loads into a fresh Init Program (other sections,                                  effects and levels reset). On: only this layer's sound changes.",
+                            );
+                        ui.weak(if self.merge_into_program {
+                            "Loads change only this layer's sound"
+                        } else {
+                            "Loads start from an Init Program"
+                        });
+                    }
                 });
 
                 ui.separator();
@@ -231,9 +245,11 @@ impl BackupLibraryState {
                     self.load_program_entry(&p, panel, audio);
                 }
                 if let Some(p) = selected_piano {
+                    self.init_before_load(InitTarget::Piano(self.piano_slot_b), panel, audio);
                     self.request_piano_entry(&p);
                 }
                 if let Some(s) = selected_sample {
+                    self.init_before_load(InitTarget::Synth(self.synth_layer_idx.min(2)), panel, audio);
                     self.request_sample_entry(&s);
                 }
             });

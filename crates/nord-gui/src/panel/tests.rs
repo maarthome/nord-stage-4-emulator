@@ -158,6 +158,9 @@ fn test_panel_state_apply_program() {
         ..Default::default()
     };
     piano_prog.global.scene_1_mask = 1 << 2;
+    // Piano-only program: only the piano section is enabled (firmware routing adds layer A to every
+    // enabled section without a layer, so an all-sections-enabled default would also light synth A).
+    piano_prog.global.section_enable_i = 0b010;
     piano_prog.piano.layer_a.level = 0.91;
     piano_prog.piano.layer_a.string_res = true;
     piano_prog.piano.layer_a.pedal_noise = true;

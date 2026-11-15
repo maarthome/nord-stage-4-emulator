@@ -92,7 +92,7 @@ pub use live_slots::{LiveSlots, LIVE_SLOT_COUNT};
 pub use morph_clip::MorphClip;
 pub use program_fx_export::{invert_fx_chain, LOSSY_FX_FIELDS};
 pub use program_ops::{PROGRAM_LEVEL_DB_RANGE, TRANSPOSE_RANGE};
-pub use routing::{zone_leds, FirmwareRouting, ProgramRouting};
+pub use routing::{default_layer_a, zone_leds, FirmwareRouting, ProgramRouting};
 pub use section_edit::Section;
 pub use settings::{
     GlobalSettings, Level3, TonewheelMode, FINE_TUNE_RANGE_CENTS, GLOBAL_TRANSPOSE_RANGE,
@@ -103,6 +103,8 @@ pub use telemetry::{Telemetry, TelemetrySink, WORDS as TELEMETRY_WORDS};
 pub use telemetry_cell::TelemetryCell;
 pub use undo::UndoOp;
 pub use zone_assign::zone_code;
+#[cfg(test)]
+mod tests_footprint;
 #[cfg(test)]
 mod tests_sharing;
 #[cfg(test)]
@@ -115,17 +117,17 @@ pub use sharing::FxSharing;
 #[derive(Debug, Clone)]
 pub struct Stage4Engine {
     pub sample_rate: f32,
-    pub organ_a: OrganLayer,
-    pub organ_b: OrganLayer,
+    pub organ_a: Box<OrganLayer>,
+    pub organ_b: Box<OrganLayer>,
     /// Vox / Farf vibrato shared by both organ layers (manual p.20-21); default off, see
     /// [`Self::apply_organ_sharing`].
     pub organ_shared_vibrato: bool,
-    pub piano_a: PianoLayer,
-    pub piano_b: PianoLayer,
-    pub synth_a: SynthLayer,
-    pub synth_b: SynthLayer,
-    pub synth_c: SynthLayer,
-    pub fx_chains: [LayerFxChain; 7],
+    pub piano_a: Box<PianoLayer>,
+    pub piano_b: Box<PianoLayer>,
+    pub synth_a: Box<SynthLayer>,
+    pub synth_b: Box<SynthLayer>,
+    pub synth_c: Box<SynthLayer>,
+    pub fx_chains: Box<[LayerFxChain]>,
     /// GLOBAL / GROUP effect modes (all off by default); applied by [`Self::apply_fx_sharing`].
     pub fx_sharing: FxSharing,
     /// Shared Reverb of GLOBAL mode (after the rotary and the level faders, manual p.52).
@@ -171,6 +173,9 @@ pub struct Stage4Engine {
     /// Program Levels offset in dB (manual p.46) and its linear gain (`1.0` when `0 dB`).
     program_level_db: f32,
     program_gain: f32,
+    /// Synth layer faders follow `(v / 127)^2` like the piano and organ layers (opt-in, EMPIRICAL:
+    /// `docs/research/grand-pad-vs-video.md`; the synth level handler is not run).
+    pub synth_layer_law: bool,
     /// Copy/Paste buffer; survives program changes. Control thread only.
     pub clipboard: Option<Clip>,
     /// Single-level Undo snapshot. Control thread only.
@@ -185,24 +190,38 @@ pub struct Stage4Engine {
     telemetry_out: TelemetrySink,
 }
 
+/// Builds `make()` and moves it to the heap from a frame of its own. In a debug build the
+/// temporaries of a constructor stay allocated until the caller returns, so boxing every layer
+/// inside `Stage4Engine::new` would stack all of them at once (TD-05).
+#[inline(never)]
+fn heap<T>(make: impl FnOnce() -> T) -> Box<T> {
+    Box::new(make())
+}
+
+/// Seven layer FX chains on the heap, one slice element at a time (a slice clones element by
+/// element, where a `Box<[LayerFxChain; 7]>` would copy 40 KB through the stack, TD-05).
+fn boxed_fx_chains(fs: f32) -> Box<[LayerFxChain]> {
+    (0..7).map(|_| LayerFxChain::new(fs)).collect()
+}
+
 impl Stage4Engine {
     /// Creates a pre-allocated 7-layer Stage 4 DSP engine at `sample_rate`.
     pub fn new(sample_rate: f32) -> Self {
         let fs = sample_rate.max(8000.0);
         Self {
             sample_rate: fs,
-            organ_a: OrganLayer::new(fs),
-            organ_b: OrganLayer::new(fs),
+            organ_a: heap(|| OrganLayer::new(fs)),
+            organ_b: heap(|| OrganLayer::new(fs)),
             organ_shared_vibrato: false,
-            piano_a: PianoLayer::new(fs),
-            piano_b: PianoLayer::new(fs),
-            synth_a: SynthLayer::new(fs),
-            synth_b: SynthLayer::new(fs),
-            synth_c: SynthLayer::new(fs),
-            fx_chains: std::array::from_fn(|_| LayerFxChain::new(fs)),
+            piano_a: heap(|| PianoLayer::new(fs)),
+            piano_b: heap(|| PianoLayer::new(fs)),
+            synth_a: heap(|| SynthLayer::new(fs)),
+            synth_b: heap(|| SynthLayer::new(fs)),
+            synth_c: heap(|| SynthLayer::new(fs)),
+            fx_chains: boxed_fx_chains(fs),
             fx_sharing: FxSharing::default(),
-            global_reverb: Box::new(LayerFxChain::new(fs)),
-            rotary_bus: Box::new(OrganLayer::new(fs)),
+            global_reverb: heap(|| LayerFxChain::new(fs)),
+            rotary_bus: heap(|| OrganLayer::new(fs)),
             layer_levels: [MorphParameter::new(0.8); 7],
             synth_cutoff_morph: [MorphParameter::new(0.5); 3],
             morph_controllers: MorphControllers::default(),
@@ -228,6 +247,7 @@ impl Stage4Engine {
             held_transpose: Box::new([[0; 128]; 16]),
             program_level_db: 0.0,
             program_gain: 1.0,
+            synth_layer_law: false,
             clipboard: None,
             undo: undo::UndoSlot::default(),
             undo_hint: UndoHint::default(),

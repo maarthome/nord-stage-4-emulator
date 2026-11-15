@@ -15,6 +15,7 @@
 //! A higher-resolution photo or a tape measure on the instrument would
 //! confirm or replace them.
 
+pub mod dump;
 mod effects;
 mod estimated;
 mod frames;
@@ -26,11 +27,13 @@ mod piano;
 mod program;
 mod shared;
 mod synth;
+mod topdown;
 
 use crate::types::Section;
 
 pub use estimated::ESTIMATED;
 pub use frames::{frame_def, frame_rect, frames_of, FrameDef, FrameKind, FRAMES};
+pub use keybed::SPLIT_LED_WHITE_KEYS;
 pub use shared::{shared_base, SHARED};
 
 /// Instrument width in mm (88-key model).

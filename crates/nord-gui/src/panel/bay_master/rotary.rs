@@ -6,16 +6,18 @@
 //! Master area (the Organ section starts right of it) and the wide legends are centred on the
 //! frame, not on the button.
 
-use super::super::ctl::{gesture_button, led_small, mark, shift_legend, tag, Face};
+use super::super::ctl::{gesture_button, mark, shift_legend, Face};
+use super::super::ctl_led_tag::tag_led;
 use super::super::layout_px::rect_or_empty;
 use super::super::prelude::*;
 use crate::audio::OrganEdit;
 use nord_panel::behaviour::Trigger;
 
-/// Frame extent left of the button column centre (px).
-const FRAME_LEFT: f32 = 52.0;
+/// Frame extent left of the button column centre (px). The buttons sit on the frame's vertical
+/// centre line (`layout_tweaks`: every `rotary.` control moves 11 px left).
+const FRAME_LEFT: f32 = 41.0;
 /// Frame extent right of the button column centre (px), capped by the section edge.
-const FRAME_RIGHT: f32 = 30.0;
+const FRAME_RIGHT: f32 = 41.0;
 /// Free space kept between the frame and the Master / Organ section boundary (px).
 const SECTION_GAP: f32 = 3.0;
 /// Distance from the bottom of the DRIVE knob rectangle to its name (px): below the `0` and `10`.
@@ -135,7 +137,6 @@ fn render_rotary_buttons(
     // ORGAN (route the organ through the rotary speaker) with CLOSE MIC on Shift.
     let organ = rc("rotary.organ");
     let face = Face {
-        led: Some(state.organ_ui.rotary_organ),
         tip: "ORGAN: route the Organ through the rotary speaker. Shift+tap: CLOSE MIC",
         ..Face::black()
     };
@@ -161,7 +162,7 @@ fn render_rotary_buttons(
         }
         _ => {}
     }
-    tag(painter, organ, "ORGAN", 7.0);
+    tag_led(painter, organ, "ORGAN", state.organ_ui.rotary_organ);
     shift_legend(
         ui,
         organ,
@@ -174,7 +175,6 @@ fn render_rotary_buttons(
     // STOP MODE with the stop ANGLE picker (and the mic angle toggle) on Shift.
     let stop = rc("rotary.stop_mode");
     let face = Face {
-        led: Some(state.rotary_stop),
         tip: "STOP MODE: the slow position becomes the brake",
         ..Face::black()
     };
@@ -195,7 +195,7 @@ fn render_rotary_buttons(
         }
         _ => {}
     }
-    tag(painter, stop, "STOP MODE", 7.0);
+    tag_led(painter, stop, "STOP MODE", state.rotary_stop);
     shift_legend(
         ui,
         stop,
@@ -207,90 +207,7 @@ fn render_rotary_buttons(
     // The mic separation toggle is a row of the popup; the id is painted with the legend.
     mark(ui, "rotary.angle");
     super::super::rotor_angle::draw(ui, painter, stop, state, audio);
-    render_speed(ui, painter, o, frame, state, audio);
-}
-
-/// SLOW/STOP - FAST button, its two LEDs and legends.
-fn render_speed(
-    ui: &mut Ui,
-    painter: &Painter,
-    o: egui::Pos2,
-    frame: Rect,
-    state: &mut Stage4PanelState,
-    audio: &AudioHandle,
-) {
-    let fast = matches!(state.rotary_speed, RotarySpeed::Fast);
-    let leds = rect_or_empty("rotary.speed_leds", o);
-    let ly = leds.center().y;
-    // Hardware order: LED, then its name. The row rectangle spans both pairs.
-    let (lx_slow, lx_fast) = (leds.left() - 0.4, leds.center().x + 3.0);
-    // LEDs show the real rotor state (a pedal can change it); `fast` stays the UI toggle.
-    let (led_slow, led_fast) = (
-        state.telemetry.rotary_slow(fast),
-        state.telemetry.rotary_fast(fast),
-    );
-    led_small(
-        painter,
-        pos2(lx_slow, ly),
-        led_slow,
-        LED_GREEN,
-        LED_GREEN_DIM,
-        1.6,
-    );
-    led_small(
-        painter,
-        pos2(lx_fast, ly),
-        led_fast,
-        LED_RED,
-        LED_RED_DIM,
-        1.6,
-    );
-    label(
-        painter,
-        pos2(lx_slow + 4.5, ly),
-        "SLOW",
-        5.0,
-        Color32::WHITE,
-        Align2::LEFT_CENTER,
-    );
-    label(
-        painter,
-        pos2(lx_fast + 4.5, ly),
-        "FAST",
-        5.0,
-        Color32::WHITE,
-        Align2::LEFT_CENTER,
-    );
-    mark(ui, "rotary.speed_leds");
-    let speed = rect_or_empty("rotary.speed", o);
-    let face = Face {
-        tip: "Toggle slow/stop and fast rotor speed",
-        ..Face::black()
-    };
-    if let Some(Trigger::Primary) = gesture_button(
-        ui,
-        &mut state.organ_ui.trackers,
-        speed,
-        "rotary.speed",
-        false,
-        face,
-    ) {
-        state.rotary_speed = if fast {
-            RotarySpeed::Slow
-        } else {
-            RotarySpeed::Fast
-        };
-        send_rotary(state, audio);
-    }
-    label_fit(
-        painter,
-        pos2(frame.center().x, speed.bottom() + 6.5),
-        "SLOW/STOP - FAST",
-        5.0,
-        frame.width() - 4.0,
-        Color32::WHITE,
-        Align2::CENTER_CENTER,
-    );
+    super::rotary_speed::render_speed(ui, painter, o, frame, state, audio);
 }
 
 #[cfg(test)]

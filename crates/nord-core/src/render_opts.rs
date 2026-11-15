@@ -93,8 +93,8 @@ pub fn apply_b3_tail(engine: &mut Stage4Engine, tail: Option<bool>) {
 /// Switches the Farfisa processor stage of both organ layers (`None` leaves the engine untouched).
 pub fn apply_farfisa_processor(engine: &mut Stage4Engine, on: Option<bool>) {
     if let Some(on) = on {
-        engine.organ_a.farfisa_processor = on;
-        engine.organ_b.farfisa_processor = on;
+        engine.organ_a.set_farfisa_processor(on);
+        engine.organ_b.set_farfisa_processor(on);
     }
 }
 
@@ -301,6 +301,8 @@ pub struct FirmwareOptions {
     pub piano_chain_scale: bool,
     /// `--firmware-piano-layer-law`: the piano layer fader follows `(v / 127)^2` (opt-in).
     pub piano_layer_law: bool,
+    /// `--firmware-synth-layer-law`: the synth layer faders follow `(v / 127)^2` (opt-in, EMPIRICAL).
+    pub synth_layer_law: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,
     /// `--synth-shape <0..1>`: strip shape word of the SHAPE oscillator (`fw_shape.rs`) in
@@ -367,6 +369,7 @@ impl Default for FirmwareOptions {
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
+            synth_layer_law: false,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -417,6 +420,7 @@ impl FirmwareOptions {
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
+            synth_layer_law: false,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -488,6 +492,7 @@ impl FirmwareOptions {
         o.piano_slew |= has("--piano-slew-fw");
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
+        o.synth_layer_law |= has("--firmware-synth-layer-law");
         o.measured_laws |= has("--measured-laws");
         o.synth_stages |= has("--synth-stages");
         o.synth_knob_laws |= has("--synth-knob-laws");
@@ -573,6 +578,7 @@ impl FirmwareOptions {
         engine.piano_b.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
+        engine.synth_layer_law = self.synth_layer_law;
         apply_b3_tail(engine, self.b3_tail);
         apply_farfisa_processor(engine, self.farfisa_processor);
         apply_b3_bass_processor(engine, self.b3_bass_processor);
@@ -632,6 +638,7 @@ impl FirmwareOptions {
         engine.piano_b.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
+        engine.synth_layer_law = self.synth_layer_law;
         self.set_rotary(engine);
         let bass = self.b3_bass_processor == Some(true);
         apply_b3_tail(engine, Some(!bass && self.b3_tail.unwrap_or(true)));
@@ -653,7 +660,7 @@ impl FirmwareOptions {
         self.set_organ_level(engine);
         self.set_leslie(engine);
         for organ in [&mut engine.organ_a, &mut engine.organ_b] {
-            organ.farfisa_processor = self.farfisa_processor == Some(true);
+            organ.set_farfisa_processor(self.farfisa_processor == Some(true));
         }
     }
 
@@ -790,6 +797,9 @@ impl FirmwareOptions {
         if self.piano_layer_law {
             parts.push("piano-layer-law".into());
         }
+        if self.synth_layer_law {
+            parts.push("synth-layer-law".into());
+        }
         if let Some(m) = self.synth_shape_milli {
             parts.push(format!("shape={:.2}", f32::from(m) / 1000.0));
         }
@@ -890,6 +900,12 @@ mod tests {
         assert!(!o.piano_layer_law, "the layer law is opt-in");
         let law = FirmwareOptions::from_args(&args(&["--firmware-piano-layer-law"])).unwrap();
         assert!(law.piano_layer_law && law.summary().contains("piano-layer-law"));
+        assert!(!o.synth_layer_law, "the synth layer law is opt-in");
+        let sl = FirmwareOptions::from_args(&args(&["--firmware-synth-layer-law"])).unwrap();
+        assert!(sl.synth_layer_law && sl.summary().contains("synth-layer-law"));
+        let mut e = Stage4Engine::new(48_000.0);
+        sl.apply_to(&mut e);
+        assert!(e.synth_layer_law);
         let mut e = Stage4Engine::new(48_000.0);
         bus.apply_to(&mut e);
         assert!(e.piano_a.firmware_bus_scale && e.piano_b.firmware_bus_scale);
