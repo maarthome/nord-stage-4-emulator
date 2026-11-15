@@ -65,7 +65,7 @@ def decode_mov_reg(insn: int) -> tuple[int, int] | None:
 
 
 def decode_defaults(code: bytes, base: int = ax.LOAD_BASE) -> dict[str, int]:
-    """Defaults routine: `mov r2,#hold; mov r1,#repeat; str r1,[r0,#4]; str r2,[r0]; str r2,[r0,#8]`."""
+    """Defaults routine: `mov r2,#hold`, `mov r1,#repeat`, then three `str rN, [r0, #off]`."""
     regs: dict[int, int] = {}
     out: dict[str, int] = {}
     addr = DEFAULTS_ROUTINE
