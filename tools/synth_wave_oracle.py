@@ -43,6 +43,7 @@ import synth_stage_sync3 as sync3
 import synth_stage_sync6 as sync6
 import synth_stage_sync7 as sync7
 import synth_stage_unison as unison
+import synth_stage_wave as wave_bank
 import synth_wave_model as m
 
 # VERIFIED (`docs/research/org-stage-map.md` s2-s3, listing of the pass): stage-A call frame.
@@ -79,7 +80,8 @@ STAGE_SUPER1 = 0x121E9D
 STAGE_SHAPE3 = 0x120F55
 STAGE_SHAPE4 = 0x12145E
 STAGE_SUPER24 = 0x124985
-UNISON_STAGES = (STAGE_SUPER, STAGE_MULTI, STAGE_SUPER1, STAGE_SUPER24)
+STAGE_WAVE = 0x1247B6  # WAVE bank (kOscBank 3), strip types 54 and 56
+UNISON_STAGES = (STAGE_SUPER, STAGE_MULTI, STAGE_SUPER1, STAGE_SUPER24, STAGE_WAVE)
 PHASE_TABLE = 0xC2336  # voice phase words, lane x at even offsets, lane y one above
 NOISE_STATE = 0xB2EF9  # DM state word of lane x (lane y one above)
 PULSE_WORD = 0xC15AE  # DM(-8, I1) of channel 0, read by both lanes (I1 is not duplicated in SIMD)
@@ -125,6 +127,7 @@ PITCH_STAGES = (
     STAGE_SHAPE3,
     STAGE_SHAPE4,
     STAGE_SUPER24,
+    STAGE_WAVE,
 )
 PITCH_SEMITONES = (-24.0, 48.0)
 IDLE_PITCH = 0.006028  # pitch word with `DM(0xC2716) = 0`
@@ -179,6 +182,7 @@ MODELS = {
     STAGE_SHAPE3: shape3.stage_shape3,
     STAGE_SHAPE4: shape4.stage_shape4,
     STAGE_SUPER24: lambda lanes: super2.stage_super24(lanes, super2.load_tables()),
+    STAGE_WAVE: lambda lanes: wave_bank.stage_wave(lanes, super2.load_tables()),
 }
 
 
@@ -302,7 +306,7 @@ def run_pass(
     sharc_org: str, image: str, lanes: list[m.Lane], stage: int = STAGE
 ) -> dict[int, int]:  # pragma: no cover
     """One pass in the oracle; returns every DM word of the frame region after the pass."""
-    allp = super2.table_pokes() if stage == STAGE_SUPER24 else {}
+    allp = super2.table_pokes() if stage in (STAGE_SUPER24, STAGE_WAVE) else {}
     allp.update(pokes(lanes))
     lines = [f"0 {A_ENTRY:#x} {stage:#x}"] + [f"0 {a:#x} {v:#x}" for a, v in allp.items()]
     with tempfile.TemporaryDirectory() as tmp:
@@ -334,6 +338,8 @@ def compare(
         lanes = random_lanes(rng, stage in UNISON_STAGES)
         if stage == STAGE_SUPER24:
             super2.random_state(seed, lanes)
+        if stage == STAGE_WAVE:
+            wave_bank.random_state(seed, lanes)
         random_hp(rng, lanes, stage)
         random_misc(seed, lanes, stage)
         random_s5(seed, lanes, stage)

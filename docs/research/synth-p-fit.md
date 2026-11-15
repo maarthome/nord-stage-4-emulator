@@ -4,6 +4,8 @@
 - **Sources (local, never committed):** Nord Stage 4 demo Part A (`_zksT69H30c`, Smooth Lead A:87 at 2420 s, 22 s, 156 video-confirmed notes, `tools/emu_vs_hw.py`), the Audible Genius lesson clips in `.reference/audible-genius-nord-4/` (Pure Saw and Pure Square notes of the pitch-blip clip, laser-zap clip, Super Saw clip), `tools/synth_wave_model.py` (bit-exact stages), `ns4 render-patch --synth-chain strip --synth-p`. Throw-away drivers lived in a scratch directory; the reusable parts are `tools/synth_p_fit.py` and `tools/tests/test_synth_p_fit.py`. Nothing from the clips (audio, video, frames) is committed, only derived numbers.
 - **Question:** The stages are exact for any P block ([synth-wave-models](synth-wave-models.md)) but no reachable path writes the block of a program. Which block values make the exact stages reproduce the hardware sound, and is the strip chain then good enough to become the synth default (D22)?
 
+> **Update ([synth-p-writer](synth-p-writer.md)):** the real P words are now captured per wave (the ARM writes them). They fix the pulse gain (`1.6 x 0.175 = 0.28` against the fitted 0.27 for the square, 0.32 and 0.40 for pulse 33 and 10) and show that the fitted second oscillator of the Smooth Lead (weight 0.35, octave) has no counterpart: SHAPE writes one oscillator at ratio 1 (`P[-12 .. -9] = 0`). The fit therefore absorbed the cutoff and level, not a second oscillator; opt-in `--synth-p verified`.
+
 Tags follow `.agents/rules/provenance-in-code.md`. The audio is lossy YouTube audio with speech, and the velocity of every note is unknown, so all numbers are shape evidence with the stated uncertainty.
 
 ## 1. Short answer
