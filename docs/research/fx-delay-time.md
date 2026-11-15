@@ -1,5 +1,7 @@
 # FX delay time law: `kDlyRateClkDiv` to delay samples
 
+> **Superseded in part (2026-11-14, D61):** the table index is a time in ms and the word counts DSP frames at 43,402.34 Hz, so the 48 kHz figures below (range 18.1 ms to 1.28 s) become 20 ms to 1.416 s; tempo sync is decoded in [fx-delay-tempo](fx-delay-tempo.md).
+
 - **Checked:** 2026-11-13
 - **Sources (local, never committed):** `target/fw_unpacked/bank0_CODE.bin` and `bank0_SRAM.bin` (OS v1.66, ARM base `0xC0000000`), the `unicorn` ARM harness settled snapshot ([fx-contexts](fx-contexts.md) s2, `tools/arm_edit_capture.py`, `tools/fx_clients.py`), `capstone` listings of the handler, the FX Core 2 flat SRAM image (`tools/ns4_dsp_ldr.py --sram`), ADI `elfdump` listing (`tools/adi_dis.py 0x240000 0x250000`), the `sharc-fx` oracle. Derived data committed: [data/fx-delay-time.csv](data/fx-delay-time.csv) (264 captured `(value, word)` pairs) and the 1501-entry threshold list in `crates/nord-core/src/fx/fw_delay_table.rs`; no firmware bytes beyond that numeric list.
 - **Question:** what does `Edt_Effects_kDlyRateClkDiv` (0..16383) do to the delay, i.e. what is the closed form from the UI value to the delay in samples, and what do the delay routine variants `0x1206B0` / `0x1208AF` / `0x120AB5` / `0x120D15` do with the three words `c[0x15]`, `c[0x16]`, `c[0x19]` the ARM writes?
