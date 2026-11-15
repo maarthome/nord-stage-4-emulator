@@ -293,6 +293,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Pitch law helper `piano/step_q32.rs` (1,201-entry cents table VERIFIED against ARM `0xC02A6168`) and level law helper `piano/level_q23.rs` (61-entry table VERIFIED against ARM `0xC02A1A08`) ([piano-dsp-path](research/piano-dsp-path.md) s7)
 - [ ] Wire the pitch (cents) and level (60 steps per octave) laws into `PianoLayer`
 - [x] Felt Upright against the Part A video (`piano_felt` segment, [piano-felt-upright-soft](research/piano-felt-upright-soft.md)); on-screen keybed velocity 88 (D76)
+- [x] Piano transcription of the reference videos with Transkun: full-length note / velocity / pedal streams, piano-like flags, `emu_vs_hw.py --events-from transkun`, piano comparisons at the played velocities ([piano-transcription](research/piano-transcription.md), D79)
 - [ ] Piano velocity law: the call-frame word `X` of the level procedure is not traced (needs the key-down capture); the engine keeps `VelocityTouch` power laws until then
 - [ ] Edge handling of the sample stream and the step limit of one decoded sample per frame
 
