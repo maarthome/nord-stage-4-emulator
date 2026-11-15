@@ -22,11 +22,14 @@ mod layout_tweaks;
 #[cfg(test)]
 mod legibility_caps;
 #[cfg(test)]
+mod legibility_leds;
+#[cfg(test)]
 mod legibility_rules;
 #[cfg(test)]
 mod legibility_tests;
 mod organ_drawbars;
 mod organ_logic;
+mod organ_model;
 #[cfg(test)]
 mod organ_master_tests;
 mod organ_preset;

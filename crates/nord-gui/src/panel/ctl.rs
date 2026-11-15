@@ -76,6 +76,20 @@ impl Face<'_> {
     }
 }
 
+/// Radius (px) of the LED above a gesture button.
+pub(super) const LED_ABOVE_R: f32 = 1.8;
+/// Button bezel (px) around the button rectangle (`gesture_button` paints `expand(1.5)`).
+pub(super) const BUTTON_BEZEL_PX: f32 = 1.5;
+/// Free space (px) between an LED bezel and the bezel of its button (audit rule `B`).
+pub(super) const LED_BUTTON_GAP: f32 = 2.5;
+/// Height (px) from a button's top edge to the centre of its LED: bezel, gap, LED bezel radius.
+pub(super) const LED_LIFT: f32 = BUTTON_BEZEL_PX + LED_BUTTON_GAP + LED_ABOVE_R + 1.0;
+
+/// Centre of the state LED above `button`, clear of its bezel by [`LED_BUTTON_GAP`].
+pub(super) fn led_above(button: Rect) -> egui::Pos2 {
+    pos2(button.center().x, button.top() - LED_LIFT)
+}
+
 /// Small LED (no bloom), `r` px radius.
 pub(super) fn led_small(
     p: &Painter,
@@ -250,11 +264,11 @@ pub(super) fn gesture_button(
     if let Some(lit) = face.led {
         led_small(
             p,
-            pos2(rect.center().x, rect.top() - 3.5),
+            led_above(rect),
             lit,
             LED_RED,
             LED_RED_DIM,
-            1.8,
+            LED_ABOVE_R,
         );
     }
     mark(ui, id);

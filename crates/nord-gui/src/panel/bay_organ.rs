@@ -4,7 +4,7 @@
 //! `organ_strip.rs`, the drawbars in `organ_drawbars.rs`; this file has the section frame, the
 //! model selector, PRESET/SYNC, vibrato/chorus and the percussion buttons.
 
-use super::ctl::{gesture_button, led_small, shift_legend, tag, tag_fit, Face};
+use super::ctl::{gesture_button, shift_legend, tag, tag_fit, Face};
 use super::layout_px::{rect_or_empty, to_px};
 use super::organ_drawbars::render_drawbars;
 use super::organ_logic::{model_index, scanner_for, vib_index, MODELS, VIB_TYPES};
@@ -65,34 +65,7 @@ fn render_model(
     }
     // Above the model LEDs and their names, not over them.
     let leds = rect_or_empty("organ.model_leds", origin);
-    // Six LEDs, two columns of three, with the model names beside them.
-    let names = [("B3", "BASS"), ("VOX", "FARF"), ("PIPE1", "PIPE2")];
-    for i in 0..MODELS.len() {
-        let c = pos2(
-            leds.left() + leds.width() * if i % 2 == 0 { 0.2 } else { 0.8 },
-            leds.top() + leds.height() * ((i / 2) as f32 + 0.5) / 3.0,
-        );
-        led_small(painter, c, i == idx, LED_RED, LED_RED_DIM, 1.5);
-    }
-    for (row, (l, r)) in names.iter().enumerate() {
-        let y = leds.top() + leds.height() * (row as f32 + 0.5) / 3.0;
-        label(
-            painter,
-            pos2(leds.left() - 3.0, y),
-            l,
-            5.0,
-            Color32::WHITE,
-            Align2::RIGHT_CENTER,
-        );
-        label(
-            painter,
-            pos2(leds.right() + 3.0, y),
-            r,
-            5.0,
-            Color32::WHITE,
-            Align2::LEFT_CENTER,
-        );
-    }
+    super::organ_model::paint(painter, leds, idx);
     super::ctl::mark(ui, "organ.model_leds");
 }
 
