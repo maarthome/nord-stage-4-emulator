@@ -278,3 +278,18 @@ ns4 render-patch "Program/Bank A/Smooth Lead.ns4p" --backup <factory.ns4b> --eve
 ```
 
 The lesson WAVs are `ffmpeg -i clip.webm -vn -ac 2 -ar 48000 <id>.wav`.
+
+## 10. Verified P words against the 15 clips (`--synth-p verified`, D62)
+
+The ARM writes the oscillator words per wave ([synth-p-writer](synth-p-writer.md)). The opt-in table `--synth-p verified` (`synth/p_words.rs`) takes the gain of the rows that a single oscillator describes from them (`1.6 x P[16] x weight`; the saw calibrates the level, EMPIRICAL) and keeps the cutoff factors and the MULTI / SUPER rows. Run: `python tools/synth_validate.py run ... --variants strip+st+tbl --p-table "table:saw=0.4/0/1/0.5/0.85;pulse=0.28/0/1/0.5/0.85;shape=0.4/0/1/1/1.75;shapesaw=0.4/0/1/0.5/0.85;shapesq=0.4/0/1/0.5/1;shapesine=0.4/0/1/1/3"` against the default (same clips, same binaries).
+
+| Clip | wave | default score / RMS | verified score / RMS |
+|---|---|---|---|
+| lead_smooth | shape | 0.69 / -0.94 dB | 0.69 / -4.47 dB |
+| lead_crunch | shape | 1.23 / +2.24 dB | 1.23 / -1.21 dB |
+| sweep_12db | shape square | 1.97 / +7.28 dB | 2.72 / +1.33 dB |
+| sine_pluck | shape sine | 4.75 / -0.04 dB | 4.75 / -1.98 dB |
+| ag_blip_square | pulse | 3.29 / -13.97 dB | 3.29 / -13.65 dB |
+| the other 10 clips | | identical | identical |
+
+15-clip mean score 3.40 (default) against 3.45 (verified), hold-out mean gain over legacy 4.42 against 4.33; the D22 bar against legacy holds (0 clips over it). Reading: the three SHAPE rows are level-consistent with the words (0.4) for `lead_crunch` and `sweep_12db` (RMS error 2.2 / 7.3 dB down to 1.2 / 1.3 dB) but `lead_smooth` loses 3.5 dB because its EMPIRICAL gain 0.6 and cutoff factor 1.75 were fitted jointly (the cutoff factor must be refitted with the verified gain); `sweep_12db` loses 0.75 in score for the same reason (its filter, not its level). The Pure Square level of the pitch-blip clip is unaffected (velocity unknown). No flip: the table is not better than the default by score (+0.05 worse), it only replaces fitted levels by verified ones; the default keeps the EMPIRICAL table.

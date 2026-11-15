@@ -1,0 +1,261 @@
+//! The oscillator P block words the ARM writes per wave type (VERIFIED by run), and the opt-in
+//! `--synth-p verified` table built from them.
+//!
+//! The ARM strip apply function `0xC01CE7D8` calls the table driven writers `0xC01C72CC`,
+//! `0xC01C7550` and `0xC01C94CC`, which send ~44 one-word messages `(slot, float)` into
+//! `DM(0xC169A + 0x96 slot + index)` of the ORG / PNO core 2 images (`tools/synth_p_writer.py`,
+//! `docs/research/synth-p-writer.md`). The capture `docs/research/data/synth-p-words.csv` holds
+//! the words of slot 0 per type index (`a = b = 0` rows) plus the unison variants. Index
+//! convention: `p_index = dm - 0xC169A` (the stage reads `P[-32 .. 117]`).
+//!
+//! What the words determine: gain `P[16 + lane]`, own / cross weights `P[-16 .. -9]`, the two
+//! oscillator ratios `P[-32 + lane]`, `P[-30 + lane]` and, for the SUPER stages, the sixteen
+//! unison ratios `P[-32 .. -17]`. What they do not: the level of the whole chain (the voice gain
+//! chain after the stage) and the cutoff factors, which stay EMPIRICAL.
+//!
+//! Spec: `docs/specs/synth-engine.md` section 4.2.
+
+use std::collections::BTreeMap;
+use std::sync::OnceLock;
+
+use super::p_table::{PTable, PTableSpec, PWave, PWAVE_COUNT};
+
+const WORDS_CSV: &str = include_str!("../../../../docs/research/data/synth-p-words.csv");
+const TYPES_CSV: &str = include_str!("../../../../docs/research/data/synth-wave-types.csv");
+
+/// EMPIRICAL: level of the voice chain behind the stage in units of `P[16]` (the saw row of the
+/// EMPIRICAL table has gain 0.4 for `P[16] = 0.25`, so one unit of `P[16]` is 1.6 engine gain;
+/// the Pure Saw level is the one the hardware clips fix best, `docs/research/synth-p-fit.md`
+/// s2: one oscillator, 0.3 dB harmonic residual). The pulse rows then follow from the words
+/// alone: `1.6 x 0.175 = 0.28` against the fitted 0.27.
+pub const GAIN_PER_P16: f32 = 1.6;
+
+/// Words of one type, `p_index -> bits`.
+#[derive(Debug, Clone, Default)]
+pub struct PWords {
+    words: BTreeMap<i32, u32>,
+}
+
+impl PWords {
+    /// Float word at `P[index]`, if the ARM wrote it for this type.
+    pub fn get(&self, index: i32) -> Option<f32> {
+        self.words.get(&index).map(|b| f32::from_bits(*b))
+    }
+
+    fn at(&self, index: i32) -> f32 {
+        self.get(index).unwrap_or(0.0)
+    }
+
+    /// Stage output gain `P[16]` (lane x).
+    pub fn gain(&self) -> f32 {
+        self.at(16)
+    }
+
+    /// Weight of the first oscillator as seen at lane x output (own `P[-16]` plus cross
+    /// `P[-13]`: the lane mix of `0x242742..0x2428BA`, both lanes carry the same wave).
+    pub fn osc1_weight(&self) -> f32 {
+        self.at(-16) + self.at(-13)
+    }
+
+    /// Weight of the second oscillator at lane x output (own `P[-12]` plus cross `P[-9]`).
+    pub fn osc2_weight(&self) -> f32 {
+        self.at(-12) + self.at(-9)
+    }
+
+    /// Second oscillator frequency relative to the first, lane x (`P[-30] / P[-32]`).
+    pub fn ratio2(&self) -> f32 {
+        let r1 = self.at(-32);
+        if r1 == 0.0 {
+            1.0
+        } else {
+            self.at(-30) / r1
+        }
+    }
+
+    /// The unison voice ratios of lane x (`P[-32 + 2 j]`, `j = 0 .. 7`), when the type writes the
+    /// sixteen-word spread table (the SUPER types 22 to 26).
+    pub fn unison_ratios_x(&self) -> Option<[f32; 8]> {
+        if !self.words.contains_key(&-17) {
+            return None;
+        }
+        let mut out = [0.0; 8];
+        for (j, r) in out.iter_mut().enumerate() {
+            *r = self.get(-32 + 2 * j as i32)?;
+        }
+        Some(out)
+    }
+
+    /// Engine gain of a single-oscillator stage: `GAIN_PER_P16 * P[16] * osc1 weight`.
+    pub fn engine_gain(&self) -> f32 {
+        GAIN_PER_P16 * self.gain() * self.osc1_weight()
+    }
+}
+
+struct Tables {
+    by_type: Vec<PWords>,
+    /// `(category, wave) -> type`, bank 0 (ANALOG).
+    type_of: BTreeMap<(u8, u8), usize>,
+}
+
+fn tables() -> &'static Tables {
+    static T: OnceLock<Tables> = OnceLock::new();
+    T.get_or_init(|| {
+        let mut by_type: Vec<PWords> = Vec::new();
+        for line in WORDS_CSV.lines().skip(1) {
+            let f: Vec<&str> = line.split(',').collect();
+            if f.len() < 7 || f[1] != "0" || f[2] != "0" {
+                continue;
+            }
+            let (Ok(t), Ok(i), Some(bits)) = (
+                f[0].parse::<usize>(),
+                f[4].parse::<i32>(),
+                f[5].strip_prefix("0x")
+                    .and_then(|h| u32::from_str_radix(h, 16).ok()),
+            ) else {
+                continue;
+            };
+            if by_type.len() <= t {
+                by_type.resize_with(t + 1, PWords::default);
+            }
+            by_type[t].words.insert(i, bits);
+        }
+        let mut type_of = BTreeMap::new();
+        for line in TYPES_CSV.lines().skip(1) {
+            let f: Vec<&str> = line.split(',').collect();
+            if f.len() < 5 || f[1] != "0" {
+                continue;
+            }
+            if let (Ok(c), Ok(w), Ok(t)) = (f[2].parse(), f[3].parse(), f[4].parse()) {
+                type_of.insert((c, w), t);
+            }
+        }
+        Tables { by_type, type_of }
+    })
+}
+
+/// Type index of an ANALOG `(category, wave)` pair (`data/synth-wave-types.csv`).
+pub fn type_of(category: u8, wave: u8) -> Option<usize> {
+    tables().type_of.get(&(category, wave)).copied()
+}
+
+/// Number of types in the capture.
+pub fn type_count() -> usize {
+    tables().by_type.len()
+}
+
+/// The words of a type.
+pub fn words_of_type(t: usize) -> Option<&'static PWords> {
+    tables().by_type.get(t).filter(|w| !w.words.is_empty())
+}
+
+/// The words of an ANALOG `(category, wave)` pair.
+pub fn words_for(category: u8, wave: u8) -> Option<&'static PWords> {
+    words_of_type(type_of(category, wave)?)
+}
+
+/// Representative `(category, wave)` of each table row that a single oscillator describes.
+const ROWS: [(PWave, u8, u8); 6] = [
+    (PWave::PureSaw, 0, 2),
+    (PWave::PurePulse, 0, 3),
+    (PWave::ShapeTriangle, 3, 0),
+    (PWave::ShapeSaw, 3, 1),
+    (PWave::ShapeSquare, 3, 2),
+    (PWave::ShapeSine, 4, 0),
+];
+
+impl PTableSpec {
+    /// The table of `--synth-p verified`: for the rows a single oscillator describes, the gain is
+    /// `GAIN_PER_P16 * P[16] * weight` from the ARM words (VERIFIED words, one EMPIRICAL level
+    /// constant); the cutoff factors and the MULTI / SUPER rows stay as in [`PTable::FITTED`]
+    /// (their stages mix several voices, the Rust stages keep their own normalisation).
+    pub fn verified() -> PTableSpec {
+        let mut rows = [None; PWAVE_COUNT];
+        for (w, c, v) in ROWS {
+            if let Some(words) = words_for(c, v) {
+                let b = PTable::FITTED.block(w);
+                rows[w as usize] = Some([
+                    (words.engine_gain() * 1000.0).round() as i32,
+                    0,
+                    1000,
+                    (b.shape * 1000.0).round() as i32,
+                    (b.cutoff_scale * 1000.0).round() as i32,
+                ]);
+            }
+        }
+        PTableSpec::from_rows(rows)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saw_is_one_oscillator_with_the_arm_gain() {
+        let w = words_for(0, 2).unwrap();
+        assert_eq!(type_of(0, 2), Some(2));
+        assert_eq!((w.at(-32), w.at(-30), w.gain()), (1.0, 1.0, 0.25));
+        assert_eq!((w.osc1_weight(), w.osc2_weight()), (1.0, 0.0));
+        assert!((w.engine_gain() - 0.4).abs() < 1e-6, "calibrates the level");
+    }
+
+    #[test]
+    fn pulse_types_differ_by_the_gain_only() {
+        let g: Vec<f32> = (3..=5).map(|v| words_for(0, v).unwrap().gain()).collect();
+        assert_eq!(g, vec![0.175, 0.2, 0.25]);
+        let square = words_for(0, 3).unwrap().engine_gain();
+        assert!((square - 0.28).abs() < 1e-6, "fitted 0.27: {square}");
+    }
+
+    #[test]
+    fn multi_has_a_detuned_second_oscillator() {
+        let w = words_for(5, 0).unwrap();
+        assert_eq!(type_of(5, 0), Some(16));
+        assert!((w.ratio2() - 1.008_702).abs() < 1e-6);
+        assert!((w.osc2_weight() - 0.85).abs() < 1e-6);
+        assert!((w.gain() - 0.176_776_7).abs() < 1e-6);
+    }
+
+    #[test]
+    fn super_types_carry_the_unison_ratios() {
+        let w = words_for(6, 2).unwrap();
+        let r = w.unison_ratios_x().unwrap();
+        assert!((r[0] - 0.997_116).abs() < 1e-6 && (r[1] - 1.0087).abs() < 1e-4);
+        assert!((r[7] - 1.04427).abs() < 1e-5);
+        assert_eq!(w.gain(), 0.125);
+        assert!((w.at(-16) - std::f32::consts::FRAC_1_SQRT_2).abs() < 1e-6);
+        assert!(words_for(0, 2).unwrap().unison_ratios_x().is_none());
+        assert_eq!(words_for(6, 0).unwrap().unison_ratios_x(), Some(r));
+    }
+
+    #[test]
+    fn every_analog_wave_has_words() {
+        assert_eq!(type_count(), 74);
+        for (c, n) in [7u8, 3, 9, 5, 7, 6, 5, 3].iter().enumerate() {
+            for v in 0..*n {
+                assert!(words_for(c as u8, v).is_some(), "({c},{v})");
+            }
+        }
+    }
+
+    #[test]
+    fn verified_is_a_synth_p_selection() {
+        use crate::synth::PSpec;
+        let spec = PSpec::parse("verified").unwrap();
+        assert_eq!(spec, PSpec::Table(PTableSpec::verified()));
+        assert_ne!(spec, PSpec::Table(PTableSpec::BUILTIN));
+        assert!(PSpec::parse("VERIFIED").is_ok());
+    }
+
+    #[test]
+    fn verified_table_changes_gains_only() {
+        let t = PTableSpec::verified().table();
+        let f = PTable::FITTED;
+        assert_eq!(t.block(PWave::PureSaw), f.block(PWave::PureSaw));
+        let p = t.block(PWave::PurePulse);
+        assert!((p.gain - 0.28).abs() < 1e-6);
+        assert_eq!(p.cutoff_scale, f.block(PWave::PurePulse).cutoff_scale);
+        assert_eq!(t.block(PWave::Multi), f.block(PWave::Multi));
+        assert_eq!(t.block(PWave::Super), f.block(PWave::Super));
+    }
+}
