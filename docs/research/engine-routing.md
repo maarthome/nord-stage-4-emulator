@@ -131,6 +131,20 @@ So the previous engine rule (layer A only when the whole scene would be silent, 
 
 Not run: scene II through the real load (a scene switch was not driven; the loop is the same with the offset `+0xC`), and the load of programs whose sample sets are missing (the home screen shows `Sample not found` for `Piano Soft Orch` and `Piano Str Pad`: the section table is filled before the sound load, the zone bytes were read after).
 
+## 8. Audit: do piano programs play organ with the routing on? (2026-11-15)
+
+Report (GUI, after D73): "the pianos seem to play with a lot of organ". Hypothesis: `default_layer_a` makes an enabled organ section play layer A in piano programs. **Not confirmed: the rule adds no audible organ to any factory program.**
+
+| Check | Result | Tag |
+|---|---|---|
+| Hardware recall of 4 pianos (`tools/arm_program_load.py`, scene I): `Concert Grand`, `Felt Upright`, `Midnight Upright` organ view `(0, 1)`, piano view `(1, 1)`, synth view `(0, 1)`; zone bytes `[0, 0, 1, 0, 0, 0, 0]` (piano A only). A stored organ layer enable (scene A `[0, 1]` in `Concert Grand`, `Midnight Upright`) is gated by the section enable 0, so it never reaches the zone byte | run | VERIFIED (run, 4 programs) |
+| Same recall of `J3 Grand Layers`: organ view `(1, 1)` (scene A `(1, 0)`, the rule), zone bytes `[1, 0, 1, 1, 1, 1, 1]`: organ A is routed on the hardware too. The decoded organ layer levels of this program are **0.0 / 0.0** | run + decode | VERIFIED (run) |
+| Full sweep, 384 programs, scene I: the exact masks differ from the legacy masks in 9 programs; an organ bit is **added** in 3 (`Farfisa II`, level 1.0, an organ program; `24 Frames J3` organ A level 0.0; `J3 Grand Layers` levels 0.0). Scene II adds no organ bit anywhere. In none of the 40+ piano-named programs does the exact scene I mask hold an organ bit unless the legacy mask does | sweep (`program_sweep`) | decode |
+| `ns4 render-patch` `Concert Grand`, `J3 Grand Layers`: WAV bit-identical with and without `--legacy-routing` (sha256 equal); `Tines Layer` differs (piano A joins synth A + B, no organ) | run | measured |
+| Unit tests: `tests_firmware_routing::a_piano_program_never_reaches_the_organ_in_either_routing_mode`, `piano_program_masks_are_identical_in_both_modes`, `enabled_organ_at_level_zero_is_routed_but_adds_nothing` | tests | |
+
+So the routing change cannot make factory pianos sound like an organ: the section enable gates the stored layer enable (hardware and engine agree), and the two programs that gain organ A beside a piano carry organ levels of 0. The loader rule stays as in section 7. The complaint therefore has another cause that this audit did not find (open: [OQ33](../OPEN-QUESTIONS.md)); candidates not excluded are a user-selected scene II, programs outside the factory bank, the Firmware bar presets, and the piano sound itself (tines and organ-like samples in the `EP` / `Clav` programs).
+
 ## Implications
 
 - The B3 clip gap that looked like an output stage problem is the layer zone: with the routing the sub, the crest and the clipping match the hardware and the RMS is within 4 dB. `B3Wheels` (+ tail) with `--firmware-routing` is now the closest B3 path; the remaining B3 gap is presence / brilliance (-12.5 / -4.7 dB) and the level law `L` (OQ19).
