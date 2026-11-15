@@ -81,6 +81,7 @@ Every custom UI widget in `crates/nord-gui` / `crates/nord-plugin` must render t
 - **Adjacent 8-Segment Red LED Ladder (`1..8`):**
   - Next to every drawbar slot is a white-framed vertical strip numbered `1` through `8` with 8 rectangular red LEDs (`#FF2A2A`).
   - Lights from the top down (`1..N`) to display the active drawbar registration (and any live Morph transition).
+  - Unlit while the Organ section is off and in Drawbar Live (EMPIRICAL: the hardware frame of the piano program `A:13 Felt Upright` shows no lit ladder, [D78](../DECISIONS.md)).
 - **Drawbar Cap Colors:**
   - Indices `0, 1` (`16'`, `5 1/3'`): Black (`#1A1C1E`)
   - Indices `2, 3` (`8'`, `4'`): White (`#ECEBE6`)
@@ -297,3 +298,19 @@ Remaining differences against `.reference/crops` (kept: legibility over fidelity
 | Effects | variation lists beside the rocker LEDs, FREQ / RES numerals (200 ... 8K), FX FOCUS column inside a box | one LED row per selector without names, no numerals on the amp FREQ knob |
 | Master / Program | the PAGE / BANK buttons inside the PROGRAM box | the PAGE buttons touch its left edge |
 | Keybed | keys only | keys plus the three LED names |
+
+### Round 7: LED spacing, Rotary Speaker box, ORGAN MODEL order
+
+LED spacing rules (audit rules `B` and `D`, `panel/legibility_leds.rs`), values in px at the panel scale (`LAYOUT_SCALE` 2):
+
+| Pair | Minimum gap between bezels | Status |
+|---|---|---|
+| LED to the bezel of a button (rectangle + 1.5 px; Effects pills use a 2 px bezel and are built 0.5 px further out) | 2.5 | ASSUMED: the photos show a visible dark gap, none is measurable at 2000 px; chosen to match rule `C` |
+| LED to LED (centre pitch >= diameter + 2) | 2.0 | ASSUMED: same reason |
+| Bar to bar and LED to bar in level ladders | 1.5 | EMPIRICAL: the photos (`NS4-Panel-organ`) show the 11-segment ladders with a thin dark line between bars; 1.5 px is the smallest gap that reads as a separate bar |
+
+First run: 53 `B` and 21 `D` (plus 40 ladder bars at 1.0 px, which the first version of the rule did not record); 0 after. Fixes live in shared helpers: `ctl::led_above` / `LED_LIFT` (state LED above a gesture button), `ctl::LEGEND_DROP` (Shift legend with its LED), `bay_effects::ctx::LED_LIFT_FX`, `lists::COL_DX` / `BOTTOM_ROW` / `NAME_GAP`, `piano_widgets::led_strip` (radius follows the pitch), `bay_piano_select::SIDE_LED` / `LED_ROW_DROP`, `organ_widgets` / `piano_widgets` `SEG_GAP`, `organ_vib_matrix::PITCH_Y`. Names printed above a button with an LED use `ctl::TAG_LIFT_LED`.
+
+Rotary Speaker box (photo `NS4_Panel-crop-left.jpg`): every control and legend sits on the frame's vertical centre line (`layout_tweaks`: the `rotary.` controls move 11 px left; the frame is symmetric, 41 px each side). ORGAN and STOP MODE print as "o NAME" above their button (`ctl_led_tag::tag_led`: text centred on the button, LED left of the text, as on the instrument); SLOW / FAST is one row centred on the line (`bay_master/rotary_speed.rs`); the button pitch is 34 px so the legend above, the 2 px stacked gap (rule `V`) and the name line fit. DRIVE moved 3 px up so its name clears ORGAN.
+
+ORGAN MODEL order (VERIFIED, presentation only, photos `NS4_Panel-crop-left.jpg`, `NS4_HA88_Organ-01_241008.jpg`, manual p.18): the printed columns read FARF, VOX, B3 (left) and PIPE1, PIPE2, B3 BASS (right). `organ_model::SLOTS` maps each printed slot to the engine index; `organ_logic::MODELS` (B3, B3 Bass, Vox, Farf, Pipe 1, Pipe 2) and the button's step order are unchanged. Other lists checked against the photos and found in order: PIANO SELECT (ELECTRIC / CLAV, UPRIGHT / DIGITAL, GRAND / MISC), TIMBRE, VIB/CHORUS matrix (C2 V3 C3 / V2 C1 V1), Mod 1, Mod 2, Amp, Delay variation and filter, Reverb lists, Synth MODE and VOICE.

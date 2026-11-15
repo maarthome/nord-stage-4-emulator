@@ -87,6 +87,26 @@ def test_markdown_table_row_count():
     assert len(out.splitlines()) == 4
 
 
+def test_markdown_table_reports_hold_and_release():
+    row = {
+        "label": "slew",
+        "bands_delta_db": dict.fromkeys(ev.BAND_NAMES, 0.0),
+        "centroid_delta_hz": 0.0,
+        "rms_delta_db": 0.0,
+        "width_hw": 0.5,
+        "width_emu": 0.5,
+        "attack_hw_ms": 1.0,
+        "attack_emu_ms": 2.0,
+        "hold_hw_db": -3.5,
+        "hold_emu_db": -1.25,
+        "rel_hw_db": -9.0,
+        "rel_emu_db": None,
+        "score": 0.0,
+    }
+    out = ev.markdown_table({"segments": [{"id": "s", "variants": [row]}]})
+    assert "hold dB hw/emu" in out and "-3.5/-1.25" in out and "-9.0/None" in out
+
+
 def test_note_onsets_filters_confirmed(tmp_path):
     p = tmp_path / "ev.json"
     events = [{"onset_s": 1.0, "confirmed": True}, {"onset_s": 2.0, "confirmed": False}]

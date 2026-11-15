@@ -103,6 +103,8 @@ pub struct Stage4PanelState {
     pub sync_knobs_on_program_load: bool,
     pub mouse_held_note: Option<u8>,
     pub midi_active_keys: [bool; 128],
+    /// Computer-keyboard playing (A S D F ... keys), see `computer_kb.rs`.
+    pub computer_kb: super::computer_kb::ComputerKeyboard,
 
     /// Engine telemetry of this frame and the MIDI / EXTERN blink timers (see `telemetry.rs`).
     pub telemetry: crate::telemetry::PanelTelemetry,
@@ -200,6 +202,7 @@ impl Default for Stage4PanelState {
             sync_knobs_on_program_load: false,
             mouse_held_note: None,
             midi_active_keys: [false; 128],
+            computer_kb: Default::default(),
             telemetry: Default::default(),
             leds: Default::default(),
         }
@@ -226,7 +229,16 @@ impl Stage4PanelState {
             0x2A..=0x2F | 0x06 | 0x0B | 0x0D | 0x34 => 1 << 4, // Synth A
             _ => (1 << 0) | (1 << 2) | (1 << 4),
         };
-        let scene_mask = if prog.global.scene_1_mask != 0 {
+        // The mask the engine plays under `FirmwareRouting` (the Firmware bar default): the stored
+        // scene mask plus layer A in every enabled section without a layer (OQ25). The category
+        // guess is only the fallback for a program with no enabled section (synthetic programs).
+        let firmware_mask = nord_core::engine::default_layer_a(
+            prog.global.section_enable_i,
+            prog.global.scene_1_mask,
+        );
+        let scene_mask = if firmware_mask != 0 {
+            firmware_mask
+        } else if prog.global.scene_1_mask != 0 {
             prog.global.scene_1_mask
         } else {
             cat_mask

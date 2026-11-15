@@ -9,7 +9,7 @@ fn render(e: &mut Stage4Engine, frames: usize) -> Vec<[f32; 2]> {
 
 fn synth_engine() -> Stage4Engine {
     let mut e = Stage4Engine::new(48_000.0);
-    for fx in &mut e.fx_chains {
+    for fx in e.fx_chains.iter_mut() {
         fx.reverb_model = ReverbModel::Off;
     }
     e.synth_a.note_on(60, 100);
@@ -73,7 +73,7 @@ fn global_reverb_moves_the_reverb_after_the_mix_and_fader() {
     assert!(a != b, "GLOBAL reverb renders like the layer reverb");
     // the shared reverb also processes layers that have no reverb of their own
     let mut other = Stage4Engine::new(48_000.0);
-    for fx in &mut other.fx_chains {
+    for fx in other.fx_chains.iter_mut() {
         fx.reverb_model = ReverbModel::Off;
     }
     other.fx_chains[4].reverb_model = ReverbModel::Hall;

@@ -1,6 +1,7 @@
 //! Organ drawbars (manual p.19-21): nine drawbars with their 8-LED ladders.
 //!
-//! The ladder shows the stored preset value and is unlit in Drawbar Live (manual p.21). The
+//! The ladder shows the stored preset value and is unlit in Drawbar Live (manual p.21) and while the
+//! Organ section is off (D78). The
 //! sliders are the physical drawbars: in Preset mode they edit the preset, in Drawbar Live only
 //! the physical positions (`OrganEdit::LiveDrawbars`).
 
@@ -100,9 +101,16 @@ pub(super) fn send_drawbars(state: &Stage4PanelState, audio: &AudioHandle, l: us
     });
 }
 
-/// LEDs lit on a ladder: the stored value, none in Drawbar Live.
-pub(super) fn ladder_value(value: u8, live: bool) -> u8 {
-    if live {
+/// LEDs lit on a ladder: the stored value; none in Drawbar Live and none while the Organ section
+/// is off.
+///
+/// EMPIRICAL: the hardware frame of `A:13 Felt Upright` (Part A demo clip, 2:32; a piano-only
+/// program, Organ section off) shows no lit ladder LED although the drawbars stand at the stored
+/// positions. Compared by eye against the GUI screenshot of the same program (all ladders lit);
+/// the ladders of an organ program in the clip are not visible, so the other LEDs of a switched
+/// off section are ASSUMED unchanged.
+pub(super) fn ladder_value(value: u8, live: bool, section_on: bool) -> u8 {
+    if live || !section_on {
         0
     } else {
         value.min(8)
@@ -136,7 +144,7 @@ pub(super) fn render_drawbars(
         let shown = state
             .telemetry
             .drawbar(focus == 1, i, state.organ_drawbars_of(focus)[i]);
-        let lit = ladder_value(shown, live);
+        let lit = ladder_value(shown, live, state.organ_section_on());
         let ladder = rect_or_empty(LADDER_IDS[i], origin);
         drawbar_ladder(ui, ladder, LADDER_IDS[i], lit);
         ladder_labels(painter, ladder, NAMES[i]);
@@ -182,9 +190,15 @@ mod tests {
 
     #[test]
     fn ladder_is_unlit_in_drawbar_live() {
-        assert_eq!(ladder_value(5, false), 5);
-        assert_eq!(ladder_value(5, true), 0);
-        assert_eq!(ladder_value(200, false), 8);
+        assert_eq!(ladder_value(5, false, true), 5);
+        assert_eq!(ladder_value(5, true, true), 0);
+        assert_eq!(ladder_value(200, false, true), 8);
+    }
+
+    #[test]
+    fn ladder_is_unlit_while_the_organ_section_is_off() {
+        assert_eq!(ladder_value(8, false, false), 0);
+        assert_eq!(ladder_value(8, true, false), 0);
     }
 
     #[test]

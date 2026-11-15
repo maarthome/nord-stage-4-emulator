@@ -124,6 +124,8 @@ nord-stage-4-emulator/
 3. **Sample-Accurate Master Clock:** A single `MasterClock` (BPM `30.0..=300.0`) drives Synth arpeggiators, LFO sync divisions,Modulation effects, and Ping-Pong Delay tap times across all 7 layers.
 4. **Hardware-Matched Output Stage:** A gentle 1st-order reconstruction filter models the post-DAC analog stage (`CS4392` + `LM833`/`LF353` active low-pass at 42 kHz) to prevent ultrasonic intermodulation at high sample rates.
 
+5. **Stack-Footprint Budget (TD-05):** Windows CI debug tests run on 2 MiB threads (1 MiB main thread), and a debug build keeps several copies of every large value a test moves. `Stage4Engine` is therefore a 3 KB value: the seven layers (`OrganLayer` 18 KB, `PianoLayer` 12 KB, `SynthLayer` 16 KB), the FX chains and the `ProgramState` layers live in `Box`es made once in `new()`. Large arrays are built on the heap with `heap_array::zeroed_array` / `zeroed_rows` (never `Box::new([[0.0; N]; M])`, which builds the array on the stack first), and the global wavetable bank is filled in place. Replace boxed layers in place (`*self.synth_a = ...`) or swap the boxes; never box on the audio thread. Budgets asserted by `engine/tests_footprint.rs`: `Stage4Engine` and `ProgramState` <= 16 KiB, `OrganLayer` / `SynthLayer` <= 32 KiB, `PianoLayer` <= 24 KiB, `LayerFxChain` <= 16 KiB, `SynthVoice` <= 2 KiB, and construct / play / capture / clone / apply must run on a 256 KiB stack. A breach means box the new field, not raise the number. To reproduce the CI stack: build first (`cargo test --workspace --all-targets --all-features --no-run`), then run with `RUST_MIN_STACK=1048576` (the variable also affects `rustc`, so never set it for the build).
+
 ---
 
 ## 4. SHARC Oracle and ARM Firmware Harness (Track B)

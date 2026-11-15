@@ -7,24 +7,20 @@
 //! or replaces each one. Everything not listed here is placed from visible
 //! control outlines (about +-3 px).
 //!
+//! VERIFIED against the real-panel crops (and so removed from the list): the Master / Rotary,
+//! Organ and Piano LEDs, see `docs/specs/control-inventory.md` section 7 (photo anchors in
+//! `crates/nord-panel/data/photo_anchors_{master,organ,piano}.csv`).
+//!
 //! Shared entries ([`super::SHARED`]) inherit the accuracy of their base;
 //! the "(direct)" rows there are listed here as well.
 
 /// Ids with an estimated rectangle.
 pub const ESTIMATED: &[&str] = &[
     // Layer LEDs, 4-6 px wide in the photo.
+    // organ.aux_led.a/b sit 5.4 mm under the crop position: the sim click test
+    // (`organ_rewire_tests`) loses the click to the hover tooltip when they are higher.
     "organ.aux_led.a",
     "organ.aux_led.b",
-    "organ.focus_led.a",
-    "organ.focus_led.b",
-    "organ.fx_focus_led",
-    "organ.zone_leds",
-    "piano.aux_led.a",
-    "piano.aux_led.b",
-    "piano.focus_led.a",
-    "piano.focus_led.b",
-    "piano.fx_focus_led",
-    "piano.zone_leds",
     "synth.aux_led.a",
     "synth.aux_led.b",
     "synth.aux_led.c",
@@ -38,7 +34,6 @@ pub const ESTIMATED: &[&str] = &[
     "keybed.split_leds",
     "program.extern_led",
     "program.midi_led",
-    "rotary.speed_leds",
     "split.leds",
     // One photo button, several functions (halves or shared rectangles).
     "amp.filter",
@@ -64,6 +59,6 @@ mod tests {
         for id in ESTIMATED {
             assert!(seen.insert(*id), "duplicate {id}");
         }
-        assert_eq!(ESTIMATED.len(), 36);
+        assert_eq!(ESTIMATED.len(), 25);
     }
 }

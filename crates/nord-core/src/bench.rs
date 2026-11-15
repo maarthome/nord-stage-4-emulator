@@ -121,7 +121,7 @@ impl BenchReport {
 pub fn worst_case_engine(sample_rate: f32) -> Stage4Engine {
     let mut e = Stage4Engine::new(sample_rate);
     e.scene.scene_2_active = true; // Scene II: all 7 layers active
-    for chain in &mut e.fx_chains {
+    for chain in e.fx_chains.iter_mut() {
         chain.mod1_type = Mod1Type::AutoPan;
         chain.mod2_type = Mod2Type::Chorus;
         chain.amp_cabinet = AmpCabinet::Twin;
@@ -267,7 +267,7 @@ pub fn breakdown(cfg: BenchConfig) -> Vec<(String, f64)> {
     };
     let mut rows = vec![("full worst case".to_string(), run(cfg).mean_ms)];
     let fx_off = |e: &mut Stage4Engine| {
-        for chain in &mut e.fx_chains {
+        for chain in e.fx_chains.iter_mut() {
             *chain = crate::fx::LayerFxChain::new(SAMPLE_RATE);
             chain.reverb_model = ReverbModel::Off;
         }

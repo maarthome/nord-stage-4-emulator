@@ -30,7 +30,7 @@ pub(super) struct RevPredelay {
 impl RevPredelay {
     pub(super) fn new() -> Self {
         Self {
-            buf: Box::new([[0.0; PREDELAY_LEN]; 2]),
+            buf: crate::heap_array::zeroed_rows::<2, PREDELAY_LEN>(),
             idx: 0,
         }
     }

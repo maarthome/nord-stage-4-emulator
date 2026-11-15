@@ -299,7 +299,7 @@ mod tests {
     fn render(configure: Setup) -> Vec<(f32, f32)> {
         let mut bank = LayerFxSharingBank::default();
         let mut e = Stage4Engine::new(48_000.0);
-        for fx in &mut e.fx_chains {
+        for fx in e.fx_chains.iter_mut() {
             fx.reverb_model = ReverbModel::Off;
         }
         e.synth_a.note_on(60, 100);

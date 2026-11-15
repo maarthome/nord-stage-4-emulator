@@ -60,7 +60,7 @@ pub struct ProgramRouting {
 /// gives view mask 1 for all 9 formerly silent programs and for `Tines Layer`, `J3 Grand Layers`.
 /// `mask` is the decoded scene mask (already gated by the section enable, bits 0..1 organ, 2..3
 /// piano, 4..6 synth); a section with no enable bit stays 0.
-pub(super) fn default_layer_a(section_enable: u8, mask: u8) -> u8 {
+pub fn default_layer_a(section_enable: u8, mask: u8) -> u8 {
     const SECTIONS: [(u8, u8, LayerId); 3] = [
         (0b100, 0b0000_0011, LayerId::OrganA),
         (0b010, 0b0000_1100, LayerId::PianoA),
