@@ -20,6 +20,7 @@ B3 Bass (model 5) table and wiring (ns4-b511 follow-up, organ-farfisa-bass s9).
 - [x] Processor part with oracle chord goldens (1, 3, 10 keys, 3 orders): max 1.45 dB, rms <= 0.65 dB (`b3_bass_state.rs`, not wired)
 - [x] Generator weight rule decoded: `T[note][n]` over held writes, key-up included (`b3_bass_gen.rs`, `organ_bass_gen.py`, `bass-gen-weights.csv`)
 - [x] Opt-in Bass stage wired (`--b3-bass-processor on`, `b3_bass_stage.rs`), chord 60 64 67 within +1.1 to +2.5 dB per line
+- [x] Instruction-level Python reference of `0x122296` (one call, 868 of 868 trace rows and 0 of 16,128 memory words, `tools/sharc_listing_vm.py`, s13)
 - [ ] Within 1 dB on the full chain (bit-exact `0x122296`, drawbar / percussion dependent key tables)
 - [ ] B3 Bass hardware clip comparison and default decision (the B3 clip plays the B3 model: delta 0.00 dB by construction)
 
@@ -28,3 +29,5 @@ Bit-exact 0x122296 model (still open).
 
 ## Summary of Changes
 Weights table, then the state model (`b3_bass_state.rs`, `tools/organ_bass_state.py`, data CSVs) and the correction that the section words are not read; then the generator weight rule (s12) and the opt-in Bass stage; default render unchanged, `emu_vs_hw.py` bass band delta 0.00 dB by construction (B3 clip is the B3 model).
+
+s13: `tools/sharc_listing_vm.py` + `tools/organ_listing_check.py` run the ADI listing of `0x122296` bit-exact against `sharc-chain` (SIMD pair rule, I1 broadcast loads, 40-bit float). Still open: generator listing for multi-call replay, the Rust recursion (Bass stage unchanged, +1.1 to +2.5 dB), branches for the Farfisa `0x122B85`.

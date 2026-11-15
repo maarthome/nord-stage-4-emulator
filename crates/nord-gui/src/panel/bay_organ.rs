@@ -130,14 +130,7 @@ fn render_vibrato(
             send_scanner(state, audio, l);
         }
     }
-    let cur = vib_index(ty);
-    for i in 0..6 {
-        let c = pos2(
-            sel.left() + sel.width() * ((i % 3) as f32 + 0.5) / 3.0,
-            sel.top() - 5.0 - 5.0 * (1 - i / 3) as f32,
-        );
-        led_small(painter, c, i == cur, LED_RED, LED_RED_DIM, 1.5);
-    }
+    super::organ_vib_matrix::paint(painter, sel, vib_index(ty));
     for (l, id, text) in [
         (0, "organ.vibrato_on.a", "A"),
         (1, "organ.vibrato_on.b", "B"),

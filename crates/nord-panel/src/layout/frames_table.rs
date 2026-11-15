@@ -60,7 +60,7 @@ pub const FRAMES: &[FrameDef] = &[
             "organ.vibrato_on.a",
             "organ.vibrato_on.b",
         ],
-        [3.0, 20.0, 3.0, 6.0],
+        [3.0, 20.0, 26.0, 6.0],
     ),
     boxed(
         "organ.frame.perc",
@@ -72,7 +72,7 @@ pub const FRAMES: &[FrameDef] = &[
             "organ.perc_third",
             "organ.perc_on",
         ],
-        [10.0, 22.0, 7.0, 8.0],
+        [6.0, 22.0, 7.0, 8.0],
     ),
     // Piano.
     bare(
