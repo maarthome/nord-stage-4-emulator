@@ -126,13 +126,17 @@ pub(super) fn pad(ui: &mut Ui, p: &Painter, o: Pos2, sui: &mut SynthUi, b: Btn, 
         );
     }
     if !label.is_empty() {
-        tiny(
-            p,
-            pos2(rect.center().x, rect.top() - 3.0),
-            label,
-            Color32::WHITE,
-            Align2::CENTER_BOTTOM,
-        );
+        // The section ON button sits in the header tab with no room above it: its text goes
+        // on the face, right of the LED.
+        let (at, al) = if b == Btn::On {
+            (pos2(rect.center().x + 3.0, cy), Align2::CENTER_CENTER)
+        } else {
+            (
+                pos2(rect.center().x, rect.top() - 3.0),
+                Align2::CENTER_BOTTOM,
+            )
+        };
+        tiny(p, at, label, Color32::WHITE, al);
     }
     if let Some((aid, legend)) = alias {
         let why = unsupported_reason(aid);
