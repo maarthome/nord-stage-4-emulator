@@ -347,9 +347,9 @@ Firmware strings confirm the dedicated `LeslieHorn` and `Rotary Mic Distance` pa
 1. **Tube Overdrive Preamp:** Asymmetric soft-clipping waveshaper (`tanh(drive * x) + 0.1 * x^2`).
 2. **800 Hz Linkwitz-Riley Crossover (`ROTARY_CROSSOVER_HZ`):** Verified against `ARM0` (`0x0db130` / `0x0e0098`), splits the signal into the **Treble Horn** ($\ge 800\text{ Hz}$) and **Bass Rotor Drum** ($< 800\text{ Hz}$), with `ROTARY_BASS_HORN_BALANCES` (`70/30 .. 30/70` from OS v1.66 `0x2c20d8`).
 3. **Independent Rotational Ballistics:**
-   - **Slow (Chorale):** Horn = $0.80\text{ Hz}$ ($48\text{ RPM}$), Bass Drum = $0.67\text{ Hz}$ ($40\text{ RPM}$).
-   - **Fast (Tremolo):** Horn = $6.85\text{ Hz}$ ($411\text{ RPM}$), Bass Drum = $5.70\text{ Hz}$ ($342\text{ RPM}$).
-   - **Acceleration / Deceleration Time Constants:** Horn ramps in $\tau_{\text{horn}} \approx 0.7\text{ s}$; heavy wooden Bass Drum ramps in $\tau_{\text{drum}} \approx 4.2\text{ s}$.
+   - **Slow (Chorale):** Horn = 0.7873 Hz, Bass Drum = 0.7185 Hz (VERIFIED: the ARM state block 0.80 / 0.73 Hz times `F / 44,100`, [fx-leslie](../research/fx-leslie.md) s11; `organ/rotor_arm.rs`).
+   - **Fast (Tremolo):** Horn = 6.8892 Hz, Bass Drum = 6.2987 Hz (VERIFIED: ARM 7.0 / 6.4 Hz times `F / 44,100`).
+   - **Acceleration / Deceleration:** linear, one ARM update every 10 ms (240 ticks at 24,000 per second, VERIFIED): horn +0.06 / -0.06 Hz and rotor +0.01 / -0.0218 Hz per update (ARM units), so slow to fast takes 1.04 s (horn) and 5.67 s (rotor); `horn_tau_scale` / `rotor_tau_scale` stretch the steps.
 4. **Doppler Pitch, Mic Placement & Cabinet Reflections:**
    - **Mic Distance (`rotary_close_mic`):** `Close` yields deeper horn Doppler excursion ($\pm 0.55\text{ ms}$) and narrower beaming with subtle baffle reflections (`0.05`); `Normal` uses $\pm 0.35\text{ ms}$ excursion and stronger stereo cabinet early reflections (`0.18` cross-taps at $3.4\text{ ms}$ / $4.6\text{ ms}$).
    - **Mic Angle (`rotary_mic_angle_deg`):** Virtual stereo microphone angular separation ($0^\circ..180^\circ$, default $120^\circ$).
