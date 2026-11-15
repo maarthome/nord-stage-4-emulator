@@ -49,6 +49,7 @@ mod fw_leslie_ring;
 pub mod fw_map;
 mod fw_mod1;
 mod fw_mod1_data;
+mod fw_mod1_dense;
 mod fw_mod1_rest;
 mod fw_mod2;
 mod fw_mod2_data;

@@ -48,3 +48,15 @@ def test_last_words_keeps_the_final_write_per_address() -> None:
     msgs = [SimpleNamespace(dm_word=1, word2=5), SimpleNamespace(dm_word=1, word2=6)]
     msgs.append(SimpleNamespace(dm_word=2, word2=7))
     assert j.last_words(msgs, {1}) == {1: 6}
+
+
+def test_mod1_dense_rust_is_up_to_date_and_knot_exact() -> None:
+    import fx_mod1_dense_gen as g1
+
+    assert g1.main(["--check"]) == 0
+    ks = g1.knots()
+    assert len(ks) == 44 and ks[0] == 0 and ks[-1] == 127
+    for ty, dm, off in g1.SERIES:
+        w = g1.words(ty, dm, off)
+        assert len(w) == 44
+        assert w[0] == g1.sample_word(ty, off, 0)
