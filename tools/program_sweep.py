@@ -499,6 +499,48 @@ def _group(agg: dict[str, dict[str, int]], prefix: str) -> list[tuple[str, dict[
     return [(p, c) for p, c in agg.items() if p.startswith(prefix)]
 
 
+def sample_summary(agg: dict[str, dict[str, int]], n: int, frames: int) -> list[str]:
+    """Paragraph on the SAMPLES and WAVE layers, derived from `agg` (was hand-written text)."""
+
+    def uses(key: str) -> int:
+        return agg.get(key, {}).get("uses", 0)
+
+    def progs(key: str) -> int:
+        return agg.get(key, {}).get("programs", 0)
+
+    total = uses("synth.osc=Sample")
+    if not total:
+        return []
+    loaded = uses("synth.sample=loaded")
+    reach = [(k, uses(f"synth.sample.kernel={k}")) for k in range(6)]
+    every = [k for k, u in reach if u == loaded]
+    partial = [(k, u) for k, u in reach if u != loaded]
+    text = (
+        f"SAMPLE layer kernels ({n} programs, `{frames}` frames): {loaded} of {total} SAMPLES "
+        f"layers ({progs('synth.osc=Sample')} programs) load their `.nsmp4`; over the key spans "
+        "of their zones the firmware key rule ([synth-sample-kernel-rule]"
+        "(synth-sample-kernel-rule.md)) reaches kernels "
+        + ", ".join(str(k) for k in every)
+        + " in every loaded layer"
+    )
+    for k, u in partial:
+        text += f" and kernel {k} in {u} layers of {progs(f'synth.sample.kernel={k}')} programs"
+    text += "."
+    if uses("synth.sample.kernel=0") and uses("synth.sample.kernel=1"):
+        text += (
+            " The ASSUMED ratio rule never picks kernels 0 and 1, so it differs from the firmware "
+            "in every SAMPLES program that reaches them."
+        )
+    waves = sorted(k for k in agg if k.startswith("synth.wave="))
+    if waves:
+        detail = ", ".join(f"{k.split('=')[1]} {agg[k]['uses']}" for k in waves)
+        text += (
+            f" The {uses('synth.osc=Wavetable')} WAVE (Wavetable) layers in "
+            f"{progs('synth.osc=Wavetable')} programs ({detail}) stay unmodelled."
+        )
+    return [text, ""]
+
+
 def markdown(result: dict, meta: dict) -> str:
     """Renders `docs/research/program-coverage.md` from `result` (derived numbers only)."""
     n = result["programs"]
@@ -572,6 +614,7 @@ def markdown(result: dict, meta: dict) -> str:
                 "synth.analog=",
                 "synth.wave=",
                 "synth.sample=",
+                "synth.sample.kernel=",
                 "synth.filter=",
                 "synth.unison=",
                 "synth.lfo_dest=",
@@ -620,6 +663,8 @@ def markdown(result: dict, meta: dict) -> str:
         for k in flags:
             lines.append(f"| `{k}` (enabled) | {agg[k]['programs']} | {agg[k]['uses']} |")
         lines.append("")
+        if title.startswith("5."):
+            lines += sample_summary(agg, n, meta["frames"])
 
     lines += [
         "## 7. Verification status of the paths in use",
@@ -706,6 +751,22 @@ def markdown(result: dict, meta: dict) -> str:
     return "\n".join(lines)
 
 
+def preserved_notes(doc: str) -> dict[str, list[str]]:
+    """Hand-written text of sections 9 and 10 of an existing doc, so a regeneration keeps it."""
+    out: dict[str, list[str]] = {}
+    key = None
+    for line in doc.splitlines():
+        if line.startswith("## 9."):
+            key = "implications"
+        elif line.startswith("## 10."):
+            key = "followups"
+        elif key and line.startswith("Data: [data/"):
+            key = None
+        elif key:
+            out.setdefault(key, []).append(line)
+    return {k: v[1:-1] if v and not v[0] and not v[-1] else v for k, v in out.items()}
+
+
 def load_jsonl(path: Path) -> list[dict]:
     """Reads the example's output, one JSON object per line."""
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
@@ -728,13 +789,14 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--ns4b", type=Path, help="factory backup to render")
     ap.add_argument("--jsonl", type=Path, help="reuse the example output instead of rendering")
+    ap.add_argument("--frames", type=int, default=96000, help="frames per render (hold = 3/4)")
     ap.add_argument("--meta", type=Path, help="JSON with checked/backup/implications/followups")
     ap.add_argument("--no-write", action="store_true", help="print a summary only")
     args = ap.parse_args(argv)
     if args.jsonl:
         records = load_jsonl(args.jsonl)
     elif args.ns4b:
-        records = run_sweep_bin(args.ns4b, [])
+        records = run_sweep_bin(args.ns4b, ["--frames", str(args.frames)])
     else:
         ap.error("give --ns4b or --jsonl")
     result = analyze(records)
@@ -742,11 +804,13 @@ def main(argv: list[str] | None = None) -> int:
         "checked": "unset",
         "backup": "Nord Stage 4 Factory Restore RevK v1.66.ns4b",
         "tool": "tools/program_sweep.py",
-        "frames": 96000,
+        "frames": args.frames,
         "notes": "48, 55, 64, 72",
         "velocity": 100,
-        "hold": 72000,
+        "hold": args.frames * 3 // 4,
     }
+    if DOC_PATH.exists():
+        meta.update(preserved_notes(DOC_PATH.read_text(encoding="utf-8")))
     if args.meta:
         meta.update(json.loads(args.meta.read_text(encoding="utf-8")))
     if args.no_write:
