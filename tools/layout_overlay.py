@@ -52,21 +52,52 @@ DATA_DIR = os.path.join(ROOT, "crates", "nord-panel", "data")
 THRESHOLD_MM = 2.0
 
 # crop name -> (file, section whose rectangle the outline maps to, outline in crop px
-# (x0, y0, x1, y1) or None = whole image, sections drawn on it).
+# (x0, y0, x1, y1) or None = whole image, sections drawn on it, optional window in image px
+# (x0, y0, x1, y1) that is the only part drawn and saved). A file name starting with `../` is
+# looked up next to the crops dir (`.reference/`).
+#
+# `program`, `keybed` and `wheels` use the straight-on HA88 top-down render (11600 px wide, body
+# x 400..11196 = 1290 mm, 0.1195 mm/px on both axes, panel top edge y 482, keybed boundary
+# y 1981 = 179.1 mm); the outline is the section rectangle in that image, so the mapping is
+# isotropic (unlike the organ crop, which shows only the sections and no connector strip).
+TOPDOWN = "../NS4_HA88_TopDown-01_241008.jpg"
 CROPS = {
+    "program": (
+        TOPDOWN,
+        "program",
+        (4880.0, 482.0, 5968.0, 1981.0),
+        ("program",),
+        (4700, 400, 6150, 2100),
+    ),
+    "keybed": (
+        TOPDOWN,
+        "keybed",
+        (400.0, 1981.0, 11196.0, 3318.0),
+        ("keybed",),
+        (300, 1700, 11300, 3400),
+    ),
+    "wheels": (
+        TOPDOWN,
+        "master",
+        (400.0, 482.0, 2415.0, 1981.0),
+        ("master",),
+        (1300, 700, 2500, 1550),
+    ),
     "organ": (
         "NS4-Panel-organ.max-2000x2000.format-png.png",
         "organ",
         (250.0, 12.0, 1948.0, 1168.0),
         ("master", "organ"),
+        None,
     ),
-    "piano": ("NS4-Panel-piano.max-2000x2000.format-png.png", "piano", None, ("piano",)),
-    "synth": ("NS4-Panel-synth.max-2000x2000.format-png.png", "synth", None, ("synth",)),
+    "piano": ("NS4-Panel-piano.max-2000x2000.format-png.png", "piano", None, ("piano",), None),
+    "synth": ("NS4-Panel-synth.max-2000x2000.format-png.png", "synth", None, ("synth",), None),
     "effects": (
         "NS4-Panel-effects.max-2000x2000.format-png.png",
         "effects",
         None,
         ("effects",),
+        None,
     ),
 }
 SECTION_CROP = {
@@ -75,6 +106,9 @@ SECTION_CROP = {
     "piano": "piano",
     "synth": "synth",
     "effects": "effects",
+    "program": "program",
+    "keybed": "keybed",
+    "wheels": "wheels",
 }
 
 
@@ -184,30 +218,36 @@ def format_report(rows, threshold=THRESHOLD_MM):
     return "\n".join(lines)
 
 
-def draw_overlay(img, controls, photo, mapping, source="gui", frames=()):
+def draw_overlay(img, controls, photo, mapping, source="gui", frames=(), origin=(0, 0)):
     """Semi-transparent control rectangles with ids, real centres as crosses; returns RGB."""
     from PIL import Image, ImageDraw
+
+    ox, oy = origin
+
+    def to_px(mx, my):
+        x, y = mapping.to_px(mx, my)
+        return x - ox, y - oy
 
     base = img.convert("RGBA")
     layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     for fr in frames:
         r = fr["rect"]
-        x0, y0 = mapping.to_px(r["x"], r["y"])
-        x1, y1 = mapping.to_px(r["x"] + r["w"], r["y"] + r["h"])
+        x0, y0 = to_px(r["x"], r["y"])
+        x1, y1 = to_px(r["x"] + r["w"], r["y"] + r["h"])
         d.rectangle([x0, y0, x1, y1], outline=(255, 255, 0, 150), width=2)
     for c in controls:
         r = pick_rect(c, source)
-        x0, y0 = mapping.to_px(r["x"], r["y"])
-        x1, y1 = mapping.to_px(r["x"] + r["w"], r["y"] + r["h"])
+        x0, y0 = to_px(r["x"], r["y"])
+        x1, y1 = to_px(r["x"] + r["w"], r["y"] + r["h"])
         est = c.get("estimated")
         fill = (255, 140, 0, 70) if est else (0, 180, 255, 70)
         edge = (255, 140, 0, 230) if est else (0, 120, 255, 230)
         d.rectangle([x0, y0, x1, y1], fill=fill, outline=edge, width=2)
         d.text((x0 + 2, y0 + 1), c["id"].split(".", 1)[-1], fill=(255, 255, 255, 255))
         if c["id"] in photo:
-            px, py = photo[c["id"]]
-            cx, cy = mapping.to_px(*centre(r))
+            px, py = photo[c["id"]][0] - ox, photo[c["id"]][1] - oy
+            cx, cy = to_px(*centre(r))
             d.line([cx, cy, px, py], fill=(255, 60, 60, 220), width=2)
             d.line([px - 8, py, px + 8, py], fill=(60, 255, 60, 255), width=2)
             d.line([px, py - 8, px, py + 8], fill=(60, 255, 60, 255), width=2)
@@ -233,7 +273,7 @@ def load_layout(path):
 
 
 def build_mapping(layout, crop, anchors_text):
-    _, sec, outline, _ = CROPS[crop]
+    _, sec, outline, _, _ = CROPS[crop]
     if anchors_text:
         return Mapping(parse_anchors(anchors_text))
     if outline is None:
@@ -261,16 +301,23 @@ def main(argv=None):
         sys.exit(f"missing {args.layout}: run cargo run -p nord-gui --example layout_dump_gui")
     layout = load_layout(args.layout)
     crop = SECTION_CROP[args.section]
-    fname, _, _, secs = CROPS[crop]
+    fname, _, _, _, window = CROPS[crop]
     mapping = build_mapping(layout, crop, args.anchors)
     csv_path = args.csv or os.path.join(DATA_DIR, f"photo_anchors_{args.section}.csv")
     photo = load_photo_anchors(csv_path) if os.path.exists(csv_path) else {}
-    controls = [c for c in layout["controls"] if c["section"] == args.section]
+    controls = [c for c in layout["controls"] if c["section"] == args.section or c["id"] in photo]
     frames = [f for f in layout["frames"] if f["section"] == args.section]
     os.makedirs(args.out, exist_ok=True)
 
+    Image.MAX_IMAGE_PIXELS = None
     img = Image.open(os.path.join(args.crops, fname))
-    over = draw_overlay(img, controls, photo, mapping, args.source, frames)
+    origin = (0, 0)
+    if window:
+        img = img.crop(window)
+        origin = window[:2]
+    over = draw_overlay(img, controls, photo, mapping, args.source, frames, origin)
+    if over.width > 5000:
+        over = over.resize((5000, round(over.height * 5000 / over.width)))
     png = os.path.join(args.out, f"{args.section}_overlay.png")
     over.save(png)
     print(png)

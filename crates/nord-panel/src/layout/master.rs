@@ -2,16 +2,20 @@
 //!
 //! VERIFIED (level knob, Rotary drive / buttons / LEDs): centres in `data/photo_anchors_master.csv`
 //! (organ crop, red strip), max error 0.2 mm before nudges, checked by
-//! `python tools/layout_overlay.py master`. ASSUMED: `master.pitch_stick` and `master.mod_wheel`
-//! (not on any straight-on crop; the HA88 photos are perspective views).
+//! `python tools/layout_overlay.py master`. VERIFIED (centre +-1.5 mm): `master.pitch_stick` and
+//! `master.mod_wheel`, from the straight-on HA88 top-down render (`super::topdown`).
 
+use super::topdown::td;
 use super::{px, Rect};
 
 pub fn rect(id: &str) -> Option<Rect> {
     Some(match id {
         "master.level" => px(383.0, 105.5, 406.0, 128.5),
-        "master.pitch_stick" => px(256.0, 150.0, 300.0, 175.0),
-        "master.mod_wheel" => px(314.0, 176.0, 341.0, 248.0),
+        // VERIFIED (centre, +-1.5 mm): slot of the pitch stick on the HA88 top-down render, bbox
+        // 269 x 162 px = 32.1 x 19.4 mm (`data/photo_anchors_wheels.csv`, `layout_overlay.py wheels`).
+        "master.pitch_stick" => td(1612.0, 940.0, 32.1, 19.4),
+        // VERIFIED (centre): wheel slot bbox 160 x 410 px = 19.1 x 49.0 mm on the same render.
+        "master.mod_wheel" => td(1910.0, 1230.0, 19.1, 49.0),
         "rotary.drive" => px(382.0, 176.5, 404.0, 198.5),
         "rotary.organ" => px(383.5, 225.5, 405.5, 237.5),
         "rotary.stop_mode" => px(383.5, 269.5, 405.5, 281.5),
