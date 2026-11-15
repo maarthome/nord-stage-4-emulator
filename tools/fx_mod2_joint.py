@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+# ruff: noqa: E501
 """Joint `kFx2Amt` x `kFx2Rate` capture: words that both ids write (PHAS 0 `c[-28]`, FLANG `c[-16]`).
 
-`fw_mod2_law_stage` models such a word as `A(amt) R(rate) / R(64)` (the captures of
-`fx_mod2_dense.py` vary one id at a time, with the other at its type switch value 64). This tool
-applies the type, then `Rate = r`, then `Amt = a` (and the reverse order) on the piano unit and
-prints the last word written to the given DM addresses, so the product law can be checked.
+The captures of `fx_mod2_dense.py` vary one id at a time, with the other at its type switch
+value 64. This tool applies the type, then `Rate = r`, then `Amt = a` (and the reverse order) on
+the piano unit and records the last word written to the given DM addresses. Result
+(`docs/research/fx-mod2-validation.md` s3): PHAS 0 `c[-28]` and CHOR 5 `c[-0x1C]`, `c[-0x1B]` are
+bilinear in rate and amount, FLANG `c[-16]` is `A(a) R(r) / R(64)`.
 
     uv run --with unicorn python tools/fx_mod2_joint.py CODE.bin SRAM.bin --cache target/settled.snap \
         --type 0 --words 0xb032c,0xb0328 --out target/fx2_joint.csv
@@ -78,10 +80,21 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
                 msgs += list(during) + list(later)
             for dm, w in sorted(last_words(msgs, watch).items()):
                 rows.append(
-                    {"type": ns.type, "order": order, "rate": r, "amount": a, "dm_word": f"{dm:#x}", "word": f"{w:#010x}"}
+                    {
+                        "type": ns.type,
+                        "order": order,
+                        "rate": r,
+                        "amount": a,
+                        "dm_word": f"{dm:#x}",
+                        "word": f"{w:#010x}",
+                    }
                 )
     with ns.out.open("w", encoding="utf-8", newline="") as fh:
-        wr = csv.DictWriter(fh, fieldnames=["type", "order", "rate", "amount", "dm_word", "word"], lineterminator="\n")
+        wr = csv.DictWriter(
+            fh,
+            fieldnames=["type", "order", "rate", "amount", "dm_word", "word"],
+            lineterminator="\n",
+        )
         wr.writeheader()
         wr.writerows(rows)
     return 0

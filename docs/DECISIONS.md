@@ -6,6 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
+| [D90](#d90-mod-2-parameter-laws-are-verified-on-a-dense-arm-grid-the-shared-amountrate-words-get-their-joint-law-mod2-stays-opt-in) | 2026-11-15 | Mod 2 parameter laws are verified on a dense ARM grid; the shared amount / rate words get their joint law; `mod2` stays opt-in | accepted |
 | [D1](#d1-rust-core-for-dsp-engines-and-cbin-parsers) | 2026-11-10 | Rust core (`nord-core`) for DSP engines and `CBIN` binary parsers | accepted |
 | [D2](#d2-high-level-dsp-emulation-over-low-level-sharc-instruction-emulation) | 2026-11-10 | High-Level DSP Emulation (HLE) over low-level SHARC instruction emulation | accepted |
 | [D3](#d3-pure-physical-modeling-for-the-organ-engine-91-tonewheels--rotary-122) | 2026-11-10 | Pure mathematical physical modeling for the Organ Engine | accepted |
@@ -906,3 +907,12 @@ Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out doc
 - **Alternatives:** Add a `chain / 0.21875` law (rejected: same audio as `K` within 0.23 dB, would carry a false VERIFIED look); flip `Chain` as default (rejected: 13 dB under B3 / Vox clips).
 - **Impact:** Doc comment and test in `organ/output_level.rs`; research s6; OQ24 update. No audio change, `render_hash` unchanged.
 
+### D90. Mod 2 parameter laws are verified on a dense ARM grid; the shared amount / rate words get their joint law; `mod2` stays opt-in
+
+- **Status:** accepted 2026-11-15
+- **Decided by:** Yuri Olive (task `fx-mod2-validation`; evidence [fx-mod2-validation](research/fx-mod2-validation.md))
+- **Context:** The Mod 2 stages (`FirmwareFx::mod2`: CHOR, VIBE, FLANG, PHAS, SPIN) read the words of `kFx2Rate` / `kFx2Amt` from 11 captured samples interpolated linearly, and assumed `A(amt) R(rate) / R(64)` for words both ids write. Only CHOR has a hardware clip (D60), and its delay is 1.7 times the firmware's.
+- **Decision:** Capture every `kFx2Amt` / `kFx2Rate` word on the booted ARM at 44 values (organ, piano, synth units, `tools/fx_mod2_dense.py`) and the words both ids write on a 3 x 44 rate / amount grid (`tools/fx_mod2_joint.py`). The law stage interpolates the 44 knots (`fw_mod2_dense.rs`, generated); PHAS 0 `c[-28]` is bilinear in the rate (VERIFIED 1.3e-7), FLANG `c[-16]` keeps the product law (VERIFIED 9.5e-8), CHOR 5 delays `c[-0x1C]`, `c[-0x1B]` take the joint closed form (VERIFIED 1.4e-5 frames); CHOR 4 mix constants are corrected to slope 0.0111339 and cap 0.707 (`0x3F34FDF4`). VIBE and CHOR 4 closed forms are pinned to the ARM words at all 44 values. ENS stays unwired (its left voice needs the circular tap registers `B4 / L4 / B7 / L7`, not decoded; test records the finding). `FirmwareFx::mod2` stays in `ALL`, not `DEFAULT`.
+- **Why:** The 11 sample interpolation was off by up to 3.9 % of a word's range (FLANG swing) and the PHAS 0 product law by 8x off the axes; both are fixed by data the harness gives. Defaults flip only with a hardware comparison (D22); the CHOR clip did not pass it and no other Mod 2 type has a clip.
+- **Alternatives:** Closed forms for every type (rejected: PHAS 0, FLANG and SPIN tables are not simple functions, the knots reproduce them within 0.5 %); flip CHOR to default because its words are now exact (rejected: the delay miss of D60 is not a words problem); wire ENS with `L4 = L7 = 0x200` (rejected: ASSUMED register state).
+- **Impact:** Opt-in audio of PHAS 0, CHOR 4 (mix), CHOR 5 (delay) changes; `render_hash` unchanged (`DEFAULT` has no `mod2`). OQ21 gains the ENS register question and the per-kind words follow-up. New data files `fx-mod2-dense.csv`, `fx-mod2-joint.csv`.

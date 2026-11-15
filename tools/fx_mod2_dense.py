@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E501
 """Dense capture of the Mod 2 (`Fx2`) amount and rate words between the 11 sampled values.
 
 `fx_clients.value_grid` samples a 0..127 id at 11 points; the Mod 2 laws of
@@ -60,7 +61,9 @@ def series_of(rows: list[dict[str, str]]) -> dict[tuple[str, str, str, str], dic
     return out
 
 
-def interp(series: dict[int, int], v: int, is_float: bool, knots: tuple[int, ...] = SAMPLES) -> float:
+def interp(
+    series: dict[int, int], v: int, is_float: bool, knots: tuple[int, ...] = SAMPLES
+) -> float:
     """The law of `fw_mod2_law_stage::eval`: linear between the neighbouring `knots`."""
     k = max(i for i, s in enumerate(knots) if s <= v)
     k = min(k, len(knots) - 2)
@@ -81,6 +84,23 @@ def interpolation_error(series: dict[int, int]) -> tuple[float, int, bool]:
         if e > worst:
             worst, at = e, v
     return worst, at, is_float
+
+
+#: Knots of the held-out check: the grid of `DENSE` without the 11 original samples and 60..80.
+HOLDOUT_KNOTS = (0, 1, 2, 3, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 126, 127)
+
+
+def holdout_error(series: dict[int, int]) -> float:
+    """Worst error over the range when interpolating only `HOLDOUT_KNOTS` and testing every
+    other captured value (the original samples among them)."""
+    is_float = all(looks_float(w) for w in series.values())
+    nums = {v: as_number(w, is_float) for v, w in series.items()}
+    span = (max(nums.values()) - min(nums.values())) or 1.0
+    return max(
+        abs(x - interp(series, v, is_float, HOLDOUT_KNOTS)) / span
+        for v, x in nums.items()
+        if v not in HOLDOUT_KNOTS
+    )
 
 
 def analyze(rows: list[dict[str, str]]) -> list[tuple[str, str, str, str, float, int, bool, int]]:
@@ -120,6 +140,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     ap.add_argument("image", type=Path, nargs="?")
     ap.add_argument("sram", type=Path, nargs="?")
     ap.add_argument("--analyze", type=Path, help="report the interpolation error of a capture csv")
+    ap.add_argument(
+        "--holdout", action="store_true", help="with --analyze: print the held-out error"
+    )
     ap.add_argument("--export", type=Path, help="with --analyze: write the piano rows here")
     ap.add_argument("--cache", type=Path)
     ap.add_argument("--params", type=Path, default=Path("docs/research/arm-edit-params.csv"))
@@ -138,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
                 w = csv.DictWriter(out, fieldnames=EXPORT_FIELDS, lineterminator="\n")
                 w.writeheader()
                 w.writerows(export_rows(rows))
+        if ns.holdout:
+            for (kind, ty, ident, dm), ser in sorted(series_of(rows).items()):
+                if set(HOLDOUT_KNOTS) <= set(ser) and len(set(ser.values())) > 1:
+                    print(f"{kind},{ty},{ident},{dm},{holdout_error(ser):.3e}")
+            return 0
         for row in analyze(rows):
             kind, ty, ident, dm, err, at, flt, distinct = row
             print(f"{kind},{ty},{ident},{dm},{err:.3e},{at},{int(flt)},{distinct}")
@@ -156,7 +184,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     if ns.types:
         keep = {int(t) for t in ns.types.split(",")}
         tp = by_name[slot.type_id]
-        by_name[slot.type_id] = type(tp)(**{**tp.__dict__, "minimum": min(keep), "maximum": max(keep)})
+        by_name[slot.type_id] = type(tp)(
+            **{**tp.__dict__, "minimum": min(keep), "maximum": max(keep)}
+        )
     out: list[dict[str, object]] = []
     for u in (u for u in units if u.index in wanted):
         out += fc.capture_slot(emu, blob, u, slot, by_name, ns.window, noise)

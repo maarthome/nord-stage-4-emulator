@@ -6,10 +6,8 @@
 //! them (EMPIRICAL: measured error below 0.7 % of the range, `docs/research/fx-mod2-validation.md`).
 
 /// Values of `kFx2Amt` / `kFx2Rate` at which the ARM writes were captured.
-pub(super) const KNOTS: [u32; 44] = [
-    0, 1, 2, 3, 8, 15, 16, 24, 31, 32, 40, 47, 48, 56, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
-    71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 88, 95, 96, 104, 111, 112, 120, 126, 127,
-];
+#[rustfmt::skip]
+pub(super) const KNOTS: [u32; 44] = [0, 1, 2, 3, 8, 15, 16, 24, 31, 32, 40, 47, 48, 56, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 88, 95, 96, 104, 111, 112, 120, 126, 127];
 
 /// One context word as a function of a 7 bit parameter: one word per knot.
 pub(super) struct DenseLaw {

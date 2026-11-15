@@ -44,11 +44,39 @@ def test_integer_words_are_signed() -> None:
 
 def test_series_of_keeps_the_last_word_of_each_value() -> None:
     rows = [
-        {"stage": "param", "kind": "piano", "type": "4", "id": "Edt_Effects_kFx2Amt",
-         "dm_word": "0x1", "value": "5", "word": "0x00000001"},
-        {"stage": "param", "kind": "piano", "type": "4", "id": "Edt_Effects_kFx2Amt",
-         "dm_word": "0x1", "value": "5", "word": "0x00000002"},
-        {"stage": "type", "kind": "piano", "type": "4", "id": "x", "dm_word": "0x1",
-         "value": "5", "word": "0x3"},
+        {
+            "stage": "param",
+            "kind": "piano",
+            "type": "4",
+            "id": "Edt_Effects_kFx2Amt",
+            "dm_word": "0x1",
+            "value": "5",
+            "word": "0x00000001",
+        },
+        {
+            "stage": "param",
+            "kind": "piano",
+            "type": "4",
+            "id": "Edt_Effects_kFx2Amt",
+            "dm_word": "0x1",
+            "value": "5",
+            "word": "0x00000002",
+        },
+        {
+            "stage": "type",
+            "kind": "piano",
+            "type": "4",
+            "id": "x",
+            "dm_word": "0x1",
+            "value": "5",
+            "word": "0x3",
+        },
     ]
     assert d.series_of(rows) == {("piano", "4", "Amt", "0x1"): {5: 2}}
+
+
+def test_holdout_error_is_small_for_a_smooth_law_and_large_for_a_knee() -> None:
+    smooth = {v: fw(0.01 * v * v) for v in d.dense_grid(0, 127)}
+    knee = {v: fw(max(0.0, v - 70.0)) for v in d.dense_grid(0, 127)}
+    assert d.holdout_error(smooth) < 0.01
+    assert d.holdout_error(knee) > d.holdout_error(smooth)
