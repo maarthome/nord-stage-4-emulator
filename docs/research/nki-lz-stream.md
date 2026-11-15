@@ -101,6 +101,17 @@ Chorus rate position 0 and 1 are both 0 (the lowest two knob steps share a rate)
 - Kontakt versions other than 8.4 and protected libraries: untested.
 - Compression runs ~12x (1 MB to 12 MB); decode time ~1 s.
 
+## Known UP2 versus Nord differences (reviewer clips, qualitative)
+
+Source: three public reviewer clips of a player alternating the Nord and Ultimate Pianos 2 (`Video by carvalho_teclas`, local only, not committed; subtitles transcribed by the user's tool, Portuguese). They are live takes with speech and no common notes, so no number was measured from them (ASSUMED qualitative only).
+
+| Observation (clip time) | Meaning for the oracle |
+|---|---|
+| "same sound" in direct A/B, one clip says "tá igualzinho" (clip 3, 0:52) | The sample set and tone are close to the hardware, as the 1 dB band agreement of `L.wav` / `R.wav` also shows. |
+| Above F in the top octave the Nord sustains longer without the pedal, the UP2 does not (clip 3, 0:25 to 0:37) | UP2 high-note decay or its release layer differs from the Nord; do not use UP2 as ground truth for high-note sustain. |
+| UP2 has a shorter release and the Nord has no release control (clip 3, 0:56 to 1:07) | The UP2 `on release` law (section "What the script shows") is a Kontakt addition, not Nord behaviour. |
+| One clip compares with a Nord Stage 3, not the 4 (clip 3, 0:06) | That clip is a weaker reference for the Stage 4. |
+
 ## Implications
 
 Velocity shaping and release-sample behaviour for the UP2 oracle can be taken from the script instead of screenshots. The effect parameter values still need the tables or Kontakt screenshots.
