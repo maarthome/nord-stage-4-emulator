@@ -316,3 +316,16 @@ First run: 53 `B` and 21 `D` (plus 40 ladder bars at 1.0 px, which the first ver
 Rotary Speaker box (photo `NS4_Panel-crop-left.jpg`): every control and legend sits on the frame's vertical centre line (`layout_tweaks`: the `rotary.` controls move 11 px left; the frame is symmetric, 41 px each side). ORGAN and STOP MODE print as "o NAME" above their button (`ctl_led_tag::tag_led`: text centred on the button, LED left of the text, as on the instrument); SLOW / FAST is one row centred on the line (`bay_master/rotary_speed.rs`); the button pitch is 34 px so the legend above, the 2 px stacked gap (rule `V`) and the name line fit. DRIVE moved 3 px up so its name clears ORGAN.
 
 ORGAN MODEL order (VERIFIED, presentation only, photos `NS4_Panel-crop-left.jpg`, `NS4_HA88_Organ-01_241008.jpg`, manual p.18): the printed columns read FARF, VOX, B3 (left) and PIPE1, PIPE2, B3 BASS (right). `organ_model::SLOTS` maps each printed slot to the engine index; `organ_logic::MODELS` (B3, B3 Bass, Vox, Farf, Pipe 1, Pipe 2) and the button's step order are unchanged. Other lists checked against the photos and found in order: PIANO SELECT (ELECTRIC / CLAV, UPRIGHT / DIGITAL, GRAND / MISC), TIMBRE, VIB/CHORUS matrix (C2 V3 C3 / V2 C1 V1), Mod 1, Mod 2, Amp, Delay variation and filter, Reverb lists, Synth MODE and VOICE.
+
+### Round 8: visual details measured on the straight-on HA88 render (`fix/visual-details`)
+
+Measured on `NS4_HA88_TopDown-01_241008.jpg` (0.1195 mm/px both axes, key pitch 197.7 px = 23.63 mm).
+
+| Item | Photo | GUI before | Change | Status |
+|---|---|---|---|---|
+| Knob numeral ring (OSC CTRL: `5` and `0`/`10`) | 8.2 mm / 8.7 mm from the knob centre (body 6.3 mm) | 10.7 mm, plus a drawn tick ring the photo does not have | no ticks on knobs that print numerals, ring 10.4 mm (`widgets::scale`, `GAP` 4.8 px) | `EMPIRICAL`: the 7.5 px legibility minimum is about 1.4x the photo's digit height, so a ring tighter than 10.4 mm makes neighbours collide (GAP 3.6 leaves 5 collisions, 0.8 leaves 91); the rest of the gap to 8.5 mm cannot close without smaller type |
+| Black key width | 130 px outline = 0.66 of the pitch (the flat dark top face alone is 0.45) | 0.64 | kept; `black_key_width_matches_the_render` pins it | `VERIFIED` (+-0.05); black key length measures 0.67 (code 0.62, `ASSUMED`, not changed) |
+| Organ A/B vibrato buttons | one wide ON button on the hardware; the emulator splits it per layer | 7.6 mm wide at 8.0 mm pitch (0.4 mm gap, bezels touched) | 6.6 mm wide, 1.4 mm gap (`layout/organ.rs`, test `vibrato_buttons_keep_a_gap`) | `EMPIRICAL` |
+| Unlabelled green dots under the Synth / Piano / Organ faders | `AUX KB` legend left of each LED (`NS4-Panel-synth` crop) | dots without a name | `aux_flag::aux_legend` prints `AUX KB` for all three strips | `VERIFIED` against the crop |
+
+Still unlabelled: the layer focus LEDs above the A/B/C pads (hardware: amber ON/OFF LED with an `ON/OFF` legend); Synth VIBRATO name lists and the COMP ACTIVE / BRIGHT-DARK ids are not done. `NUMERAL_REACH` of the legibility audit grew from 16 to 20 px (the probe rectangle no longer includes a 5.5 px tick ring). `legibility_allow.txt` stays empty.
