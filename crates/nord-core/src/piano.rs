@@ -12,11 +12,13 @@ use std::sync::Arc;
 
 pub mod category;
 pub mod downstream;
+pub mod ext40;
 pub mod label;
 pub mod level_q23;
 pub mod npno_level;
 pub mod q31_kernel;
 pub mod smp_page;
+pub mod smp_slew;
 pub mod smp_unpack;
 pub mod smp_voice;
 pub mod step_q32;
