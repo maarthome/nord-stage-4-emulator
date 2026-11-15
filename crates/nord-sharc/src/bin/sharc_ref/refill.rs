@@ -30,13 +30,14 @@ use crate::script::REC_STRIDE;
 pub const DEFAULT_FILL: u32 = (14 << 19) | 0x40;
 /// Offset of the staging buffer base in a voice record (`DM(rec + 0x2F)`, VERIFIED by the dump of
 /// the record after the prepare state: `0x93FF7`).
-const BASE_FIELD: u32 = 0x2F;
+pub(crate) const BASE_FIELD: u32 = 0x2F;
 /// Words of the circular staging buffer (`L1 = 0x80` at `0x1C11AF`).
-const BUFFER_WORDS: u32 = 0x80;
-use crate::script::{parse_addr, parse_number, register_code, Cmd};
+pub(crate) const BUFFER_WORDS: u32 = 0x80;
+use crate::script::{parse_addr, parse_number, parse_value, register_code, Cmd};
+use crate::signal::Opts;
 
-/// Parses `dump`; `None` when `cmd` is not one of this module's commands.
-pub fn parse(cmd: &str, pos: &[String]) -> Option<Result<Cmd, String>> {
+/// Parses `dump`, `regs`, and `refill`; `None` when `cmd` is not one of this module's commands.
+pub fn parse(cmd: &str, pos: &[String], opts: &Opts) -> Option<Result<Cmd, String>> {
     match cmd {
         "dump" => Some(match (pos.first(), pos.get(1)) {
             (Some(a), Some(n)) => match (parse_addr(a), parse_number(n)) {
@@ -58,15 +59,21 @@ pub fn parse(cmd: &str, pos: &[String]) -> Option<Result<Cmd, String>> {
                 .collect::<Result<Vec<_>, _>>()
                 .map(Cmd::Regs),
         ),
-        "refill" => Some(match pos.first().and_then(|v| parse_number(v)) {
-            Some(voice) if voice < 56 => Ok(Cmd::Refill {
-                voice: voice as u32,
-                fill: DEFAULT_FILL,
-            }),
-            _ => Err("refill: needs a voice 0..55".into()),
-        }),
+        "refill" => Some(parse_refill(pos, opts)),
         _ => None,
     }
+}
+
+fn parse_refill(pos: &[String], opts: &Opts) -> Result<Cmd, String> {
+    let voice = match pos.first().and_then(|v| parse_number(v)) {
+        Some(v) if v < 56 => v as u32,
+        _ => return Err("refill: needs a voice 0..55".into()),
+    };
+    let fill = match opts.get("fill") {
+        None => DEFAULT_FILL,
+        Some(w) => parse_value(w).map_err(|e| format!("refill: {e}"))?,
+    };
+    Ok(Cmd::Refill { voice, fill })
 }
 
 impl Runner {
@@ -122,28 +129,42 @@ mod tests {
     #[test]
     fn parses_dump() {
         let p = |w: &[&str]| w.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let empty = Opts::new();
         assert_eq!(
-            parse("dump", &p(&["0x92400", "8"])),
+            parse("dump", &p(&["0x92400", "8"]), &empty),
             Some(Ok(Cmd::Dump {
                 addr: 0x92400,
                 count: 8
             }))
         );
-        assert!(parse("dump", &p(&["0x1"])).unwrap().is_err());
-        assert!(parse("poke", &p(&["1", "2"])).is_none());
+        assert!(parse("dump", &p(&["0x1"]), &empty).unwrap().is_err());
+        assert!(parse("poke", &p(&["1", "2"]), &empty).is_none());
     }
 
     #[test]
     fn parses_refill() {
         let p = |w: &[&str]| w.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let empty = Opts::new();
         assert_eq!(
-            parse("refill", &p(&["0"])),
+            parse("refill", &p(&["0"]), &empty),
             Some(Ok(Cmd::Refill {
                 voice: 0,
                 fill: DEFAULT_FILL
             }))
         );
-        assert!(parse("refill", &p(&["56"])).unwrap().is_err());
+        let mut with_fill = Opts::new();
+        with_fill.insert("fill".into(), "0x180040".into());
+        assert_eq!(
+            parse("refill", &p(&["2"]), &with_fill),
+            Some(Ok(Cmd::Refill {
+                voice: 2,
+                fill: 0x180040
+            }))
+        );
+        let mut bad_fill = Opts::new();
+        bad_fill.insert("fill".into(), "not_a_word".into());
+        assert!(parse("refill", &p(&["0"]), &bad_fill).unwrap().is_err());
+        assert!(parse("refill", &p(&["56"]), &empty).unwrap().is_err());
     }
 
     #[test]

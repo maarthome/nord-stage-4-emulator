@@ -1,4 +1,4 @@
-# The SY pitch table entry `e`: who fills `DM(0x9354A + index)` (negative result, 2026-11-15; refill modelled, section 7)
+# The SY pitch table entry `e`: who fills `DM(0x9354A + index)` (negative result, 2026-11-15; refill modelled, section 7; real stream, section 8)
 
 - **Checked:** 2026-11-15
 - **Sources (local, never committed):** OS v1.66 `bank0_CODE.bin` / `bank0_SRAM.bin` in the ARM unicorn harness (`target/keydown.snap`), the five DSP images cut from `bank0_CODE@0xC044667C..0xC05263A8` (SY1SY2 listing `target/oracle/sy2.lst`, SMP image `dsp_image_4_SMP.bin` through `ns4_dsp_raw.py` and `adi_dis.py`), the boot log `target/bulk/boot_log.jsonl` ([arm-bulk-tables](arm-bulk-tables.md)), the sample set `Carina Accordion 1_PS 4.1.nsmp4` from the local backup, new `tools/arm_sy_slot_probe.py` (`tools/tests/test_arm_sy_slot_probe.py`). Follows [synth-sample-kernel-rule](synth-sample-kernel-rule.md) sections 12 to 14 (D61, D65) and [synth-p-writer](synth-p-writer.md) (the method: find the table driven writer, then run it).
@@ -138,6 +138,31 @@ uv run --with unicorn python tools/arm_sy_slot_probe.py target/fw_unpacked/bank0
 ```
 
 The scenarios embed only addresses, pcs and message words (D45); the sample data and the SDRAM stream stay local.
+
+## 8. Fourth hunt: the real packed sample stream and the handler sweeps (2026-11-15, D112)
+
+Question: does the entry `e` ride in the packed sample page that the external-port DMA brings into the staging buffer, and does any unpacker handler, vector or opcode 9 write the table when driven for real? Work done by `agy` (permission checks skipped at the user's request) in an isolated worktree; every number below was re-run or spot-checked here.
+
+| Item | Result | Tag |
+|---|---|---|
+| Stream format | The `\0stk` payload of stroke 0 of `Weltmeister 4 Accordion_PS 4.1.nsmp4` (chunk at file offset `0x820`, packed stream `0x8B0..0x13B0`, 704 words, 14 blocks, end sentinel `0x00800020`) is consumed by the SY unpacker **unchanged except for byte order**: the `.nsmp4` words are big endian, the staging buffer holds the same words as little endian `u32`. Block header = `ns` bits 13..0, selector bits 17..14, loop bit 18, `nbits - 1` bits 22..19, bit 23; the same fields as `decode_nsmp_stk_payload` (`crates/nord-core/src/cbin/sample.rs`) and as the header decode `0x1C1245..0x1C1270`; residuals MSB first | VERIFIED (first 32 frames, below) |
+| Decode check | `sharc-ref` with `stream 0 path=...` (new, `stream.rs`: ideal DMA that keeps the 128-word buffer full ahead of `DM(rec+0x1C)`): the ring `DM(0xC0000 + 2 k)` after the first unpack equals `sample_dump` frames `0..31` times `2^-6` (the handlers scale by `2^-19`, `sample_dump` by `2^-13`) passed through the tail 1-pole filter `y = -c1 x + c0 y` (`c0 = DM(rec+0x20) = 0x3F128F5C`, `c1 = DM(rec+0x21) = 0xBEDAE148`): **max error 1.686e-11** (re-run here with 4, 5 and 6 ISRs; at 8 ISRs the ring is zero, see below) | VERIFIED (run, `sy_isr_stream.scn` with `loop 4`) |
+| Pitch table | 400 audio ISRs on the real stream: **0** writes into `0x93500..0x935A0`, `rec+0x2D` (step) stays 0, no trap. The stream holds block headers and residuals only (no pitch word), so `e` does not ride in the page the DSP reads. The `\0stk` header (68 bytes: stroke id, root key, rate) is not part of the DMA stream | VERIFIED (run) |
+| Block length | The first block has `ns = 48` (`fl = 1`) but the 9 bit handler `0x1C1C44` is unrolled for 32 samples (9 words) while the tail advances the output by 48 frames and sets the header read mode: the next unpack reads residual word 10 as a header, loses sync and the ring is zero filled by ISR 400. So either the ARM splits or aligns such blocks before the DMA or the DSP consumes only 32 sample aligned blocks; not resolved, the model is exact for the first block only | VERIFIED (run); cause open |
+| Handler sweep | `refill 0 fill=WORD` (new option): 224 header fills (`count` 2..15, selector 0..3, bit 23 0/1, mono and stereo), 20 audio ISRs after the `go` message each, `--watch 0x93500:0xA0`: all 224 complete, none traps, **0** watch hits. Negative control (header with `count = 1`) traps at `0x1C12DD` as before | VERIFIED (run by `agy`, one combination and the control re-run here) |
+| Vector 1, vector 12, opcode 9 | Vector 1 is the reset code (`0x1C0528` PLL delay loops, `0x1C0CA8` peripheral set-up, polls FLAG12 at `0x1C10DD`), no `RTI`; vector 12 is a one instruction `RTI` stub at `0x120090` (the harness misses a one step interrupt: `taken` is sampled after the step); opcode 9 (`0x1C03AA`) only programs the SPI DMA registers `0x1080..0x1084` and returns in 18 steps. No window write in any; a real SPI DMA into DM is not modelled | VERIFIED (listing, run by `agy`) |
+
+Reading: the packed sample stream is now modelled with the real data and decodes correctly, and every handler path writes only the ring and the record. The writer of `e` is not in the stream, in any unpacker handler, in the SY ISRs driven here, in the opcode handlers or in the 545 ARM messages and the three further members seen. What remains: an SPI DMA into DM (opcode 9 with a flash model), the block-length question above, and the possibility that the firmware never writes `e` for this path (the step stays 0 and the voice is muted until the ARM sends something not seen), which would make `--sample-pitch fw` a model of something the hardware computes elsewhere.
+
+Decision: D112. `--sample-pitch fw` stays opt-in.
+
+Reproduce (local files only):
+
+```bash
+target/release/ns4 backup "<ns4b>" --extract "Samp Lib/Accordion_Harm/Weltmeister 4 Accordion_PS 4.1.nsmp4" weltmeister.nsmp4
+# bytes 0x8B0..0x13B0 of the file, each big endian u32 byte swapped to little endian -> target/oracle/weltmeister_s0.stream
+target/release/sharc-ref sy.bin tools/oracle_scenarios/sy_isr_stream.scn --out target/oracle/stream --watch 0x93500:0xA0
+```
 
 ## Implications
 

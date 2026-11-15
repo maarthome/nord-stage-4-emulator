@@ -20,6 +20,8 @@ mod refill;
 mod script;
 #[path = "sharc_ref/signal.rs"]
 mod signal;
+#[path = "sharc_ref/stream.rs"]
+mod stream;
 #[path = "sharc_ref/voice.rs"]
 mod voice;
 
