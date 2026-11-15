@@ -158,7 +158,7 @@ mod tests {
         // synth.lfo.rate: own +12, group +16.
         assert_eq!(nudge("synth.lfo.rate"), vec2(0.0, 28.0));
         assert_eq!(nudge("synth.arp.run"), Vec2::ZERO);
-        assert_eq!(nudge("mod2.rate"), Vec2::ZERO);
+        assert_eq!(nudge("mod2.rate"), vec2(0.0, 2.5));
         for (prefix, _, _) in GROUP_TWEAKS {
             assert!(
                 nord_panel::all_controls()

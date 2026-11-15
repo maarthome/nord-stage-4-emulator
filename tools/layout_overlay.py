@@ -11,8 +11,12 @@ For one section it
      (`<out>/<crop>_overlay.png`), and, with `--shots`, a side-by-side with our own screenshot
      (`python tools/gui_shots.py --scale 4 --sections <section>`),
   3. reads `crates/nord-panel/data/photo_anchors_<section>.csv` (id, photo_x, photo_y: the
-     real control's centre in crop px, read by eye from the crop) and prints per control the
-     offset in mm between our rectangle centre and the real centre, flagging |offset| > 2 mm.
+     real control's centre in crop px, read by eye from the crop; `#` comment lines; an optional
+     `shared_with` column marks ids that draw on another control's rectangle and are not
+     checked) and prints per control the offset in mm between our rectangle centre and the real
+     centre, flagging |offset| > 2 mm.
+
+The `effects` crop is mapped isotropically (`ISOTROPIC`), not onto the section rectangle.
 
 The crops live in `.reference/crops` (git-ignored, never committed); output goes to
 `target/layout_check/` (git-ignored). Needs Pillow.
