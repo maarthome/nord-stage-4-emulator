@@ -171,6 +171,14 @@ pub const PIANO_BUS: SwitchInfo = sw(
     Assumed,
     "Sample path scaled by the SMP bus convention 0.5 instead of 0.55 (Q31 receiver ASSUMED).",
 );
+/// Piano program Touch curves (`--firmware-piano-touch`).
+pub const PIANO_TOUCH: SwitchInfo = sw(
+    "Piano",
+    "--firmware-piano-touch",
+    "Touch curves",
+    Mixed,
+    "KB TOUCH plays the firmware velocity curves (curve ids 10 / 11 / 13, verified against the ARM); the program file bits are not verified.",
+);
 /// Piano SMP voice-gain slew (`--piano-slew-fw`).
 pub const PIANO_SLEW: SwitchInfo = sw(
     "Piano",
@@ -342,7 +350,7 @@ pub const ROUTING: SwitchInfo = sw(
 );
 
 /// All switches in bar order.
-pub const ALL: [SwitchInfo; 34] = [
+pub const ALL: [SwitchInfo; 35] = [
     TONE,
     B3_TAIL,
     FARFISA,
@@ -354,6 +362,7 @@ pub const ALL: [SwitchInfo; 34] = [
     LESLIE_GAIN,
     PIANO_LEVEL,
     PIANO_BUS,
+    PIANO_TOUCH,
     PIANO_SLEW,
     PIANO_CHAIN,
     PIANO_LAYER_LAW,

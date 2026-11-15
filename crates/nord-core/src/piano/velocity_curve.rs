@@ -45,8 +45,12 @@ pub fn velocity_position(velocity: u8) -> u8 {
 
 /// `X` from the curve tables: `clamp(d + (((128 - c) * T) >> 7), 0, 249)`.
 pub fn x_from_curve(velocity: u8) -> i16 {
-    let t = i32::from(velocity_position(velocity));
-    let x = (ZONE_D + (((128 - ZONE_C) * t) >> 7)).clamp(0, X_MAX);
+    x_from_position(velocity_position(velocity))
+}
+
+/// `X` of a velocity position `t` (any Touch curve, [`super::touch_curve`]).
+pub fn x_from_position(t: u8) -> i16 {
+    let x = (ZONE_D + (((128 - ZONE_C) * i32::from(t)) >> 7)).clamp(0, X_MAX);
     i16::try_from(x).unwrap_or(0)
 }
 
