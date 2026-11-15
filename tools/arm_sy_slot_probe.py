@@ -61,7 +61,16 @@ def in_window(dm_word: int) -> bool:
     return WINDOW[0] <= dm_word < WINDOW[1]
 
 
-def probe(code: Path, sram: Path | None, cache: Path | None, ns4b: Path, member: str) -> int:
+def probe(
+    code: Path,
+    sram: Path | None,
+    cache: Path | None,
+    ns4b: Path,
+    member: str,
+    dump: bool = False,
+    notes: tuple[int, ...] = (60,),
+    idle_ticks: int = 0,
+) -> int:
     """Run the SAMPLES note-on and report the slot object, the watches and the table messages."""
     import arm_edit_capture as aec
     import arm_piano_load as pl
@@ -103,15 +112,26 @@ def probe(code: Path, sram: Path | None, cache: Path | None, ns4b: Path, member:
 
     sv.decode_messages = keep
     try:
-        sv.play_note(setup.rig, 60, ticks=60)
+        for note in notes:
+            sv.play_note(setup.rig, note, ticks=60)
+            print(f"note {note}: {len(raw)} SY messages so far")
+        if idle_ticks:
+            # main loop and timer tasks without a key event: the SY messages of the settled loop
+            idle = [(m.dm_word, m.word2) for _t, m in setup.rig.tick(idle_ticks)]
+            raw.extend(idle)
+            print(f"idle {idle_ticks} ticks: {len(idle)} SY messages")
     finally:
         sv.decode_messages = orig
     for kind, address, value, lr in writes:
         print(f"  {kind} {address:#x} <- {value:#x} (lr {lr:#x})")
     hits = [(a, b) for a, b in raw if in_window(a)]
-    print(f"note 60: {len(raw)} SY messages, {len(hits)} into {WINDOW[0]:#x}..{WINDOW[1]:#x}")
+    print(f"{len(raw)} SY messages in all, {len(hits)} into {WINDOW[0]:#x}..{WINDOW[1]:#x}")
     for a, b in hits:
         print(f"  {a:#x} <- {b:#x}")
+    if dump:
+        print("all SY messages (DM word, value), in send order:")
+        for a, b in raw:
+            print(f"  msg {a:#x} {b:#x}")
     return 0
 
 
@@ -122,8 +142,24 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI
     ap.add_argument("--cache", type=Path)
     ap.add_argument("--ns4b", type=Path, required=True)
     ap.add_argument("--member", required=True)
+    ap.add_argument(
+        "--dump-messages", action="store_true", help="print every SY message of the note-on"
+    )
+    ap.add_argument("--notes", type=int, nargs="+", default=[60], help="MIDI notes to play in turn")
+    ap.add_argument(
+        "--idle-ticks", type=int, default=0, help="extra settled-loop ticks after the notes"
+    )
     ns = ap.parse_args(argv)
-    return probe(ns.image, ns.sram, ns.cache, ns.ns4b, ns.member)
+    return probe(
+        ns.image,
+        ns.sram,
+        ns.cache,
+        ns.ns4b,
+        ns.member,
+        ns.dump_messages,
+        tuple(ns.notes),
+        ns.idle_ticks,
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover
