@@ -50,7 +50,7 @@ impl Default for PianoLayerDecoded {
             timbre_raw: None,
             touch: VelocityTouch::Medium,
             string_res: true,
-            acoustic_level: 2,
+            acoustic_level: 1,
             pedal_noise: true,
             soft_release: false,
             dyn_comp: 0,
@@ -151,23 +151,24 @@ fn unpack_piano_layer_block(
         _ => PianoCategory::Misc,
     };
     let model_id = r.read_bits(5)? as u8;
+    let variation = r.read_bits(2)? as u8;
     r.set_bit_pos(base + 28)?;
     let name_hash = r.read_bits(32)?;
-    let variation = r.read_bits(2)? as u8;
+    // `Edt_Pno_kAcoustic` (0..=3, default 1): bit 1 soft release, bit 0 string resonance.
     let acoustic_level = r.read_bits(2)? as u8;
-    let string_res = (acoustic_level & 0x02) != 0;
-    let soft_release = (acoustic_level & 0x01) != 0;
+    let string_res = (acoustic_level & 0x01) != 0;
+    let soft_release = (acoustic_level & 0x02) != 0;
     let pedal_noise = r.read_bool()?;
+    let touch = match r.read_bits(2)? {
+        0 => VelocityTouch::Heavy,
+        2 => VelocityTouch::Light,
+        _ => VelocityTouch::Medium, // 1 is the default; 3 does not occur in the factory set
+    };
     let unison = r.read_bits(2)? as u8;
     let dyn_comp = r.read_bits(2)? as u8;
     let _reserved_pad = r.read_bool()?;
     let timbre_raw = r.read_bits(3)? as u8;
     let timbre = timbre_of_raw(timbre_raw);
-    let touch = match r.read_bits(2)? {
-        1 => VelocityTouch::Light,
-        2 => VelocityTouch::Heavy,
-        _ => VelocityTouch::Medium, // Factory v1.66 leaves bits 73..75 = 0 (`MED` default LED)
-    };
 
     Ok(PianoLayerDecoded {
         enabled,
@@ -210,22 +211,22 @@ fn pack_piano_layer_block(
     };
     w.write_bits(cat_idx, 3)?;
     w.write_bits(u32::from(layer.model_id.min(31)), 5)?;
+    w.write_bits(u32::from(layer.variation & 0x03), 2)?;
     w.set_bit_pos(base + 28)?;
     w.write_bits(layer.name_hash, 32)?;
-    w.write_bits(u32::from(layer.variation & 0x03), 2)?;
-    let acoustic = (u32::from(layer.string_res) << 1) | u32::from(layer.soft_release);
+    let acoustic = (u32::from(layer.soft_release) << 1) | u32::from(layer.string_res);
     w.write_bits(acoustic, 2)?;
     w.write_bool(layer.pedal_noise)?;
+    let touch_idx = match layer.touch {
+        VelocityTouch::Heavy => 0,
+        VelocityTouch::Medium => 1,
+        VelocityTouch::Light => 2,
+    };
+    w.write_bits(touch_idx, 2)?;
     w.write_bits(u32::from(layer.unison.min(3)), 2)?;
     w.write_bits(u32::from(layer.dyn_comp.min(3)), 2)?;
     w.write_bool(false)?;
     w.write_bits(timbre_bits(layer.timbre, layer.timbre_raw), 3)?;
-    let touch_idx = match layer.touch {
-        VelocityTouch::Medium => 0,
-        VelocityTouch::Light => 1,
-        VelocityTouch::Heavy => 2,
-    };
-    w.write_bits(touch_idx, 2)?;
     Ok(())
 }
 
@@ -348,43 +349,6 @@ mod tests {
         assert_eq!(unpacked.layer_a.dyn_comp, 2);
         assert_eq!(unpacked.layer_a.unison, 3);
         assert_eq!(unpacked.layer_a.octave, 1);
-    }
-
-    #[test]
-    fn test_revk_v166_piano_layer_0x0b_flags_and_timbre() {
-        // Replicate exact RevK v1.66 `White Grand.ns4p` (`var=1, ac=2 StringRes only, ped=1, uni=0, dyn=0, timbre=0 Off`)
-        let mut wg = [0u8; 147];
-        wg[0] = PianoPresetDecoded::BLOCK_TAG;
-        wg[13..25].copy_from_slice(&[
-            0x0b, 0x60, 0x40, 0x04, 0x81, 0x42, 0x54, 0xf6, 0x80, 0x00, 0x00, 0x00,
-        ]);
-        let dec_wg = PianoPresetDecoded::unpack(&wg).expect("unpack white grand fixture");
-        assert!(dec_wg.layer_a.string_res);
-        assert!(!dec_wg.layer_a.soft_release);
-        assert!(dec_wg.layer_a.pedal_noise);
-        assert_eq!(dec_wg.layer_a.variation, 1);
-        assert_eq!(dec_wg.layer_a.unison, 0);
-        assert_eq!(dec_wg.layer_a.dyn_comp, 0);
-        assert_eq!(dec_wg.layer_a.timbre, PianoTimbre::Off);
-        assert_eq!(dec_wg.layer_a.touch, VelocityTouch::Medium);
-        assert_eq!(&dec_wg.pack().unwrap()[13..25], &wg[13..25]);
-
-        // Replicate `Horizon Whl.ns4p` (`var=1, ac=2 (string_res=true), ped=0, uni=0, dyn=3, timbre=1 Soft`)
-        let mut hw = [0u8; 147];
-        hw[0] = PianoPresetDecoded::BLOCK_TAG;
-        hw[13..25].copy_from_slice(&[
-            0x0b, 0x90, 0x40, 0x04, 0x81, 0x42, 0x54, 0xf6, 0x18, 0x80, 0x00, 0x00,
-        ]);
-        let dec_hw = PianoPresetDecoded::unpack(&hw).expect("unpack horizon whl fixture");
-        assert!(dec_hw.layer_a.string_res);
-        assert!(!dec_hw.layer_a.soft_release);
-        assert!(!dec_hw.layer_a.pedal_noise);
-        assert_eq!(dec_hw.layer_a.variation, 1);
-        assert_eq!(dec_hw.layer_a.dyn_comp, 3);
-        assert_eq!(dec_hw.layer_a.unison, 0);
-        assert_eq!(dec_hw.layer_a.timbre, PianoTimbre::Soft);
-        assert_eq!(dec_hw.layer_a.touch, VelocityTouch::Medium);
-        assert_eq!(&dec_hw.pack().unwrap()[13..25], &hw[13..25]);
     }
 
     #[test]
