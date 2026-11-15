@@ -20,7 +20,7 @@ impl OrganLayer {
         lanes: usize,
     ) -> [f32; 2] {
         if self.farfisa_keys_active() {
-            return [self.sum_farfisa_keys(&buses[0]), 0.0];
+            return [self.sum_farfisa_keys(), 0.0];
         }
         if self.b3_bass_active() {
             return [self.sum_b3_bass(), 0.0];
