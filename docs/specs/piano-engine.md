@@ -166,6 +166,8 @@ Wired opt-in (`piano/slew_voice.rs`, `PianoLayer::firmware_slew`, `--piano-slew-
 
 Key-up sample of a slewed voice (D103, [piano-attack-fw](../research/piano-attack-fw.md)): with `firmware_slew` the release sample takes the firmware record, gain `0.21875 * F15` (`0x3F7FFFFE` up to velocity 100, `0x3F6C1CEA` at 127, linear between ASSUMED) and decay by `F17 = 0x3F7FF38E` (time constant 0.24 s, VERIFIED words); the engine constants (0.30, 1.15 s) stay for the default and for pedal-down voices. The slew has no attack ramp (`F-2 = 0.25` from the first update), so the attack equals the default engine's.
 
+Slew rate word (D110, [piano-attack-oracle](../research/piano-attack-oracle.md)): `F17 = 1 - d / 2^24`, `d = 2 * round(-s * 2^(semitones / 12))`, `s` the `i16` at stroke record byte `0x3C` (VERIFIED 48/48 Felt Upright, 7/7 Velvet Grand; rounding and cents ASSUMED); used by `--piano-slew-fw`.
+
 Stream edges (VERIFIED runs): a counter at or above `F-8` wraps by `F-7` and rotates the history offset `F-24` by the same amount; the slew rate `F17` is `F+6` above `F-8 - F-7` and `F+7` below; a counter at or above `F-9` frees the voice; there is no step clamp (step above 1 skips residuals) and no end test on the 256-word ring. The engine's edge-sample repeat (section 9) is an approximation of loop and stop by position.
 
 ## 10. Candidate: firmware detuned oscillator bank as string resonance (not implemented)
