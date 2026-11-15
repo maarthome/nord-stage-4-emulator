@@ -85,6 +85,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D81](#d81-the-multi--super-stages-read-the-verified-arm-words-by-default-super-wave-0-on-lp24-has-its-own-cutoff-factor) | 2026-11-15 | The MULTI / SUPER stages read the verified ARM words by default; SUPER wave 0 on LP24 has its own cutoff factor | accepted |
 | [D84](#d84-the-mouse-velocity-of-the-on-screen-keybed-follows-the-hit-position-along-the-key) | 2026-11-15 | The mouse velocity of the on-screen keybed follows the hit position along the key | proposed |
 | [D85](#d85-organ-level-k--28-stays-empirical-the-image-audit-finds-no-1--021875-lane-word-the-d72-lead-is-pinned-by-a-test) | 2026-11-15 | Organ level `K = 2.8` stays EMPIRICAL: the image audit finds no `1 / 0.21875` lane word; the D72 lead is pinned by a test | accepted |
+| [D106](#d106-organ-k-per-engine-measured-on-the-transkun-streams-no-arm-or-sharc-gain-word-found-k--28-stays-empirical) | 2026-11-15 | Organ `K` per engine measured on the Transkun streams; no ARM or SHARC gain word found, `K = 2.8` stays EMPIRICAL | accepted | Claude (agent) |
 | [D104](#d104-synth-velocity-follows-the-org-core-2-laws-behind---firmware-synth-velocity-the-default-stays-off) | 2026-11-15 | Synth velocity follows the ORG core 2 laws behind `--firmware-synth-velocity`; the default stays off | proposed |
 | [D101](#d101-the-fx-default-words-are-derived-per-block-from-the-arm-edit-table-and-applied-opt-in-the-engine-defaults-stay) | 2026-11-15 | The FX default words are derived per block from the ARM edit table and applied opt-in; the engine defaults stay | accepted |
 | [D102](#d102-the-synth-cutoff-with-a-sounding-voice-is-exponential-no-type-factor-is-replaced-yet) | 2026-11-15 | The synth cutoff with a sounding voice is exponential (12 knobs per octave, key tracking in semitones); no type factor is replaced yet | accepted |
@@ -1126,3 +1127,13 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Why:** The law of the voice is derived, but the Hz unit of the Rust stages needs one more fact (stage calls per DSP frame, `F` against `2 F`), and the resonance word to table position and the `kFltType` to stage link are still ASSUMED; replacing the factors without them would swap one fit for another (D22).
 - **Alternatives:** feed `fc_nat` into the engine now (rejected: the unit is open and would move the three clips by a factor of about 2); drop the factors (rejected: no clip evidence).
 - **Impact:** docs, one tool, one test, one data table; OQ22 and audio-remaining item 12 updated; no Rust change, no `render_hash` change. The four missing captures are listed in the research note s4.
+
+### D106. Organ `K` per engine measured on the Transkun streams; no ARM or SHARC gain word found, `K = 2.8` stays EMPIRICAL
+- **Status:** accepted
+- **Decided by:** Claude (agent), on the parent session's task
+- **Context:** D85 left `K` open after the image audit. The follow-up asked for the ARM write capture, the FX mixer and hand-over, the ARM integer-table gains, and `K` per engine with the Transkun streams.
+- **Decision:** (1) The 96,111 logged ARM-to-DSP writes hold no writer of `DM(0xB6518)`, no organ lane gain and no word tied to `2.8`, `2.729`, `1 / 0.21875`, `0.357` or `0.597` outside filter and parameter regions ([organ-output-law](research/organ-output-law.md) s6.3). (2) `K` needed per engine on the Transkun stream, whole-segment RMS: Vox 1.7 to 1.8, Pipe organ-only 3.6 to 6.2, B3 4.9 to 8.4 (rotary drive); data in `docs/research/data/organ_k_per_engine.json`. (3) `K = 2.8`, the `Chain` opt-in and every default stay as they are.
+- **Why:** The 13 dB spread follows the rotary drive and the velocity scale, so a new constant would be another fit, not a derivation (D22 not met).
+- **Alternatives:** Per-engine `K` defaults (rejected: Transkun velocities are ordinal, B3 and Pipe are not linear in `K`); promote `Chain` (rejected: 12 to 20 dB under the clips).
+- **Impact:** Docs and data only; no audio or `render_hash` change. Not run: Piano to Organ program-recall ARM capture, PNO lane to FX hand-over (OQ24, audio-remaining row 3).
+
