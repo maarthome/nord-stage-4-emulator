@@ -8,6 +8,7 @@
 use crate::cbin::{CbinFile, Ns4BackupArchive, PresetSection, SectionPreset};
 use crate::engine::{invert_fx_chain, FxParams, Stage4Engine};
 use crate::midi::MidiEvent;
+use crate::preset_bits::BitTally;
 use crate::program_check::check_program;
 use crate::synth_params_export::invert_decoded_layer;
 use std::collections::BTreeMap;
@@ -15,7 +16,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 /// Usage of `ns4 preset-check`.
-pub const CHECK_USAGE: &str = "usage: ns4 preset-check <backup.ns4b>";
+pub const CHECK_USAGE: &str = "usage: ns4 preset-check <backup.ns4b> [--bits]";
 
 /// Outcome of checking one preset entry.
 #[derive(Debug, Default)]
@@ -200,6 +201,8 @@ fn check_archive(args: &[String]) -> Result<String, String> {
     let path = args.first().ok_or_else(|| CHECK_USAGE.to_string())?;
     let archive = Ns4BackupArchive::open(path).map_err(|e| format!("{path}: {e}"))?;
     let mut reader = BufReader::new(File::open(path).map_err(|e| format!("{path}: {e}"))?);
+    let show_bits = args.iter().any(|a| a == "--bits");
+    let mut tally = BitTally::default();
     let mut counts: BTreeMap<PresetSection, usize> = BTreeMap::new();
     let mut lossy: BTreeMap<PresetSection, usize> = BTreeMap::new();
     let mut lines = Vec::new();
@@ -212,6 +215,9 @@ fn check_archive(args: &[String]) -> Result<String, String> {
                     .read_entry_by_index(&mut reader, i)
                     .map_err(|err| format!("{}: {err}", e.name))?;
                 programs += 1;
+                if show_bits {
+                    tally.add_program(&bytes);
+                }
                 let problems = check_program(&bytes, 48_000.0);
                 if !problems.is_empty() {
                     failed += 1;
@@ -227,6 +233,9 @@ fn check_archive(args: &[String]) -> Result<String, String> {
         let rep = check_entry(&bytes, 48_000.0);
         if rep.lossy {
             *lossy.entry(section).or_default() += 1;
+            if show_bits {
+                tally.add(&bytes);
+            }
         }
         if !rep.problems.is_empty() {
             failed += 1;
@@ -237,6 +246,7 @@ fn check_archive(args: &[String]) -> Result<String, String> {
         let l = lossy.get(s).copied().unwrap_or(0);
         lines.push(format!("{s:?}: {n} presets, {l} with a lossy decode"));
     }
+    lines.extend(tally.lines());
     let total: usize = counts.values().sum();
     lines.push(format!("{programs} programs (STORE round trip + edits)"));
     lines.push(format!("{total} presets; problems: {failed}"));

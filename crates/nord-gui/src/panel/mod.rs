@@ -33,6 +33,7 @@ mod organ_preset;
 #[cfg(test)]
 mod organ_rewire_tests;
 mod organ_strip;
+mod organ_vib_matrix;
 mod organ_widgets;
 pub mod panorama;
 #[cfg(test)]

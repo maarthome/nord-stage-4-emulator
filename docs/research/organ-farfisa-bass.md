@@ -239,6 +239,28 @@ Tools: `tools/organ_bass_gen.py capture` (ARM key-down of keys 24..108, drawbars
 
 Still open: the stage does not model the drawbar and percussion settings (the key tables are the `888888888` key-down; the real default program writes smaller window steps, so levels differ), the bit-exact `0x122296` model (with the 1.45 dB residual of the processor part), the scanner inside the processor, the closed form of `T`, the `G` resync after a key-up, and a B3 Bass hardware clip.
 
+## 13. Instruction-level model of `0x122296`: the listing runs bit-exact in Python (2026-11-14)
+
+Tools: `tools/sharc_listing_vm.py` (interpreter of the ADI listing text, SIMD, 40-bit float), `tools/organ_listing_check.py` (trace and memory comparison with `sharc-chain`), tests `tools/tests/test_sharc_listing_vm.py`. The listing is read locally from the image (`tools/adi_dis.py`); nothing of it is committed.
+
+```bash
+python tools/adi_dis.py target/PNO/core1_sram.bin 0x24452C 0x244C40      # listing, byte = 2 pc
+python tools/organ_listing_check.py trace target/PNO/core1_sram.bin bass_m5.script \
+    --entry 0x122296 --end 0x12261d \
+    --gen 0x121bbe:0x121e28:I0=0xc00f2,I1=0xb52c7 \
+    --proc 0x122296:0x12261d:I0=0xc00ea,I1=0xb472c --exe target/release/sharc-chain
+```
+
+| Check | Result | Tag |
+|---|---|---|
+| Both frames of call 0 (boot + model 5 install + key-down 60 64 67), every instruction, all R, S, I, M words after it | 868 of 868 rows, 0 mismatches | VERIFIED (run) |
+| Memory after the call (weights, state blocks, delay line, output stream: 16,128 words) | 0 words differ | VERIFIED (run) |
+| Float format | 40 bit: the 8 extension bits survive between operations (moves and swaps keep them, loads clear them, stores write the upper 32); a single precision model is 1 ulp off after about 70 instructions | VERIFIED (trace) |
+| SIMD data access | a data register load or store moves the PEy twin to `addr + 1`; loads through `I1` broadcast the word at `addr` to both elements (MODE1 BDCST1; the state block is read through `I1`); stores always use the pair; `Rx <-> Sy` is a single exchange | VERIFIED (trace) |
+| Structure | per call 2 frames; per frame: the window 1 and window 2 dot products as two lanes (PEx even, PEy odd words; 28 and 34 products per lane, two accumulators per lane), the lane fold (`r2 = s8; f0 = f8 + f2`), two param-block reads of the scanner, the 33-tap FIR and two lattice groups on the circular buffer `l6 = 0x21`, 9 delay taps weighted by `DM 0xC0202..`, three biquads, the DC blocker, the output store | VERIFIED (listing run) |
+
+Limits. (1) One call: the generator `0x121BBE` also writes processor state words between calls (`DM 0x9559C..0x955AF`, `0xB45AE..`, `0xC0209`, found by diffing two generator-only runs), so a multi-call replay needs the generator listing in the interpreter (a model started from the oracle ring diverges from call 1). (2) The interpreter has no branches or flags: the Farfisa processor `0x122B85` stops at `if ne jump 0x122d88`. (3) The clean transliteration (a hand written recursion in Rust for the opt-in Bass stage) is not done: the part after the lane fold uses the PEy element as a helper (lane swaps `r13 <-> s14`, `s2 = r3`, a delay line shifted through `I0 / I1`), so it needs a derivation per section, not a copy of the listing. The Rust stage therefore keeps the EMPIRICAL magnitude FIR of s12 (+1.1 to +2.5 dB on the 60 64 67 goldens, unchanged) and the Farfisa stage its measured gain tables. Not decoded in this pass: the drawbar and percussion dependence of the key tables, the `G` resync after a key-up, Twin amp types 7 to 9, `0x122B1D`, the cabinet biquad bank.
+
 ## Implications
 
 - The Farfisa generator is fully decoded and ported; the Farfisa audio is not reachable until the ARM weights and the filter table are captured (OQ19). The documented structure (four weighted sums, biquads, 8 lattice sections, four gains) gives the model target.
@@ -249,6 +271,6 @@ Still open: the stage does not model the drawbar and percussion settings (the ke
 ## Follow-ups
 
 1. Find the ARM writer of the Farfisa weights `DM 0x95FFC + 0x178 i`, filter tables `0x965FC..` and the lattice flag (the sender `0xC0224468` family with the record table `0xC0282ED0`, [pno-full-pass](pno-full-pass.md) s6), then replay the Farfisa chord and port the processor.
-2. Bit-exact Python models of `0x122296` and `0x121E2B` on random inputs (the layout is in section 4.2), then the scanner as a Rust stage on `B3Wheels`.
+2. Bit-exact Python models of `0x122296` and `0x121E2B` on random inputs (the layout is in section 4.2), then the scanner as a Rust stage on `B3Wheels`. Section 13: the listing of `0x122296` runs bit-exact in `tools/sharc_listing_vm.py` for one call; next are the generator listing (multi-call replay), branches for `0x122B85`, and the section by section recursion in Rust.
 3. Identify what the second store of an organ layer edits (chan 1, 3).
 4. Record the real frame rate (a C0 / C4 recording) and re-anchor `DSP_FRAME_RATE`.

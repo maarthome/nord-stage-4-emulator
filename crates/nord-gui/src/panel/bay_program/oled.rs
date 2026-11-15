@@ -240,14 +240,19 @@ pub fn compose(ui: &ProgramUi, sum: &Summary) -> OledText {
         Screen::Preset { kind, single } => super::oled_lists::preset(ui, kind, single),
         // VERIFIED (ARM frame, research note s16.7, key id 21 with the modifier bit set): bar `UNDO`
         // without a counter, `Nothing to Undo` (8 px, ink rows 16 to 23), and one outlined `Ok`
-        // button in the fourth soft slot. ASSUMED: with history the label reads `Undo to before` and
-        // the row `the last edit?` (the pool pair `Undo to before` / `%s?`), `Redo` sits in the
-        // third slot (the pool order is `Ok`, `Redo`); the Redo slot is only drawn when a redo exists.
+        // button in the fourth soft slot. VERIFIED (research s15.4, refresh method `0xC01327BC`):
+        // with history the dialog shows `Undo to before` and `%s?` filled with the item, `Ok` and
+        // `Redo`. ASSUMED: the item is the operation name of manual p.43 (`UndoOp::label`; the
+        // firmware's own item strings were not reached) and `Redo` sits in the third slot (the
+        // pool order is `Ok`, `Redo`); the Redo slot is only drawn when a redo exists.
         Screen::Undo => {
             let (sub, rows) = if ui.undo_blocked {
                 ("Nothing to Undo", Vec::new())
             } else {
-                ("Undo to before", vec!["the last edit?".to_string()])
+                (
+                    "Undo to before",
+                    vec![format!("{}?", ui.undo_op.unwrap_or("the last edit"))],
+                )
             };
             let mut soft = ui.screen.soft_labels();
             if !ui.redo_available {

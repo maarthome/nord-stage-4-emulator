@@ -118,3 +118,24 @@ OLED files, golden images.
 
 ### Summary of Changes
 `bay_synth/{names,controls,widgets,mod}.rs`, `bay_piano_select.rs`, `bay_effects/amp.rs`, `layout_tweaks.rs`, `nord-panel` frames_table (MODE pad, PROGRAM title).
+
+## Round 6 (fix/vibrato-matrix-rotary-undo)
+
+### Context
+The real panel prints the VIB/CHORUS type names `C2 V3 C3` / `V2 C1 V1` around the six type LEDs of the Organ section (a request called it a Synth control; the photo `NS4_Panel-crop-left.jpg` puts it in the Organ VIB/CHORUS box, already wired to `OrganEdit::Scanner`). Our LEDs had no names and the wrong order. The ROTARY SPEAKER title sits on a light tab in the photo.
+
+### Higher Goal
+Every printed name is shown next to its control, as on the instrument; the audit stays at 0 with an empty allow-list.
+
+### Acceptance Criteria
+- [x] VIB/CHORUS matrix with the names above and below, selector order V1, C1, V2, C2, V3, C3 (stored order), tested
+- [x] Rotary Speaker title inside a light tab spanning the box top
+- [x] Audit: 0 before, 10 on the first run with the names, 0 after; allow-list empty
+- [x] Docs: visual-style spec (round 6), gui-testing
+- [x] Before / after screenshots of the Organ and Master bays inspected
+
+### Out of Scope
+Triangle-shaped LEDs, the two-line wrapped tab title, the Synth VIBRATO box (separate controls, unchanged).
+
+### Summary of Changes
+`nord-gui`: `panel/organ_vib_matrix.rs` (new), `panel/organ_logic.rs` (order), `panel/bay_organ.rs`, `panel/layout_tweaks.rs`, `panel/bay_master/rotary.rs` (tab); `nord-panel` frames_table (VIB/CHORUS and B3 PERCUSSION pads).
