@@ -93,6 +93,7 @@ fn configure(kv: &HashMap<String, String>) -> SynthLayer {
         let (cat, wave) = (num(kv, "cat", 0.0) as u8, num(kv, "wave", 0.0) as u8);
         s.p_wave = PWave::from_category_wave(cat, wave);
         s.strip_stage = FwStage::from_category_wave(cat, wave);
+        s.stage_words = nord_core::synth::StageWords::for_wave(cat, wave);
         s.osc_shape_category = cat == 3;
     }
     s.strip_stages = num(kv, "stages", 0.0) > 0.5;

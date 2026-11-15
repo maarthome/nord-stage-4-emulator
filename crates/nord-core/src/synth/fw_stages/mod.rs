@@ -26,6 +26,7 @@ use super::gain_dezip::SY_FRAME_RATE_HZ;
 use crate::phase_wrap::wrap_pos;
 
 mod laws;
+mod words;
 pub(in crate::synth) use laws::fade;
 use laws::square_wave;
 pub use laws::{noise_sample, noise_step, saw_diff, spread_u, NOISE_SEED};
@@ -127,6 +128,8 @@ pub struct FwStageState {
     pub noise: u32,
     /// Voice phases in cycles (SUPER uses 8, MULTI 3).
     pub phases: [f32; 8],
+    /// Lane y voice phases of the verified-words mode (`words.rs`: SUPER 16 voices, MULTI 3).
+    pub phases_y: [f32; 8],
     /// Output high pass of SHAPE SINE wave 4, SYNC 1 / 3 and MISC 0 / 2.
     pub hp: OutputHighPass,
     /// MISC 0 pink noise rows.
@@ -147,6 +150,7 @@ impl Default for FwStageState {
         Self {
             noise: NOISE_SEED,
             phases: [0.0; 8],
+            phases_y: [0.0; 8],
             hp: OutputHighPass::default(),
             pink: [0.0; PINK_ROWS],
             counter: 0,
