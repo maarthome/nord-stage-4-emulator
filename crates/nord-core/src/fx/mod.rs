@@ -52,6 +52,7 @@ mod fw_mod1_data;
 mod fw_mod1_rest;
 mod fw_mod2;
 mod fw_mod2_data;
+mod fw_mod2_dense;
 mod fw_mod2_law_stage;
 mod fw_mod2_run;
 mod fw_mod2_tables;
@@ -151,6 +152,8 @@ mod tests_lfo_golden;
 mod tests_master_golden;
 #[cfg(test)]
 mod tests_mod1_golden;
+#[cfg(test)]
+mod tests_mod2_dense_golden;
 #[cfg(test)]
 mod tests_mod2_golden;
 #[cfg(test)]
