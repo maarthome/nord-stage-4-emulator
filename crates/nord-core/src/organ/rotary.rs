@@ -3,7 +3,7 @@
 //! Spec: `docs/specs/organ-engine.md` section 4. Crossover and balance steps are VERIFIED
 //! (`types.rs`); rotor speeds, excursions and reflections are ASSUMED.
 
-use super::rotor_arm::{HORN, ROTOR};
+use super::rotor_choices::{horn_section, rotor_section};
 use super::rotor_stop::{clamp_stop_angle, ease_phase, STOP_ANGLE_RAD};
 use super::types::{ROTARY_BUFFER_SIZE, ROTARY_CROSSOVER_HZ};
 use super::{OrganLayer, RotarySpeed};
@@ -90,26 +90,19 @@ impl OrganLayer {
         } else {
             self.rotary_speed
         };
-        // VERIFIED ARM speeds and linear ramp, one update every 10 ms (`rotor_arm`).
+        // VERIFIED ARM speeds and linear ramp, one update every 10 ms (`rotor_arm`); the System
+        // menu Low / Normal / High choices pick other sections (`rotor_choices`).
+        let g = &self.globals;
+        let horn = horn_section(g.horn_speed_choice, g.horn_acc_choice);
+        let rotor = rotor_section(g.rotor_speed_choice, g.rotor_acc_choice);
         let (target_horn, target_drum) = match effective_speed {
             RotarySpeed::Stop => (0.0, 0.0),
-            RotarySpeed::Slow => (HORN.slow_hz(), ROTOR.slow_hz()),
-            RotarySpeed::Fast => (HORN.fast_hz(), ROTOR.fast_hz()),
+            RotarySpeed::Slow => (horn.slow_hz(), rotor.slow_hz()),
+            RotarySpeed::Fast => (horn.fast_hz(), rotor.fast_hz()),
         };
-        // Rotary Horn/Rotor Speed and Acc menu entries (factors are exactly 1.0 by default).
-        let target_horn = target_horn * self.globals.horn_speed_scale;
-        let target_drum = target_drum * self.globals.rotor_speed_scale;
         for _ in 0..self.rotor_clock.advance(inv_fs) {
-            self.horn_rate_hz = HORN.step(
-                self.horn_rate_hz,
-                target_horn,
-                1.0 / self.globals.horn_tau_scale,
-            );
-            self.drum_rate_hz = ROTOR.step(
-                self.drum_rate_hz,
-                target_drum,
-                1.0 / self.globals.rotor_tau_scale,
-            );
+            self.horn_rate_hz = horn.step(self.horn_rate_hz, target_horn, 1.0);
+            self.drum_rate_hz = rotor.step(self.drum_rate_hz, target_drum, 1.0);
         }
 
         if self.leslie_fw.is_some() {

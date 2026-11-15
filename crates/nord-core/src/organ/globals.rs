@@ -7,7 +7,8 @@
 
 /// Factors and offsets applied on top of the per-layer Organ state.
 ///
-/// ASSUMED: all non-default values below are not measured on hardware. The manual (p.58) names the
+/// The four rotary speed / acceleration choices are VERIFIED (`rotor_choices.rs`). ASSUMED: the other
+/// non-default values below are not measured on hardware. The manual (p.58) names the
 /// menu entries and their choices, never the resulting gains or speeds. What would confirm them:
 /// a recording of the same B3 chord with each menu choice, compared against `render` output.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -18,14 +19,14 @@ pub struct OrganGlobals {
     pub click_scale: f32,
     /// Master Fine Tune in cents, added to the layer's `fine_tune_cents` (System menu 3).
     pub master_tune_cents: f32,
-    /// Woofer rotor speed factor (Rotary Rotor Speed Low/Normal/High).
-    pub rotor_speed_scale: f32,
-    /// Treble horn speed factor (Rotary Horn Speed Low/Normal/High).
-    pub horn_speed_scale: f32,
-    /// Woofer rotor acceleration time-constant factor (`> 1` = slower ramp).
-    pub rotor_tau_scale: f32,
-    /// Treble horn acceleration time-constant factor (`> 1` = slower ramp).
-    pub horn_tau_scale: f32,
+    /// Rotary Rotor Speed choice `0..=2` (Low / Normal / High), VERIFIED speeds in `rotor_choices`.
+    pub rotor_speed_choice: usize,
+    /// Rotary Horn Speed choice `0..=2` (Low / Normal / High).
+    pub horn_speed_choice: usize,
+    /// Rotary Rotor Acceleration choice `0..=2` (Low / Normal / High).
+    pub rotor_acc_choice: usize,
+    /// Rotary Horn Acceleration choice `0..=2` (Low / Normal / High).
+    pub horn_acc_choice: usize,
     /// Gain of the bass (rotor) band; `2 * bass_fraction` of the Bass/Horn Level setting.
     pub bass_gain: f32,
     /// Gain of the treble (horn) band; `2 * horn_fraction` of the Bass/Horn Level setting.
@@ -38,10 +39,10 @@ impl Default for OrganGlobals {
             crosstalk_scale: 1.0,
             click_scale: 1.0,
             master_tune_cents: 0.0,
-            rotor_speed_scale: 1.0,
-            horn_speed_scale: 1.0,
-            rotor_tau_scale: 1.0,
-            horn_tau_scale: 1.0,
+            rotor_speed_choice: super::rotor_choices::NORMAL,
+            horn_speed_choice: super::rotor_choices::NORMAL,
+            rotor_acc_choice: super::rotor_choices::NORMAL,
+            horn_acc_choice: super::rotor_choices::NORMAL,
             bass_gain: 1.0,
             horn_gain: 1.0,
         }
@@ -89,35 +90,41 @@ mod tests {
     }
 
     #[test]
-    fn speed_factors_scale_the_settled_rotor_rates() {
+    fn speed_choices_set_the_settled_rotor_rates() {
+        use super::super::rotor_arm::physical_ratio;
+        use super::super::rotor_choices as rc;
         let (horn, drum) = settled_rates(OrganGlobals::default());
         assert!(
             (horn - 6.889).abs() < 0.01 && (drum - 6.299).abs() < 0.01,
             "{horn} {drum}"
         );
-        let fast = OrganGlobals {
-            horn_speed_scale: 1.15,
-            rotor_speed_scale: 0.85,
-            ..OrganGlobals::default()
-        };
-        let (horn2, drum2) = settled_rates(fast);
-        assert!((horn2 / horn - 1.15).abs() < 5e-3, "{horn2}");
-        assert!((drum2 / drum - 0.85).abs() < 5e-3, "{drum2}");
+        for choice in [0, 2] {
+            let g = OrganGlobals {
+                horn_speed_choice: choice,
+                rotor_speed_choice: choice,
+                ..OrganGlobals::default()
+            };
+            let (h, d) = settled_rates(g);
+            let want_h = rc::HORN_FAST[choice] as f32 * physical_ratio();
+            let want_d = rc::ROTOR_FAST[choice] as f32 * physical_ratio();
+            assert!((h - want_h).abs() < 0.01, "{h} {want_h}");
+            assert!((d - want_d).abs() < 0.01, "{d} {want_d}");
+        }
     }
 
     #[test]
     fn slower_acceleration_lags_behind_after_one_second() {
-        let after_one_second = |tau: f32| {
+        let after_one_second = |tau: usize| {
             let mut o = OrganLayer::new(48_000.0);
-            o.globals.horn_tau_scale = tau;
+            o.globals.horn_acc_choice = tau;
             o.rotary_speed = super::super::RotarySpeed::Fast;
             for _ in 0..48_000 {
                 o.process_rotary(0.0, 1.0 / 48_000.0);
             }
             o.horn_rate_hz
         };
-        assert!(after_one_second(1.5) < after_one_second(1.0));
-        assert!(after_one_second(0.67) > after_one_second(1.0));
+        assert!(after_one_second(0) < after_one_second(1));
+        assert!(after_one_second(2) > after_one_second(1));
     }
 
     #[test]
@@ -162,10 +169,14 @@ mod tests {
             assert_eq!(x * g.bass_gain, x);
             assert_eq!(x * g.horn_gain, x);
         }
-        assert_eq!(0.7f32 * g.horn_tau_scale, 0.7);
-        assert_eq!(4.2f32 * g.rotor_tau_scale, 4.2);
-        assert_eq!(6.85f32 * g.horn_speed_scale, 6.85);
-        assert_eq!(5.70f32 * g.rotor_speed_scale, 5.70);
+        for choice in [
+            g.horn_speed_choice,
+            g.rotor_speed_choice,
+            g.horn_acc_choice,
+            g.rotor_acc_choice,
+        ] {
+            assert_eq!(choice, super::super::rotor_choices::NORMAL);
+        }
     }
 
     fn bend_render(cents: Option<f32>) -> Vec<[f32; 2]> {

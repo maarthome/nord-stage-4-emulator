@@ -372,7 +372,7 @@ Organ chains A and B load from one block: an edit of either is stored (A first).
 
 ### 5.8 Collapsed raw values: what the bits are (`cbin/synth_raw.rs`, `cbin/piano_preset.rs`, `cbin/organ_preset.rs`, `preset_bits.rs`)
 
-OQ31 (resolved, D64). `ns4 preset-check <backup> --bits` groups every payload bit where `pack(decode(file))` differs from the file into runs and prints section, bit position, raw and re-packed value, preset count. Before this section: 4 Piano presets and 136 Synth presets (17 clusters), plus 181 of 384 programs (Organ). Now 0 of 544 presets and 0 of 384 programs differ (`ns4 preset-check` on the Factory Restore RevK v1.66 backup: `544 presets; problems: 0`, no run listed by `--bits`). Positions below are layer-relative to a Synth sound block (`0x2F`, sound A at payload bit 1472, B 1856, C 2240).
+OQ31 (resolved, D67). `ns4 preset-check <backup> --bits` groups every payload bit where `pack(decode(file))` differs from the file into runs and prints section, bit position, raw and re-packed value, preset count. Before this section: 4 Piano presets and 136 Synth presets (17 clusters), plus 181 of 384 programs (Organ). Now 0 of 544 presets and 0 of 384 programs differ (`ns4 preset-check` on the Factory Restore RevK v1.66 backup: `544 presets; problems: 0`, no run listed by `--bits`). Positions below are layer-relative to a Synth sound block (`0x2F`, sound A at payload bit 1472, B 1856, C 2240).
 
 | Cluster (sound-relative bits) | Presets | Firmware field | What it was | Decoded field |
 |---|---|---|---|---|
