@@ -1,0 +1,11 @@
+{
+  "video": "NVMtX0epXog",
+  "note": "DSoundman 'How to Make a Soft Piano Sound': White Grand (Layer Init, normal timbre) 113 to 140 s, replayed with the transcribed stream docs/research/data/piano_events_NVMtX0epXog.json (python tools/emu_vs_hw.py --events-from transkun). The program is the factory A:21 White Grand with only the piano section enabled (ASSUMED stand-in for Layer Init: its program FX stay). Speech mixes into the 3-8 kHz bands.",
+  "segments": [
+    {"id": "piano_white_dsm", "entry": "Program/Bank A/White Grand.ns4p", "engine": "piano Grand (White), piano section only", "at_s": 113, "duration_s": 27,
+     "variants": [
+       {"label": "default", "edits": {"global.section_enable_i": 2, "global.section_enable_ii": 2}, "flags": []},
+       {"label": "chain+slew", "edits": {"global.section_enable_i": 2, "global.section_enable_ii": 2}, "flags": ["--firmware-piano-chain", "--piano-slew-fw"]},
+       {"label": "vel-88", "velocity": 88, "edits": {"global.section_enable_i": 2, "global.section_enable_ii": 2}, "flags": []}]}
+  ]
+}

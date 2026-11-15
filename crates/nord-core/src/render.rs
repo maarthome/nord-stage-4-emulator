@@ -116,6 +116,7 @@ pub fn parse_notes(s: &str) -> Result<Vec<u8>, String> {
 ///
 /// Accepts `{"events": [{"midi", "onset_s", "offset_s", "velocity"?, "confirmed"?, "strength"?}]}`
 /// or a bare array. With `confirmed_only`, events whose `confirmed` field is `false` are skipped.
+/// An optional top-level `"pedal": [{"t", "value"}]` list becomes sustain CC 64 events.
 /// An event's own `velocity` (1..=127) wins; otherwise the note plays at `velocity`. Returns the
 /// timed events and the last note-off frame.
 pub fn parse_note_events(
@@ -177,6 +178,24 @@ pub fn parse_note_events(
         });
         last = last.max(off_f);
     }
+    // Optional sustain-pedal stream: {"pedal": [{"t": seconds, "value": 0..=127}]} -> CC 64.
+    if let Some(p) = v.get("pedal").and_then(serde_json::Value::as_array) {
+        for e in p {
+            let t = e.get("t").and_then(serde_json::Value::as_f64).filter(|t| *t >= 0.0);
+            let val = e.get("value").and_then(serde_json::Value::as_u64).filter(|v| *v <= 127);
+            let (t, val) = t
+                .zip(val)
+                .ok_or_else(|| format!("pedal event needs t >= 0 and value 0..=127: {e}"))?;
+            out.push(TimedEvent {
+                frame: (t * f64::from(sample_rate)).round() as usize,
+                event: MidiEvent::ControlChange {
+                    channel: 0,
+                    controller: 64,
+                    value: val as u8,
+                },
+            });
+        }
+    }
     if out.is_empty() {
         return Err("no note events to render".to_string());
     }
@@ -203,6 +222,25 @@ mod tests {
 
     fn read_u32(b: &[u8], at: usize) -> u32 {
         u32::from_le_bytes(b[at..at + 4].try_into().unwrap())
+    }
+
+    #[test]
+    fn test_parse_note_events_pedal() {
+        let js = r#"{"events":[{"midi":60,"onset_s":0.5,"offset_s":1.0}],
+            "pedal":[{"t":0.25,"value":127},{"t":2.0,"value":0}]}"#;
+        let (ev, _) = parse_note_events(js, 48_000.0, 90, false).unwrap();
+        assert_eq!(ev.len(), 4);
+        assert!(ev.iter().any(|e| e.frame == 12_000
+            && matches!(
+                e.event,
+                MidiEvent::ControlChange {
+                    controller: 64,
+                    value: 127,
+                    ..
+                }
+            )));
+        let bad = r#"{"events":[{"midi":60,"onset_s":0,"offset_s":1}],"pedal":[{"t":1}]}"#;
+        assert!(parse_note_events(bad, 48_000.0, 90, false).is_err());
     }
 
     #[test]

@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+import emu_events
 import numpy as np
 import video_ref
 
@@ -222,8 +223,13 @@ def run(cmd: Sequence[str]) -> str:
     return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
 
 
-def prepare_segment(seg: dict[str, Any], video: str, work: Path, tools: Path) -> tuple[Path, Path]:
-    """Extracts the hardware WAV and the played-note events once (cached in ``work``)."""
+def prepare_segment(
+    seg: dict[str, Any], video: str, work: Path, tools: Path, detect: bool = True
+) -> tuple[Path, Path]:
+    """Extracts the hardware WAV and the played-note events once (cached in ``work``).
+
+    ``detect=False`` skips the audio note detection (``--events-from`` replaces its output).
+    """
     sdir = work / seg["id"]
     sdir.mkdir(parents=True, exist_ok=True)
     wav = sdir / "hw.wav"
@@ -249,7 +255,7 @@ def prepare_segment(seg: dict[str, Any], video: str, work: Path, tools: Path) ->
             )
         )
         Path(res["segments"][0]["wav"]).replace(wav)
-    if not events.exists():
+    if detect and not events.exists():
         run(
             [
                 *vr,
@@ -296,7 +302,15 @@ def run_all(args: argparse.Namespace) -> dict[str, Any]:
     for seg in spec["segments"]:
         if args.only and seg["id"] not in args.only:
             continue
-        hw_wav, events = prepare_segment(seg, args.video, work, tools)
+        hw_wav, events = prepare_segment(
+            seg, args.video, work, tools, detect=not args.events_from
+        )
+        if args.events_from:
+            events = emu_events.segment_events(
+                emu_events.stream_path(args.events_from, spec["video"]),
+                seg,
+                work / seg["id"] / "events_transcribed.json",
+            )
         if args.note_range:
             lo, hi = args.note_range
             events = filter_events(events, lo, hi, work / seg["id"] / f"events_{lo}_{hi}.json")
@@ -317,18 +331,25 @@ def run_all(args: argparse.Namespace) -> dict[str, Any]:
                     var["edits"],
                 )
                 flags = [*flags, "--program-file", str(prog)]
+            replay = events
+            if args.events_from:
+                replay = emu_events.variant_events(
+                    events, var, work / seg["id"] / f"events_{var['label']}.json"
+                )
             run(
                 render_cmd(
                     args.ns4,
                     seg["entry"],
                     args.backup,
-                    events,
+                    replay,
                     emu,
                     variant_velocity(seg, var),
                     flags,
                 )
             )
             m = segment_metrics(hw_wav, emu, onsets, intervals)
+            if args.events_from:
+                m.update(emu_events.env_row(read_mono(hw_wav), read_mono(emu), events))
             m.update(label=var["label"], score=gap_score(m))
             rows.append(m)
         results.append(
@@ -373,6 +394,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--confirmed-only", action="store_true", help="Replay video-confirmed notes only."
     )
     p.add_argument("--only", nargs="*", help="Segment ids to run.")
+    p.add_argument(
+        "--events-from",
+        metavar="transkun|PATH",
+        help="Replay the transcribed note stream (velocities, sustain pedal) sliced to each "
+        "segment instead of the video-detected notes: 'transkun' = "
+        "docs/research/data/piano_events_<video>.json (tools/transcribe_clip.py).",
+    )
     p.add_argument(
         "--note-range",
         nargs=2,
