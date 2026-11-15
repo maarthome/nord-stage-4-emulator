@@ -39,7 +39,7 @@ So under the verified common path the two clip calibrations disagree by about **
 
 ## 4. Not worked on
 
-Stream edge handling, damper-down strokes with the firmware lists, the SMP slew time constant, and the hardware-clip comparison at a new default (nothing was changed that would need one).
+Stream edge handling, damper-down strokes with the firmware lists, the SMP slew time constant, and the hardware-clip comparison at a new default (nothing was changed that would need one). Update 2026-11-14: slew and edges are in [smp-slew](smp-slew.md) (D61); damper-down strokes, unison, dynamics and EQ stay open.
 
 ## 5. The master level writer, the mixer object and the layer words (follow-up of the same day)
 
