@@ -44,7 +44,7 @@ Tags follow `.agents/rules/provenance-in-code.md`. Bean `ns4-yp85`, decision D88
 4. `[ctx + 0x1C]` set to each curve id, same note-on: the byte at `0xC00AA658` (`T`) equals `curve[id][r8(v)]` for 27 of 27 pairs. Reproduce: `uv run --with unicorn --with capstone python tools/arm_touch_curves.py arm-check <CODE> <SRAM> --cache target/keydown.snap --ns4b <backup> --npno "Piano/Clavinet/Clavinet D6  6.1.npno"`.
 5. `python tools/arm_touch_curves.py rust <CODE>` regenerates the arrays and the fingerprint `0xc8293ca1773436e4` the Rust test pins.
 
-## 4. Program file bits (VERIFIED by the program recall; decoder realigned by D96)
+## 4. Program file bits (VERIFIED by the program recall; decoder realigned by D99)
 
 The firmware recall (`tools/arm_program_load.py` boot with Felt Upright, then `session.run(300)`, hook on the Touch handler `0xC011AA2C` and on the store setter `0xC00D051C`) with the two bits at file bit `1991` of layer A and `2087` of layer B set to 0 / 1 / 2 (layer A) and 1 / 2 / 0 (layer B): the setter value and the handler index equal the file value in all 6 of 6 cases. So the file value is the edit value: **0 heavy (curve 10), 1 medium (11), 2 light (13)**, at file bit `1991..1992` (piano payload bit `167`, layer base + 63; layer B `+96`). That is the `ns4decode` position.
 
@@ -64,7 +64,7 @@ Over the 384 factory programs the touch field reads 156 x 0, 208 x 1, 20 x 2 and
 
 ## 5. Implications
 
-- Opt-in only: `PianoLayer::firmware_touch` / `--firmware-piano-touch` / GUI Firmware bar "Touch curves". Off: every `.npno` note plays the Medium curve (the factory default), the other sounds the ASSUMED power curves. The default stays off (D22, D96): programs now carry their Touch (s4), but no hardware clip exists for the Light and Heavy curves (the clips are Medium), and the sounds without a level model scale the Medium response by the curve difference only. With the switch off, a Light or Heavy program plays the Medium curve on `.npno` sounds (bit identical to before) and the ASSUMED powers on the others.
+- Opt-in only: `PianoLayer::firmware_touch` / `--firmware-piano-touch` / GUI Firmware bar "Touch curves". Off: every `.npno` note plays the Medium curve (the factory default), the other sounds the ASSUMED power curves. The default stays off (D22, D99): programs now carry their Touch (s4), but no hardware clip exists for the Light and Heavy curves (the clips are Medium), and the sounds without a level model scale the Medium response by the curve difference only. With the switch off, a Light or Heavy program plays the Medium curve on `.npno` sounds (bit identical to before) and the ASSUMED powers on the others.
 - On: `.npno` sounds with a level model play the layer's curve (stroke and level); other sounds scale the Medium response by `2^(-2 (X - X_medium) / 60)` (only the Touch difference is firmware derived).
 - `render_hash` and the goldens do not change (synthetic setups); a loaded factory program now takes string resonance, soft release, pedal noise and Touch from their real bits.
 
