@@ -1,0 +1,97 @@
+# SY1SY2: the nine captured notes of Carina Accordion 1 through the DSP step join.
+#
+# Per note the harness pokes the zone pitch word the ARM sent (0x921A6, `sinc::pitch_law::zone_word`) and the
+# modelled table entry e = pack(word_law(key) / 0.05) (0x93580, `sinc::step_join::table_entry_for_key`; the writer of
+# e is NOT found, docs/research/synth-sample-kernel-rule.md section 14), settles six frames and captures the step
+# word 0x9242D. Series loK / hiK: low and high 16 bits of the step word (step / 2^24 = source frames per SY frame).
+# Run:  sharc-ref sy.bin tools/oracle_scenarios/sy_pitch_nine.scn --out target/oracle/nine
+meta rate 48000
+warmup 0x1c0b2d 100000 flag12=1
+irq 13
+msg 0x92414 0x1c07cd
+irq 17
+fill 0xC0000 128 sine stride=2 freq=0.0625 amp=0.5
+fill 0xC0001 128 sine stride=2 freq=0.0625 amp=0.5
+irq 13
+msg 0x92414 0x1c084c
+
+poke 0x93580 0x018b
+poke 0x921a6 0x3bf46900
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo48 0x9242d 1 part=lo
+capture hi48 0x9242d 1 part=hi
+
+poke 0x93580 0x02ea
+poke 0x921a6 0x3c66a400
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo59 0x9242d 1 part=lo
+capture hi59 0x9242d 1 part=hi
+
+poke 0x93580 0x0316
+poke 0x921a6 0x3c748500
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo60 0x9242d 1 part=lo
+capture hi60 0x9242d 1 part=hi
+
+poke 0x93580 0x05d3
+poke 0x921a6 0x3ce68980
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo71 0x9242d 1 part=lo
+capture hi71 0x9242d 1 part=hi
+
+poke 0x93580 0x062c
+poke 0x921a6 0x3cf430c0
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo72 0x9242d 1 part=lo
+capture hi72 0x9242d 1 part=hi
+
+poke 0x93580 0x0ba7
+poke 0x921a6 0x3d5d2960
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo83 0x9242d 1 part=lo
+capture hi83 0x9242d 1 part=hi
+
+poke 0x93580 0x0c58
+poke 0x921a6 0x3d8409f0
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo84 0x9242d 1 part=lo
+capture hi84 0x9242d 1 part=hi
+
+poke 0x93580 0x13a7
+poke 0x921a6 0x3dd772d0
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo95 0x9242d 1 part=lo
+capture hi95 0x9242d 1 part=hi
+
+poke 0x93580 0x1458
+poke 0x921a6 0x3e023460
+loop 6
+poke 0x92410 0x200
+irq 17
+end
+capture lo96 0x9242d 1 part=lo
+capture hi96 0x9242d 1 part=hi
