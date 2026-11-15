@@ -1,0 +1,222 @@
+{
+ "note": "organ_b3 clip (Part A _zksT69H30c at 238 s, 25 s), emulator minus hardware in dB re RMS. Streams: 'transcribed' = Transkun as is (525 notes); 'merged' = same-key re-triggers within 0.3 s joined (96 notes, tools/note_offsets.py --merge-gap 0.3); 'audio' = merged plus audio offsets (hold median 0.86 s, upper bound). Options --tone-source b3wheels --firmware-routing --b3-tail on --organ-level firmware; engine-rotary adds --rotary-drive scaled; fw-* add --leslie firmware --leslie-ring <advance|frozen|firmware>. Numbers only, no audio.",
+ "runs": {
+  "transcribed": {
+   "notes": 525,
+   "variants": {
+    "default": {
+     "bands_delta_db": {
+      "sub_20_120": 10.03,
+      "low_120_400": -1.18,
+      "mid_400_1500": 4.12,
+      "presence_1500_3000": -2.44,
+      "brilliance_3000_8000": 6.83,
+      "air_8000_20000": 33.77
+     },
+     "rms_delta_db": 0.28,
+     "centroid_delta_hz": 36.4,
+     "score": 4.92
+    },
+    "engine-rotary": {
+     "bands_delta_db": {
+      "sub_20_120": 13.83,
+      "low_120_400": -0.02,
+      "mid_400_1500": 2.98,
+      "presence_1500_3000": -3.64,
+      "brilliance_3000_8000": 3.11,
+      "air_8000_20000": 35.47
+     },
+     "rms_delta_db": -7.57,
+     "centroid_delta_hz": -65.0,
+     "score": 4.72
+    },
+    "fw-advance": {
+     "bands_delta_db": {
+      "sub_20_120": 13.35,
+      "low_120_400": -2.16,
+      "mid_400_1500": 3.44,
+      "presence_1500_3000": 5.21,
+      "brilliance_3000_8000": 7.61,
+      "air_8000_20000": 21.64
+     },
+     "rms_delta_db": -10.37,
+     "centroid_delta_hz": 131.3,
+     "score": 6.35
+    }
+   }
+  },
+  "merged": {
+   "notes": 96,
+   "variants": {
+    "default": {
+     "bands_delta_db": {
+      "sub_20_120": 11.14,
+      "low_120_400": -1.4,
+      "mid_400_1500": 3.1,
+      "presence_1500_3000": -4.66,
+      "brilliance_3000_8000": -0.38,
+      "air_8000_20000": 23.43
+     },
+     "rms_delta_db": 4.83,
+     "centroid_delta_hz": -20.3,
+     "score": 4.14
+    },
+    "engine-rotary": {
+     "bands_delta_db": {
+      "sub_20_120": 13.83,
+      "low_120_400": -0.05,
+      "mid_400_1500": 1.79,
+      "presence_1500_3000": -8.86,
+      "brilliance_3000_8000": -6.03,
+      "air_8000_20000": 24.89
+     },
+     "rms_delta_db": -3.07,
+     "centroid_delta_hz": -113.7,
+     "score": 6.11
+    },
+    "fw-advance": {
+     "bands_delta_db": {
+      "sub_20_120": 14.52,
+      "low_120_400": -1.53,
+      "mid_400_1500": 3.08,
+      "presence_1500_3000": 1.48,
+      "brilliance_3000_8000": 4.47,
+      "air_8000_20000": 18.04
+     },
+     "rms_delta_db": -6.72,
+     "centroid_delta_hz": -2.7,
+     "score": 5.02
+    }
+   }
+  },
+  "audio": {
+   "notes": 96,
+   "variants": {
+    "default": {
+     "bands_delta_db": {
+      "sub_20_120": 11.01,
+      "low_120_400": -1.24,
+      "mid_400_1500": 3.43,
+      "presence_1500_3000": -4.3,
+      "brilliance_3000_8000": 2.64,
+      "air_8000_20000": 22.13
+     },
+     "rms_delta_db": 6.64,
+     "centroid_delta_hz": -6.4,
+     "score": 4.52
+    },
+    "engine-rotary": {
+     "bands_delta_db": {
+      "sub_20_120": 13.53,
+      "low_120_400": 0.28,
+      "mid_400_1500": 2.61,
+      "presence_1500_3000": -10.46,
+      "brilliance_3000_8000": -4.23,
+      "air_8000_20000": 23.53
+     },
+     "rms_delta_db": -1.16,
+     "centroid_delta_hz": -100.4,
+     "score": 6.22
+    },
+    "fw-advance": {
+     "bands_delta_db": {
+      "sub_20_120": 13.67,
+      "low_120_400": -2.01,
+      "mid_400_1500": 3.8,
+      "presence_1500_3000": 2.79,
+      "brilliance_3000_8000": 5.75,
+      "air_8000_20000": 21.24
+     },
+     "rms_delta_db": -4.94,
+     "centroid_delta_hz": 49.7,
+     "score": 5.6
+    }
+   }
+  },
+  "audio_rings": {
+   "notes": 96,
+   "variants": {
+    "default": {
+     "bands_delta_db": {
+      "sub_20_120": 11.01,
+      "low_120_400": -1.24,
+      "mid_400_1500": 3.43,
+      "presence_1500_3000": -4.3,
+      "brilliance_3000_8000": 2.64,
+      "air_8000_20000": 22.13
+     },
+     "rms_delta_db": 6.64,
+     "centroid_delta_hz": -6.4,
+     "score": 4.52
+    },
+    "fw-frozen": {
+     "bands_delta_db": {
+      "sub_20_120": 10.91,
+      "low_120_400": -1.94,
+      "mid_400_1500": 4.19,
+      "presence_1500_3000": -7.57,
+      "brilliance_3000_8000": 0.94,
+      "air_8000_20000": 33.96
+     },
+     "rms_delta_db": -47.75,
+     "centroid_delta_hz": 1058.6,
+     "score": 5.11
+    },
+    "fw-ringfw": {
+     "bands_delta_db": {
+      "sub_20_120": 4.06,
+      "low_120_400": -7.73,
+      "mid_400_1500": -0.57,
+      "presence_1500_3000": 8.89,
+      "brilliance_3000_8000": 23.3,
+      "air_8000_20000": 51.74
+     },
+     "rms_delta_db": -11.85,
+     "centroid_delta_hz": 1908.6,
+     "score": 8.91
+    }
+   }
+  }
+ },
+ "lf_probe": {
+  "note": "band energy re clip total (dB), audio stream, fw-advance vs hardware",
+  "hw": {
+   "0-5": -59.6,
+   "5-20": -54.7,
+   "20-40": -55.0,
+   "40-60": -54.6,
+   "60-90": -43.3,
+   "90-120": -38.2
+  },
+  "fw_advance": {
+   "0-5": -24.7,
+   "5-20": -25.2,
+   "20-40": -23.2,
+   "40-60": -22.2,
+   "60-90": -21.7,
+   "90-120": -26.3
+  },
+  "engine_rotary": {
+   "0-5": -55.7,
+   "5-20": -50.8,
+   "20-40": -43.3,
+   "40-60": -44.4,
+   "60-90": -41.2,
+   "90-120": -31.8
+  },
+  "default": {
+   "0-5": -46.7,
+   "5-20": -42.9,
+   "20-40": -41.5,
+   "40-60": -40.8,
+   "60-90": -38.6,
+   "90-120": -32.6
+  },
+  "fw_advance_lowpass90_lines_hz": [
+   0.1,
+   6.8,
+   13.7,
+   60.7
+  ]
+ }
+}
