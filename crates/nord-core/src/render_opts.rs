@@ -314,6 +314,9 @@ pub struct FirmwareOptions {
     /// the envelope rate indices straight from the stored knobs, `index = knob - 64`, VERIFIED
     /// run; on by default since D57, off in `--legacy-all`).
     pub synth_knob_laws: bool,
+    /// `--synth-wave-bank`: `SynthLayer::wave_bank` (WAVE layers play the firmware stage `0x1247B6`
+    /// on the strip chain; opt-in: every wave plays the one boot table, OQ22).
+    pub synth_wave_bank: bool,
     /// `--sample-kernel key|ratio`: the `SAMPLES` oscillator picks its 12-tap kernel with the
     /// firmware key rule (`sinc::key_rule`; VERIFIED run and key field, D40) instead of the
     /// ASSUMED ratio rule. On by default; `ratio` (and `--legacy-all`) selects the old rule.
@@ -364,6 +367,7 @@ impl Default for FirmwareOptions {
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
             synth_stages: true,
             synth_knob_laws: true,
+            synth_wave_bank: false,
             sample_kernel_key: true,
             sample_pitch_fw: false,
             firmware_routing: false,
@@ -411,6 +415,7 @@ impl FirmwareOptions {
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
             synth_stages: true,
             synth_knob_laws: true,
+            synth_wave_bank: false,
             sample_kernel_key: true,
             sample_pitch_fw: false,
             firmware_routing: false,
@@ -478,6 +483,15 @@ impl FirmwareOptions {
         o.measured_laws |= has("--measured-laws");
         o.synth_stages |= has("--synth-stages");
         o.synth_knob_laws |= has("--synth-knob-laws");
+        o.synth_wave_bank |= has("--synth-wave-bank");
+        if let Some(path) = value("--synth-wave-tables") {
+            // opt-in: the 46 tables come from the user's own OS image (never committed, D22)
+            o.synth_wave_bank = true;
+            crate::synth::prepare_wave_bank();
+            let boot = crate::synth::boot_tables();
+            let t = crate::synth::tables_from_file(std::path::Path::new(path), boot)?;
+            crate::synth::install_wave_tables(t);
+        }
         if has("--no-synth-stages") {
             o.synth_stages = false;
         }
@@ -696,6 +710,12 @@ impl FirmwareOptions {
         engine.synth_a.knob_laws = self.synth_knob_laws;
         engine.synth_b.knob_laws = self.synth_knob_laws;
         engine.synth_c.knob_laws = self.synth_knob_laws;
+        engine.synth_a.wave_bank = self.synth_wave_bank;
+        engine.synth_b.wave_bank = self.synth_wave_bank;
+        engine.synth_c.wave_bank = self.synth_wave_bank;
+        if self.synth_wave_bank {
+            crate::synth::prepare_wave_bank(); // parse the tables outside the audio thread
+        }
     }
 
     fn set_measured_laws(&self, engine: &mut Stage4Engine) {
@@ -766,6 +786,9 @@ impl FirmwareOptions {
         }
         if !self.synth_knob_laws {
             parts.push("no-knob-laws".into());
+        }
+        if self.synth_wave_bank {
+            parts.push("wave-bank".into());
         }
         if self.leslie_firmware {
             parts.push(format!(
@@ -952,6 +975,19 @@ mod tests {
         assert!(e.synth_a.knob_laws && e.synth_b.knob_laws && e.synth_c.knob_laws);
         let on = FirmwareOptions::from_args(&["--legacy-all".into(), "--synth-knob-laws".into()]);
         assert!(on.unwrap().synth_knob_laws, "the flag turns it back on");
+    }
+
+    #[test]
+    fn synth_wave_bank_is_opt_in_and_reaches_every_synth_layer() {
+        assert!(!FirmwareOptions::default().synth_wave_bank);
+        assert!(!FirmwareOptions::firmware_all().synth_wave_bank);
+        assert!(!FirmwareOptions::default().summary().contains("wave-bank"));
+        let o = FirmwareOptions::from_args(&["--synth-wave-bank".into()]).unwrap();
+        assert!(o.synth_wave_bank && o.summary().contains("wave-bank"));
+        let mut e = Stage4Engine::new(48_000.0);
+        assert!(!e.synth_a.wave_bank);
+        o.apply_to(&mut e);
+        assert!(e.synth_a.wave_bank && e.synth_b.wave_bank && e.synth_c.wave_bank);
     }
 
     #[test]

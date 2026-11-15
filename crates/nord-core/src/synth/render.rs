@@ -386,7 +386,12 @@ impl SynthLayer {
                     }
                 }
                 SynthOscMode::Wavetable => {
-                    if uni_count > 0 {
+                    if strip.is_some() && self.wave_bank {
+                        let tab = super::fw_wave::wave_table(usize::from(self.wavetable_index));
+                        let i_sy = eff_freq / super::gain_dezip::SY_FRAME_RATE_HZ;
+                        let y = super::fw_wave::wave_bank_sample(&mut v.stage.wb, tab, dt, i_sy);
+                        (y, None)
+                    } else if uni_count > 0 {
                         let mut acc = (0.0f32, 0.0f32);
                         for (k, voice) in UNISON_VOICES[uni_level][..uni_count]
                             .iter()

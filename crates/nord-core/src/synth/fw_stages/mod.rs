@@ -21,6 +21,7 @@ use super::fw_sync::sync2_core;
 use super::fw_sync1::sync1_core;
 use super::fw_sync3::sync3_core;
 use super::fw_sync6::{sync6_core, sync7_core, sync8_core};
+use super::fw_wave::WaveBankState;
 use super::gain_dezip::SY_FRAME_RATE_HZ;
 use crate::phase_wrap::wrap_pos;
 
@@ -139,6 +140,9 @@ pub struct FwStageState {
     pub lp: f32,
     /// SUPER 2..4 phases, hold and biquad states.
     pub s24: Super24State,
+    /// WAVE bank (stage `0x1247B6`) phases, hold and biquad states; stepped by
+    /// `fw_wave::wave_bank_sample`, not by [`FwStageState::sample`].
+    pub wb: WaveBankState,
 }
 
 impl Default for FwStageState {
@@ -152,6 +156,7 @@ impl Default for FwStageState {
             counter: 0,
             lp: 0.0,
             s24: Super24State::default(),
+            wb: WaveBankState::default(),
         }
     }
 }
