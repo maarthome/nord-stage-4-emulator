@@ -147,7 +147,8 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     ap.add_argument("--cache", type=Path)
     ap.add_argument("--params", type=Path, default=Path("docs/research/arm-edit-params.csv"))
     ap.add_argument("--units", default="3,4,0")
-    ap.add_argument("--types", help="comma separated Fx2 types (default all)")
+    ap.add_argument("--slot", default="Fx2", help="effect slot (Fx2 = Mod 2, Fx1 = Mod 1)")
+    ap.add_argument("--types", help="comma separated type ids of the slot (default all)")
     ap.add_argument("--window", type=int, default=400_000)
     ap.add_argument("--out", type=Path)
     ns = ap.parse_args(argv)
@@ -180,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     wanted = {int(x, 0) for x in ns.units.split(",")}
     by_name = {p.name: p for p in cap.load_params(ns.params, "Edt_Effects")}
     noise = cap.baseline_keys(emu)
-    slot = next(s for s in fc.SLOTS if s.name == "Fx2")
+    slot = next(s for s in fc.SLOTS if s.name == ns.slot)
     if ns.types:
         keep = {int(t) for t in ns.types.split(",")}
         tp = by_name[slot.type_id]
