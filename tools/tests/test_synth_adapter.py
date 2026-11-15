@@ -95,3 +95,28 @@ def test_restore_adapter_reproduces_saved_weights(tmp_path):
     a, b = dict(first.named_parameters()), dict(second.named_parameters())
     trained = [k for k, p in a.items() if p.requires_grad]
     assert trained and all(torch.equal(a[k], b[k]) for k in trained)
+
+
+def test_scale_adapter_interpolates_heads_and_scales_layers():
+    torch = pytest.importorskip("torch")
+
+    class Layer(torch.nn.Module):  # stands in for a PEFT LoRA layer
+        def __init__(self):
+            super().__init__()
+            self.scaling = {"default": 2.0}
+
+    class Head(torch.nn.Module):  # stands in for PEFT's ModulesToSaveWrapper
+        def __init__(self):
+            super().__init__()
+            self.original_module = torch.nn.Linear(2, 2)
+            self.modules_to_save = torch.nn.ModuleDict({"default": torch.nn.Linear(2, 2)})
+
+    net = torch.nn.Sequential(Layer(), Head())
+    head = net[1]
+    base = {n: p.clone() for n, p in head.original_module.named_parameters()}
+    trained = {n: p.detach().clone() for n, p in head.modules_to_save["default"].named_parameters()}
+    for s in (0.0, 0.5, 1.0, 0.25):  # rescaling starts from the trained values each time
+        sa.scale_adapter(net, s)
+        assert net[0].scaling["default"] == pytest.approx(2.0 * s)
+        for n, p in head.modules_to_save["default"].named_parameters():
+            assert torch.allclose(p, base[n] + s * (trained[n] - base[n]), atol=1e-6)

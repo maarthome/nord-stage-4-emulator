@@ -122,12 +122,18 @@ def load_response(root: Path) -> dict[str, float] | None:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
-def load_model(device: str, adapter: str | None = None) -> Any:
-    """Pretrained Transkun 2.0, or base plus the adapter folder (needs torch + transkun)."""
+def load_model(device: str, adapter: str | None = None, scale: float = 1.0) -> Any:
+    """Pretrained Transkun 2.0, or base plus the adapter folder (needs torch + transkun).
+
+    ``scale`` weakens the adapter (0 = base model, 1 = as trained), see ``scale_adapter``.
+    """
     if adapter is not None:
         import synth_adapter
 
-        return synth_adapter.load_adapter(Path(adapter), device)
+        model = synth_adapter.load_adapter(Path(adapter), device)
+        if scale != 1.0:
+            synth_adapter.scale_adapter(model, scale)
+        return model
     import transcribe_clip
 
     return transcribe_clip.load_transkun(device)
@@ -156,6 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--tol", type=float, default=TOL_S)
     p.add_argument("--device", default="cuda")
     p.add_argument("--adapter")
+    p.add_argument("--scale", type=float, default=1.0, help="Adapter strength, 0..1.")
     p.add_argument("--out")
     args = p.parse_args(argv)
     root = Path(args.root)
@@ -163,7 +170,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     entries = [e for e in doc["entries"] if e["split"] == args.split and not e["silent"]]
     if args.max_items:
         entries = entries[: args.max_items]
-    model = load_model(args.device, args.adapter)
+    model = load_model(args.device, args.adapter, args.scale)
     t0, est = time.time(), {}
     for e in entries:
         est[e["id"]] = transcribe_file(model, root / e["audio"], args.device)

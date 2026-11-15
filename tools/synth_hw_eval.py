@@ -93,11 +93,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         metavar=("NAME", "WAV", "VIDEO_EVENTS", "AT_S"),
     )
     p.add_argument("--adapter", help="Adapter folder; the base model when omitted.")
+    p.add_argument("--scale", type=float, default=1.0, help="Adapter strength, 0..1.")
     p.add_argument("--device", default="cuda")
     p.add_argument("--out")
     p.add_argument("--stream-out")
     args = p.parse_args(argv)
-    model = synth_eval.load_model(args.device, args.adapter)
+    model = synth_eval.load_model(args.device, args.adapter, args.scale)
     result: dict[str, Any] = {}
     parts = []
     for name, wav, video, at_s in args.clip:

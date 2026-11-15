@@ -105,6 +105,36 @@ def restore_adapter(peft_model: Any, folder: Path) -> None:
         raise ValueError(f"adapter in {folder} does not match this arm: {unexpected[:3]}")
 
 
+def scale_adapter(model: Any, s: float) -> None:
+    """Scales the adapter's effect to ``s`` times the trained one (``s=0`` is the base model).
+
+    ``model`` is what ``load_adapter`` returns. LoRA / LoKr layers get ``scaling * s`` (their
+    output is added linearly), and the fully trained heads are interpolated between the base head
+    and the trained one: ``base + s * (trained - base)``. Calling it again rescales from the
+    trained values, not from the previous call.
+    """
+    import torch
+
+    for m in model.modules():
+        scaling = getattr(m, "scaling", None)
+        if isinstance(scaling, dict):
+            if not hasattr(m, "_ns4_scaling0"):
+                m._ns4_scaling0 = dict(scaling)
+            for name, value in m._ns4_scaling0.items():
+                scaling[name] = value * s
+        if hasattr(m, "original_module") and hasattr(m, "modules_to_save"):
+            base = dict(m.original_module.named_parameters())
+            for name, trained in m.modules_to_save.items():
+                if not hasattr(m, "_ns4_trained0"):
+                    m._ns4_trained0 = {}
+                saved = m._ns4_trained0.setdefault(
+                    name, {n: p.detach().clone() for n, p in trained.named_parameters()}
+                )
+                with torch.no_grad():
+                    for n, p in trained.named_parameters():
+                        p.copy_(base[n] + s * (saved[n] - base[n]))
+
+
 def load_adapter(folder: Path, device: str = "cpu") -> Any:
     """Base model plus the adapter from ``folder``; returns the model to call ``transcribe`` on."""
     from peft import PeftModel
