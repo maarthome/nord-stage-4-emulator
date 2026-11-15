@@ -63,6 +63,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D62](#d62-the-wave-bank-is-core-2-stage-0x1247b6-with-46-rodata-tables-read-from-the-users-os-image-opt-in) | 2026-11-14 | The WAVE bank is core 2 stage `0x1247B6` with 46 rodata tables read from the user's OS image, opt-in | accepted |
 | [D66](#d66-the-arpeggiator-step-is-30--d-seconds-and-the-rate-dial-uses-the-firmware-table) | 2026-11-14 | The arpeggiator step is `30 / D` seconds and the Rate dial uses the firmware table | accepted |
 | [D73](#d73-firmwarerouting-is-the-default-the-loader-rule-for-an-empty-layer-mask-is-verified) | 2026-11-14 | `FirmwareRouting` is the default; the loader rule for an empty layer mask is VERIFIED | accepted |
+| [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
 | [D70](#d70-the-arm-p-words-drive-the-multi-and-super-stages-under---synth-p-verified-the-default-stays-the-empirical-table) | 2026-11-14 | The ARM P words drive the MULTI and SUPER stages under `--synth-p verified`; the default stays the EMPIRICAL table | accepted |
 
 ---
@@ -807,3 +808,12 @@ Flip table now compares default, which beaten, cutoff factors need joint refit);
 - **Why:** On the 15 clips the SUPER cutoff factor the words prefer on `pad_silk` is the old 0.45 (score 2.36 to 1.92), but the other unison clips get worse (`mega_line` 1.69 to 2.64 at best, `sci_fi_80s` 0.86 to 1.42, the Super Saw lesson clips 4.38 / 6.02 / 4.96 to 6.05 / 5.55 / 4.91), so the mean is about 3.6 against the default 3.40: the D22 bar is not met. The rows around the words (cutoff factors, the 1.6 level constant, SUPER1 and MULTI gains) were fitted against the placeholder stages and need a joint refit.
 - **Alternatives:** Flip the default (rejected: bar not met); refit all rows in this PR (rejected: the full 15-clip level grid did not finish in the time box); map the pending words `a`, `b` to `kOscUnison` (not possible without a loaded-program capture).
 - **Impact:** New `StageWords`, `PSpec::Verified`, `PTable::words`; `--synth-p verified[:wave=g/w2/r2/shape/cutoff;...]` accepts row overrides; `ag_synth` sets the stage words. OQ22 and TD-11 updated; defaults and `render_hash` unchanged.
+
+### D76. The on-screen keybed plays velocity 88, not 100
+
+- **Status:** proposed (pending the user's listening check)
+- **Context:** The user hears the GUI's Felt Upright (`A:13`) as much harsher and brighter than the Part A demo video. The program is piano only, Timbre Off, no FX; the sound and the firmware level law are the verified defaults. On the 150 to 190 s clip the spectral shape at velocity 100 matches the recording (3 to 8 kHz +0.5 dB), but the level is +11.0 dB over it, +3.7 dB over the Pipe yardstick ([piano-felt-upright-soft](research/piano-felt-upright-soft.md)). The GUI mouse press sent velocity 100.
+- **Decision:** `MOUSE_VELOCITY` of the on-screen keybed is 88. No DSP default, golden or `render_hash` changes; MIDI input keeps its own velocity.
+- **Why:** The Velvet Grand clip fits a uniform replay velocity of 88 ([piano-note-velocity](research/piano-note-velocity.md)); the Felt Upright clip is +1.1 dB against the yardstick at 88 (inside the 3 dB target). Velocity 100 plays the loud, bright layer of every velocity-layered piano on every click.
+- **Alternatives:** Flip `--piano-slew-fw` or the bus convention (rejected: the absolute level stays ASSUMED, D22); darken the piano with a filter (rejected: the spectrum matches at equal velocity, no evidence for a stage); a velocity-from-click-position control (kept as a follow-up).
+- **Impact:** `crates/nord-gui/src/panel/keybed.rs` constant and test; `emu_vs_hw_segments.json` gains `piano_felt`; OQ20 and the piano spec updated. A single-note hardware recording per velocity is needed to settle level and brightness ([piano-felt-upright-soft](research/piano-felt-upright-soft.md)).
