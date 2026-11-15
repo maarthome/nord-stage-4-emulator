@@ -75,6 +75,8 @@ The GUI plays from the PC keyboard (group "Computer keyboard" in the bar under t
 
 Key down is a Note On, key up a Note Off; auto-repeat is ignored. Notes go through the keyboard path like the on-screen keybed (Local Control Off silences them, the MIDI-in thread is not used) and light the on-screen keys. Everything is released when the window loses focus, a text field (library search) has the keyboard, or the checkbox is cleared. Visual check: run `nord-stage4`, hold `A` and `G` (two lit keys at C4 and G4), press `X` then `A` (C5), tap `Space` with a piano program to hear the sustain, click the bar's Velocity slider to change the dynamics. Tests: `panel/computer_keys.rs` (map), `panel/computer_kb.rs` (state machine), `panel/computer_kb_tests.rs` (headless key events through the full panel, commands in the audio queue). Decision D80.
 
+MIDI input: the bar under the panel also has a "MIDI input" group (port combo box, Rescan button, status text). At start-up the first port is opened as before; pick another port or "Off", or plug a keyboard in and press Rescan (hot plug; a replaced or removed port sends All Notes Off and clears the lit keys). A MIDI keyboard plays with its own velocity (the Note On velocity is passed to the engine unchanged); only the mouse (88) and the computer keyboard (slider, default 88) use a fixed value. Code: `audio/midi_ports.rs` (list, choice, GUI side), `audio/io.rs` (MIDI thread); tests in both files.
+
 ## Screenshots, focus view and the legibility check
 
 ```bash

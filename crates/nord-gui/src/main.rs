@@ -239,6 +239,9 @@ impl eframe::App for Stage4App {
 
             egui::TopBottomPanel::bottom("ns4_computer_kb_bar").show(ctx, |ui| {
                 nord_gui::panel::computer_kb_bar::show_bar(ui, &mut self.state.computer_kb);
+                if let Some(ports) = self.audio_handle.midi_ports() {
+                    nord_gui::audio::midi_ports::show(ui, ports);
+                }
             });
 
             self.library.handle_keys(ctx);
