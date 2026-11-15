@@ -305,7 +305,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] Wire the pitch (cents) and level (60 steps per octave) laws into `PianoLayer`
 - [x] Felt Upright against the Part A video (`piano_felt` segment, [piano-felt-upright-soft](research/piano-felt-upright-soft.md)); on-screen keybed velocity 88 (D76)
 - [x] Piano transcription of the reference videos with Transkun: full-length note / velocity / pedal streams, piano-like flags, `emu_vs_hw.py --events-from transkun`, piano comparisons at the played velocities ([piano-transcription](research/piano-transcription.md), D79)
-- [ ] Transkun adapter (LoRA / LoKr) trained on emulator synth renders for better synth-clip recall and per-note velocity: Phase 0 feasibility done ([transkun-synth-finetune-plan](research/transkun-synth-finetune-plan.md): 13.6 M params, 6.7 GiB peak full fine-tune, about 90x real-time rendering); data, training and hardware-clip evaluation open
+- [ ] Transkun adapter (LoRA / LoKr) trained on emulator synth renders for better synth-clip recall and per-note velocity: Phase 0 feasibility done ([transkun-synth-finetune-plan](research/transkun-synth-finetune-plan.md): 13.6 M params, 6.7 GiB peak full fine-tune, about 84x real-time rendering); data, training and hardware-clip evaluation open
 - [ ] Piano velocity law: the call-frame word `X` of the level procedure is not traced (needs the key-down capture); the engine keeps `VelocityTouch` power laws until then
 - [ ] Edge handling of the sample stream and the step limit of one decoded sample per frame
 

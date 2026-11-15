@@ -11,7 +11,7 @@ Tags: **VERIFIED** = run in this session (command and number given); **ASSUMED**
 1. Transkun 2.0 is a 13.6 M parameter model (VERIFIED), small enough that **even a full fine-tune fits** the GPU (peak 6.7 GiB at 4 x 16 s, VERIFIED). The adapter choice is about forgetting and file separation, not memory.
 2. Its attention uses raw `nn.Parameter` q/k/v matrices, not `nn.Linear` (VERIFIED, 36 tensors, 2.36 M params). Stock PEFT `target_modules` reaches only the other 50 Linear and 5 Conv2d layers (6.9 M weights); q/k/v needs `target_parameters` (VERIFIED with PEFT 0.21.3) or a 20-line wrapper.
 3. The velocity output is a 128-way categorical per detected note, trained by log-likelihood (VERIFIED in `log_prob`). That is the head to adapt; velocity is only scored on notes the CRF finds, so recall and velocity are two separate problems.
-4. Rendering is not the bottleneck: the heaviest tested program (Horizon Whl) renders at 4.9x real time on one core and about 90x aggregate with 32 workers (VERIFIED). Training eats about 60 s of audio per second (bf16, VERIFIED on dummy audio).
+4. Rendering is not the bottleneck: the heaviest tested program (Horizon Whl) renders at 4.5x real time on one core and about 84x aggregate with 32 workers (VERIFIED). Training eats about 60 s of audio per second (bf16, VERIFIED on dummy audio).
 5. **Recommendation:** start with **LoRA rank 16** on all Linear and Conv2d layers plus q/k/v (via wrapper), full training of the velocity and refined onset/offset heads; run **LoKr as the second arm with the same data and seed**; hold full fine-tune back unless both plateau (section 6). PEFT supports both on every layer except `ConvTranspose1d`, and raw q/k/v via `target_parameters` (VERIFIED, section 4).
 
 ## 2. Model facts (VERIFIED, `inspect_model.py`, `lora_count.py`)
@@ -110,27 +110,31 @@ Setup: RTX 4070 SUPER 12,282 MiB (1.9 GiB already used by the desktop), torch 2.
 
 ## 6. Data rate (VERIFIED, `ns4 render-patch`)
 
-Command: `ns4 render-patch <program.ns4p> --events ev60.json --velocity 100 --wav out.wav` on a random 350-note, 65.3 s phrase (stereo float32, 44.1 kHz), 32 logical cores. `target/release/ns4.exe` of the main checkout built before this session; binary freshness vs `main` not checked.
+Command: `ns4 render-patch <program.ns4p> --events ev60.json --velocity 100 --wav out.wav` on a random 350-note, 60 s phrase (stereo float32, **48 kHz**: the 23,035,052-byte file is 2,879,381 frames; Transkun needs 44.1 kHz, so the dataset tool resamples), 32 logical cores. `target/release/ns4.exe` of the main checkout built before this session; binary freshness vs `main` not checked.
 
-| Program (engine) | Wall for 65.3 s audio | Real-time factor | Note |
+| Program (engine) | Wall for 60 s audio | Real-time factor | Note |
 |---|---|---|---|
-| Smooth Lead (backup load included) | 2.6 s | 25x | light synth |
-| Leaky Stabs II (backup load included) | 14.9 s | 4.4x | |
-| Grand Pad (backup load included) | 15.4 s | 4.2x | piano + synth |
-| Horizon Whl, from `--backup` | 22.7 s | 2.9x | includes about 9 s to read the 3 GB `.ns4b` |
-| Horizon Whl, extracted `.ns4p` (`ns4 backup <b> --extract`) | 13.3 s | 4.9x | heaviest tested |
+| Smooth Lead (backup load included) | 2.6 s | 27x | light synth |
+| Leaky Stabs II (backup load included) | 14.9 s | 4.0x | |
+| Grand Pad (backup load included) | 15.4 s | 3.9x | piano + synth |
+| Horizon Whl, from `--backup` | 22.7 s | 2.6x | includes about 9 s to read the 3 GB `.ns4b` |
+| Horizon Whl, extracted `.ns4p` (`ns4 backup <b> --extract`) | 13.3 s | 4.5x | heaviest tested |
 | Horizon Whl, 8 s phrase | 1.5 s | 5.3x | start-up included |
 
-| Parallel workers (Horizon, extracted, 65.3 s each) | Wall | Aggregate real-time factor |
+| Parallel workers (Horizon, extracted, 60 s each) | Wall | Aggregate real-time factor |
 |---|---|---|
-| 8 | 15 s | 35x |
-| 16 | 17 s | 61x |
-| 32 | 23 s | 91x |
+| 8 | 15 s | 32x |
+| 16 | 17 s | 56x |
+| 32 | 23 s | 84x |
 
 Conclusions:
 - Extract each program once (`ns4 backup <backup> --extract <entry> <file>`) and render from the file: the backup load costs about 9 s per process.
-- **About 90 h of audio per hour of rendering** for the heaviest program, much more for light ones; a 50 h dataset costs under 40 minutes of CPU. Disk: stereo float32 is 0.35 MB/s; store 16-bit mono 44.1 kHz WAV (0.088 MB/s, 16 GB for 50 h) because Transkun reads integer PCM.
+- **About 80 h of audio per hour of rendering (measured end to end by the Phase 1 tool: 0.5 h in 30 s, section 6.1)** for the heaviest program, much more for light ones; a 50 h dataset costs under 40 minutes of CPU. Disk: stereo float32 is 0.35 MB/s; store 16-bit mono 44.1 kHz WAV (0.088 MB/s, 16 GB for 50 h) because Transkun reads integer PCM.
 - **Dataset target:** start with **20 h** (about 1,100 programs x 65 s phrases is 20 h; many more phrase variants per program are cheaper than more programs), scale to 50 h only if held-out F1 is still rising. Programs matter more than hours: the factory bank has the synth, organ and piano programs; hold out whole programs for validation.
+
+### 6.1 Phase 1 tool run (VERIFIED, PR #425)
+
+`python tools/synth_dataset.py extract ...` took 4 s for 384 programs. `render --hours 0.5 --workers 24` rendered 30 items of 60 s in 30 s (about 60 h of audio per hour, includes resampling and WAV writing), 154 MB (308 MB per hour), 0 silent renders, velocity median 47, and `transkun.Data.prepareIntervals` printed no note-merge message on any item. The renders peaked above full scale on some programs; the tool scales peaks above 0.95 (Transkun normalises gain per segment).
 
 ## 7. Plan, phases and commands
 
