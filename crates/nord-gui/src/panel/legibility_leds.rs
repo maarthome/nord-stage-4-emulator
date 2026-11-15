@@ -5,7 +5,7 @@
 //! | Rule | Meaning |
 //! |---|---|
 //! | `B` | an LED bezel is closer than [`LED_BUTTON`] px to a button bezel (the button rectangle plus 1.5 px), LEDs printed on the button excepted |
-//! | `D` | two LED bezels are closer than [`LED_LED`] px (centre pitch under diameter + 2); LEDs of a real ladder keep [`LADDER_LED`] px |
+//! | `D` | two LED bezels (or two ladder bars) are closer than [`LED_LED`] px (centre pitch under diameter + 2); LEDs of a real ladder keep [`LADDER_LED`] px |
 
 use super::legibility_tests::Audit;
 use crate::widgets::probe::Kind;
@@ -102,11 +102,44 @@ fn led_led(a: &Audit, out: &mut BTreeSet<String>) {
     }
 }
 
+/// Rule `D` for ladder bars: vertically stacked segments keep [`LADDER_LED`] px between them.
+fn segments(a: &Audit, out: &mut BTreeSet<String>) {
+    let segs: Vec<Rect> = a
+        .recs
+        .iter()
+        .filter(|r| r.kind == Kind::LedSeg)
+        .map(|r| r.rect)
+        .collect();
+    // Round LEDs beside a ladder (SOFT REL / STR RES next to the piano ladder) keep their distance.
+    for led in a.recs.iter().filter(|r| r.kind == Kind::Led) {
+        let (c, rad) = circle(led.rect);
+        for s in &segs {
+            let gap = dist_to_rect(c, *s) - rad;
+            if gap < LED_LED - 1e-3 {
+                out.insert(format!(
+                    "D led@{:.0},{:.0} / seg@{:.0},{:.0} gap {gap:.1}",
+                    c.x, c.y, s.min.x, s.min.y
+                ));
+            }
+        }
+    }
+    for (i, s) in segs.iter().enumerate() {
+        for t in &segs[i + 1..] {
+            let shared = s.max.x.min(t.max.x) - s.min.x.max(t.min.x);
+            let gap = (t.min.y - s.max.y).max(s.min.y - t.max.y);
+            if shared > 0.5 * s.width().min(t.width()) && gap < LADDER_LED - 1e-3 && gap > -0.5 {
+                out.insert(format!("D seg@{:.0},{:.0} gap {gap:.1}", s.min.x, s.min.y));
+            }
+        }
+    }
+}
+
 /// All violations of this file's rules as stable one-line keys.
 pub(super) fn violations(a: &Audit) -> BTreeSet<String> {
     let mut v = BTreeSet::new();
     led_button(a, &mut v);
     led_led(a, &mut v);
+    segments(a, &mut v);
     v
 }
 
@@ -139,6 +172,21 @@ mod tests {
         assert_eq!(v.len(), 1, "{v:?}");
         v.clear();
         led_led(&audit(vec![led(500.0, 0.0), led(507.5, 0.0)]), &mut v);
+        assert!(v.is_empty(), "{v:?}");
+    }
+
+    #[test]
+    fn ladder_segments_need_a_gap() {
+        let seg = |y: f32| Rec {
+            kind: Kind::LedSeg,
+            rect: Rect::from_min_size(pos2(0.0, y), vec2(10.0, 5.0)),
+            title: String::new(),
+        };
+        let mut v = BTreeSet::new();
+        segments(&audit(vec![seg(0.0), seg(6.0)]), &mut v);
+        assert_eq!(v.len(), 1, "{v:?}");
+        v.clear();
+        segments(&audit(vec![seg(0.0), seg(6.6)]), &mut v);
         assert!(v.is_empty(), "{v:?}");
     }
 

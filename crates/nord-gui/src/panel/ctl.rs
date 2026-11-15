@@ -338,6 +338,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn led_above_a_button_keeps_the_audited_gap() {
+        let b = Rect::from_min_size(pos2(10.0, 50.0), vec2(30.0, 12.0));
+        let c = led_above(b);
+        assert!((c.x - b.center().x).abs() < 1e-4);
+        // LED bezel (r + 1) bottom to button bezel top.
+        let gap = (b.top() - BUTTON_BEZEL_PX) - (c.y + LED_ABOVE_R + 1.0);
+        assert!(gap >= LED_BUTTON_GAP - 1e-3, "{gap}");
+    }
+
+    #[test]
     fn tracker_tap_hold_and_double_tap_resolve() {
         let mut t = Trackers::new();
         assert_eq!(run_tracker(&mut t, "a", true, 0, false, false), None);

@@ -76,6 +76,9 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("organ.zone_leds", 0.0, 1.5),
     ("organ.vibrato_on.a", 0.0, 2.0),
     ("organ.vibrato_on.b", 0.0, 2.0),
+    ("piano.soft_release", 1.5, 0.0), // SOFT REL / STR RES LEDs touched the level ladder (rule `D`)
+    ("piano.string_res", 1.5, 0.0),
+    ("piano.ped_noise", 1.5, 0.0),
     ("organ.on", 0.0, -1.0),
     ("organ.solo", 0.0, -1.0),
     // "DECAY FAST" and "HARMONIC 3RD" touched; the third button moves right.

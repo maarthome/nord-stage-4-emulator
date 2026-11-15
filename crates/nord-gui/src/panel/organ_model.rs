@@ -22,7 +22,7 @@ pub(super) const SLOTS: [(usize, &str); 6] = [
 /// Centre of printed slot `slot` inside the LED rectangle `leds`.
 pub(super) fn slot_pos(leds: Rect, slot: usize) -> egui::Pos2 {
     pos2(
-        leds.left() + leds.width() * if slot % 2 == 0 { 0.2 } else { 0.8 },
+        leds.left() + leds.width() * if slot.is_multiple_of(2) { 0.2 } else { 0.8 },
         leds.top() + leds.height() * ((slot / 2) as f32 + 0.5) / 3.0,
     )
 }
@@ -32,7 +32,7 @@ pub(super) fn paint(painter: &Painter, leds: Rect, lit: usize) {
     for (slot, &(model, name)) in SLOTS.iter().enumerate() {
         let c = slot_pos(leds, slot);
         led_small(painter, c, model == lit, LED_RED, LED_RED_DIM, 1.5);
-        let (x, al) = if slot % 2 == 0 {
+        let (x, al) = if slot.is_multiple_of(2) {
             (leds.left() - 3.0, Align2::RIGHT_CENTER)
         } else {
             (leds.right() + 3.0, Align2::LEFT_CENTER)

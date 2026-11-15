@@ -13,7 +13,7 @@ pub(super) const ROW: f32 = 9.5;
 /// Distance (px) of a matrix LED column from the middle of the selector.
 pub(super) const COL_DX: f32 = 4.0;
 /// Space (px) between an LED and the start of its name.
-const NAME_GAP: f32 = 4.5;
+const NAME_GAP: f32 = 5.5;
 /// Distance (px) from the top of the selector to the centre of the lowest row.
 const BOTTOM_ROW: f32 = 7.2;
 
