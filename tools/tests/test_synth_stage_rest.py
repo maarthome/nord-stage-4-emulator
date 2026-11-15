@@ -27,6 +27,7 @@ import synth_stage_sync3 as sync3  # noqa: E402
 import synth_stage_sync6 as sync6  # noqa: E402
 import synth_stage_sync7 as sync7  # noqa: E402
 import synth_stage_unison as unison  # noqa: E402
+import synth_stage_wave as wave_bank  # noqa: E402
 import synth_wave_model as m  # noqa: E402
 import synth_wave_oracle as o  # noqa: E402
 
@@ -58,6 +59,7 @@ MODELS = {
     "0x120f55": shape3.stage_shape3,
     "0x12145e": shape4.stage_shape4,
     "0x124985": lambda lanes: super2.stage_super24(lanes, super2.load_tables()),
+    "0x1247b6": lambda lanes: wave_bank.stage_wave(lanes, super2.load_tables()),
 }
 
 
