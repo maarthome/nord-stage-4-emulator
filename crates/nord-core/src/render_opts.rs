@@ -354,6 +354,9 @@ pub struct FirmwareOptions {
     /// (default `advance`: 4 words per call; `firmware`: re-based every 8 calls like the booted
     /// pass routine; `frozen`: the first oracle state, `fx-leslie.md` s10).
     pub leslie_ring: crate::fx::RingAdvance,
+    /// `--leslie-drive boot|program`: `program` writes the program's Leslie drive into the drive
+    /// words of the firmware Leslie as the ARM does (VERIFIED words; default `boot` = 0).
+    pub leslie_drive: bool,
 }
 
 /// The engine defaults: every opt-in path off, except the firmware piano level, which is the
@@ -390,6 +393,7 @@ impl Default for FirmwareOptions {
             leslie_firmware: false,
             leslie_gain_mdb: 0,
             leslie_ring: crate::fx::RingAdvance::ADVANCE,
+            leslie_drive: false,
         }
     }
 }
@@ -443,6 +447,7 @@ impl FirmwareOptions {
             leslie_firmware: false,
             leslie_gain_mdb: 0,
             leslie_ring: crate::fx::RingAdvance::ADVANCE,
+            leslie_drive: false,
         }
     }
 
@@ -551,6 +556,13 @@ impl FirmwareOptions {
         if let Some(v) = value("--leslie-ring") {
             o.leslie_ring = parse_leslie_ring(v)?;
         }
+        if let Some(v) = value("--leslie-drive") {
+            o.leslie_drive = match v {
+                "program" => true,
+                "boot" => false,
+                _ => return Err(format!("invalid --leslie-drive '{v}' (boot|program)")),
+            };
+        }
         if let Some(v) = value("--leslie-gain-db") {
             let db: f32 = v
                 .parse()
@@ -601,6 +613,9 @@ impl FirmwareOptions {
             self.leslie_gain_mdb as f32 / 1000.0,
             self.leslie_ring,
         );
+        for organ in [&mut engine.organ_a, &mut engine.organ_b] {
+            organ.leslie_fw_drive = self.leslie_drive;
+        }
         apply_synth_chain(engine, self.synth_chain);
         self.set_shape(engine);
         self.set_p_block(engine);
@@ -693,6 +708,7 @@ impl FirmwareOptions {
                 organ.leslie_fw = Some(Box::new(crate::fx::FwLeslie::with_ring(self.leslie_ring)));
             }
             organ.leslie_gain = 10f32.powf(self.leslie_gain_mdb as f32 / 20_000.0);
+            organ.leslie_fw_drive = self.leslie_drive;
         }
     }
 
@@ -835,9 +851,10 @@ impl FirmwareOptions {
         }
         if self.leslie_firmware {
             parts.push(format!(
-                "leslie=firmware ring={} gain={:+.1}dB",
+                "leslie=firmware ring={} gain={:+.1}dB drive={}",
                 leslie_ring_name(self.leslie_ring),
-                self.leslie_gain_mdb as f32 / 1000.0
+                self.leslie_gain_mdb as f32 / 1000.0,
+                if self.leslie_drive { "program" } else { "boot" }
             ));
         }
         if !self.sample_kernel_key {
