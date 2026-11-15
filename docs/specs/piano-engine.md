@@ -20,10 +20,12 @@ The Stage 4 organizes piano banks into 6 acoustic and electro-mechanical categor
 
 ### Velocity Response Curves (`KBD TOUCH`)
 
-Maps incoming MIDI velocity $v \in [1, 127]$ to normalized gain/timbre excitation $v_{\text{norm}} \in (0, 1]$:
-- **`Light`:** $\left(\dfrac{v}{127}\right)^{0.65}$ (easier to reach fortissimo layers)
+Legacy path (sounds without a firmware level model, `VelocityTouch::map_velocity`, ASSUMED powers) maps MIDI velocity $v \in [1, 127]$ to $v_{\text{norm}} \in (0, 1]$:
+- **`Light`:** $\left(\dfrac{v}{127}\right)^{0.65}$
 - **`Medium` (Default):** $\left(\dfrac{v}{127}\right)^{1.00}$ (linear response)
-- **`Heavy`:** $\left(\dfrac{v}{127}\right)^{1.55}$ (wider pianissimo dynamic control)
+- **`Heavy`:** $\left(\dfrac{v}{127}\right)^{1.55}$
+
+Firmware curves (opt-in `PianoLayer::firmware_touch`, `ns4 render-patch --firmware-piano-touch`, GUI Firmware bar "Touch curves", D84, [piano-touch-curves](../research/piano-touch-curves.md)): the program Touch is edit id `0x159` (0 heavy, 1 medium, 2 light, default 1; program file bits `1991..1992` of layer A, `+96` of layer B). The handler `0xC011AA24` stores `curveId = 10 / 11 / 13` in the piano layer object, and the voice init reads the velocity position `T = byte[0xC0532664 + (curveId << 10) + r8(v)]` of every note (including MIDI notes). `T` selects the stroke records and gives `X = clamp(((128 - 0x13) T) >> 7, 0, 249)` of the level law below. `piano/touch_curve.rs` holds `T(v)` for the three curves (VERIFIED, 27 of 27 against the ARM run, fingerprint pinned by a unit test). At velocity 64 `T` is 88 / 78 / 68 (heavy / medium / light), i.e. the light curve is 1.8 dB louder and the heavy one 1.6 dB quieter than medium; at velocity 10 the spread is +2.6 / -2.4 dB, at 120 +0.2 / -1.0 dB. Sounds with a level model play the layer's curve (`NpnoLevel::voices_touch`); other sounds multiply the Medium response by `2^(-2 (X - X_medium) / 60)` (`TouchCurve::gain_vs_medium`). Off (default): `.npno` notes play the Medium curve whatever the setting, other sounds the powers above. The decoder (`cbin/piano_preset.rs`) still reads the Touch bits 10 positions late (every factory program decodes as Medium); realigning it is a follow-up before the default can flip. The System menu MIDI velocity curve (`Edt_Sys_kMIDIVelCurve`) and the Organ / Synth sections are not part of this model (the Organ and Synth have no Touch id).
 
 ### Downstream level after the voice (`piano/downstream.rs`)
 
