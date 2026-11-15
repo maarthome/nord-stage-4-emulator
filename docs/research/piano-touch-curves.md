@@ -44,20 +44,31 @@ Tags follow `.agents/rules/provenance-in-code.md`. Bean `ns4-yp85`, decision D88
 4. `[ctx + 0x1C]` set to each curve id, same note-on: the byte at `0xC00AA658` (`T`) equals `curve[id][r8(v)]` for 27 of 27 pairs. Reproduce: `uv run --with unicorn --with capstone python tools/arm_touch_curves.py arm-check <CODE> <SRAM> --cache target/keydown.snap --ns4b <backup> --npno "Piano/Clavinet/Clavinet D6  6.1.npno"`.
 5. `python tools/arm_touch_curves.py rust <CODE>` regenerates the arrays and the fingerprint `0xc8293ca1773436e4` the Rust test pins.
 
-## 4. Program file bits (VERIFIED by the program recall; the Rust decoder reads other bits)
+## 4. Program file bits (VERIFIED by the program recall; decoder realigned by D99)
 
-The firmware recall (`tools/arm_program_load.py` boot with Felt Upright, then `session.run(300)`, hook on the Touch handler `0xC011AA2C` and on the store setter `0xC00D051C`) with the two bits at file bit `1991` of layer A and `2087` of layer B set to 0 / 1 / 2 (layer A) and 1 / 2 / 0 (layer B): the setter value and the handler index equal the file value in all 6 of 6 cases (layer A index = value, layer B index = value of its own bits). So the file value is the edit value: **0 heavy (curve 10), 1 medium (11), 2 light (13)**, the field sits at file bit `1991..1992` (piano payload bit `167`, layer base + 63; layer B `+96`). That is the `ns4decode` position (`249-8 .. 250-1`).
+The firmware recall (`tools/arm_program_load.py` boot with Felt Upright, then `session.run(300)`, hook on the Touch handler `0xC011AA2C` and on the store setter `0xC00D051C`) with the two bits at file bit `1991` of layer A and `2087` of layer B set to 0 / 1 / 2 (layer A) and 1 / 2 / 0 (layer B): the setter value and the handler index equal the file value in all 6 of 6 cases. So the file value is the edit value: **0 heavy (curve 10), 1 medium (11), 2 light (13)**, at file bit `1991..1992` (piano payload bit `167`, layer base + 63; layer B `+96`). That is the `ns4decode` position.
 
-Over the 384 factory programs the field reads 156 x 0, 208 x 1, 20 x 2 and never 3 (Felt Upright layer A reads 1, medium). The Rust decoder (`cbin/piano_preset.rs`) reads its `touch` 10 bits later (layer base + 73, always 0 in the factory set, decoded as `Medium`), so every factory program decodes as Medium and the program Touch is lost; its neighbouring fields (`variation`, `acoustic_level` = string resonance and soft release, `pedal_noise`) sit on the same shifted bits: against `ns4decode` the bits `1988 / 1989 / 1990` are soft release / string resonance / pedal noise (4 / 241 / 257 ones in 384 programs), and the decoder's `variation` pair at `1988..1989`, `acoustic_level` pair at `1990..1991` and `pedal_noise` at `1992` read the same bits under other names. That alignment is not touched here (it changes string resonance, soft release and pedal noise of every program); follow-up 1.
+Single-bit flips of the same program (layer A, file bit = `1824 + rel`) give the layer layout, setter value in brackets (layer A store `0x91050fe0`):
+
+| rel | field | setter | value |
+|---|---|---|---|
+| 26 / 27 | variation | `0x155` | 2 / 1 |
+| 60 / 61 | `kAcoustic` | `0x157` | 3 / 0 (default 1) |
+| 62 | pedal noise | `0x158` | 0 (default 1) |
+| 63..64 | touch | `0x159` | 0, 1, 2 |
+| 65 | unison | `0x15d` | 2 |
+| 67 / 68 | dynamic compressor | `0x15e` | 2 / 1 |
+| 70 / 71 / 72 | EQ / timbre | `0x15c` | 4 / 2 / 1 |
+
+Over the 384 factory programs the touch field reads 156 x 0, 208 x 1, 20 x 2 and never 3. Before the fix the Rust decoder (`cbin/piano_preset.rs`) read `variation` at rel 60..61, `acoustic_level` at 62..63, `pedal_noise` at 64 and the touch at 73..74 (always 0 in the factory set, so `Medium`), i.e. every factory program decoded as Medium and string resonance, soft release and pedal noise came from the wrong bits. The decoder now reads the table above; the unit tests in `cbin/piano_preset_layout.rs` pin the positions on 12 real factory blocks (3 of 4 fail on the old decoder), `ns4 preset-check` reports 0 problems on all 544 presets and 384 programs, and the lossless `to_file_like` round trip is unchanged. Which bit of `kAcoustic` is soft release is EMPIRICAL (bit 1 is set in 4 of 384 programs, bit 0 in 241).
 
 ## 5. Implications
 
-- Opt-in only: `PianoLayer::firmware_touch` / `--firmware-piano-touch` / GUI Firmware bar "Touch curves". Off: every `.npno` note plays the Medium curve (the factory default), the other sounds the ASSUMED power curves. The default stays off because the decoder does not yet read the program's Touch (s4): until it does, the switch changes the sound only for a Touch set by hand (GUI / control edit), and no program loaded from a file.
+- Opt-in only: `PianoLayer::firmware_touch` / `--firmware-piano-touch` / GUI Firmware bar "Touch curves". Off: every `.npno` note plays the Medium curve (the factory default), the other sounds the ASSUMED power curves. The default stays off (D22, D99): programs now carry their Touch (s4), but no hardware clip exists for the Light and Heavy curves (the clips are Medium), and the sounds without a level model scale the Medium response by the curve difference only. With the switch off, a Light or Heavy program plays the Medium curve on `.npno` sounds (bit identical to before) and the ASSUMED powers on the others.
 - On: `.npno` sounds with a level model play the layer's curve (stroke and level); other sounds scale the Medium response by `2^(-2 (X - X_medium) / 60)` (only the Touch difference is firmware derived).
-- Defaults and `render_hash` do not change.
+- `render_hash` and the goldens do not change (synthetic setups); a loaded factory program now takes string resonance, soft release, pedal noise and Touch from their real bits.
 
 ## 6. Follow-ups
 
-1. Realign the Piano layer decoder and encoder (`cbin/piano_preset.rs`, layer base + 60..+75): soft release `1988`, string resonance `1989`, pedal noise `1990`, touch `1991..1992` (file bits), variation at `1938..1939`; check each against the firmware recall and the factory set (`ns4 preset-check` must stay 937 of 937), then decide the default flip of the Touch (D22) and re-baseline `render_hash`.
-2. The MIDI velocity curve of the System menu (`Edt_Sys_kMIDIVelCurve`, `Edt_Ext_kVelCurve`, `Edt_Com_kAuxKbdVelCurve`: three values each) selects the other velocity table (`r8` curves 1, 2 and the default 6, `0xC00D2024`); not modelled.
-3. Compare the Felt Upright and Velvet Grand clips under the three curves once the file bits are known (the clips are Medium).
+1. The MIDI velocity curve of the System menu (`Edt_Sys_kMIDIVelCurve`, `Edt_Ext_kVelCurve`, `Edt_Com_kAuxKbdVelCurve`: three values each) selects the other velocity table (`r8` curves 1, 2 and the default 6, `0xC00D2024`); not modelled.
+2. Compare a Light and a Heavy program against hardware clips once such clips exist; then decide the default flip of `firmware_touch` (D22) and re-baseline `render_hash`.
