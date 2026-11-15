@@ -4,6 +4,7 @@
 //! CLOSE MIC on ORGAN) share the base button and are printed as legends below it.
 
 mod rotary;
+mod rotary_speed;
 
 use super::ctl::{mark, tag};
 use super::layout_px::rect_or_empty;

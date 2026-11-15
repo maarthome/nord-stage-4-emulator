@@ -2,10 +2,11 @@
 
 use super::control::ControlLink;
 use super::frame::{render_frame_to_f32, render_frame_to_i16};
+use super::midi_ports::{midi_ports, pick_port, MidiChoice, MidiCtl, MidiPortsWorker};
 use super::{apply_audio_command, standalone_engine, AudioCommand, AudioHandle};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use crossbeam_channel::{Receiver, Sender};
-use midir::{Ignore, MidiInput};
+use midir::{Ignore, MidiInput, MidiInputConnection};
 use nord_core::engine::{Stage4Engine, TelemetryCell};
 use nord_core::midi::MidiEvent;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -13,7 +14,9 @@ use std::sync::Arc;
 
 /// Spawns the audio output stream (CPAL) and MIDI input listener (MIDIR).
 pub fn start_audio_and_midi(active_keys: Arc<[AtomicBool; 128]>) -> AudioHandle {
-    let (handle, rx) = AudioHandle::standalone();
+    let (mut handle, rx) = AudioHandle::standalone();
+    let (ports, ports_worker) = midi_ports();
+    handle.set_midi_ports(ports);
 
     // 1. Spawn Audio Output Thread
     let audio_rx = rx;
@@ -28,7 +31,7 @@ pub fn start_audio_and_midi(active_keys: Arc<[AtomicBool; 128]>) -> AudioHandle 
     let midi_handle = handle.clone();
     let midi_keys = Arc::clone(&active_keys);
     std::thread::spawn(move || {
-        run_midi_input(midi_handle, midi_keys);
+        run_midi_input(midi_handle, midi_keys, ports_worker);
     });
 
     handle
@@ -136,50 +139,98 @@ fn apply_realtime(cmd: AudioCommand, engine: &mut Stage4Engine, master_vol: &mut
     apply_audio_command(cmd, engine, master_vol);
 }
 
-fn run_midi_input(handle: AudioHandle, active_keys: Arc<[AtomicBool; 128]>) {
+/// MIDI-in thread: owns the `midir` connection, follows the GUI's port choice and rescans on
+/// request (hot plug). The first scan happens here, so start-up still opens the first port.
+fn run_midi_input(
+    handle: AudioHandle,
+    active_keys: Arc<[AtomicBool; 128]>,
+    worker: MidiPortsWorker,
+) {
+    let mut choice = MidiChoice::First;
+    let mut conn: Option<(String, MidiInputConnection<()>)> = None;
+    refresh_midi(&handle, &active_keys, &worker, &choice, &mut conn);
+    while let Ok(ctl) = worker.rx.recv() {
+        if let MidiCtl::Select(c) = ctl {
+            choice = c;
+        }
+        refresh_midi(&handle, &active_keys, &worker, &choice, &mut conn);
+    }
+}
+
+/// Re-reads the port list, (re)connects to the port `choice` names and publishes the result.
+fn refresh_midi(
+    handle: &AudioHandle,
+    active_keys: &Arc<[AtomicBool; 128]>,
+    worker: &MidiPortsWorker,
+    choice: &MidiChoice,
+    conn: &mut Option<(String, MidiInputConnection<()>)>,
+) {
     let mut midi_in = match MidiInput::new("Nord Stage 4 MIDI In") {
         Ok(m) => m,
         Err(e) => {
             eprintln!("[MIDI] Failed to initialize MidiInput: {}", e);
+            worker.publish(
+                vec![],
+                choice.clone(),
+                None,
+                format!("MIDI unavailable: {e}"),
+            );
             return;
         }
     };
     midi_in.ignore(Ignore::None);
-
     let ports = midi_in.ports();
-    if ports.is_empty() {
-        println!("[MIDI] No MIDI input devices found. Plug in a USB/MIDI keyboard!");
+    let names: Vec<String> = ports
+        .iter()
+        .map(|p| midi_in.port_name(p).unwrap_or_else(|_| "Unknown".into()))
+        .collect();
+    let want = pick_port(&names, choice);
+    let want_name = want.map(|i| names[i].clone());
+    if want_name.is_some() && conn.as_ref().map(|(n, _)| n) == want_name.as_ref() {
+        worker.publish(names, choice.clone(), want_name, String::new());
         return;
     }
-
-    println!("[MIDI] Found {} MIDI input port(s):", ports.len());
-    for (i, p) in ports.iter().enumerate() {
-        if let Ok(name) = midi_in.port_name(p) {
-            println!("  [{}] {}", i, name);
+    if let Some((_, old)) = conn.take() {
+        old.close();
+        release_stuck_notes(handle, active_keys);
+    }
+    let (connected, status) = match want {
+        Some(i) => {
+            println!("[MIDI] Connecting to port: {}", names[i]);
+            let (h, k) = (handle.clone(), Arc::clone(active_keys));
+            match midi_in.connect(
+                &ports[i],
+                "nord-stage-4-input",
+                move |_stamp, message, _| handle_midi_bytes(message, &h, &k),
+                (),
+            ) {
+                Ok(c) => {
+                    *conn = Some((names[i].clone(), c));
+                    (Some(names[i].clone()), String::new())
+                }
+                Err(e) => {
+                    eprintln!("[MIDI] Failed to connect to port: {}", e);
+                    (None, format!("Could not open the port: {e}"))
+                }
+            }
         }
+        None if matches!(choice, MidiChoice::Off) => (None, String::new()),
+        None if names.is_empty() => (None, "No MIDI input devices found".to_string()),
+        None => (None, "Chosen MIDI port not found".to_string()),
+    };
+    worker.publish(names, choice.clone(), connected, status);
+}
+
+/// A port that goes away or is replaced must not leave notes hanging or keys lit.
+fn release_stuck_notes(handle: &AudioHandle, active_keys: &[AtomicBool; 128]) {
+    for k in active_keys {
+        k.store(false, Ordering::Relaxed);
     }
-
-    let in_port = &ports[0];
-    let port_name = midi_in
-        .port_name(in_port)
-        .unwrap_or_else(|_| "Unknown".to_string());
-    println!("[MIDI] Connecting to port: {}", port_name);
-
-    let _conn = midi_in.connect(
-        in_port,
-        "nord-stage-4-input",
-        move |_stamp, message, _| {
-            handle_midi_bytes(message, &handle, &active_keys);
-        },
-        (),
-    );
-
-    match _conn {
-        Ok(_connection) => loop {
-            std::thread::park();
-        },
-        Err(e) => eprintln!("[MIDI] Failed to connect to port: {}", e),
-    }
+    handle.send_midi(MidiEvent::ControlChange {
+        channel: 0,
+        controller: nord_core::midi::cc::ALL_NOTES_OFF,
+        value: 0,
+    });
 }
 
 /// Parses raw MIDI bytes and updates the atomic key states and audio engine.
@@ -230,5 +281,20 @@ mod tests {
             }
             _ => panic!("Expected NoteOff event"),
         }
+    }
+
+    #[test]
+    fn release_stuck_notes_clears_keys_and_sends_all_notes_off() {
+        let (handle, rx) = AudioHandle::new();
+        let keys: Arc<[AtomicBool; 128]> = Arc::new(std::array::from_fn(|_| AtomicBool::new(true)));
+        release_stuck_notes(&handle, &keys);
+        assert!(keys.iter().all(|k| !k.load(Ordering::Relaxed)));
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(AudioCommand::Midi(MidiEvent::ControlChange {
+                controller: nord_core::midi::cc::ALL_NOTES_OFF,
+                ..
+            }))
+        ));
     }
 }

@@ -139,3 +139,25 @@ Triangle-shaped LEDs, the two-line wrapped tab title, the Synth VIBRATO box (sep
 
 ### Summary of Changes
 `nord-gui`: `panel/organ_vib_matrix.rs` (new), `panel/organ_logic.rs` (order), `panel/bay_organ.rs`, `panel/layout_tweaks.rs`, `panel/bay_master/rotary.rs` (tab); `nord-panel` frames_table (VIB/CHORUS and B3 PERCUSSION pads).
+
+## Round 7 (fix/led-spacing-rotary-order)
+
+### Context
+The user saw (1) the Rotary Speaker box misaligned (DRIVE caption over ORGAN, legends not centred over their buttons, rows not on the frame's centre line), (2) LEDs glued to their buttons and to each other across the panel (state LEDs over SUSTPED / PSTICK, ladders, model LED pairs, Synth mode LEDs) and (3) the ORGAN MODEL LED list in the wrong order (B3, VOX, PIPE1 | BASS, FARF, PIPE2).
+
+### Higher Goal
+LEDs and names read as on the instrument: a visible gap around every LED, the same order as the printed panel, boxes centred on one line, all checked by the audit with an empty allow-list.
+
+### Acceptance Criteria
+- [x] Audit rules `B` (LED to button >= 2.5 px) and `D` (LED to LED >= 2 px, ladder bars >= 1.5 px); first run 53 B + 21 D (+ 40 ladder bars), 0 after
+- [x] Fixes in shared helpers (`ctl::led_above`, `TAG_LIFT_LED`, `LEGEND_DROP`, ladder `SEG_GAP`, list pitch) and `layout_tweaks.rs`
+- [x] Rotary box: controls on the frame centre line, "o ORGAN" / "o STOP MODE" lines, centred SLOW / FAST row, no overlaps
+- [x] ORGAN MODEL printed order FARF/PIPE1, VOX/PIPE2, B3/B3 BASS; engine order unchanged; other lists checked against the photos
+- [x] Unit tests for every touched file; docs (`gui-testing.md`, `visual-style-and-panel.md`) updated
+- [x] Before/after screenshots at scale 4 (master, organ, piano, synth, effects) inspected
+
+### Out of Scope
+The two Vibrato-box name lists of the Synth (WHL / A.T. / DLY / PED), the touching A / B buttons of the Organ VIB/CHORUS, moving any `nord-panel` layout rectangle (all moves are nudges).
+
+### Summary of Changes
+`nord-gui`: `panel/legibility_leds.rs`, `panel/organ_model.rs`, `panel/ctl_led_tag.rs`, `panel/bay_master/rotary_speed.rs` (new); `widgets/probe.rs` (`LedSeg`), `panel/ctl.rs`, `bay_master/rotary.rs`, `bay_organ.rs`, `organ_preset.rs`, `organ_widgets.rs`, `piano_widgets.rs`, `bay_piano_select.rs`, `bay_piano_names.rs`, `organ_vib_matrix.rs`, `bay_effects/{ctx,lists}.rs`, `layout_tweaks.rs`.

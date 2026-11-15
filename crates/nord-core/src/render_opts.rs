@@ -93,8 +93,8 @@ pub fn apply_b3_tail(engine: &mut Stage4Engine, tail: Option<bool>) {
 /// Switches the Farfisa processor stage of both organ layers (`None` leaves the engine untouched).
 pub fn apply_farfisa_processor(engine: &mut Stage4Engine, on: Option<bool>) {
     if let Some(on) = on {
-        engine.organ_a.farfisa_processor = on;
-        engine.organ_b.farfisa_processor = on;
+        engine.organ_a.set_farfisa_processor(on);
+        engine.organ_b.set_farfisa_processor(on);
     }
 }
 
@@ -660,7 +660,7 @@ impl FirmwareOptions {
         self.set_organ_level(engine);
         self.set_leslie(engine);
         for organ in [&mut engine.organ_a, &mut engine.organ_b] {
-            organ.farfisa_processor = self.farfisa_processor == Some(true);
+            organ.set_farfisa_processor(self.farfisa_processor == Some(true));
         }
     }
 

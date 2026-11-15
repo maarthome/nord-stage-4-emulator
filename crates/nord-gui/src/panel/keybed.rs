@@ -132,7 +132,9 @@ pub(super) fn render_keybed(
     }
 
     let pressed = |state: &Stage4PanelState, m: u8| {
-        state.midi_active_keys[m as usize] || state.mouse_held_note == Some(m)
+        state.midi_active_keys[m as usize]
+            || state.mouse_held_note == Some(m)
+            || state.computer_kb.is_sounding(m)
     };
     let mut w_idx = 0usize;
     for midi in FIRST_NOTE..=LAST_NOTE {
