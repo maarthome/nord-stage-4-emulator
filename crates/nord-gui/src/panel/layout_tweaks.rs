@@ -57,11 +57,15 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     // 7.5 px minimum font; the verified layout rects (PR #375) already give more.
     // LED spacing (rules `B`, `T`): buttons whose LED moved up 3.3 px need their legends clear.
     ("organ.zone_leds", 0.0, 1.5),
-    ("organ.vibrato_on.a", 0.0, 2.0),
-    ("organ.vibrato_on.b", 0.0, 2.0),
+    ("organ.vibrato_on.a", 0.0, 4.5),
+    ("organ.vibrato_on.b", 0.0, 4.5),
     ("piano.soft_release", 1.5, 0.0), // SOFT REL / STR RES LEDs touched the level ladder (rule `D`)
     ("piano.string_res", 1.5, 0.0),
     ("piano.ped_noise", 1.5, 0.0),
+    ("piano.zone_leds", 0.0, 4.0), // the ZONE - / + legends printed into the zone LEDs
+    // KB TOUCH / DYN COMP names and titles sit 1.2 mm lower so the PED NOISE legend clears them.
+    ("piano.kb_touch", 0.0, 3.0),
+    ("piano.dyn_comp", 0.0, 3.0),
     ("organ.on", 0.0, -1.0),
     ("organ.solo", 0.0, -1.0),
 ];
@@ -73,9 +77,6 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
 pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     // The OLED dials' LIST names touched the OSCILLATORS title.
     ("synth.dial", 0.0, -4.0),
-    // Rotary Speaker box: its controls sit on the frame's vertical centre line (the frame was
-    // built around the button column and grew to the left; now the column moves 11 px left).
-    ("rotary.", -11.0, 0.0),
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
     ("organ.perc_", 3.0, 0.0),
     // Layer Effects: Mod 1 clear of the header's ON button legend, Mod 2 and Amp Sim/EQ down,

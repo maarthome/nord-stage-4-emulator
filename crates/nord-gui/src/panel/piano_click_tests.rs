@@ -260,15 +260,18 @@ fn dial_click_steps_inside_the_type_and_wraps() {
 
 #[test]
 fn acoustics_buttons_send_their_edits() {
+    // SOFT REL sits one button height above the verified ACOUSTICS rectangle, STR RES on it.
     let mut s = Stage4PanelState::default();
+    let mut rig = Rig::new(&mut s);
+    let real = rect_or_empty("piano.soft_release", rig.origin);
+    let soft_at = real.translate(vec2(0.0, -(real.height() + 1.0))).center();
     assert_eq!(
-        tap(&mut s, "piano.soft_release"),
+        rig.press(&mut s, soft_at, 0.05, false),
         [PianoEdit::SoftRelease { layer: 0, on: true }]
     );
     let mut s = Stage4PanelState::default();
     let mut rig = Rig::new(&mut s);
-    let sr = rect_or_empty("piano.soft_release", rig.origin);
-    let at = sr.translate(vec2(0.0, sr.height() + 11.0)).center();
+    let at = real.center();
     assert_eq!(
         rig.press(&mut s, at, 0.05, false),
         [PianoEdit::StringRes(false)]

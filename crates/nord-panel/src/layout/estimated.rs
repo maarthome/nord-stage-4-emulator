@@ -17,8 +17,7 @@
 /// Ids with an estimated rectangle.
 pub const ESTIMATED: &[&str] = &[
     // Layer LEDs, 4-6 px wide in the photo.
-    // organ.aux_led.a/b sit 5.4 mm under the crop position: the sim click test
-    // (`organ_rewire_tests`) loses the click to the hover tooltip when they are higher.
+    // organ.aux_led.a/b: centre from the crop (isotropic mapping); the 4 px size is a guess.
     "organ.aux_led.a",
     "organ.aux_led.b",
     "synth.zone_leds",

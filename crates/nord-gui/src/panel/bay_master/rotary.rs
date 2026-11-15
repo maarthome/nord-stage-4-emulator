@@ -6,8 +6,9 @@
 //! Master area (the Organ section starts right of it) and the wide legends are centred on the
 //! frame, not on the button.
 
-use super::super::ctl::{gesture_button, mark, shift_legend, Face};
+use super::super::ctl::{gesture_button, mark, Face};
 use super::super::ctl_led_tag::tag_led;
+use super::super::ctl_legend::shift_legend;
 use super::super::layout_px::rect_or_empty;
 use super::super::prelude::*;
 use crate::audio::OrganEdit;
@@ -15,7 +16,7 @@ use nord_panel::behaviour::Trigger;
 
 /// Frame extent left of the button column centre (px). The buttons sit on the frame's vertical
 /// centre line (`layout_tweaks`: every `rotary.` control moves 11 px left).
-const FRAME_LEFT: f32 = 41.0;
+const FRAME_LEFT: f32 = 40.0;
 /// Frame extent right of the button column centre (px), capped by the section edge.
 const FRAME_RIGHT: f32 = 41.0;
 /// Free space kept between the frame and the Master / Organ section boundary (px).

@@ -5,7 +5,8 @@
 //! into the stored preset. Engine side: `OrganEdit::{DrawbarLive, LiveDrawbars, SyncPreset}`
 //! (host `organz_drawbar_live_{n}`, `organz_live1..9_{n}`, `organz_sync_{n}`).
 
-use super::ctl::{gesture_button, shift_legend, tag, Face, TAG_LIFT_LED};
+use super::ctl::{gesture_button, tag, Face, TAG_LIFT_LED};
+use super::ctl_legend::shift_legend;
 use super::layout_px::rect_or_empty;
 use super::prelude::*;
 use crate::audio::OrganEdit;

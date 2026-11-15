@@ -5,8 +5,10 @@
                                          [--shots] [--out DIR] [--crops DIR]
 
 For one section it
-  1. maps crop pixels <-> panel mm with an affine fit per axis from anchor points (default: the
-     crop's section outline corners = the section rectangle of the dump; `--anchors` overrides),
+  1. maps crop pixels <-> panel mm: for the HA88 render and the `organ` / `piano` / `master`
+     crops with ONE isotropic scale (the crops are registered onto the render, see `ISO`); for
+     the other crops with an affine fit per axis from anchor points (default: the crop's section
+     outline corners = the section rectangle of the dump; `--anchors` overrides),
   2. draws every control rectangle of the section with its id over the crop
      (`<out>/<crop>_overlay.png`), and, with `--shots`, a side-by-side with our own screenshot
      (`python tools/gui_shots.py --scale 4 --sections <section>`),
@@ -61,6 +63,17 @@ THRESHOLD_MM = 2.0
 # y 1981 = 179.1 mm); the outline is the section rectangle in that image, so the mapping is
 # isotropic (unlike the organ crop, which shows only the sections and no connector strip).
 TOPDOWN = "../NS4_HA88_TopDown-01_241008.jpg"
+# Millimetres per render pixel (1290 mm / 10796 px) and the render pixel of the panel origin.
+MM_PER_TD_PX = 1290.0 / 10796.0
+TD_ORIGIN = (400.0, 482.0)
+# Section crops registered onto the render: render px = (rx + k * crop_x, ry + k * crop_y), the same
+# k on both axes (multi-scale `cv2.matchTemplate` of the crop against the render, TM_CCOEFF_NORMED:
+# organ 0.920 at k 0.995, piano 0.919 at k 0.990). Section top edge: render y 691 px = 25.0 mm.
+# The older affine outline mapping stretched the 137 mm tall sections onto the 179 mm panel height.
+ISO = {
+    "organ": (2166.5, 678.75, 0.995),
+    "piano": (4112.3, 674.2, 0.990),
+}
 CROPS = {
     "program": (
         TOPDOWN,
@@ -86,7 +99,7 @@ CROPS = {
     "organ": (
         "NS4-Panel-organ.max-2000x2000.format-png.png",
         "organ",
-        (250.0, 12.0, 1948.0, 1168.0),
+        None,
         ("master", "organ"),
         None,
     ),
@@ -140,6 +153,15 @@ class Mapping:
 
     def to_px(self, mx, my):
         return (mx - self.bx) / self.ax, (my - self.by) / self.ay
+
+    @classmethod
+    def isotropic(cls, rx, ry, k):
+        """Mapping of a crop registered onto the straight-on render (same mm/px on both axes)."""
+        m = cls.__new__(cls)
+        m.ax = m.ay = k * MM_PER_TD_PX
+        m.bx = (rx - TD_ORIGIN[0]) * MM_PER_TD_PX
+        m.by = (ry - TD_ORIGIN[1]) * MM_PER_TD_PX
+        return m
 
     def anisotropy(self):
         """Vertical over horizontal mm per crop px (1.0 = same scale on both axes)."""
@@ -276,6 +298,8 @@ def build_mapping(layout, crop, anchors_text):
     _, sec, outline, _, _ = CROPS[crop]
     if anchors_text:
         return Mapping(parse_anchors(anchors_text))
+    if crop in ISO:
+        return Mapping.isotropic(*ISO[crop])
     if outline is None:
         raise SystemExit(f"crop {crop!r} has no built-in outline: pass --anchors")
     return Mapping(outline_anchors(outline, layout["sections"][sec]))
