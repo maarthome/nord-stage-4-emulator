@@ -92,9 +92,112 @@ pub fn key_ratio(key: i32, root_key: i32) -> f64 {
     at(key - root_key + 60) / at(60)
 }
 
+/// SY frame rate in Hz: the reference of the per-zone tune field.
+///
+/// VERIFIED: `43402.34375 = 44,444,000 / 1024` (ARM literal `0x47298A58`, see `organ/lane_mix.rs`);
+/// as the reference of `zone_tune_q8` it reproduces 9 of 9 captured `[zone + 0x10]` values.
+pub const SY_FRAME_RATE_HZ: f64 = 43_402.343_75;
+
+/// Pair-block pitch word the DSP treats as unity (`0x3D4CCCCD` = 0.05, the value the ARM boot
+/// writes to every voice and the DSP step divides by).
+///
+/// VERIFIED: boot log `target/bulk/boot_log.jsonl` (all 56 voices), and the step join of
+/// `dsp_step` on the SY oracle (8 `(e, word)` points).
+pub const UNITY_WORD: f32 = 0.05;
+
+/// Per-zone tune `[zone + 0x10]` (Q8 semitones) of a sample stroke of native rate `rate_hz`:
+/// `trunc(3072 * log2(rate / SY_FRAME_RATE_HZ))`.
+///
+/// VERIFIED: the nine captured fields of `Carina Accordion 1` (`tools/arm_sy_voice.py`, zones with
+/// rates 35054..35445 and 34387..34878 Hz from the `\0stk` header bytes `+6..+8`) equal this
+/// truncation, residual of the unrounded value in `(-1, 0]` for all nine.
+pub fn zone_tune_q8(rate_hz: f64) -> i32 {
+    (3072.0 * (rate_hz / SY_FRAME_RATE_HZ).log2()) as i32
+}
+
+/// Pair-block pitch word the ARM sends for a zone: the law at the zone root key (`[zone + 0x60]`,
+/// byte 2 of the `\0map` zone record) with the zone tune of its stroke rate. The played key does
+/// not enter this word (mode 0), only the zone choice does.
+///
+/// VERIFIED: bit-identical to the captured word for 8 of 8 notes of `Carina Accordion 1`.
+pub fn zone_word(root_key: i32, rate_hz: f64) -> f32 {
+    pitch_word(pitch_q16(root_key, 0, 0, 0, zone_tune_q8(rate_hz)))
+}
+
+/// SY step (read increment of Stage B) of ISR step 3 (`0x1C0679..0x1C06E6`): `ratio(e) * 0.05 /
+/// word`, where `ratio(e)` is the unpacked 16-bit table entry `DM(0x9354A + index)` and `word`
+/// the pair-block pitch word `DM(0x9219E + 8)`.
+///
+/// VERIFIED: 8 `(e, word)` points on the SY oracle agree within 5e-5 relative (the DSP divides
+/// with `recips` plus Newton steps). OPEN: which message writes `e` (none in the note-on).
+pub fn dsp_step(table_ratio: f64, word: f32) -> f64 {
+    table_ratio * f64::from(UNITY_WORD) / f64::from(word)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn zone_tune_matches_the_nine_captured_fields() {
+        // (stk rate Hz, captured [zone + 0x10]) from tools/arm_sy_voice.py on Carina Accordion 1.
+        let rows = [
+            (35072.0, -944),
+            (35076.0, -943),
+            (35054.0, -946),
+            (35098.0, -941),
+            (35100.0, -940),
+            (34531.0, -1013),
+            (34387.0, -1031),
+            (35445.0, -897),
+            (34878.0, -969),
+        ];
+        for (rate, tune) in rows {
+            assert_eq!(zone_tune_q8(rate), tune, "rate {rate}");
+        }
+    }
+
+    #[test]
+    fn zone_word_matches_the_captured_pitch_words() {
+        // (root key [zone + 0x60], stk rate Hz, captured float bits at 0x921A6).
+        let rows = [
+            (48, 35072.0, 0x3BF4_6900_u32),
+            (59, 35076.0, 0x3C66_A400),
+            (60, 35054.0, 0x3C74_8500),
+            (71, 35098.0, 0x3CE6_8980),
+            (72, 35100.0, 0x3CF4_30C0),
+            (82, 34531.0, 0x3D5D_2960),
+            (85, 34387.0, 0x3D84_09F0),
+            (94, 35445.0, 0x3DD7_72D0),
+            (97, 34878.0, 0x3E02_3460),
+        ];
+        for (root, rate, bits) in rows {
+            assert_eq!(zone_word(root, rate).to_bits(), bits, "root {root}");
+        }
+    }
+
+    #[test]
+    fn dsp_step_matches_the_oracle_points() {
+        // (ratio of e, pair-block word bits, oracle step word / 2^24), sy_voice_sine.scn variants.
+        let rows = [
+            (0.625, 0x3D4C_CCCC_u32, 0x00A0_0000_u32),
+            (1.25, 0x3D4C_CCCC, 0x0140_0000),
+            (0.625, 0x3C74_8500, 0x0218_09F8),
+            (1.25, 0x3C74_8500, 0x0430_13F0),
+            (0.625, 0x3CF4_30C0, 0x010C_6174),
+            (1.25, 0x3CF4_30C0, 0x0218_C2E8),
+            (0.625, 0x3E02_3460, 0x003E_EA97),
+            (1.25, 0x3E02_3460, 0x007D_D52E),
+        ];
+        for (ratio, bits, step) in rows {
+            let got = dsp_step(ratio, f32::from_bits(bits));
+            let want = f64::from(step) / 16_777_216.0;
+            assert!(
+                ((got - want) / want).abs() < 5e-5,
+                "{bits:#x}: {got} vs {want}"
+            );
+        }
+    }
 
     /// `(key, transpose, cents sum, fine, tune, float bits)` from the firmware instructions run in
     /// `tools/arm_sy_pitch_law.py` (OS v1.66, `run_block`); derived numbers only.
