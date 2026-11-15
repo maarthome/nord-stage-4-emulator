@@ -77,6 +77,24 @@ No group id exists inside the zone record (the only other varying bytes are 2-va
 
 Envelope times, LFO rates, modulation intensities and per-group effect values are stored as floats after these identifiers but are not decoded yet.
 
+## Effect and curve tables (tools/ksp_arrays.py)
+
+The script keeps its tables as literal `declare %name[N] := (...)` arrays (KSP `...` line continuation inside the list). `uv run python tools/ksp_arrays.py up2_script.ksp arrays.csv` finds 48 arrays (6 are ASCII file paths of anti-tamper checks, ignored) and links each to the `ENGINE_PAR_*` that reads it (`uv run pytest tools/tests/test_ksp_arrays.py`: 4 passed). Values are Kontakt engine units, 0 to 1,000,000 normalized; the unit-to-Hz or unit-to-ms mapping is not known (ASSUMED linear 0..1 position; no Kontakt readout).
+
+| Effect | Array (21 steps, one per knob position) | Range |
+|---|---|---|
+| Chorus rate / amount | `idia3` / `gg3op` | 0..691137 / 262626..929293 |
+| Chorus delay, width, mix | constants 30000, 1000000, `mix * 46000` | |
+| Phaser rate / amount / center / feedback | `pwbo1` / `us0tu` / `r43yr` / `hdvpr` | 230276..906589 / 650000..800000 / 261399..579354 / 0..947368 |
+| Flanger rate / amount / feedback | `frqbo` / `zopuj` / `01udi`; pitch 57, width 1000000 | 359323..961183 / 0..600000 / 0..500000 |
+| Effect output gain | constant 445449 (chorus, phaser, flanger) | |
+| EQ `FREQ2` | `liluo` (33 steps) | 333333..867353 |
+| Velocity table `T` | `awued` (9) = 1008 / k (0, 1008, 504, 336, 252, 202 ...) | |
+| Release exponent `p` | `sgof3` set in `on init`: 58, 58, 61, 61, 61 ... (/100) | |
+| 128-entry curve | `uxmos`, increasing 183946..696878 (use not traced) | |
+
+Chorus rate position 0 and 1 are both 0 (the lowest two knob steps share a rate); the amounts of phaser and flanger saturate at positions 14 and 10. Positions are chosen by `%zs1et` (rate) and `%vokcm` (amount) per bus A to D, saved state.
+
 ## Not verified / not done
 
 - Group envelope times, LFO rates, modulation intensities, effect chains and values, `ir_samples` convolution references, and zone-to-group membership are not decoded. Zones, the file list, group names, group volume and modulator inventory are (see above).
