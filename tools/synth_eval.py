@@ -9,7 +9,9 @@ Metrics (pitch must match exactly, one-to-one greedy by smallest onset differenc
 - onset F1 / precision / recall at +-``--tol`` seconds (default 0.05, the plan's 50 ms);
 - velocity MAE and Pearson r over the matched notes (the model's expected velocity, 0..127,
   against the dataset velocity that the emulator was asked to play);
-- the same split by velocity mode and by phrase kind.
+- the same split by velocity mode and by phrase kind, and, when ``velocity_response.json`` from
+  ``synth_vel_check.py`` is in the dataset folder, by programs where velocity does change the
+  loudness (``responsive``) and where it hardly does (``weak``).
 
 Only the model run needs torch and transkun (``load_model``); the scoring is numpy. The base
 model is the default; an adapter folder from ``synth_train.py`` is scored with ``--adapter``.
@@ -30,6 +32,7 @@ import numpy as np
 import synth_wav
 
 TOL_S = 0.05
+RESPONSIVE_RHO = 0.3  # same threshold as synth_vel_check.RESPONSIVE_RHO
 
 
 def match(
@@ -89,14 +92,34 @@ class Totals:
         return out
 
 
-def score(entries: Sequence[dict], estimates: dict[str, list[dict]], tol: float) -> dict[str, Any]:
-    """Overall and per velocity mode / phrase kind scores for ``estimates[id]`` note lists."""
+def response_group(program: str, response: dict[str, float] | None) -> str | None:
+    """``velocity_response=responsive|weak`` from ``synth_vel_check.py``'s per-program map."""
+    if not response or program not in response:
+        return None
+    kind = "responsive" if response[program] >= RESPONSIVE_RHO else "weak"
+    return f"velocity_response={kind}"
+
+
+def score(
+    entries: Sequence[dict],
+    estimates: dict[str, list[dict]],
+    tol: float,
+    response: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Overall and per velocity mode / phrase kind (and velocity response) scores."""
     groups: dict[str, Totals] = defaultdict(Totals)
     for e in entries:
         est = estimates[e["id"]]
-        for key in ("all", f"vel_mode={e['vel_mode']}", f"kind={e['kind']}"):
+        keys = ["all", f"vel_mode={e['vel_mode']}", f"kind={e['kind']}"]
+        keys += [g for g in (response_group(e.get("program", ""), response),) if g]
+        for key in keys:
             groups[key].add(e["notes"], est, tol)
     return {k: v.summary() for k, v in sorted(groups.items())}
+
+
+def load_response(root: Path) -> dict[str, float] | None:
+    path = Path(root) / "velocity_response.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
 def load_model(device: str, adapter: str | None = None) -> Any:
@@ -149,7 +172,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "items": len(entries),
         "tol_s": args.tol,
         "seconds": round(time.time() - t0, 1),
-        "scores": score(entries, est, args.tol),
+        "scores": score(entries, est, args.tol, load_response(root)),
     }
     text = json.dumps(result, indent=1)
     if args.out:

@@ -51,3 +51,30 @@ def test_score_groups_by_mode_and_kind():
     assert res["all"]["recall"] == 0.5
     assert res["vel_mode=loud"]["f1"] == 1.0 and res["vel_mode=ramp"]["f1"] == 0.0
     assert res["kind=melody"]["notes"] == 2
+
+
+def test_response_groups_split_scores_by_velocity_response(tmp_path):
+    def entry(eid, program, vel):
+        note = {"start": 1.0, "end": 2.0, "pitch": 60, "velocity": vel}
+        return {
+            "id": eid,
+            "program": program,
+            "vel_mode": "skewed",
+            "kind": "melody",
+            "notes": [note],
+        }
+
+    entries = [entry("a", "good", 80), entry("b", "dull", 80)]
+    est = {
+        "a": [{"start": 1.0, "end": 2.0, "pitch": 60, "velocity": 80}],
+        "b": [{"start": 1.0, "end": 2.0, "pitch": 60, "velocity": 20}],
+    }
+    response = {"good": 0.9, "dull": 0.1}
+    got = ev.score(entries, est, 0.05, response)
+    assert got["velocity_response=responsive"]["velocity_mae"] == 0.0
+    assert got["velocity_response=weak"]["velocity_mae"] == 60.0
+    assert "velocity_response=weak" not in ev.score(entries, est, 0.05)
+    assert ev.response_group("unknown", response) is None
+    assert ev.load_response(tmp_path) is None
+    (tmp_path / "velocity_response.json").write_text('{"good": 0.9}', encoding="utf-8")
+    assert ev.load_response(tmp_path) == {"good": 0.9}
