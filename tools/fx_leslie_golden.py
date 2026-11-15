@@ -30,7 +30,8 @@ import fx_leslie_run as lr
 from fx_leslie_words import fnv
 
 #: Leslie drive words `0xB2F2D / 0xB2F2E / 0xB2F31 / 0xB2F32`: the ARM writes `v / 127` into all
-#: four (`tools/fx_clients.py --slots`, `Edt_OrgCom_kEffectsLeslieDrv`, docs/research/organ-preamp-search.md s10).
+#: four (`tools/fx_clients.py --slots`, `Edt_OrgCom_kEffectsLeslieDrv`,
+#: `docs/research/organ-preamp-search.md` s10).
 DRIVE_ADDRS = (0xB2F2D, 0xB2F2E, 0xB2F31, 0xB2F32)
 #: `v = 31` (`B3 Chords n Solo` stores 2.44 of 10): `31 / 127` as `f32`.
 DRIVE_WORD = 0x3E79F3E8
@@ -47,7 +48,9 @@ KEEP = 64
 
 
 def oracle_outputs(
-    pno1: Path, script: Path, mult: int,
+    pno1: Path,
+    script: Path,
+    mult: int,
     calls: int,
     binary: Path,
     stride: int = 0,

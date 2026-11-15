@@ -4,7 +4,9 @@
 The processor reads (and writes) a few windows of the PNO core 1 data memory: its row and context
 words, the 65-point rotor tables, the delay line state, the cabinet coefficient runs and the table
 pointers. The windows below were found by running the verified model for 3,000 calls with the
-rotor running (`touched` addresses, merged); the three 129 word drive tables `0xB0276`, `0xB02F7`, `0xB0378` are whole (drive words above 0 index the whole tables, `organ-preamp-search.md` s10); the two cabinet windows `0xE2E08..0xE31E7` and
+rotor running (`touched` addresses, merged); the three 129 word drive tables `0xB0276`, `0xB02F7`,
+`0xB0378` and the block `0xE05D0..0xE0630` are whole (drive words above 0 index them,
+`organ-preamp-search.md` s10); the two cabinet windows `0xE2E08..0xE31E7` and
 `0xE3200..0xE35DF` (right and left) are the whole history ring, the context and the second buffer,
 because the advancing ring pointers (`fx-leslie.md` s10) reach every word of them. This tool
 reads their words from the flat PNO core 1 image under the boot log
