@@ -68,13 +68,13 @@ impl Stage4Engine {
     fn init_layer(&mut self, layer: LayerId, fx: &FxParams) {
         let fs = self.sample_rate;
         match layer {
-            LayerId::OrganA => self.organ_a = OrganLayer::new(fs),
-            LayerId::OrganB => self.organ_b = OrganLayer::new(fs),
+            LayerId::OrganA => *self.organ_a = OrganLayer::new(fs),
+            LayerId::OrganB => *self.organ_b = OrganLayer::new(fs),
             LayerId::PianoA => Self::reset_piano(&mut self.piano_a, fs),
             LayerId::PianoB => Self::reset_piano(&mut self.piano_b, fs),
-            LayerId::SynthA => self.synth_a = SynthLayer::new(fs),
-            LayerId::SynthB => self.synth_b = SynthLayer::new(fs),
-            LayerId::SynthC => self.synth_c = SynthLayer::new(fs),
+            LayerId::SynthA => *self.synth_a = SynthLayer::new(fs),
+            LayerId::SynthB => *self.synth_b = SynthLayer::new(fs),
+            LayerId::SynthC => *self.synth_c = SynthLayer::new(fs),
         }
         if let Some(i) = (layer as usize).checked_sub(LayerId::SynthA as usize) {
             self.synth_cutoff_morph[i] = MorphParameter::new(DEFAULT_CUTOFF_NORM);
