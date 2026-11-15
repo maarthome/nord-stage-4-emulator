@@ -89,6 +89,21 @@ fn enabled_section_without_layers_plays_layer_a_with_firmware_routing() {
 }
 
 #[test]
+fn empty_section_next_to_a_sounding_one_plays_layer_a() {
+    // `Tines Layer`: piano section on with layer enable 0 beside synth A + B (OQ25, VERIFIED:
+    // the loader view refresh turns mask 0 into layer A in every section).
+    const PIANO_A: u8 = 1 << LayerId::PianoA as u8;
+    const SYNTH_AB: u8 = (1 << LayerId::SynthA as u8) | (1 << LayerId::SynthB as u8);
+    let mut prog = ProgramDecoded::default();
+    prog.global.section_enable_i = 0b011;
+    prog.global.scene_1_mask = SYNTH_AB;
+    let mut e = Stage4Engine::new(48_000.0);
+    e.apply_program(&prog);
+    e.set_firmware_routing(FirmwareRouting::On);
+    assert_eq!(press(&mut e, 61), PIANO_A | SYNTH_AB);
+}
+
+#[test]
 fn scene_two_follows_its_own_exact_mask() {
     let mut e = Stage4Engine::new(48_000.0);
     e.apply_program(&b3_chords_n_solo());
