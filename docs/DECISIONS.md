@@ -1028,6 +1028,15 @@ writes synth oscillator P block; `--synth-p verified` opt-in
 - **Alternatives:** Add a `tanh` preamp or a gain before the Leslie (rejected: no firmware stage exists, it would be fitted to one clip); flip `--leslie firmware` to default (rejected: D22); keep the 525-note replay (rejected: it is Leslie amplitude chatter, re-triggering key click and envelope).
 - **Impact:** New `tools/note_offsets.py` and tests; docs only otherwise; `render_hash` and goldens unchanged. Open (OQ21): the DMA ring of the Leslie history, `DM(0xB00EE)`, a lone-note hardware clip.
 
+### D107. The FM table generator, the strip words and the pitch words are decoded; `FmVoice::select` follows the wave edit (opt-in)
+- **Status:** accepted
+- **Decided by:** Claude (agent), on the parent session's task
+- **Context:** D92 and D96 left the table family `(type, a4, a8)`, the writer of strip `+0xA4` / `+0xA8`, the note term `DM(0xC2716)` and the operator ratio source open (OQ22, audio-remaining row 10).
+- **Decision:** (1) Port the ARM table generator (`0xC01CB2A4..`, a soft float loop of 129 indices building three curves) as `tools/synth_fm_generator.py` (30 of 30 variants bit exact against the ARM harness) and `fw_fm/generator.rs` (`fm_table_for`, within 1 ulp). (2) Record the writers: the `kOscWave` handler stores `+0xA8` at `0xC00185B0` and `+0xA4` at `0xC00185D8`; `tools/synth_fm_tables.py select` sweeps bank 1 and 2 x category x wave into [data/synth-fm-select.csv](research/data/synth-fm-select.csv); `FmVoice::select(bank, category, wave)` builds the voice from it. (3) `DM(0xC2716)` is a DSP store at pc `0x1208A9` of `(midi - 60) 2^24`; correct the pitch words of D96: `W` is zero at MIDI 60, `p0 = f / F_SY` (D96 / s6 said `2 f / F_SY` with zero at MIDI 48, an octave low); the `W` clip is `+-0x58000000`. (4) The `0x2D82A8` table is the OLED label table, the operator ratios are the P words. (5) No default change.
+- **Why:** The generator is a pure function of three words, so a port replaces committing a table family; the pitch correction comes from the replay of the DSP note term for MIDI 48, 60 and 72.
+- **Alternatives:** Commit tables for every partial ratio and type (rejected: 5 x 86 tables, and `a8` is a free word); fit the ramp and decay laws only (rejected: the third curve and the other types would stay guesses); flip the FM voice into `SynthLayer` (rejected: no hardware FM clip exists to validate level, D22).
+- **Impact:** New `generator.rs`, `voice.rs` changes, `tools/synth_fm_generator.py`, `select` subcommand, two data files, tests, doc updates. `render_hash` and golden hashes are unchanged. Open (OQ22): level against a hardware FM clip, `x`, the `SynthLayer` hookup.
+
 ### D98. The Leslie drive words are ported (opt-in `--leslie-drive program`); the drive does not close the B3 residuals; the oracle cannot run `0x125371` / `0x1235AA`
 - **Status:** accepted
 - **Decided by:** Claude (agent), on the parent session's task (B3 / Leslie leftovers)

@@ -199,6 +199,63 @@ def probe(  # pragma: no cover - needs the booted firmware
     return 0
 
 
+def partial_words(bank: int, wave: int) -> tuple[int, int] | None:
+    """Strip `(+0xA4, +0xA8)` the oscillator wave edit stores for an FM bank (`None`: no FM wave).
+
+    VERIFIED (run, `select`, 5 categories x 86 waves): the wave edit `kOscWave` handler stores
+    `+0xA8` at `0xC00185B0` and `+0xA4` at `0xC00185D8` (caller `0xC003D7BC`). Bank 1 (`FM-H`,
+    waves 0..24 = partial ratios 0.5, 1, 2 .. 24, label table `bank0_CODE@0x2D82A8`): `a4 = 0`,
+    `a8 = ratio 2^16`. Bank 2 (`FM-I`, waves 0..60 = `wave - 12` semitones): `a4 = 1`,
+    `a8 = wave 2^16`. Larger waves fall back to type 2.
+    """
+    if bank == 1 and 0 <= wave <= 24:
+        return 0, 0x8000 if wave == 0 else wave << 16
+    if bank == 2 and 0 <= wave <= 60:
+        return 1, wave << 16
+    return None
+
+
+def select(  # pragma: no cover - needs the booted firmware
+    code: Path, sram: Path, cache: Path | None, out: Path
+) -> int:
+    """Run the wave edit for every FM `(bank, category, wave)` and record type, `a4`, `a8`."""
+    import arm_edit_capture as c
+    import arm_emu as ae
+    import arm_steady as ast
+    import unicorn
+
+    emu, blob = c.settled_emulator(code, sram, cache)
+    stores = c.first_store_per_layer(c.find_stores(emu))
+    store = next(s for s in stores if s.layer == 4)
+    if not any(lo <= c.SCRATCH <= hi for lo, hi, _ in emu.uc.mem_regions()):
+        emu.uc.mem_map(c.SCRATCH, ae.PAGE)
+    objs: list[int] = []
+    emu.uc.hook_add(
+        unicorn.UC_HOOK_CODE,
+        lambda uc, *_: objs.append(uc.reg_read(unicorn.arm_const.UC_ARM_REG_R0)),
+        begin=0xC01CC85C,
+        end=0xC01CC85C,
+    )
+    rows = ["bank,category,wave,type,a4,a8"]
+    for bank, top in ((1, 25), (2, 61)):
+        for cat in range(5):
+            for wave in range(top + 1):
+                ast.restore(emu, blob)
+                emu.install_dsp_ports()
+                objs.clear()
+                for key, v in ((0xFA, 1), (0x125, bank), (0x126, cat)):
+                    emu.write32(c.value_cell(emu, store.address, key), v)
+                c.apply_value(emu, store.address, 0x127, wave, 2000)
+                o = objs[-1]
+                rows.append(
+                    f"{bank},{cat},{wave},{emu.read32(o + 0x98)},"
+                    f"{emu.read32(o + 0xA4)},{emu.read32(o + 0xA8):#x}"
+                )
+        print(f"bank {bank} done", flush=True)
+    out.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -212,7 +269,14 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI
     pp.add_argument("sram", type=Path)
     pp.add_argument("--cache", type=Path)
     pp.add_argument("--types", type=int, nargs="+", default=[49, 52])
+    sp = sub.add_parser("select")
+    sp.add_argument("code", type=Path)
+    sp.add_argument("sram", type=Path)
+    sp.add_argument("--cache", type=Path)
+    sp.add_argument("--out", type=Path, required=True)
     ns = ap.parse_args(argv)
+    if ns.cmd == "select":
+        return select(ns.code, ns.sram, ns.cache, ns.out)
     if ns.cmd == "probe":
         return probe(ns.code, ns.sram, ns.cache, tuple(ns.types))
     return capture(ns.code, ns.sram, ns.cache, ns.out)
