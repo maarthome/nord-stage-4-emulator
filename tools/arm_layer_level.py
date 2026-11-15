@@ -20,7 +20,8 @@ arguments).
 
 The synth handler (`0xC011BA38`, ids `0xA4..0xA6`, the code at `0xC011BB48`) has the same
 body (VERIFIED by the run: `(v / 127)^2`, sentinel `-0.05`) with other field offsets: layer
-`[this + 0x90]`, table `[this + 0xB0]`, event kind 8, slots 4 / 5 / 6 for `[this + 0x64]` in {0, 1} / {2, 3} / {4, 5}.
+`[this + 0x90]`, table `[this + 0xB0]`, event kind 8, slots 4 / 5 / 6 for
+`[this + 0x64]` in {0, 1} / {2, 3} / {4, 5}.
 `0xC0114588` (ids `0xA4..0xA6` of a different dispatcher) is not a level store: it keeps a 16-bit
 rounded `v * k` for the display and never reaches the sender.
 """
