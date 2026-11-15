@@ -1,0 +1,117 @@
+{
+ "note": "Transkun note stream (piano_events__zksT69H30c.json), Part A video _zksT69H30c, whole-segment RMS emulator minus hardware (dB) per organ variant; k_needed = k_used * 10^(-rms_delta/20) assuming a linear level path. EMPIRICAL, lossy YouTube audio, velocities ordinal not Nord scale. Numbers only.",
+ "rows": [
+  {
+   "segment": "organ_b3",
+   "variant": "b3-k28-unity",
+   "run": "full",
+   "k_used": 2.8,
+   "rms_delta_db": -9.59,
+   "k_needed": 8.45
+  },
+  {
+   "segment": "organ_b3",
+   "variant": "b3-k28-scaled",
+   "run": "full",
+   "k_used": 2.8,
+   "rms_delta_db": -8.88,
+   "k_needed": 7.78
+  },
+  {
+   "segment": "organ_b3",
+   "variant": "b3-k28-engine",
+   "run": "full",
+   "k_used": 2.8,
+   "rms_delta_db": -4.82,
+   "k_needed": 4.88
+  },
+  {
+   "segment": "organ_b3",
+   "variant": "b3-chain-unity",
+   "run": "full",
+   "k_used": 0.5971,
+   "rms_delta_db": -20.31,
+   "k_needed": 6.19
+  },
+  {
+   "segment": "organ_vox",
+   "variant": "vox-k28",
+   "run": "full",
+   "k_used": 2.8,
+   "rms_delta_db": 3.99,
+   "k_needed": 1.77
+  },
+  {
+   "segment": "organ_vox",
+   "variant": "vox-k28-routing",
+   "run": "full",
+   "k_used": 2.8,
+   "rms_delta_db": 3.99,
+   "k_needed": 1.77
+  },
+  {
+   "segment": "organ_vox",
+   "variant": "vox-chain",
+   "run": "full",
+   "k_used": 0.5971,
+   "rms_delta_db": -9.11,
+   "k_needed": 1.7
+  },
+  {
+   "segment": "organ_pipe",
+   "variant": "pipe-k28-dry",
+   "run": "full",
+   "k_used": 2.8,
+   "rms_delta_db": -6.96,
+   "k_needed": 6.24
+  },
+  {
+   "segment": "organ_pipe",
+   "variant": "pipe-chain-dry",
+   "run": "full",
+   "k_used": 0.5971,
+   "rms_delta_db": -15.7,
+   "k_needed": 3.64
+  },
+  {
+   "segment": "organ_pipe",
+   "variant": "pipe-k28-full",
+   "run": "full",
+   "k_used": 2.8,
+   "rms_delta_db": -8.28,
+   "k_needed": 7.26
+  },
+  {
+   "segment": "organ_b3",
+   "variant": "b3-k28-unity",
+   "run": "note_range_48_64",
+   "k_used": 2.8,
+   "rms_delta_db": -11.12,
+   "k_needed": 10.07
+  },
+  {
+   "segment": "organ_b3",
+   "variant": "b3-k28-scaled",
+   "run": "note_range_48_64",
+   "k_used": 2.8,
+   "rms_delta_db": -10.45,
+   "k_needed": 9.33
+  },
+  {
+   "segment": "organ_b3",
+   "variant": "b3-k28-engine",
+   "run": "note_range_48_64",
+   "k_used": 2.8,
+   "rms_delta_db": -6.35,
+   "k_needed": 5.82
+  },
+  {
+   "segment": "organ_b3",
+   "variant": "b3-chain-unity",
+   "run": "note_range_48_64",
+   "k_used": 0.5971,
+   "rms_delta_db": -21.95,
+   "k_needed": 7.47
+  }
+ ]
+}

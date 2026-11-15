@@ -122,6 +122,33 @@ Gain still needed on the oracle-faithful output, at swell 127 and the squared le
 
 One `K` spans a 3.1 dB spread over three different DSP paths, so part of it may be per-path error (B3 tail, rotary drive, the Pipe clip also holding the synth), not a shared lane gain. Consistency with [organ-output-level](organ-output-level.md): that note measures the Legacy path (bus `0.08`, +14.39 dB over the ARM unit) with layer B off (+3.6 dB RMS over the clip, -1.7 dB with a note range), whereas s4 measures the firmware paths in the ARM unit; the two numbers are in different units and do not contradict each other. A single-engine re-measure (B3, layer B off, `--note-range 48 64`, rotary fixed) needs the local clips and was not run.
 
+### 6.3 ARM and SHARC pass (D106, 2026-11-15)
+
+- **Checked:** 2026-11-15. **Sources (local):** `target/bulk/boot_log.jsonl` (96,111 ARM-to-DSP writes with sender pc, boot plus 7 settle phases), `target/DSP`, `target/PNO`, `tools/emu_vs_hw.py` with the Part A video, the Transkun stream `docs/research/data/piano_events__zksT69H30c.json`, release `ns4`.
+- **Question:** is there an ARM-written or DSP-side gain that explains `K`, and what is `K` per engine with the Transkun streams?
+
+| Test | Result | Tag |
+|---|---|---|
+| (a) Boot log writes to `DM(0xB6518 / 9 / A)` | none (the master word has no boot writer: the volume event writes it, s5 of [piano-receiver-scale](piano-receiver-scale.md)) | VERIFIED (grep) |
+| (a) Writes to `DM(0x95B42)`, `DM(0x95FD1)` | PNO core 1, `0x3F1EB100` (swell word of Fnc_Swell 100), senders `0xC001FFA0` and `0xC0223C3C` | VERIFIED (grep) |
+| (a) Organ chain words `0xB2ECF`, `0xB2FF0` | boot sentinels `-0.08`, `-0.065`, sender `0xC022E3E8`; the 1.6 is the layer sender's (s5 of piano-receiver-scale) | VERIFIED |
+| (a) `0xB28xx` | table fills `0xBF2FA6BA` x100 (`0xB2800..63`) and `0xC0711736` x128 (`0xB2865..E4`) from `0xC01BF19C` / `0xC01BF0F8` to PNO core 2 and ORG; on FX filter and delay registers; no organ gain | VERIFIED (grep) |
+| (a) ARM capture on a Piano to Organ program switch | **not run**: the harness logs DSP messages only for the boot and the settled snapshot; a recall needs a 4 minute boot per program (`tools/arm_program_load.py`) and would repeat the layer sender result (organ 1.6, piano 1.0) | open |
+| (c) Logged writes within 1 % of 2.8, 2.729, 4.571, 0.21875, 0.357, 0.597 as float, or reading that value as an integer at `2^-23` / `2^-31` | all in filter, delay and EQ coefficient regions (PNO `0xB4D..0xB50..`, FX `0xE0C..`, `0xB24..`); the nearest, 2.81 at PNO `0xC01C7` and FX core 2 `0xB06AD` (sender `0xC0207F64`), is a settle-time FX parameter next to unity words, not a lane gain | VERIFIED (scan) |
+| (b) PNO output stage `0x1229B3` store | `DM(I0, M2)` with `I0` set by the slot record (data, not code): the PNO-lane to FX hand-over address and its DMA descriptor are not read from the listing; the FX side was measured by poking the FX words (unity) | open |
+
+**K per engine (d)** (`docs/research/data/organ_k_per_engine.json`; whole-segment RMS emulator minus hardware on the Transkun right-hand stream; `k_needed = k_used * 10^(-delta/20)`; EMPIRICAL, lossy audio, ordinal velocities):
+
+| Engine | delta at K=2.8 (dB) | `k_needed` at K=2.8 | `k_needed` at chain 0.597 |
+|---|---|---|---|
+| B3Wheels, rotary unity / scaled / engine | -9.6 / -8.9 / -4.8 | 8.4 / 7.8 / 4.9 | 6.2 (unity) |
+| B3Wheels, notes 48..64 only | -11.1 / -10.5 / -6.3 | 10.1 / 9.3 / 5.8 | 7.5 (the clip RMS holds all notes, so a cut under-reads) |
+| Vox | +4.0 | 1.8 | 1.7 |
+| Pipe, organ only (sections cut) | -7.0 | 6.2 | 3.6 |
+| Pipe, organ + synth | -8.3 | 7.3 | |
+
+Readings: (1) one `K` does not fit the three engines on the Transkun streams: 1.8 (Vox) to 4.9 .. 8.4 (B3) is a 13 dB spread, against 3.4 dB on the earlier video-detected notes at velocity 100 (s4); the centring at 2.8 is not supported by the stream replay, whose velocities are ordinal, not the Nord scale. (2) B3 and Pipe are not linear in `K` (chain and `K = 2.8` disagree by 2.3 and 2.6 dB in `k_needed`: soft clip, drive, compressor), Vox is (0.3 dB). (3) The spread is of the size of the rotary drive choice (4.8 dB) plus the velocity scale, so no engine-specific gain word is implied. `K` stays EMPIRICAL at 2.8, `Chain` stays opt-in, no default changes.
+
 ## Implications
 
 - One structure, three words: `output = K * swell_word(pedal) * level^2 * bank`. Two factors are firmware, one scale is not.
@@ -134,4 +161,4 @@ One `K` spans a 3.1 dB spread over three different DSP paths, so part of it may 
 2. Run `0xC011AB8C` with the real per-layer controller to confirm the squared law dynamically; capture a second swell value (`v = 64`) to check `520 v^2`.
 3. Remove or rescale the Legacy key click on the firmware B3 path; re-run the B3 presence.
 4. A Pipe-only and a pedal-position-known clip to replace the three-clip centring of `K`.
-5. Grep the local `boot_log.jsonl` for the senders of `DM(0xB6518)`, `0x95B42`, `0xB28xx` and capture the ARM writes on a Piano to Organ program switch (`0xC011AB8C`, the `0x1229B3` record builder); re-measure `K` on B3 alone (layer B off, note range, rotary fixed) (D85, s6.1).
+5. Capture the ARM writes on a Piano to Organ program recall (`0xC011AB8C`, the `0x1229B3` record builder); resolve the PNO lane to FX hand-over (the `I0` of `0x1229B3`, the DMA descriptor, 2^23 versus 2^31 slot alignment) by running the PNO and FX images together; a single-note hardware recording per engine with a known level (D106, s6.3).

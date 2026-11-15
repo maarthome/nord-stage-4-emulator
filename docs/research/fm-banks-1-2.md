@@ -66,8 +66,8 @@ The words the stage needs besides the table, all located:
 
 | Stage word | Source | Tag |
 |---|---|---|
-| `DM(I2-31)` position word `W` | the clipped sum of the pitch integer words, `0x01000000` per semitone, zero at C3 (MIDI 48): pitch stage listing `0x24C4FC..0x24C5D6`, written at pc `0x1262EB` to `DM(0xC1F77)` | VERIFIED (listing, [synth-stage-models-7](synth-stage-models-7.md)); the clip bounds are ASSUMED (saturating `i32`) |
-| `DM(I2-29)` pitch term `p0` | `DM(0xC1F79) = 0.006028 2^(semi / 12) = 2 f / F_SY` (`F_SY = 43402.34375 Hz`; 0.0060281 at C3) | VERIFIED (equation, same word as the SYNC stages) |
+| `DM(I2-31)` position word `W` | the clipped sum of the pitch integer words, `0x01000000` per semitone, zero at MIDI 60 (corrected in s8; s6 first said C3 = MIDI 48): pitch stage listing `0x24C4FC..0x24C5D6`, written at pc `0x1262EB` to `DM(0xC1F77)` | VERIFIED (listing, [synth-stage-models-7](synth-stage-models-7.md)); the clip bounds are ASSUMED (saturating `i32`) |
+| `DM(I2-29)` pitch term `p0` | `DM(0xC1F79) = 0.006028 2^(semi / 12) = f / F_SY` with `semi = midi - 60` (`F_SY = 43402.34375 Hz`; 0.0060277 at MIDI 60; s6 wrote `2 f / F_SY` at C3, corrected in s8) | VERIFIED (equation, same word as the SYNC stages) |
 | ARM block `DM(0xC1599 ..)` (`DM(I1-29 .. I1-18)`) | `P[-257 .. -246]` of the P capture, `p_index = dm - 0xC169A`; already in [data/synth-p-words.csv](data/synth-p-words.csv) per type | VERIFIED (run) |
 | `DM(I2-5)` depth source `x` | image constant 0.2 | ASSUMED (the hardware may modulate it) |
 | Ratios `P[-32 .. -29]`, weights `P[-16 .. -9]`, gain `P[16 .. 17]` | the same CSV | VERIFIED (run) |
@@ -76,6 +76,28 @@ Rust: `synth/fw_fm/voice.rs` (`FmVoice`: `set_note(midi)` writes `W`, `p0`; `ren
 
 ## 7. Follow-ups after the wiring
 
-- Find the writer of strip `+0xA4` / `+0xA8` (the FM wave id to partial ratio path via the FM-H table `bank0_CODE@0x2D82A8`) and decode the generator of all 361 words; then `fm_table` takes `(type, a4, a8)`.
-- The ARM writer of the note term `DM(0xC2716)` and of `x`.
-- A hardware FM clip to validate level, the table family and the voice mix before the default can flip.
+- Done in s8 (D107): the writer of strip `+0xA4` / `+0xA8`, the generator of all 361 words, the note term writer. Still open: `x` (`DM(I2-5)`), a hardware FM clip.
+
+## 8. The ARM generator, the strip words and the pitch words (added 2026-11-15, D107)
+
+Everything s6 left open for the voice is now decoded from the ARM and SHARC listings.
+
+| Item | Result | Tag |
+|---|---|---|
+| Generator of the 361 words | The apply builds three curves of 129 floats in a scratch buffer (`0xC05AFC80`, `+0x204`, `+0x408`) in the loop `0xC01CB2A4..0xC01CB570` (soft float calls of libgcc size: `fmul 0xC0270C80`, `fsub 0xC0270A38`, `fadd 0xC0270A3C`, `fdiv 0xC0270E18`, `i2f 0xC0270BD4`, `f2d 0xC025CA38`, `d2f 0xC025D11C`, `dmul 0xC025CAF4`, `dadd 0xC025C740`, `pow 0xC0271B24`, `fmax 0xC02712D8`, `expf 0xC0271E44`). The table is `curve0[26..129] ++ curve1 ++ curve2` (the first 26 words of curve 0 precede `DM(0xE0900)`); the bulk send is `0xC01CF358` / `0xC01CBF80` | VERIFIED (run: store trace of the three curves, offsets 103 / 232 match 129 of 129) |
+| Formula | `tools/synth_fm_generator.py` (docstring has the equations): `Sc` from `a8` (below), `E = (2 j - 132) / 12`, `x = 2^(E - 7)`, `c0 = max(0, 1 - 0.2 E) / Sc` (type 49) or `/ (0.9 + 0.1 Sc)` (type 52), `c1 = max(0, (c30 - x c24) / (2 pi Sc x) - 0.4138)`, `c2` from `1.5 - x c28` over a type dependent denominator, `fade` of `0.6912 - Sc x`; five per-type words `c18 .. c28` from the firmware table `0xC02F9E88 + 44 t` | VERIFIED (30 of 30 variants bit exact in Python: 5 types x `a4` in {0, 1} x `a8` in {0x20000, 0x80000, 0x180000}, 10,830 words; Rust `fw_fm/generator.rs` within 1 ulp) |
+| `Sc` | `a4 = 0`: `Sc = float(a8) 1.2014794e-7 127 = a8 / 65536` (literals `0x34010204`, `0x42FE0000`); `a4 != 0`: `Sc = expf((((a8 + 0x8000) >> 16) - 12) 0.0577622652) = 2^((n - 12) / 12)` (`0xC01CC620..0xC01CC640`). So s6's `r = a8 / 2^19` is `Sc = 8 r`; the ramp length `240 r` is `30 Sc` | VERIFIED |
+| Writer of `+0xA4` / `+0xA8` | The `kOscWave` (id `0x127`) handler stores `+0xA8` at `0xC00185B0` and `+0xA4` at `0xC00185D8` (caller `0xC003D7BC`). `kOscBank` 1 = `FM-H`: waves 0..24 give `a4 = 0`, `a8 = 0x8000` (wave 0, partial 0.5) and `wave 2^16` (partial `wave`); `kOscBank` 2 = `FM-I`: waves 0..60 give `a4 = 1`, `a8 = wave 2^16` (`Sc = 2^((wave - 12) / 12)`, the OLED label `wave - 12` semitones); the category 0..4 is strip type `49 + category`; larger waves fall back to type 2. Edit ids 1..0x15F with values 1 and 7 do not reach these stores (the bank must be FM first), which is why the earlier write watch saw nothing | VERIFIED (run: `tools/synth_fm_tables.py select`, [data/synth-fm-select.csv](data/synth-fm-select.csv), 5 categories x 86 waves) |
+| `bank0_CODE@0x2D82A8` | The FM-H label table (25 doubles `0.5, 1, 2 .. 24`); it equals `a8 / 65536` of the wave, but only the OLED builder reads it. The operator ratios of the stage are the P words `P[-32 .. -29]` of the type, not this table | VERIFIED (table read, sweep) |
+| Note term `DM(0xC2716)` | Written by the DSP, not the ARM: store at pc `0x1208A9` (listing `0x241152`, every pass) from the packed controller words `DM(0xC1DCC ..)`: `R0 = R10 DM(-30, I5) - DM(5, I4) (field 16:8 of R11 << 24) - DM(-32, I7) DM(25, I4)`. The field is `midi - 60` as a signed byte (`0x0B00E200` is MIDI 60, `0x0BF4E200` MIDI 48), and the replay gives `DM(0xC2716) = 0xFFFFB809 / 0xF3FFB809 / 0x0BFFB809` for MIDI 60 / 48 / 72, i.e. `(midi - 60) 2^24 - 0x47F7` | VERIFIED (run, `sharc-org` replay) |
+| Position word `W` and the index | `W` is the pitch sum `w2 + DM(0xC2716) + bend + vibrato` clipped to `+-DM(0xC1478) = +-0x58000000`, so `W = (midi - 60) 2^24` for a plain note, and the curve index `FEXT R0 BY 25:7` of `W` is `floor((midi - 60) / 2)` in `-44 .. 43` (two semitones per curve slot) | VERIFIED (listing, run) |
+| Pitch term `p0` | `DM(0xC1F79) = 0.006028 2^(semi / 12)` with `semi = midi - 60`, i.e. `f / F_SY` with `f = 261.63 Hz` at MIDI 60 (0.0060277). s6 wrote `2 f / F_SY` with C3 = MIDI 48 (same value at MIDI 48, an octave low for every note: corrected). The ARM table interpolation (24 steps per octave, linear between steps) differs from the closed form by at most `(ln 2 / 24)^2 / 8 = 1.0e-4` relative | VERIFIED (poke sweep) / ASSUMED (closed form of the table) |
+| Level against a hardware FM clip | None exists: `emu_vs_hw_segments.json` has no FM program (organ, piano and ANALOG synth programs only) and no transcribed FM events; six programs of the demo video have an FM layer (`Felt Upright`, `Dual Gates`, `Boxxx`, `The Long Dark Whl`, `Tines Layer`, `Digi Keys Pad`) but all mix it with piano or other layers and none is transcribed | stated, not measured |
+
+`FmVoice::select(bank, category, wave)` now builds the table of the selected wave (`fm_table_for(type, a4, a8)`), `set_note` uses the corrected pitch words. The default flip stays off (D22): the level and the layer mix are not validated.
+
+## 9. Follow-ups
+
+- A hardware clip of a pure FM program (one layer, known notes) to compare level and timbre; the FM layers of the six demo programs need layer isolation first.
+- The DSP note term equation (`R10`, `DM(-30, I5)`, `DM(5, I4)`, `DM(25, I4)`: transposition and tune) and the controller word writer on the ARM side.
+- The wiring to `SynthLayer` and the default decision.
