@@ -247,3 +247,65 @@ def test_markdown_and_main_roundtrip(tmp_path, monkeypatch):
     data = json.loads((tmp_path / "data" / "out.json").read_text(encoding="utf-8"))
     assert data["programs"] == 2 and "outliers" in data
     assert ps.main(["--jsonl", str(jsonl), "--no-write"]) == 0
+
+
+def test_sample_summary_is_regenerated_from_the_path_counts():
+    agg = {
+        "synth.osc=Sample": {"programs": 3, "uses": 4},
+        "synth.sample=loaded": {"programs": 3, "uses": 4},
+        "synth.sample.kernel=0": {"programs": 2, "uses": 3},
+        **{f"synth.sample.kernel={k}": {"programs": 3, "uses": 4} for k in range(1, 6)},
+        "synth.osc=Wavetable": {"programs": 2, "uses": 2},
+        "synth.wave=KEYS": {"programs": 1, "uses": 1},
+        "synth.wave=ORGAN": {"programs": 1, "uses": 1},
+    }
+    text = ps.sample_summary(agg, 10, 4800)[0]
+    assert "4 of 4 SAMPLES layers (3 programs)" in text and "`4800` frames" in text
+    assert "kernels 1, 2, 3, 4, 5 in every loaded layer and kernel 0 in 3 layers of 2" in text
+    assert "never picks kernels 0 and 1" in text
+    assert "2 WAVE (Wavetable) layers in 2 programs (KEYS 1, ORGAN 1)" in text
+    assert ps.sample_summary({}, 10, 4800) == []
+
+
+def test_markdown_keeps_the_sample_summary_and_main_passes_frames(tmp_path, monkeypatch):
+    recs = [record(osc_mode="Sample", osc_category=0)]
+    result = ps.analyze(recs)
+    doc = ps.markdown(result, {**ps_meta(), "frames": 4800})
+    assert "SAMPLE layer kernels" in doc
+    seen = {}
+    monkeypatch.setattr(ps, "run_sweep_bin", lambda ns4b, extra: seen.update(x=extra) or recs)
+    monkeypatch.setattr(ps, "DOC_PATH", tmp_path / "d.md")
+    monkeypatch.setattr(ps, "JSON_PATH", tmp_path / "j" / "o.json")
+    assert ps.main(["--ns4b", "x.ns4b", "--frames", "4800"]) == 0
+    assert seen["x"] == ["--frames", "4800"]
+    assert "`4800` frames at 48 kHz" in (tmp_path / "d.md").read_text(encoding="utf-8")
+
+
+def ps_meta():
+    return {
+        "checked": "t",
+        "backup": "b",
+        "tool": "t",
+        "notes": "48",
+        "velocity": 100,
+        "hold": 3600,
+    }
+
+
+def test_regeneration_preserves_the_hand_written_notes(tmp_path, monkeypatch):
+    jsonl = tmp_path / "s.jsonl"
+    jsonl.write_text(json.dumps(record()), encoding="utf-8")
+    doc = tmp_path / "d.md"
+    monkeypatch.setattr(ps, "DOC_PATH", doc)
+    monkeypatch.setattr(ps, "JSON_PATH", tmp_path / "j.json")
+    assert ps.main(["--jsonl", str(jsonl)]) == 0
+    text = doc.read_text(encoding="utf-8")
+    text = text.replace("(see the data file)", "Kept note.\n\n- second")
+    text = text.replace("## 10. Follow-ups\n\n-\n", "## 10. Follow-ups\n\n- do it\n")
+    doc.write_text(text, encoding="utf-8", newline="\r\n")
+    notes = ps.preserved_notes(doc.read_text(encoding="utf-8"))
+    assert notes["implications"] == ["Kept note.", "", "- second"]
+    assert notes["followups"] == ["- do it"]
+    assert ps.main(["--jsonl", str(jsonl)]) == 0
+    again = doc.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert "Kept note.\n\n- second" in again and "- do it" in again
