@@ -150,6 +150,18 @@ fn undo_and_paste_messages_use_the_firmware_wording() {
         (t.sub.as_str(), t.soft),
         ("Undo to before", ["", "", "Redo", "Ok"])
     );
+    assert_eq!(t.rows, ["the last edit?"], "no name known: generic wording");
+    u.undo_op = Some("Load Preset");
+    assert_eq!(compose(&u, &sum()).rows, ["Load Preset?"]);
+    u.undo_op = Some("Paste");
+    assert_eq!(
+        compose(&u, &sum())
+            .plain()
+            .matches("Undo to before")
+            .count(),
+        1
+    );
+    assert!(compose(&u, &sum()).plain().contains("Paste?"));
     u.undo_blocked = true;
     u.screen = Screen::Paste;
     u.copied = None;

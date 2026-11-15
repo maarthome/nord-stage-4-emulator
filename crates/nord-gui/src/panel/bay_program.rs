@@ -179,6 +179,7 @@ pub(super) fn render_bay_program(
         .observe_step(state.telemetry.arp_step());
     state.program_ui.undo_blocked = state.telemetry.undo_blocked();
     state.program_ui.redo_available = state.telemetry.redo_available();
+    state.program_ui.undo_op = state.telemetry.undo_label();
 
     let area = to_px(layout::section_rect(Section::Program), origin);
     painter.rect_filled(area, 5.0, PROGRAM_RED);

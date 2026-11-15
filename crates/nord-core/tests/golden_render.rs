@@ -32,9 +32,9 @@ const GOLDEN: [(&str, usize, f64, f64, &str); 5] = [
     (
         "engine",
         480000,
-        0.995806,
-        0.211763,
-        "74bfb852fa2b1d40ed5ebd41cb6a8bef099070b6f0e2ca058d30d3c1bf74c811",
+        0.995080,
+        0.212688,
+        "9e5dcf4ddd4b1bbdf043ce85e9e190aef6e19a9d5b3e49c6c7b558d1eba54748",
     ),
     (
         "synth",
@@ -47,8 +47,8 @@ const GOLDEN: [(&str, usize, f64, f64, &str); 5] = [
         "organ",
         96000,
         0.773433,
-        0.196888,
-        "9ca3c59d458132f4d88092ae10b1786be97ac43a4e4e7960ca97acb117ec7c5f",
+        0.196090,
+        "e9f01099f60c4b9c5837b40f1fafa0f627d066a1e32f32f57a103cf38b3d3485",
     ),
     (
         "piano",
@@ -67,7 +67,7 @@ const GOLDEN: [(&str, usize, f64, f64, &str); 5] = [
 ];
 
 /// Whole-file SHA-256 of `render_hash` (the five segments joined).
-const WHOLE: &str = "639235998bf245f72908ebb66d65c04b4d59671a143e497272f3b66fc3550a16";
+const WHOLE: &str = "b9a1d07319df9e7a6427f0382a35d76c90e98e5e9b1cee45f375e98bc157b846";
 
 /// Peak and RMS of little-endian f32 samples; `None` when one is not finite.
 fn stats(bytes: &[u8]) -> Option<(f64, f64)> {

@@ -256,7 +256,19 @@ Room for the boxes comes from `GROUP_TWEAKS` in `layout_tweaks.rs` (rows moved b
 | Layer Effects | the amp list has a second column `TO ROTARY` / `LP FILTER` / `HP FILTER` with LEDs that follow the cabinet choice (TO ROTARY dimmed with its reason on Organ layers); the small buttons beside the selector keep working and lost their FLT / ROT text |
 | Program | the PROGRAM title sits at 6 % of the frame width instead of on its left corner |
 
-Remaining after round 5: the `C2 V3 C3` vibrato matrix of the Organ and the light tab behind the ROTARY SPEAKER title (not done: no free room at the photo scale without moving the Master controls), the amp FLT / ROT buttons are unlabeled pills (the names are in the list above them).
+Remaining after round 5: the amp FLT / ROT buttons are unlabeled pills (the names are in the list above them).
+
+### Round 6: VIB/CHORUS type names, Rotary tab, Undo item name
+
+The `C2 V3 C3` / `V2 C1 V1` matrix is not a Synth control: it sits in the **Organ** VIB/CHORUS box (photo `NS4_Panel-crop-left.jpg`), next to the type button, and it was already wired (`organx_scanner_{n}`, `OrganEdit::Scanner`). The Synth VIBRATO box (WHL / DLY / ON, A.T. / PED) is a separate, already inventoried control set. The LEDs were drawn unlabeled above the button in the wrong order.
+
+| Item | Change |
+|---|---|
+| VIB/CHORUS matrix | `panel/organ_vib_matrix.rs`: two rows of three LEDs right of the type button with the names printed above (`C2 V3 C3`) and below (`V2 C1 V1`). The selector order is now `V1, C1, V2, C2, V3, C3` (`VERIFIED`: the stored `VibratoTypeB3` order, `cbin-and-presets.md`; the printed matrix is that sequence as a snake from the bottom right). Before, the button stepped V1, V2, V3, C1, C2, C3 and the LEDs sat in that raster. 7.5 px names need 11.5 px per column, so the VIB/CHORUS frame grew 23 px to the right (pad 26) and the B3 PERCUSSION group moved 3 px right, its frame 4 px less padding on the left; the A / B buttons moved 5 px down so their names clear the lower row |
+| Rotary tab | `bay_master/rotary.rs`: `ROTARY SPEAKER` is printed in dark ink on a light blue-grey tab (`MODULE_HEADER_BAR`) that spans the top of the box with rounded upper corners (`VERIFIED` against the photo; the photo wraps the title in two lines, ours stays one line at 13 px tab height) |
+| Undo | `Undo to before` / `<operation>?`: the item is the name of the engine's last undoable operation (`UndoOp::label`: Load Preset, Synth Group, FX Group, Global FX, All FX Off, Clear Morph, Paste, Synth Init, Layer Init, Program Change) from `PanelTelemetry::undo_label`. `VERIFIED`: the dialog texts `Undo to before` / `%s?` / `Ok` / `Redo` (research s15.4, s17.1). `ASSUMED`: the item strings are the manual p.43 operation names; the firmware's own item strings were not reached |
+
+Audit: 0 before, 10 on the first run with the matrix names (2 E, 2 G, 6 L), 4 after widening the frame (L: names 9 px apart), 0 after the 11.5 px pitch; allow-list empty.
 
 Remaining differences against `.reference/crops` (kept: legibility over fidelity, or out of scope):
 

@@ -92,7 +92,7 @@ mod tests {
     fn speed_factors_scale_the_settled_rotor_rates() {
         let (horn, drum) = settled_rates(OrganGlobals::default());
         assert!(
-            (horn - 6.85).abs() < 0.05 && (drum - 5.70).abs() < 0.05,
+            (horn - 6.889).abs() < 0.01 && (drum - 6.299).abs() < 0.01,
             "{horn} {drum}"
         );
         let fast = OrganGlobals {

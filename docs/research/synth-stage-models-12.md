@@ -18,7 +18,7 @@ Batch 11 counted 0 of 13,509 `org_core2.script` lines touching `0x803xxxx` and c
 | Content | 985 words = 1,970 int16 samples: the band-limited single-cycle tables of all octave bands back to back (two int16 per word, low half first); the bands are addressed by the PM row table (offset, count) |
 | Selection of the three waves | `0xC01ACBF4(this, id, aux)` only builds the message list `{id << 16}`, `{4, aux + base}`, `{0xA, flag}`; the DSP stage does not depend on `aux` through the table address (the table is the same for all six segments). What separates `Organ`, `Saw Bright` and `Square Bright` is therefore not the table (open: P block / row words) |
 
-The WAVE (wavetable) bank layers (14 in 12 programs) do **not** read this table: it holds 985 words of fixed band-limited cycles, and the ARM boot writes no other SDRAM-window data (`pno_l2.script` / `org_l2.script` are the only L2 stores). Their data path stays open (OQ22).
+The WAVE (wavetable) bank layers (14 in 12 programs) were first read as not using this table. **Corrected in [synth-stage-models-13](synth-stage-models-13.md):** the boot slot is registry record 0 (`Second`), and the WAVE stage `0x1247B6` reads the same slot machinery with the selected wave's table (46 tables in firmware rodata).
 
 ## 2. Tables of the stage
 
@@ -77,4 +77,4 @@ ANALOG layers with a bit-exact stage model: 304 + 8 = **312 of 312 (100 %)**. Th
 
 1. One CCES probe of a short-word load of a negative sample (zero or sign extension) to settle s4 and the `signed` flag of the port.
 2. Find which P-block words differ between `Organ`, `Saw Bright` and `Square Bright` (the table is shared); a hardware clip of the three waves would fit ratios and weights.
-3. WAVE bank data path (14 layers): not this table; look for DMA reads of SDRAM `0x08xxxxxx` outside `0x08030000..0x08030000 + 985`.
+3. Done in [synth-stage-models-13](synth-stage-models-13.md): the WAVE bank is stage `0x1247B6` on core 2 with the 46 tables of the rodata registry.

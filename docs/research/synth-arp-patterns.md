@@ -224,7 +224,7 @@ The engine keeps `E` = 4/8 of a step and holds the plain arpeggio note to the ne
 
 ### 9.6 Implications and follow-ups
 
-- Engine: `SynthLayer::step_seconds` = `30 / D` (`synth/arp_rate.rs`); the stored Rate is the firmware table (`D = R / 2`, 16..1200 BPM, `SynthLayerDecoded::arp_rate_raw`); tests derive from the replay (D61).
+- Engine: `SynthLayer::step_seconds` = `30 / D` (`synth/arp_rate.rs`); the stored Rate is the firmware table (`D = R / 2`, 16..1200 BPM, `SynthLayerDecoded::arp_rate_raw`); tests derive from the replay (D66).
 - A saved plugin state or program now steps at half the old speed for the same BPM, as the hardware does; the GUI / host knob keeps its 20..300 BPM span (a wider host range is left to a later change).
 - OQ32: gate fraction of `E` and of the plain arpeggio.
 - OQ22: the ARM tick looks like 24 kHz (9.3).
