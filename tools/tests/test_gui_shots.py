@@ -16,6 +16,16 @@ def test_shot_command_names_section_and_caps_keybed_scale():
     assert key[key.index("--screenshot-scale") + 1] == "1.0"
 
 
+def test_shot_command_loads_a_program_from_a_backup():
+    cmd = g.shot_command("exe", "out", "organ", 2.0, "x.ns4b", "A:14")
+    assert cmd[cmd.index("--backup") + 1] == "x.ns4b"
+    assert cmd[cmd.index("--program") + 1] == "A:14"
+    png = cmd[cmd.index("--screenshot") + 1]
+    assert png.endswith("A14_organ.png")
+    plain = g.shot_command("exe", "out", "organ", 2.0)
+    assert "--program" not in plain and plain[1] == "--screenshot"
+
+
 def test_run_shot_kills_a_hung_child_and_reports_exit_codes():
     sleeper = [sys.executable, "-c", "import time; time.sleep(30)"]
     assert g.run_shot(sleeper, timeout=1) is False

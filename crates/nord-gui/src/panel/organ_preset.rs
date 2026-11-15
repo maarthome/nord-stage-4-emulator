@@ -25,7 +25,10 @@ pub(super) fn toggle_live(state: &mut Stage4PanelState, audio: &AudioHandle) {
 
 /// SYNC: the stored preset takes the physical positions (engine and panel).
 pub(super) fn sync_preset(state: &mut Stage4PanelState, audio: &AudioHandle) {
-    state.organ_drawbars = state.organ_ui.live_bars;
+    // The engine copies the physical bars into the stored preset of both layers.
+    for l in 0..2 {
+        state.set_organ_drawbars(l, state.organ_ui.live_bars);
+    }
     audio.send_command(AudioCommand::Organ(OrganEdit::LiveDrawbars(
         state.organ_ui.live_bars,
     )));

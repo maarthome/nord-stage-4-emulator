@@ -269,7 +269,10 @@ mod tests {
         let p = t.block(PWave::PurePulse);
         assert!((p.gain - 0.28).abs() < 1e-6);
         assert_eq!(p.cutoff_scale, f.block(PWave::PurePulse).cutoff_scale);
-        assert!(t.words && !f.words);
+        assert!(
+            t.words && f.words,
+            "the words stages are the default since D81"
+        );
         // the unison rows carry the engine level only, the cutoff factors stay
         for w in [PWave::Multi, PWave::Super, PWave::Super1] {
             let (b, o) = (t.block(w), f.block(w));

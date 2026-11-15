@@ -92,7 +92,7 @@ pub use live_slots::{LiveSlots, LIVE_SLOT_COUNT};
 pub use morph_clip::MorphClip;
 pub use program_fx_export::{invert_fx_chain, LOSSY_FX_FIELDS};
 pub use program_ops::{PROGRAM_LEVEL_DB_RANGE, TRANSPOSE_RANGE};
-pub use routing::{default_layer_a, zone_leds, FirmwareRouting, ProgramRouting};
+pub use routing::{default_layer_a, zone_leds, zone_leds_for, FirmwareRouting, ProgramRouting};
 pub use section_edit::Section;
 pub use settings::{
     GlobalSettings, Level3, TonewheelMode, FINE_TUNE_RANGE_CENTS, GLOBAL_TRANSPOSE_RANGE,
@@ -173,6 +173,9 @@ pub struct Stage4Engine {
     /// Program Levels offset in dB (manual p.46) and its linear gain (`1.0` when `0 dB`).
     program_level_db: f32,
     program_gain: f32,
+    /// Synth layer faders follow `(v / 127)^2` like the piano and organ layers (opt-in, EMPIRICAL:
+    /// `docs/research/grand-pad-vs-video.md`; the synth level handler is not run).
+    pub synth_layer_law: bool,
     /// Copy/Paste buffer; survives program changes. Control thread only.
     pub clipboard: Option<Clip>,
     /// Single-level Undo snapshot. Control thread only.
@@ -244,6 +247,7 @@ impl Stage4Engine {
             held_transpose: Box::new([[0; 128]; 16]),
             program_level_db: 0.0,
             program_gain: 1.0,
+            synth_layer_law: false,
             clipboard: None,
             undo: undo::UndoSlot::default(),
             undo_hint: UndoHint::default(),

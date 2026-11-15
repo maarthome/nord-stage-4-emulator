@@ -35,6 +35,7 @@ mod legibility_rules;
 #[cfg(test)]
 mod legibility_tests;
 mod organ_drawbars;
+mod organ_layer;
 mod organ_logic;
 #[cfg(test)]
 mod organ_master_tests;
@@ -52,6 +53,7 @@ pub mod param_hint;
 #[cfg(test)]
 mod piano_click_tests;
 mod piano_logic;
+mod piano_mirror;
 pub mod piano_models;
 mod piano_overlay;
 mod piano_widgets;

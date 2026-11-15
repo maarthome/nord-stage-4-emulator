@@ -11,6 +11,16 @@ use nord_core::organ::{clamp_stop_angle, OrganLayer, OrganModel, RotarySpeed, Sc
 /// Panel edits for the Organ area.
 #[derive(Debug, Clone, PartialEq)]
 pub enum OrganEdit {
+    /// Stored drawbar preset of one layer (`0..=8` each).
+    Drawbars { layer: u8, bars: [u8; 9] },
+    /// Percussion buttons of one layer: ON, VOLUME SOFT, DECAY FAST, HARMONIC THIRD.
+    Percussion {
+        layer: u8,
+        on: bool,
+        soft: bool,
+        fast: bool,
+        third: bool,
+    },
     /// Octave shift of one layer (`-2..=2`, manual p.18); host `organx_octave_{n}`.
     Octave { layer: u8, shift: i8 },
     /// ORGAN MODEL selector (six LEDs): model plus the B3 Bass flavour, both layers.
@@ -77,6 +87,22 @@ impl OrganEdit {
         match *self {
             OrganEdit::Octave { layer, shift } => {
                 layer_mut(engine, layer).octave_shift = shift.clamp(-2, 2);
+            }
+            OrganEdit::Drawbars { layer, bars } => {
+                layer_mut(engine, layer).drawbars = bars.map(|b| b.min(8));
+            }
+            OrganEdit::Percussion {
+                layer,
+                on,
+                soft,
+                fast,
+                third,
+            } => {
+                let l = layer_mut(engine, layer);
+                l.percussion_enabled = on;
+                l.percussion_soft = soft;
+                l.percussion_fast_decay = fast;
+                l.percussion_third_harmonic = third;
             }
             OrganEdit::Model { model, b3_bass } => {
                 for l in [&mut engine.organ_a, &mut engine.organ_b] {
@@ -168,6 +194,29 @@ mod tests {
         }
         .apply(&mut e);
         assert_eq!(e.organ_a.octave_shift, -2);
+    }
+
+    #[test]
+    fn drawbars_and_percussion_target_one_layer() {
+        let mut e = engine();
+        OrganEdit::Drawbars {
+            layer: 1,
+            bars: [8, 8, 8, 6, 3, 3, 1, 5, 99],
+        }
+        .apply(&mut e);
+        assert_eq!(e.organ_b.drawbars, [8, 8, 8, 6, 3, 3, 1, 5, 8]);
+        assert_ne!(e.organ_a.drawbars, e.organ_b.drawbars);
+        OrganEdit::Percussion {
+            layer: 1,
+            on: true,
+            soft: false,
+            fast: false,
+            third: true,
+        }
+        .apply(&mut e);
+        assert!(e.organ_b.percussion_enabled && e.organ_b.percussion_third_harmonic);
+        assert!(!e.organ_b.percussion_fast_decay);
+        assert!(!e.organ_a.percussion_third_harmonic, "layer A is untouched");
     }
 
     #[test]

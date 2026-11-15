@@ -167,7 +167,7 @@ impl SynthLayer {
         } else {
             None
         };
-        // Verified-words table (`--synth-p verified`): the unison stages read the ARM words.
+        // Verified-words table (the default since D81, `--synth-p verified`): the unison stages read the ARM words.
         let stage_words = self
             .stage_words
             .filter(|_| self.p_table.is_some_and(|t| t.words));
@@ -513,11 +513,14 @@ impl SynthLayer {
                     let fc = if strip.is_some() {
                         v.fw_memo.strip_cutoff(
                             voice_cutoff
-                                * p_block.map_or(1.0, |p| p.cutoff_scale)
                                 * if self.p_table.is_some() {
-                                    type_cutoff_scale(self.filter_model)
+                                    row_type_cutoff_scale(
+                                        self.p_wave,
+                                        p_block.map_or(1.0, |p| p.cutoff_scale),
+                                        self.filter_model,
+                                    )
                                 } else {
-                                    1.0
+                                    p_block.map_or(1.0, |p| p.cutoff_scale)
                                 },
                         )
                     } else {

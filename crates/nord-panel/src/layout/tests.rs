@@ -74,21 +74,12 @@ fn section_rects_do_not_overlap_and_fit_the_panel() {
     }
 }
 
-/// Synth rects that reach into the keybed's split-LED row (HA88 render: LEDs at 165 mm): the Synth
-/// rects were placed from the vertically stretched synth crop. Remove when the Synth is re-placed
-/// from the straight-on render (Organ and Piano already are).
-fn known_overlap(a: &str, b: &str) -> bool {
-    let synth_vs_leds = |x: &str, y: &str| x.starts_with("synth.") && y == "keybed.split_leds";
-    synth_vs_leds(root(a), root(b)) || synth_vs_leds(root(b), root(a))
-}
-
 #[test]
 fn no_overlaps_except_shared_by_shift() {
     let p = placed();
     for (i, (a, ra)) in p.iter().enumerate() {
         for (b, rb) in &p[i + 1..] {
-            let known = known_overlap(&a.id, &b.id);
-            if ra.overlaps(rb) && !known {
+            if ra.overlaps(rb) {
                 assert_eq!(
                     root(&a.id),
                     root(&b.id),
