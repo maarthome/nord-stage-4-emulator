@@ -17,7 +17,7 @@ pub const PSTICK_DEFAULT_RANGE: u8 = 2;
 /// `1 semi` .. `-24 semi` are contiguous at `bank0_CODE.bin@0x2D3479`, the label `Pitch Stick
 /// Range` follows at `0x2D34D8`, and the edit id range `0..9` (`docs/research/arm-edit-params.csv`)
 /// has ten entries. Checked by `tests::range_list_has_the_ten_firmware_choices` and
-/// `python tools/ns4_pstick_range.py target/fw_unpacked/bank0_CODE.bin`. The two negative entries
+/// `python tools/ns4_fw_choices.py target/fw_unpacked/bank0_CODE.bin`. The two negative entries
 /// bend the opposite way (an inverted stick); the engine models only the positive ones, and the
 /// hardware cannot select 6, 8, 9 or 11 semitones (the panel steps the list, `docs/research/pstick-range-list.md`).
 pub const PSTICK_RANGE_LIST: [i8; 10] = [1, 2, 3, 4, 5, 7, 10, 12, -12, -24];

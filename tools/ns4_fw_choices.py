@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""The Pitch Stick Range choices of the Synth (`Edt_Syn_kPitchStickRange`), from firmware strings.
+"""Menu choice lists of the Synth read from the display strings of the firmware.
 
-The ten display strings of the choice list sit back to back in `bank0_CODE.bin`, in menu order,
-before the label `Pitch Stick Range`:
+The display strings of a choice list sit back to back in `bank0_CODE.bin`, in menu order, before
+the label of the menu item:
 
-    python tools/ns4_pstick_range.py target/fw_unpacked/bank0_CODE.bin
+* `Pitch Stick Range` (`Edt_Syn_kPitchStickRange`, ids `0..9`, default 1): ten `N semi` strings;
+* `Vibrato Delay` (`Edt_Syn_kVibDly`, ids `1..30`, default 7): thirty `N.N s` strings.
 
-The edit id has the range `0..9` (ten choices, default 1) in `docs/research/arm-edit-params.csv`.
-Names and numbers only; the firmware stays local.
+    python tools/ns4_fw_choices.py target/fw_unpacked/bank0_CODE.bin
+
+The id ranges are in `docs/research/arm-edit-params.csv`. Names and numbers only; the firmware
+stays local.
 """
 
 from __future__ import annotations
@@ -19,6 +22,8 @@ from pathlib import Path
 
 LABEL = b"Pitch Stick Range\x00"
 CHOICE = re.compile(rb"(-?\d+) semi\x00")
+VIB_LABEL = b"Vibrato Delay\x00"
+VIB_CHOICE = re.compile(rb"(\d\.\d) s\x00")
 #: The list is ten strings of at most 8 characters plus padding; this window covers it.
 WINDOW = 0x90
 
@@ -37,12 +42,22 @@ def pstick_range_list(blob: bytes) -> list[int]:
     return choices_before(blob, at)
 
 
+def vib_delay_list(blob: bytes) -> list[float]:
+    """The Vibrato Delay choice values in menu order (seconds)."""
+    at = blob.find(VIB_LABEL)
+    if at < 0:
+        raise ValueError("label 'Vibrato Delay' not found")
+    window = blob[max(0, at - 0x200) : at]
+    return [float(m.group(1)) for m in VIB_CHOICE.finditer(window)]
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - firmware CLI
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("image", type=Path)
     ns = ap.parse_args(argv)
     blob = ns.image.read_bytes()
-    print(pstick_range_list(blob), "label at", hex(blob.find(LABEL)))
+    print("pitch stick range", pstick_range_list(blob), "label at", hex(blob.find(LABEL)))
+    print("vibrato delay", vib_delay_list(blob), "label at", hex(blob.find(VIB_LABEL)))
     return 0
 
 

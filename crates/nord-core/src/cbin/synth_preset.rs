@@ -111,14 +111,27 @@ pub struct SynthLayerDecoded {
     pub glide: f32,
     /// Vibrato source: `0` none, `1` ON, `2` DLY, `3` WHL, `4` A.T., `5` PED.
     pub vibrato_mode: u8,
-    /// Vibrato delay, seconds (`0.1 + 2.9 * raw / 29`).
+    /// Vibrato delay, seconds (`0.1 + 2.9 * raw / 29`, [`vibrato_delay_for_raw`]). VERIFIED: the
+    /// firmware display list is `0.1 s .. 3.0 s` in 0.1 s steps, 30 choices (`bank0_CODE.bin@0x2CD714`,
+    /// ids `1..30`, default 7 = 0.7 s), `python tools/ns4_fw_choices.py`, test
+    /// `vibrato_delay_follows_the_firmware_display_list`.
     pub vibrato_delay_sec: f32,
     /// Vibrato rate in Hz. EMPIRICAL: range `2.0..8.0 Hz` from NS4 manual p.37 (Vibrato Menu); the linear
-    /// 128-step mapping `2 + 6 * raw / 127` is ASSUMED (ns4decode notes a 0.1 Hz display anomaly).
+    /// 128-step mapping `2 + 6 * raw / 127` is kept for lossless round trips. Checked against the ARM
+    /// (`docs/research/synth-knob-laws.md`, `kVibRate` words `0x60A00 .. 0x17DC00`): the firmware
+    /// quantises to 61 steps, `k = round(raw * 60 / 127)`, `rate = (0x60A00 + k * 0x4C00 ..) / 0x30500`
+    /// Hz, i.e. 2.0 to 7.90 Hz in steps of 0.0984 Hz (this is the ns4decode "0.1 Hz display anomaly");
+    /// the engine value differs by at most 0.1 Hz (1.2 % at the top), absolute scale of the word to Hz
+    /// is not independently measured, so the law stays ASSUMED here (`docs/research/assumed-constants-audit.md`).
     pub vibrato_rate_hz: f32,
     /// Vibrato amount `0..10`.
     /// EMPIRICAL: panel range `0..10` from NS4 manual p.37; depth in cents is ASSUMED (`synth_params.rs`).
     pub vibrato_amount: f32,
+}
+
+/// Vibrato delay in seconds of the stored 5-bit value `0..=29`: `0.1 s` steps from `0.1 s` to `3.0 s`.
+pub(crate) fn vibrato_delay_for_raw(raw: u32) -> f32 {
+    0.1 + (3.0 - 0.1) * raw as f32 / 29.0
 }
 
 impl Default for SynthLayerDecoded {
@@ -453,7 +466,7 @@ fn unpack_synth_layer_pair(
         voice_priority: voice_priority.min(2),
         glide: glide_raw as f32 * 10.0 / 127.0,
         vibrato_mode: vibrato_mode.min(5),
-        vibrato_delay_sec: 0.1 + (3.0 - 0.1) * vib_delay_raw as f32 / 29.0,
+        vibrato_delay_sec: vibrato_delay_for_raw(vib_delay_raw),
         vibrato_rate_hz: 2.0 + (8.0 - 2.0) * vib_rate_raw as f32 / 127.0,
         vibrato_amount: 10.0 * vib_amt_raw as f32 / 50.0,
     })
@@ -822,6 +835,16 @@ mod tests {
         assert!((l.glide - 10.0).abs() < 1e-4);
         assert_eq!(l.unison, 3);
         assert!((l.vibrato_delay_sec - 3.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn vibrato_delay_follows_the_firmware_display_list() {
+        // 30 choices `0.1 s .. 3.0 s` (firmware strings), id = raw + 1, default id 7 = 0.7 s
+        for raw in 0..30u32 {
+            let shown = (raw + 1) as f32 / 10.0;
+            assert!((vibrato_delay_for_raw(raw) - shown).abs() < 2e-6, "{raw}");
+        }
+        assert!((vibrato_delay_for_raw(6) - 0.7).abs() < 2e-6);
     }
 
     #[test]
