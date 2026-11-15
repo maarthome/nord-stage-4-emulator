@@ -44,11 +44,27 @@ const LEGEND_ON: Color32 = Color32::from_rgb(0xFF, 0xB0, 0x20);
 /// Distance from the bottom of control `id` to its first caption line: knobs with a printed scale
 /// ([`crate::widgets::scale::numerals`]) keep their captions below the numerals.
 pub(super) fn caption_drop(id: &str) -> f32 {
-    if crate::widgets::scale::numerals(id).is_empty() {
+    if crate::widgets::scale::numerals(id).is_empty() || is_button(id) {
         CAPTION_DROP
     } else {
         KNOB_CAPTION_DROP
     }
+}
+
+/// Buttons and rockers of the section: `numerals` answers for every id of a unit by prefix, but only
+/// the knobs print a scale, so a button's caption stays at the plain [`CAPTION_DROP`].
+fn is_button(id: &str) -> bool {
+    const BUTTONS: [&str; 8] = [
+        ".on",
+        ".selector",
+        ".model",
+        ".type",
+        ".filter",
+        ".effects",
+        ".tap_set",
+        ".bright_dark",
+    ];
+    BUTTONS.iter().any(|b| id.ends_with(b))
 }
 
 /// Maps `v` in `min..=max` to `0..=1` on a log scale (rates, delay time).
@@ -230,6 +246,18 @@ impl Fx<'_> {
             self.shift,
             has_shift_fn,
         )
+    }
+
+    /// Single LED left of `rect`, level with its middle (the Delay, Comp and Reverb ON rockers print
+    /// theirs there; the 2 px bezel and 2.5 px gap as in [`Self::led_above`]).
+    pub fn led_left(&self, rect: Rect, on: bool, col: Color32, dim_col: Color32) {
+        mini_led(
+            self.p,
+            pos2(rect.left() - LED_LIFT_FX, rect.center().y),
+            on,
+            col,
+            dim_col,
+        );
     }
 
     /// Single LED just above the top edge of `rect` (clear of its 2 px bezel by 2.5 px).
