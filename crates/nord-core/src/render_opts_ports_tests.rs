@@ -161,3 +161,21 @@ fn apply_exact_switches_the_b3_bass_processor_on_and_off() {
     FirmwareOptions::default().apply_exact(&mut e);
     assert!(!e.organ_a.b3_bass_processor_on() && !e.organ_b.b3_bass_processor_on());
 }
+
+#[test]
+fn fx_defaults_flag_is_opt_in_and_sets_the_firmware_words() {
+    assert!(
+        !FirmwareOptions::default().fx_defaults,
+        "D101: off by default"
+    );
+    let o = FirmwareOptions::from_args(&args(&["--fx-defaults-firmware"])).unwrap();
+    assert!(o.fx_defaults && o.summary().contains("fx-defaults"));
+    let mut e = Stage4Engine::new(48_000.0);
+    let before = e.fx_chains[0].delay_time_ms;
+    o.apply_to(&mut e);
+    assert_ne!(before, 250.0);
+    assert!(e.fx_chains.iter().all(|c| c.delay_time_ms == 250.0));
+    let mut plain = Stage4Engine::new(48_000.0);
+    FirmwareOptions::default().apply_to(&mut plain);
+    assert_eq!(plain.fx_chains[0].delay_time_ms, before);
+}

@@ -317,6 +317,9 @@ pub struct FirmwareOptions {
     pub piano_chain_scale: bool,
     /// `--firmware-piano-layer-law`: the piano layer fader follows `(v / 127)^2` (opt-in).
     pub piano_layer_law: bool,
+    /// `--fx-defaults firmware`: every FX chain starts from the ARM `Edt_*` default words
+    /// (`LayerFxChain::apply_firmware_defaults`, D101; opt-in, no hardware init-patch clip).
+    pub fx_defaults: bool,
     /// The synth layer faders follow `(v / 127)^2` (default on, VERIFIED: the handler `0xC011BB48`
     /// run in the ARM harness, D87); `--legacy-synth-layer-law` turns it off.
     pub synth_layer_law: bool,
@@ -394,6 +397,7 @@ impl Default for FirmwareOptions {
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
+            fx_defaults: false,
             synth_layer_law: true,
             synth_sustain_pedal: false,
             measured_laws: false,
@@ -450,6 +454,7 @@ impl FirmwareOptions {
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
+            fx_defaults: false,
             synth_layer_law: true,
             synth_sustain_pedal: false,
             measured_laws: false,
@@ -525,6 +530,7 @@ impl FirmwareOptions {
         o.piano_slew |= has("--piano-slew-fw");
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
+        o.fx_defaults |= has("--fx-defaults-firmware");
         o.synth_layer_law |= has("--firmware-synth-layer-law");
         o.synth_sustain_pedal |= has("--synth-sustain-pedal");
         if has("--legacy-synth-layer-law") {
@@ -626,6 +632,11 @@ impl FirmwareOptions {
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
         engine.synth_layer_law = self.synth_layer_law;
         apply_synth_sustain(engine, self.synth_sustain_pedal);
+        if self.fx_defaults {
+            for c in engine.fx_chains.iter_mut() {
+                c.apply_firmware_defaults();
+            }
+        }
         apply_b3_tail(engine, self.b3_tail);
         apply_farfisa_processor(engine, self.farfisa_processor);
         apply_b3_bass_processor(engine, self.b3_bass_processor);
@@ -692,6 +703,11 @@ impl FirmwareOptions {
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
         engine.synth_layer_law = self.synth_layer_law;
         apply_synth_sustain(engine, self.synth_sustain_pedal);
+        if self.fx_defaults {
+            for c in engine.fx_chains.iter_mut() {
+                c.apply_firmware_defaults();
+            }
+        }
         self.set_rotary(engine);
         let bass = self.b3_bass_processor == Some(true);
         apply_b3_tail(engine, Some(!bass && self.b3_tail.unwrap_or(true)));
@@ -853,6 +869,9 @@ impl FirmwareOptions {
         }
         if self.piano_layer_law {
             parts.push("piano-layer-law".into());
+        }
+        if self.fx_defaults {
+            parts.push("fx-defaults".into());
         }
         if !self.synth_layer_law {
             parts.push("legacy-synth-layer".into());
