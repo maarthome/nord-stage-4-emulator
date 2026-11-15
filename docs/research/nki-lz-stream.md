@@ -90,4 +90,4 @@ Velocity shaping and release-sample behaviour for the UP2 oracle can be taken fr
 ## Follow-ups
 
 - Parse the instrument tables after the script (groups, zones, per-group envelopes, effect chains, `%awued`-style arrays).
-- Confirm the formulas above by comparing against the WAV catalog (`tools/up2_oracle.py`).
+- The velocity and release-volume formulas cannot be confirmed against the WAV catalog: every exported file is peak-normalized (`peak_db` spread across velocities of one set and note is under 0.5 dB in 3,737 of 3,790 stacks, max 4.7 dB), so loudness-by-velocity and release gain are not in the audio. Only timbre (centroid, decay) varies with velocity there. Confirming the formulas needs Kontakt-rendered output, not the sample export.
