@@ -338,6 +338,12 @@ pub struct FirmwareOptions {
     /// `--synth-stages`: `SynthLayer::strip_stages` (noise, Shape Square, SUPER, MULTI firmware stages
     /// on the strip chain; opt-in, voice ratios and weights ASSUMED).
     pub synth_stages: bool,
+    /// `--synth-filter-law <scale>`: `SynthLayer::fw_filter_law` (derived filter laws, opt-in): one
+    /// cutoff factor on the display Hz for every type and the firmware resonance table position
+    /// (`synth::fw_filter_law`; `1.0147` is the `2 F` reading, `0.5074` the `F` reading).
+    pub synth_filter_law_milli: Option<u16>,
+    /// `--synth-fw-resonance`: `SynthLayer::fw_resonance` (the firmware resonance table position only).
+    pub synth_fw_resonance: bool,
     /// `--synth-knob-laws` / `--no-synth-knob-laws`: `SynthLayer::knob_laws` (the strip chain takes
     /// the envelope rate indices straight from the stored knobs, `index = knob - 64`, VERIFIED
     /// run; on by default since D57, off in `--legacy-all`).
@@ -352,6 +358,9 @@ pub struct FirmwareOptions {
     /// `--sample-pitch fw|equal`: the `SAMPLES` oscillator step follows the ARM exponent tables
     /// (`sinc::pitch_law`, VERIFIED law; root and sample-rate fields ASSUMED). Off by default.
     pub sample_pitch_fw: bool,
+    /// `--firmware-synth-velocity`: `SynthLayer::firmware_velocity` (amp and filter-envelope velocity
+    /// laws of the ORG core 2 pass, VERIFIED against `sharc-org`; opt-in, D22).
+    pub synth_velocity_fw: bool,
     /// `--firmware-routing` / `--legacy-routing`: section / layer enables and per-layer KB zones
     /// as the program stores them ([`FirmwareRouting`]). On by default since D73: the zone key
     /// ranges (D22 criterion 2, `zone-key-ranges.md`) and the loader's layer enable rule
@@ -404,10 +413,13 @@ impl Default for FirmwareOptions {
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
             synth_stages: true,
+            synth_filter_law_milli: None,
+            synth_fw_resonance: false,
             synth_knob_laws: true,
             synth_wave_bank: false,
             sample_kernel_key: true,
             sample_pitch_fw: false,
+            synth_velocity_fw: false,
             firmware_routing: true,
             amp_path: None,
             rotary_drive: RotaryDrive::Engine,
@@ -427,6 +439,8 @@ impl FirmwareOptions {
             synth_chain: Some(SynthChain::Legacy),
             synth_p: None,
             synth_stages: false,
+            synth_filter_law_milli: None,
+            synth_fw_resonance: false,
             synth_knob_laws: false,
             piano_firmware_level: false,
             synth_layer_law: false,
@@ -461,10 +475,13 @@ impl FirmwareOptions {
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
             synth_stages: true,
+            synth_filter_law_milli: None,
+            synth_fw_resonance: false,
             synth_knob_laws: true,
             synth_wave_bank: false,
             sample_kernel_key: true,
             sample_pitch_fw: false,
+            synth_velocity_fw: false,
             firmware_routing: true,
             amp_path: None,
             rotary_drive: RotaryDrive::Engine,
@@ -527,6 +544,7 @@ impl FirmwareOptions {
         }
         o.piano_bus_scale |= has("--firmware-piano-bus");
         o.piano_touch |= has("--firmware-piano-touch");
+        o.synth_velocity_fw |= has("--firmware-synth-velocity");
         o.piano_slew |= has("--piano-slew-fw");
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
@@ -538,6 +556,16 @@ impl FirmwareOptions {
         }
         o.measured_laws |= has("--measured-laws");
         o.synth_stages |= has("--synth-stages");
+        o.synth_fw_resonance |= has("--synth-fw-resonance");
+        if let Some(v) = value("--synth-filter-law") {
+            let u: f32 = v
+                .parse()
+                .map_err(|_| format!("--synth-filter-law needs a number, got {v:?}"))?;
+            if !(0.05..=20.0).contains(&u) {
+                return Err(format!("--synth-filter-law {u} outside 0.05..20"));
+            }
+            o.synth_filter_law_milli = Some((u * 1000.0).round() as u16);
+        }
         o.synth_knob_laws |= has("--synth-knob-laws");
         o.synth_wave_bank |= has("--synth-wave-bank");
         if let Some(path) = value("--synth-wave-tables") {
@@ -790,12 +818,22 @@ impl FirmwareOptions {
         engine.synth_a.sample_pitch_fw = self.sample_pitch_fw;
         engine.synth_b.sample_pitch_fw = self.sample_pitch_fw;
         engine.synth_c.sample_pitch_fw = self.sample_pitch_fw;
+        engine.synth_a.firmware_velocity = self.synth_velocity_fw;
+        engine.synth_b.firmware_velocity = self.synth_velocity_fw;
+        engine.synth_c.firmware_velocity = self.synth_velocity_fw;
     }
 
     fn set_stages(&self, engine: &mut Stage4Engine) {
         engine.synth_a.strip_stages = self.synth_stages;
         engine.synth_b.strip_stages = self.synth_stages;
         engine.synth_c.strip_stages = self.synth_stages;
+        let law = self.synth_filter_law_milli.map(|m| f32::from(m) / 1000.0);
+        engine.synth_a.fw_filter_law = law;
+        engine.synth_b.fw_filter_law = law;
+        engine.synth_c.fw_filter_law = law;
+        engine.synth_a.fw_resonance = self.synth_fw_resonance;
+        engine.synth_b.fw_resonance = self.synth_fw_resonance;
+        engine.synth_c.fw_resonance = self.synth_fw_resonance;
         engine.synth_a.knob_laws = self.synth_knob_laws;
         engine.synth_b.knob_laws = self.synth_knob_laws;
         engine.synth_c.knob_laws = self.synth_knob_laws;
@@ -861,6 +899,9 @@ impl FirmwareOptions {
         if self.piano_touch {
             parts.push("piano-touch".into());
         }
+        if self.synth_velocity_fw {
+            parts.push("synth-velocity".into());
+        }
         if self.piano_slew {
             parts.push("piano-slew".into());
         }
@@ -887,6 +928,12 @@ impl FirmwareOptions {
         }
         if !self.synth_stages {
             parts.push("no-stages".into());
+        }
+        if self.synth_fw_resonance {
+            parts.push("fw-resonance".into());
+        }
+        if let Some(m) = self.synth_filter_law_milli {
+            parts.push(format!("synth-filter-law={:.3}", f32::from(m) / 1000.0));
         }
         if !self.synth_knob_laws {
             parts.push("no-knob-laws".into());
@@ -1104,6 +1151,20 @@ mod tests {
     }
 
     #[test]
+    fn synth_velocity_flag_is_opt_in_and_reaches_every_synth_layer() {
+        assert!(!FirmwareOptions::default().synth_velocity_fw);
+        let o = FirmwareOptions::from_args(&["--firmware-synth-velocity".into()]).unwrap();
+        assert!(o.synth_velocity_fw && o.summary().contains("synth-velocity"));
+        let mut e = Stage4Engine::new(48_000.0);
+        o.apply_to(&mut e);
+        assert!(
+            e.synth_a.firmware_velocity
+                && e.synth_b.firmware_velocity
+                && e.synth_c.firmware_velocity
+        );
+    }
+
+    #[test]
     fn sample_pitch_flag_selects_the_firmware_exponent_law_on_every_layer() {
         assert!(!FirmwareOptions::default().sample_pitch_fw);
         let o = FirmwareOptions::from_args(&["--sample-pitch".into(), "fw".into()]).unwrap();
@@ -1146,6 +1207,27 @@ mod tests {
         assert!(!e.synth_a.wave_bank);
         o.apply_to(&mut e);
         assert!(e.synth_a.wave_bank && e.synth_b.wave_bank && e.synth_c.wave_bank);
+    }
+
+    #[test]
+    fn synth_filter_law_is_opt_in_and_reaches_the_layers() {
+        assert_eq!(FirmwareOptions::default().synth_filter_law_milli, None);
+        assert_eq!(FirmwareOptions::firmware_all().synth_filter_law_milli, None);
+        let o =
+            FirmwareOptions::from_args(&["--synth-filter-law".into(), "1.0147".into()]).unwrap();
+        assert_eq!(o.synth_filter_law_milli, Some(1015));
+        assert!(o.summary().contains("synth-filter-law=1.015"));
+        let mut e = Stage4Engine::new(48_000.0);
+        o.apply_to(&mut e);
+        assert_eq!(e.synth_a.fw_filter_law, Some(1.015));
+        assert_eq!(e.synth_c.fw_filter_law, Some(1.015));
+        let r = FirmwareOptions::from_args(&["--synth-fw-resonance".into()]).unwrap();
+        assert!(r.synth_fw_resonance && r.summary().contains("fw-resonance"));
+        assert!(!FirmwareOptions::default().synth_fw_resonance);
+        r.apply_to(&mut e);
+        assert!(e.synth_b.fw_resonance && e.synth_b.fw_filter_law.is_none());
+        assert!(FirmwareOptions::from_args(&["--synth-filter-law".into(), "x".into()]).is_err());
+        assert!(FirmwareOptions::from_args(&["--synth-filter-law".into(), "99".into()]).is_err());
     }
 
     #[test]

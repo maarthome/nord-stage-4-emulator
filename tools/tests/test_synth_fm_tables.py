@@ -81,3 +81,28 @@ def test_changed_offsets_lists_only_pokes_that_change_the_table() -> None:
     base = {0xE0900: 1}
     runs = {(0x98, 0): dict(base), (0xA8, 1): {0xE0900: 2}, (0xA8, 2): {0xE0900: 3}}
     assert ft.changed_offsets(base, runs) == {0xA8: [1, 2]}
+
+
+SELECT = DATA.with_name("synth-fm-select.csv")
+
+
+def test_partial_words_equal_the_captured_wave_edit() -> None:
+    rows = SELECT.read_text().splitlines()[1:]
+    assert len(rows) == 5 * (26 + 62)
+    fm = 0
+    for line in rows:
+        bank, cat, wave, ty, a4, a8 = line.split(",")
+        want = ft.partial_words(int(bank), int(wave))
+        if want is None:  # out of range: the handler falls back to type 2, default words
+            assert (int(ty), int(a4), int(a8, 16)) == (2, 0, 0x80000)
+        else:
+            assert int(ty) == 49 + int(cat)
+            assert want == (int(a4), int(a8, 16))
+            fm += 1
+    assert fm == 5 * (25 + 61)
+
+
+def test_partial_words_reject_non_fm_waves() -> None:
+    assert ft.partial_words(1, 25) is None
+    assert ft.partial_words(2, 61) is None
+    assert ft.partial_words(0, 0) is None

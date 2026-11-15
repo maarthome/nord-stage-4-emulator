@@ -41,6 +41,8 @@ const THRESHOLD_FIELD: usize = 0x74;
 const POSITION_MAX: u16 = 249;
 const CLASS_BYTE: usize = 0x44;
 const FLOOR_FIELD: usize = 0x33;
+/// Record bytes `0x3C..0x3E` (big-endian `i16`): the SMP hold-decay field, see [`VoiceLevel::decay`].
+const DECAY_FIELD: usize = 0x3C;
 /// Class bytes whose notes start the extra first voice (VERIFIED by run, see the module note).
 pub const TWO_VOICE_CLASSES: [u8; 5] = [1, 2, 3, 5, 6];
 /// Position bias of the extra voice when the root has no layer-1 strokes.
@@ -54,6 +56,8 @@ struct Stroke {
     layer: u8,
     /// Record byte `0x33`: the position the layer-1 pre-selection uses.
     floor: u8,
+    /// Record `i16` at `0x3C`, see [`VoiceLevel::decay`].
+    decay: i16,
 }
 
 /// The (at most two) voices of a note-on, stored inline (no heap allocation).
@@ -85,6 +89,14 @@ pub struct VoiceLevel {
     /// Index of the stroke record in the file.
     pub record: u16,
     pub amplitude_q23: u32,
+    /// Big-endian `i16` at record byte `0x3C`: the ARM stores the SMP hold-decay count `d` of the
+    /// voice (`F17 = 1 - d / 2^24` per update) as `d = 2 * round(-decay * 2^(semitones / 12))`,
+    /// `semitones` = playback pitch above the stroke root.
+    /// VERIFIED: 48 of 48 firmware runs on Felt Upright (6 notes x 8 velocities) and 7 of 7
+    /// Velvet Grand points (notes 57 / 60 / 72, the note-57 ones 1 semitone above the root; the
+    /// rounding is nearest, ASSUMED between the 3 pitched points), `tools/arm_smp_slew_init.py
+    /// rates`, `docs/research/piano-attack-oracle.md`.
+    pub decay: i16,
 }
 
 /// Level inputs of one `.npno` file.
@@ -135,6 +147,7 @@ impl NpnoLevel {
                 strokes.push(Stroke {
                     index: u16::try_from(index).ok()?,
                     floor: record[FLOOR_FIELD],
+                    decay: i16::from_be_bytes([record[DECAY_FIELD], record[DECAY_FIELD + 1]]),
                     offset: i16::from_be_bytes([record[LEVEL_FIELD], record[LEVEL_FIELD + 1]]),
                     threshold: record[THRESHOLD_FIELD],
                     layer: record[4] & 3,
@@ -197,6 +210,7 @@ impl NpnoLevel {
         VoiceLevel {
             record: stroke.index,
             amplitude_q23: amplitude_q23(stroke.offset, touch.x(velocity), self.key_sum(note)),
+            decay: stroke.decay,
         }
     }
 

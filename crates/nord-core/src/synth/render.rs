@@ -292,7 +292,12 @@ impl SynthLayer {
             };
 
             // Filter envelope: dedicated ADR, or mirror the amp decay (legacy).
-            let fenv_peak = 1.0 - self.filter_env_vel_amount.clamp(0.0, 1.0) * (1.0 - v.velocity);
+            let fenv_vel = if self.firmware_velocity {
+                super::fw_velocity::filter_factor(super::fw_velocity::key_byte(v.velocity))
+            } else {
+                v.velocity
+            };
+            let fenv_peak = 1.0 - self.filter_env_vel_amount.clamp(0.0, 1.0) * (1.0 - fenv_vel);
             let filter_env_level = if strip.is_some() && self.filter_env_dedicated {
                 v.fenv * fenv_peak
             } else if self.filter_env_dedicated {
@@ -513,7 +518,9 @@ impl SynthLayer {
                     let fc = if strip.is_some() {
                         v.fw_memo.strip_cutoff(
                             voice_cutoff
-                                * if self.p_table.is_some() {
+                                * if let Some(u) = self.fw_filter_law {
+                                    u
+                                } else if self.p_table.is_some() {
                                     row_type_cutoff_scale(
                                         self.p_wave,
                                         p_block.map_or(1.0, |p| p.cutoff_scale),
@@ -526,7 +533,13 @@ impl SynthLayer {
                     } else {
                         voice_cutoff
                     };
-                    v.fw_memo.get(fw_kind, fc, self.resonance, self.sample_rate)
+                    let res =
+                        if strip.is_some() && (self.fw_resonance || self.fw_filter_law.is_some()) {
+                            super::fw_filter_law::resonance_for_table(self.resonance)
+                        } else {
+                            self.resonance
+                        };
+                    v.fw_memo.get(fw_kind, fc, res, self.sample_rate)
                 });
 
             let filtered_l = if !self.filter_on {
@@ -549,8 +562,13 @@ impl SynthLayer {
             } else {
                 v.velocity
             };
-            let amp_vel = (1.0 - self.amp_velocity.clamp(0.0, 1.0))
-                + self.amp_velocity.clamp(0.0, 1.0) * vel_level;
+            let amp_vel = if self.firmware_velocity {
+                let setting = (self.amp_velocity.clamp(0.0, 1.0) * 3.0).round() as u8;
+                super::fw_velocity::amp_gain(setting, super::fw_velocity::key_byte(v.velocity))
+            } else {
+                (1.0 - self.amp_velocity.clamp(0.0, 1.0))
+                    + self.amp_velocity.clamp(0.0, 1.0) * vel_level
+            };
             let voice_gain = if dezip {
                 v.smoothed_gain(dezip_pole)
             } else {

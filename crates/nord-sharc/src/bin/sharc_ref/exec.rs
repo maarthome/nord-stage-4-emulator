@@ -1,6 +1,7 @@
 //! Scenario executor: drives a [`Core`] and collects the captured series.
 use crate::script::{parse_line, substitute, Cmd};
 use crate::signal::generate;
+use crate::stream::StreamState;
 use crate::voice::voice_pokes;
 use nord_sharc::core::Core;
 
@@ -29,6 +30,10 @@ pub struct Runner {
     pub fifo_base: u32,
     /// An interrupt stopped at a `break` pc: (start step, saved IMASK, vector).
     pub irq_pending: Option<(u64, u32, u8)>,
+    /// Voices whose stream staging buffer the refill model keeps full: (voice, fill word).
+    pub refill: Vec<(u32, u32)>,
+    /// Voices fed by the external-port DMA stream model (`stream.rs`).
+    pub streams: Vec<StreamState>,
 }
 
 impl Runner {
@@ -41,6 +46,8 @@ impl Runner {
             fifo_wr: 0,
             fifo_base: crate::isr::FIFO_BASE,
             irq_pending: None,
+            refill: Vec::new(),
+            streams: Vec::new(),
         }
     }
 
@@ -129,6 +136,13 @@ impl Runner {
             } => self.run_irq(*vector, *max_steps, *break_pc)?,
             Cmd::Resume { max_steps } => self.resume_irq(*max_steps)?,
             Cmd::Msg { op, addr, value } => self.push_msg(*op, *addr, *value)?,
+            Cmd::Regs(r) => self.regs(r),
+            Cmd::Refill { voice, fill } => self.refill.push((*voice, *fill)),
+            Cmd::Stream { voice, path, skip } => {
+                let st = StreamState::from_file(*voice, std::path::Path::new(path), *skip)?;
+                self.streams.push(st);
+            }
+            Cmd::Dump { addr, count } => self.dump(*addr, *count)?,
             Cmd::Dev(addr, value) => self.core.preset_device(*addr, *value),
             Cmd::Fifo(base) => {
                 self.fifo_base = *base;

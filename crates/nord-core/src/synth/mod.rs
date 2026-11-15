@@ -24,6 +24,7 @@ mod fw_adr_chain;
 mod fw_coef_memo;
 mod fw_env_rates;
 mod fw_filter;
+pub mod fw_filter_law;
 mod fw_filter_table_d;
 mod fw_filter_tables;
 mod fw_fm;
@@ -46,6 +47,7 @@ mod fw_sync1;
 mod fw_sync3;
 mod fw_sync6;
 mod fw_sync_table;
+mod fw_velocity;
 mod fw_wave;
 mod fw_wave_tables;
 mod gain_dezip;
@@ -78,8 +80,8 @@ pub use fw_filter::{
     FW_CUTOFF_MAX_FRACTION, FW_CUTOFF_MIN_HZ,
 };
 pub use fw_fm::{
-    fm_stage1, fm_stage2, fm_table, FmInputs, FmState, FmTable, FmVoice,
-    TABLE_WORDS as FM_TABLE_WORDS,
+    fm_stage1, fm_stage2, fm_table, fm_table_for, partial_words as fm_partial_words, FmInputs,
+    FmState, FmTable, FmVoice, TABLE_WORDS as FM_TABLE_WORDS,
 };
 pub use fw_knob_laws::{
     cutoff_word_for_knob, rate_index_for_knob, rate_word_for_knob, unit_word_for_knob, EnvKnobs,
@@ -89,6 +91,9 @@ pub use fw_shape::{fw_shape_wave, fw_shape_width};
 pub use fw_stages::{noise_sample, noise_step, saw_diff, spread_u, FwStage, FwStageState};
 pub use fw_strip_cutoff::{fw_cutoff_cycles_per_sample, fw_strip_cutoff_r, FW_CUTOFF_CLIP};
 pub use fw_super2::tables as boot_tables;
+pub use fw_velocity::{
+    amp_gain as fw_amp_velocity_gain, filter_factor as fw_filter_velocity_factor,
+};
 pub use fw_wave::{install_wave_tables, prepare_wave_bank, wave_table, WaveBankState};
 pub use fw_wave_tables::{tables_from_code, tables_from_file, WAVE_TABLES};
 pub use gain_dezip::{gain_pole_for, CONTROL_TICK_HZ, SY_FRAME_RATE_HZ, SY_GAIN_POLE};
@@ -123,6 +128,8 @@ pub use voice::SynthVoice;
 mod tests_envelope;
 #[cfg(test)]
 mod tests_fw_filter_golden;
+#[cfg(test)]
+mod tests_fw_velocity;
 #[cfg(test)]
 #[rustfmt::skip]
 mod tests_fw_fm_golden;
@@ -261,6 +268,10 @@ pub struct SynthLayer {
     /// Strip chain only: voice level from the key-down velocity series `g(vel) / 127` instead of the
     /// linear velocity (`key_velocity.rs`, default on; no effect on the legacy chain).
     pub strip_key_velocity: bool,
+    /// Velocity from the ORG core 2 pass (`fw_velocity.rs`, `--firmware-synth-velocity`, default off):
+    /// the amp gain `V(setting, g)` replaces the linear `amp_velocity` blend and the filter-envelope
+    /// depth follows `G / 128`, with `g` the ARM key byte of the velocity.
+    pub firmware_velocity: bool,
     /// Strip chain only: the ANALOG SHAPE category plays as the firmware stage `0x1212D3` with this
     /// shape word (`fw_shape.rs`; the idle frame holds 0.5, the knob scale is open); `None` keeps
     /// the ASSUMED saw placeholder.
@@ -280,6 +291,13 @@ pub struct SynthLayer {
     /// Strip chain only, opt-in (default off): play `strip_stage` (noise, Shape Square, SUPER, MULTI)
     /// with the firmware stage models instead of the decoded legacy waveform.
     pub strip_stages: bool,
+    /// Strip chain only, opt-in (default `None`): the derived filter laws of [`fw_filter_law`]. `Some(u)`
+    /// replaces the fitted row and type cutoff factors by the one factor `u` on the display Hz and
+    /// maps the resonance through the firmware table position (`--synth-filter-law`).
+    pub fw_filter_law: Option<f32>,
+    /// Strip chain only, opt-in (default off): only the firmware resonance table position of
+    /// [`fw_filter_law::resonance_position`] (`--synth-fw-resonance`); implied by `fw_filter_law`.
+    pub fw_resonance: bool,
     /// Strip chain only, opt-in (default off): `Wavetable` layers play the firmware WAVE bank stage
     /// `0x1247B6` (`fw_wave.rs`, 320 of 320 oracle words) instead of the 64-table placeholder. Every
     /// wave plays the one boot table until the per-wave loader is decoded (OQ22).
@@ -425,6 +443,8 @@ impl SynthLayer {
             chain: SynthChain::Legacy,
             p_table: None,
             strip_stages: false,
+            fw_filter_law: None,
+            fw_resonance: false,
             ..Self::new(sample_rate)
         }
     }
@@ -440,6 +460,7 @@ impl SynthLayer {
             gain_dezipper: false,
             chain: SynthChain::FirmwareStrip,
             strip_key_velocity: true,
+            firmware_velocity: false,
             strip_shape: None,
             p_block: None,
             p_table: Some(PTable::FITTED),
@@ -447,6 +468,8 @@ impl SynthLayer {
             stage_words: None,
             strip_stage: None,
             strip_stages: true,
+            fw_filter_law: None,
+            fw_resonance: false,
             wave_bank: false,
             knob_laws: true,
             strip_knobs: None,

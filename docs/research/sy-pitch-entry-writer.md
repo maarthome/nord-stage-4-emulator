@@ -1,4 +1,4 @@
-# The SY pitch table entry `e`: who fills `DM(0x9354A + index)` (negative result, 2026-11-15)
+# The SY pitch table entry `e`: who fills `DM(0x9354A + index)` (negative result, 2026-11-15; refill modelled, section 7; real stream, section 8)
 
 - **Checked:** 2026-11-15
 - **Sources (local, never committed):** OS v1.66 `bank0_CODE.bin` / `bank0_SRAM.bin` in the ARM unicorn harness (`target/keydown.snap`), the five DSP images cut from `bank0_CODE@0xC044667C..0xC05263A8` (SY1SY2 listing `target/oracle/sy2.lst`, SMP image `dsp_image_4_SMP.bin` through `ns4_dsp_raw.py` and `adi_dis.py`), the boot log `target/bulk/boot_log.jsonl` ([arm-bulk-tables](arm-bulk-tables.md)), the sample set `Carina Accordion 1_PS 4.1.nsmp4` from the local backup, new `tools/arm_sy_slot_probe.py` (`tools/tests/test_arm_sy_slot_probe.py`). Follows [synth-sample-kernel-rule](synth-sample-kernel-rule.md) sections 12 to 14 (D61, D65) and [synth-p-writer](synth-p-writer.md) (the method: find the table driven writer, then run it).
@@ -74,6 +74,96 @@ The byte scans are plain: the 32-bit literals `0x93540..0x93591` in `bank0_CODE`
 
 [synth-sample-kernel-rule](synth-sample-kernel-rule.md) section 14 says the type 4 event `0xC01E24F0` sends no SY message **during the sample bind** (`load_sample`, `EDIT_SMP_ID`, `EDIT_MODE`, `bind_layer`, two ticks): at that point no note is on and the event is not in the queue. Section 2 above (and follow-up 2 of that note) describe the **note-on**: the key event queues the type 4 event first and the voice update (slot 1) second, `pump` delivers them in that order, so the event sends the voice reset (`0x92414 <- 0x1C0794`) and word 0 (`0x9219E <- 0xFFFFFFFF`) while the slot fields of the voice object are still `-1`; only then does the voice update copy slot `0` and `-1` from the pool object into `[obj + 0x24]`, `[obj + 0x28]` (`0xC01E09D8`, `0xC01E09F0`). Same code, different harness state (no note, then a queued note); the earlier statement is about bind, this one about note-on. Whether the hardware sends word 0 a second time after the voice update (value `0x04000000`) is not shown: the pump delivers each event once.
 
+## 6. Second hunt (2026-11-15, follow-up task)
+
+Question: who writes the SY pitch entry `e` at `DM(0x9354A + index)`, with ARM and SHARC only. Checked against the section 5 list and the outside-review ideas.
+
+| Check | Result | Tag |
+|---|---|---|
+| Who gives a pool object its index | The note-on function `0xC01E31C8..0xC01E3DC0` writes the pool object: `[+0] = voice number k`, `[+4] = -1`, `[+8] = key`, `[+0xC] = layer type 4`, `[+0x10] = 0xFF800000`, `[+0x14] = 0x480000`, `[+0x18]` counter (stores at pc `0xC01E3AB8..0xC01E3AE0`, found with a write watch on the pool and the pc, not `lr`). The boot constructor writes only `0, -1`. So the table index is the **voice number** (0..55 for the pool of 56, stride `0x20`, not `0x1C`), allocated at note-on; the first SAMPLES voice reads `DM(0x9354A + k)` | VERIFIED (run, `arm_sy_slot_probe`-style watch) |
+| Broad MIDI flow | note on / off, pitch bend, mod wheel, sustain on the sample rig: no SY or SMP message into `0x93500..0x935A0`; the ARM sends opcode 0 only | VERIFIED (run) |
+| ARM packer | no ARM routine or literal that builds the 16-bit `E:5 / m:11` entry (capstone scan of `bank0_CODE` for the window literals and for the pack shifts) | VERIFIED (scan); a computed address is not excluded |
+| SY / SMP DSP stores | SY listing: the only literal into the window is `i5 = 0x9354A` at `0x379` (the reader); the neighbours `DM(0x9358E)` / `DM(0x93590)` (stores at `0x29D..0x2B6`) lie past the table end `0x9358D`. No `FPACK` in the SY or SMP listings. The SMP image keeps its own records at `0x93542` / `0x9354A` (pointer pairs, a different table) | VERIFIED (listing grep) |
+| SY ISR sweep under `sharc-ref --watch 0x93500:0xA0` | **blocked**: vector 12 stops at `0x1C0B33` (wait) and vector 17 inside the ring refill unpacker `0x1C1276..0x1C12DD` (2,000,000 steps, `unfinished`), because the external-port refill DMA and the unpacker pointer table `DM(0x95C7C)` are not modelled ([sy-smp-audio](sy-smp-audio.md) s5). No write into the window was seen before the stop | open |
+| Other `.nsmp4` members, ring consumer `0xC01CE7D8`, `0xC01E41B8` / `0xC01ECD74` | not run | open |
+
+Reading: the table is zero-filled by the image loader, the ARM only sends the index, and nothing the harness drives writes the value. Most likely the entry arrives through the unmodelled path (external-port DMA of a packed stream, or the ARM initialisation script `0xC0503600 ..` replay, [sy-smp-audio](sy-smp-audio.md) s5) which this harness does not run. That stays a hypothesis (ASSUMED) until the script is decoded and replayed.
+
+Decision: D105. `--sample-pitch fw` stays opt-in.
+
+### Follow-ups (replace section 5 follow-ups 1 to 3)
+
+1. Decode the ARM initialisation script `0xC0503600 ..` (type 4 bulk records) and replay it with the unpacker table and the ring refill modelled; then repeat the ISR sweep with the watch.
+2. Read `0xC01E41B8` and `0xC01ECD74` (remaining pool-list users) and run the ring consumer `0xC01CE7D8`.
+3. Try the other `.nsmp4` members with `[zone + 0x6C] == 1`.
+
+## 7. Third hunt: initialisation script replayed, ring refill modelled (2026-11-15, D111)
+
+Question: with the firmware's own SY initialisation script in the DM image and the ring refill modelled, does any SY ISR or opcode handler write `DM(0x9354A..0x9358D)`? Tools: new `tools/ns4_arm_init_script.py` (`tools/tests/test_ns4_arm_init_script.py`), `sharc-ref` commands `refill`, `dump`, `regs` (`crates/nord-sharc/src/bin/sharc_ref/refill.rs`), scenarios `tools/oracle_scenarios/sy_isr_refill.scn` and `sy_isr_handlers.scn`, `tools/arm_sy_slot_probe.py --dump-messages --notes --idle-ticks`.
+
+| Step | Result | Tag |
+|---|---|---|
+| The init script format | The records at `0xC0503600 ..` use the DSP image block format. Type 4 `[4][n][address][n values]` is a DM block write: the SY part is `0xC0503740 .. 0xC05038B0` (7 records: `0x93E0C`, `0x93E12`, `0x93E18`, `0x93E1E` (`-1` words, `1`), scan pointer `DM(0x95C69) = 0x92426, 0, 0x92426`, unpacker table `DM(0x95C7B) = 0x95C6D, 0x1C12DD x4, 0x1C14BD, 0x1C14B6, ...` (35 words), `DM(0x95CBC)` pattern words). **No record covers `0x93500..0x935A0`** (the records that do, from `0xC051E1E0`, are the SMP image stream). The type 1 records after it (`0xC05038B0 ..`) are not DM writes: their addresses are `0x36014`, `0x3601A`, ... (stride 6, an IOP block) with values `0xB64CB ..` (stride 1) and `0x93FF7`, `0x94007`, `0x94017`, ... (stride `0x10`): the transfer control blocks of the external-port DMA, source (SDRAM word) and destination (DM staging buffer) per voice | VERIFIED (parse, `tools/ns4_arm_init_script.py`: 53 SY words); TCB reading ASSUMED |
+| Pointer table index | `DM(0x95C7C + 2 * count + k)`, `count = header bits 22..19 + 1` (15 bit packing at index 30, `0x1C12E7` / `0x1C12E0`); indices 0 to 3 and 32 to 35 are the trap `0x1C12DD`. A zero staging buffer reads header 0, `count = 1`, index 2: the trap, so replaying the table alone does not remove the hang | VERIFIED (run: vector 17 stops at `0x1C12DD` with the table replayed and `rec+0x10` not poked) |
+| The unpacker stream | `B1 = DM(rec + 0x2F)` (`0x93FF7` after the prepare state), `L1 = 0x80` words, read pointer `DM(rec + 0x1C)`; records `rec + 0x13 = 7`, `rec + 0xA..0xF` come from the ARM note-on messages (`0x9240A <- 0xC`, `0x9240B <- 0x2C60`, `0x92413 <- 7`, ...) | VERIFIED (run, record dump) |
+| Refill model | `refill VOICE` writes a block header word `(14 << 19) \| 0x40` into all 128 staging words before each interrupt, so a header is found wherever the reader is and the 15 bit handler runs. 400 audio ISRs after the `go` state run with no `rec+0x10` poke: the scheduler `0x1C11AC`, the queue unpacker `0x1C1228`, the header decode `0x1C1245..0x1C1270` and the handler `0x1C12E7` are executed (PC trace), no trap. The decoded audio is meaningless (synthetic page, ASSUMED); only the control flow is modelled. The real packed format (block length unit, selector bits 17..14) is not reverse engineered, the sweep does not need it | VERIFIED (run, `NS4_IRQ_TRACE=full`); model ASSUMED |
+| SY ISR sweep, `--watch 0x93500:0xA0` | Vectors 0 to 31, each raised after the note-on sequence: no write into the window. Vectors 13, 16, 17 run to the idle loop; vector 20 runs `0x1C058C..0x1C05A0` and writes `DM(0x93590)` (past the table end `0x9358D`); vectors 12 and 18 to 31 never leave the idle loop; vector 1 enters the start-up code `0x1C0528` and waits at `0x1C0546` | VERIFIED (run) |
+| Opcode handlers 1 to 15 | Each body run with `R6 = 0x9354A`, `R7 = 0x1234` (`sy_isr_handlers.scn`): all return, none writes the window (opcode 4 writes `DM(0x1820..0x1825)`, `DM(0x180B)`; opcode 6 stores to `0x4000000 + address`, a different space). **Oracle caveat:** `msg op=N` does not call the handler: the dispatch `if ne call (m8,i8)` at `0x1C064B` is the last instruction of the `do` loop `0x1C0635..0x1C064B` and the core does not take a call there (`I8 = 0x1C0304` is loaded, `break=0x1C0304` is never hit). The hardware behaviour of that instruction is not measured. The ARM never sends opcode 1 to 15 in any run | VERIFIED (run); core behaviour at loop end open |
+| ARM side, long run | `tools/arm_sy_slot_probe.py --notes 36 48 60 72 96 60 --idle-ticks 3000` (Carina Accordion): 545 SY messages (33 of them in the idle ticks), **0** into `0x93500..0x935A0`; the slot object `0x9062F0F0` is still written only by the boot constructor and the note-on function | VERIFIED (run, 81 s) |
+| `agy` second opinion (hypotheses only, not evidence) | Five hypotheses: loop-end call gap, DMA TCB targeting the table, unpacker handlers other than the 15 bit one, a main-loop routine, a two-hop ARM copy. Checked here: the init script holds 71 distinct DM-range words in the TCB region and none lies in `0x93500..0x935A0` (`0x935D2`, `0x935D3` are the nearest); the SY listing has one literal into the window (the reader, section 6); the 545 ARM messages address no copy source for it. Second `agy` pass (accept-edits mode, listing excerpt `0x1C12E0..0x1C23F0` only, report read back and grep-checked here): the 15 unpacker handlers store only through `I2` (the ring), the tail through `I3` (record), `I4` (`DM(rec+0x30)`, `0x93E36` in the run) and `DM(0x95C68)`; no literal in `0x93500..0x935A0`; no call or jump ends a do-loop in that span. So the other 14 handlers cannot write the table unless the ARM sends a ring or `rec+0x30` pointer into it (no such message). The loop-end call gap of the core stays open | checked (TCB, literals, handler stores); loop-end call open |
+
+Reading: with the ring refill and the pointer table in place, the SY audio ISR, the other SY vectors that have handlers and the opcode handler bodies write nothing into the table, which is read as zero (`rec+0x2D`, the step word, stays 0 after 400 frames in `sy_isr_refill.scn`). The writer is not in the SY code, not in any ARM message this harness drives (545), and not in the image stream. Still not driven: (1) the real SDRAM stream through the external-port DMA TCBs (the entry could ride in the sample page; the TCB destinations seen are the staging buffers `0x93FF7 + 0x10 k`, not the table); (2) the ARM ring consumer `0xC01CE7D8` and the pool list users `0xC01E41B8`, `0xC01ECD74`; (3) other `.nsmp4` members (three more probed by an `agy` run with permission checks skipped at the user's request, `--notes 36 60 96 --idle-ticks 500`: Supreme Modern Fp 470 messages, Men+Women Oo Soft 470, Spitfire StringQuintet Stac 480, **0** into the window each; the members' `[zone + 0x6C]` values were not checked); (4) the missing loop-end call of the core (irrelevant while the ARM sends only opcode 0).
+
+### 7.1 Follow-ups run by `agy` (permission checks skipped at the user's request; results re-run here)
+
+| Item | Result | Tag |
+|---|---|---|
+| Ring consumer `0xC01CE7D8` (new `tools/arm_sy_ring_consumer.py`, `tools/tests/test_arm_sy_ring_consumer.py`) | One caller (`BL` at `0xC0019410`), `r0` = the synth strip object (`0x90674418` in the Carina Accordion run); `agy` calls it the strip apply routine. Called after load, bind and note-on it returns `1` and sends 393 port messages, **0** to SY or SMP, **0** into `0x93500..0x935A0` | VERIFIED (run twice, here and by `agy`) |
+| Pool list users `0xC01E41B8`, `0xC01ECD74` | `0xC01E41B8` is the literal of the note-on function `0xC01E31C8` (already covered by the note-on run); `0xC01ECD74` lies in the synth constructor `0xC01EC9D8` that builds the 56 pool objects and sends no port message | VERIFIED (listing read by `agy`; note-on run here); constructor not re-checked |
+| Loop-end call of the oracle core | Cause read from the source: `exec_flow` takes the call, then `finish_step` (`branch.rs`) sees `pc == loop end` and, while `remaining > 1`, replaces the target by the loop start and leaves the return address `0x1C064E` on the call stack. `agy` cites the programming reference (p. 4-55: no jump or call in the last three instructions of a loop) so the firmware pattern is outside the documented rules, and the handlers end in `rts (lr)` (loop re-entry), which the core does not model. Core left unchanged; behaviour on the hardware stays unmeasured. The ARM sends only opcode 0, so the pattern is never exercised | page citation not re-checked here; code reading VERIFIED by `agy`, not by a test |
+| Opcode sweep with `msg op=1..15 0x93550 0x1234` after `sy_isr_refill.scn` | no write into the window (same as the handler bodies) | VERIFIED (run by `agy`) |
+
+Decision: D111. `--sample-pitch fw` stays opt-in.
+
+Reproduce:
+
+```bash
+python tools/ns4_arm_init_script.py target/fw_unpacked/bank0_CODE.bin   # the poke block of the scenarios
+cargo build --release -p nord-sharc --bin sharc-ref
+target/release/sharc-ref sy.bin tools/oracle_scenarios/sy_isr_refill.scn --out target/oracle/refill --watch 0x93500:0xA0
+target/release/sharc-ref sy.bin tools/oracle_scenarios/sy_isr_handlers.scn --out target/oracle/hand --watch 0x93500:0xA0
+uv run --with unicorn python tools/arm_sy_slot_probe.py target/fw_unpacked/bank0_CODE.bin target/fw_unpacked/bank0_SRAM.bin \
+    --cache target/keydown.snap --ns4b ".reference/Nord Stage 4 Factory Restore RevK v1.66.ns4b" \
+    --member "Samp Lib/Accordion_Harm/Carina Accordion 1_PS 4.1.nsmp4" --notes 36 48 60 72 96 60 --idle-ticks 3000
+```
+
+The scenarios embed only addresses, pcs and message words (D45); the sample data and the SDRAM stream stay local.
+
+## 8. Fourth hunt: the real packed sample stream and the handler sweeps (2026-11-15, D112)
+
+Question: does the entry `e` ride in the packed sample page that the external-port DMA brings into the staging buffer, and does any unpacker handler, vector or opcode 9 write the table when driven for real? Work done by `agy` (permission checks skipped at the user's request) in an isolated worktree; every number below was re-run or spot-checked here.
+
+| Item | Result | Tag |
+|---|---|---|
+| Stream format | The `\0stk` payload of stroke 0 of `Weltmeister 4 Accordion_PS 4.1.nsmp4` (chunk at file offset `0x820`, packed stream `0x8B0..0x13B0`, 704 words, 14 blocks, end sentinel `0x00800020`) is consumed by the SY unpacker **unchanged except for byte order**: the `.nsmp4` words are big endian, the staging buffer holds the same words as little endian `u32`. Block header = `ns` bits 13..0, selector bits 17..14, loop bit 18, `nbits - 1` bits 22..19, bit 23; the same fields as `decode_nsmp_stk_payload` (`crates/nord-core/src/cbin/sample.rs`) and as the header decode `0x1C1245..0x1C1270`; residuals MSB first | VERIFIED (first 32 frames, below) |
+| Decode check | `sharc-ref` with `stream 0 path=...` (new, `stream.rs`: ideal DMA that keeps the 128-word buffer full ahead of `DM(rec+0x1C)`): the ring `DM(0xC0000 + 2 k)` after the first unpack equals `sample_dump` frames `0..31` times `2^-6` (the handlers scale by `2^-19`, `sample_dump` by `2^-13`) passed through the tail 1-pole filter `y = -c1 x + c0 y` (`c0 = DM(rec+0x20) = 0x3F128F5C`, `c1 = DM(rec+0x21) = 0xBEDAE148`): **max error 1.686e-11** (re-run here with 4, 5 and 6 ISRs; at 8 ISRs the ring is zero, see below) | VERIFIED (run, `sy_isr_stream.scn` with `loop 4`) |
+| Pitch table | 400 audio ISRs on the real stream: **0** writes into `0x93500..0x935A0`, `rec+0x2D` (step) stays 0, no trap. The stream holds block headers and residuals only (no pitch word), so `e` does not ride in the page the DSP reads. The `\0stk` header (68 bytes: stroke id, root key, rate) is not part of the DMA stream | VERIFIED (run) |
+| Block length | The first block has `ns = 48` (`fl = 1`) but the 9 bit handler `0x1C1C44` is unrolled for 32 samples (9 words) while the tail advances the output by 48 frames and sets the header read mode: the next unpack reads residual word 10 as a header, loses sync and the ring is zero filled by ISR 400. So either the ARM splits or aligns such blocks before the DMA or the DSP consumes only 32 sample aligned blocks; not resolved, the model is exact for the first block only | VERIFIED (run); cause open |
+| Handler sweep | `refill 0 fill=WORD` (new option): 224 header fills (`count` 2..15, selector 0..3, bit 23 0/1, mono and stereo), 20 audio ISRs after the `go` message each, `--watch 0x93500:0xA0`: all 224 complete, none traps, **0** watch hits. Negative control (header with `count = 1`) traps at `0x1C12DD` as before | VERIFIED (run by `agy`, one combination and the control re-run here) |
+| Vector 1, vector 12, opcode 9 | Vector 1 is the reset code (`0x1C0528` PLL delay loops, `0x1C0CA8` peripheral set-up, polls FLAG12 at `0x1C10DD`), no `RTI`; vector 12 is a one instruction `RTI` stub at `0x120090` (the harness misses a one step interrupt: `taken` is sampled after the step); opcode 9 (`0x1C03AA`) only programs the SPI DMA registers `0x1080..0x1084` and returns in 18 steps. No window write in any; a real SPI DMA into DM is not modelled | VERIFIED (listing, run by `agy`) |
+
+Reading: the packed sample stream is now modelled with the real data and decodes correctly, and every handler path writes only the ring and the record. The writer of `e` is not in the stream, in any unpacker handler, in the SY ISRs driven here, in the opcode handlers or in the 545 ARM messages and the three further members seen. What remains: an SPI DMA into DM (opcode 9 with a flash model), the block-length question above, and the possibility that the firmware never writes `e` for this path (the step stays 0 and the voice is muted until the ARM sends something not seen), which would make `--sample-pitch fw` a model of something the hardware computes elsewhere.
+
+Decision: D112. `--sample-pitch fw` stays opt-in.
+
+Reproduce (local files only):
+
+```bash
+target/release/ns4 backup "<ns4b>" --extract "Samp Lib/Accordion_Harm/Weltmeister 4 Accordion_PS 4.1.nsmp4" weltmeister.nsmp4
+# bytes 0x8B0..0x13B0 of the file, each big endian u32 byte swapped to little endian -> target/oracle/weltmeister_s0.stream
+target/release/sharc-ref sy.bin tools/oracle_scenarios/sy_isr_stream.scn --out target/oracle/stream --watch 0x93500:0xA0
+```
+
 ## Implications
 
 - `--sample-pitch fw` stays opt-in (D89); `step_join::table_entry_for_key` remains a model. No default, golden or `render_hash` moves.
@@ -82,6 +172,7 @@ The byte scans are plain: the 32-bit literals `0x93540..0x93591` in `bank0_CODE`
 
 ## Follow-ups
 
+0. (D111) Drive the external-port DMA with a real packed stream (the TCBs of the init script, `0xC05038B0 ..`) and the ARM ring consumer `0xC01CE7D8`; check whether the table entry rides in the sample page.
 1. Read the two unread users of the pool list `0xC0563664` (`0xC01E41B8`, `0xC01ECD74`) and the activation that gives a pool object a slot; the cold-boot watch (section 5) shows boot and the settled loop never write it.
 2. Drive an SMP / SY ISR set in `sharc-ref` (vector sweep beyond vector 0) with the full message list and a table fill poked at `0x9354A`, to see whether the zero entry really mutes the voice.
 3. Run opcode 9 (`0x1C03AA`) with a harness SPI model if the ARM ever sends it.
