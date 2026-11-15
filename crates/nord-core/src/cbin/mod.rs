@@ -24,6 +24,7 @@ pub mod synth_arp;
 pub mod synth_osc;
 pub mod synth_pattern;
 pub mod synth_preset;
+pub mod synth_raw;
 
 pub use backup::*;
 pub use backup_presets::*;

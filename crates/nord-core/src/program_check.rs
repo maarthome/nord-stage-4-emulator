@@ -22,6 +22,11 @@ pub fn check_program(bytes: &[u8], sample_rate: f32) -> Vec<String> {
     if !file.checksum_ok() {
         problems.push("header checksum is not the CRC-32 of bytes 0x2C..".to_string());
     }
+    // The decoders alone are lossless: no collapsed raw value needs the bit merge below.
+    match prog.to_cbin_file(file.header.bank_index, file.header.location_index) {
+        Ok(f) if f.payload == file.payload => {}
+        _ => problems.push("decode + pack does not reproduce the program bits".to_string()),
+    }
     let mut engine = Box::new(Stage4Engine::new(sample_rate));
     engine.apply_program(&prog);
     let same = engine.export_program(&prog);
