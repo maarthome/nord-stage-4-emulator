@@ -143,17 +143,16 @@ pub(super) fn led_row(
     }
 }
 
-/// "FX FOCUS" caption left of the focus LED at `led`: the LED sits over the level ladder of the
-/// last layer with the ON button to its right, so the text goes into the free strip above the
-/// faders (never onto the ladder or the button).
+/// "FX FOCUS" caption centred over the focus LED at `led`, as printed in the section's header
+/// tab (the real panel prints the text above the LED, the ON button to its right).
 pub(super) fn fx_focus_caption(p: &Painter, led: egui::Pos2) {
     label(
         p,
-        pos2(led.x - 8.0, led.y),
+        pos2(led.x, led.y - 6.5),
         "FX FOCUS",
         5.5,
         Color32::from_gray(235),
-        Align2::RIGHT_CENTER,
+        Align2::CENTER_BOTTOM,
     );
 }
 

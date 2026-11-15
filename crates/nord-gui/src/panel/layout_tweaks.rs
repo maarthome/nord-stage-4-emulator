@@ -12,11 +12,11 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     // Real-panel positions (isotropic crop mapping) leave 7.5 px legends touching their
     // neighbours: these nudges stay within 2.5 mm of the crop.
     ("synth.zone_leds", 0.0, 3.0), // the KB ZONE legends sit between the buttons and the LEDs
-    ("synth.lfo.waveform", 0.0, -1.0), // clears the GROUP legend from the RATE numerals
-    ("synth.lfo.rate", 0.0, 4.5),  // the RATE numerals touched the LFO GROUP legend above
-    ("synth.lfo.rate_mst_clk", 0.0, 4.5),
-    ("synth.osc.ctrl", 0.0, 3.0), // the OSC CTRL numerals touched the ENV TO PITCH legend
-    ("synth.filter.freq", 0.0, 3.0), // the FREQ numerals touched the GROUP legend
+    ("synth.lfo.waveform", 0.0, -2.25), // clears the GROUP legend from the RATE numerals
+    ("synth.lfo.rate", 0.0, 2.5),  // the RATE numerals touched the LFO GROUP legend above
+    ("synth.lfo.rate_mst_clk", 0.0, 2.5),
+    ("synth.osc.ctrl", 0.0, 1.0), // the OSC CTRL numerals touched the ENV TO PITCH legend
+    ("synth.filter.freq", 0.0, 1.0), // the FREQ numerals touched the GROUP legend
     // Program: the PROG VIEW legend touched PANIC above; buttons 5-8 / MON-COPY legends touched the
     // names above them; the SPLIT legend touched the LED strip (all <= 1.7 mm).
     ("program.prog_view", 0.0, 4.0),
@@ -31,7 +31,8 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("program.menu.extern", 0.0, 3.0),
     ("program.mon_copy", 0.0, 3.0),
     ("program.paste", 0.0, 3.0),
-    ("split.leds", 0.0, -4.0),
+    ("split.leds", 0.0, -2.0),
+    ("split.on_set", 0.0, 1.5), // the ON/SET legend clears the LED strip under the SPLIT title
     // Layer Effects: the printed lists RM / TREM / A-PAN and CHOR / FLANG / PHAS are wider than the
     // 7.5 px minimum font allows between the AMOUNT numerals and the selector LEDs; the knob and
     // the selector each give 1 mm (2.5 px).

@@ -27,8 +27,8 @@ pub(super) const BIG_RECT_PX2: f32 = 6000.0;
 const TOL: f32 = 1.0;
 /// Button bezel and LED ring around a control rectangle: labels keep out of it too.
 const BEZEL_PX: f32 = 2.5;
-/// How far (px) a numeral may sit outside the probe rectangle of its knob (tick tip + gap + text).
-const NUMERAL_REACH: f32 = 16.0;
+/// How far (px) a numeral may sit outside the probe rectangle of its knob (bezel + gap + text).
+const NUMERAL_REACH: f32 = 20.0;
 const ALLOW: &str = include_str!("legibility_allow.txt");
 
 /// One painted text.

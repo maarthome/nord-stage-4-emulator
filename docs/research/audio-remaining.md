@@ -1,0 +1,43 @@
+# Audio parity: what is still open (consolidated list)
+
+- **Checked:** 2026-11-15
+- **Sources:** merged PRs #373 to #391, the open PRs #392 to #395 (their notes and decisions D84 to D86 are not on main yet) and the research notes they cite ([organ-preamp-search](organ-preamp-search.md), `fm-banks-1-2` (PR #392, not on main yet), [fx-chorus-hw-clip](fx-chorus-hw-clip.md), [piano-transcription](piano-transcription.md), [organ-presence-gap](organ-presence-gap.md)), `docs/OPEN-QUESTIONS.md` (OQ20, OQ21, OQ22, OQ24), `docs/ROADMAP.md`, the Part A demo video comparisons (`docs/research/data/emu_vs_hw_segments.json`) and a listening test of 2026-11-15 (Velvet Grand A:61, Felt Upright A:13).
+- **Question:** which audio items still stand between the emulator and 1:1 parity with the hardware, what evidence each has, and how each can be closed?
+
+Tags: **VERIFIED** = matches firmware or oracle, **EMPIRICAL** = fitted to a recording, **ASSUMED** = chosen without evidence. A default flips only when verified end to end (D22).
+
+## 1. Open items
+
+| # | Item | State | Evidence so far | How to close | Check |
+|---|---|---|---|---|---|
+| 1 | Synth layer level law | default linear, squared opt-in (`--firmware-synth-layer-law`, D82); Leaky Stabs II after the noise row fix (D83) still reads presence +4.3 dB and brilliance +7.5 dB over the video (from +7.0 / +12.1) | Grand Pad fits better squared; handler `0xC011BB48` / `0xC0114588` disassembled, never run | run the handler in the ARM harness with fader values, read the level word, decide the law, flip the default (D22) | ARM harness run |
+| 2 | Sample pitch entry `e` | `--sample-pitch fw` stays opt-in (D65, OQ22) | join arithmetic and entry format verified, the ARM writer of the 16-bit table entry at `DM(0x9354A + index)` is not found | trace the ARM writer like the P words ([synth-p-writer](synth-p-writer.md)) | ARM harness |
+| 3 | Organ vs piano level `K = 2.8` | EMPIRICAL (OQ24); image audit found no `1 / 0.21875` lane word (D85, PR #394, not on main yet) | [organ-output-law](organ-output-law.md) s4 | find the gain chain (ORG image plus ARM level words) | oracle trace |
+| 4 | Touch velocity curves | emulator uses the raw MIDI velocity; bean `ns4-yp85` | listening test: key force changes the piano sound a lot | extract per-program curves from the firmware, apply opt-in | ARM harness |
+| 5 | Mouse velocity | position along the key, linear 20 to 127 (D84, ASSUMED; PR #393, not on main yet) | no listening check | listen; replace by the Touch curve when item 4 lands | listening |
+| 6 | Modulation FX per type | CHOR (D32), VIBE (D37), FLANG and PHAS 0 (D40) run the firmware routines behind `FirmwareFx::mod2`; ENS and SPIN routines are verified and ported (`fw_ens.rs`, `fw_spin.rs`, D40) but not wired to a stage (ENS output silent, SPIN diverges with the captured words); PHAS 1, Mod 1 RM / A-WAH / PUMP and the remaining types and the ARM parameter mapping not checked per type | [fx-mod2-types](fx-mod2-types.md) | trace the ARM writes per type, compare with the SHARC models | oracle trace |
+| 7 | Reverb per type | names, delay unit and tempo sync verified; per-type parameter mapping and tail time not checked (Grand Pad tail 13.4 s hardware vs 3.7 s) | Grand Pad clip | check the ARM parameters against the SHARC reverb for every type and variation | oracle trace |
+| 8 | Grand Pad leftovers | synth FX rack (amp, EQ mid -5 dB, reverb 0.37) not decoded; stereo width 0.54 vs 0.37; pedal not replayed | D82 note | same method as items 6 and 7 | clip comparison |
+| 9 | B3 presence and Leslie level | presence 5.7 dB (firmware Leslie) to 20 dB (engine rotary) under hardware; no separable preamp in the ORG image ([organ-preamp-search](organ-preamp-search.md)) | negative result for the preamp; the missing 48 dB is fed by an element not found | trace who writes `0xB6000..3` before the Leslie call (OQ21); get the B3 right-hand note list | oracle trace |
+| 10 | FM banks 1 and 2 | stages `0x124269` / `0x12453F` readable; the 128 x 129 row table at `0xE0926` is not produced by the harness (`fm-banks-1-2` (PR #392, not on main yet)) | zero in the image, not written by boot, DSP or a wave edit | run the real strip apply `0xC01CE7D8` with an FM program and log DSP stores | ARM harness |
+| 11 | Piano T60 and attack | the 3.2 s vs 1.3 s gap did not reproduce with the transcribed pedal and velocities (D86, PR #395, not on main yet); chain plus slew is 5 to 9 dB low with about 2x slower attack, opt-in | [piano-transcription](piano-transcription.md); `piano-decay-attack` and the per-octave T60 tool (PR #395, not on main yet) | quantify the remaining attack gap; fit PNO parameters; keep defaults (D22) | clip comparison |
+| 12 | Synth presets vs video | Horizon Whl (D81) and Leaky Stabs II (D83) fixed in part; the LP24 SUPER type factor 4.4 was fitted on its own clip | [synth-validation](synth-validation.md) s12 | independent clips; item 1 may explain Grand Pad and Leaky Stabs together | clip comparison |
+| 13 | FX defaults against hardware | only the chorus has a hardware clip | [fx-chorus-hw-clip](fx-chorus-hw-clip.md) | official Kontakt Player oracle (Ultimate Pianos 2) or more video clips | recording |
+| 14 | Synth note transcription | Transkun is piano-trained (recall about 40 percent on synth) | [piano-transcription](piano-transcription.md) | MuScriptor (multi-instrument), later Aria-AMT and ByteDance as second opinions | tooling |
+| 15 | Real time Bass and Farfisa | bit-exact but not real time | [organ-farfisa-bass](organ-farfisa-bass.md) | performance work, last in the queue | benchmark |
+
+## 2. Reading
+
+1. Items 1, 2, 3, 4, 6, 7, 8, 9 and 10 can be closed with the ARM harness and the SHARC oracle; no hardware recording is needed.
+2. Items 11 and 12 need either the local sample library measurement (derived numbers only) or more hardware clips.
+3. Nothing in this list needs bypassing encryption; no firmware image, sample or audio is committed.
+
+## Implications
+
+- Do not call the audio done while item 1 is open: it probably explains Grand Pad and Leaky Stabs II together.
+- Several verified paths stay opt-in; the everyday sound improves only when they are promoted under D22.
+
+## Follow-ups
+
+1. Keep this table current in the same PR that changes an item (docs rule).
+2. After the running sessions report, mark each row delivered or blocked and move closed items to the decisions.

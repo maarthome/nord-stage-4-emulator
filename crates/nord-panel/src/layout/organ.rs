@@ -56,8 +56,8 @@ pub fn rect(id: &str) -> Option<Rect> {
         "organ.model_leds" => C.rect(804.0, 278.0, 9.0, 18.7),
         "organ.preset" => C.rect(428.0, 886.0, 15.9, 8.3),
         "organ.vibrato_selector" => C.rect(1078.0, 262.0, 16.6, 9.0),
-        "organ.vibrato_on.a" => C.rect(1122.0, 410.0, 7.6, 7.5),
-        "organ.vibrato_on.b" => C.rect(1189.0, 410.0, 7.6, 7.5),
+        "organ.vibrato_on.a" => C.rect(1122.0, 410.0, 6.6, 7.5),
+        "organ.vibrato_on.b" => C.rect(1189.0, 410.0, 6.6, 7.5),
         "organ.perc_volume" => C.rect(1470.0, 280.0, 15.9, 9.0),
         "organ.perc_decay" => C.rect(1631.0, 280.0, 15.9, 9.0),
         "organ.perc_third" => C.rect(1792.0, 280.0, 15.9, 9.0),
@@ -92,6 +92,16 @@ mod tests {
         let d = rect("organ.drawbar.4").unwrap();
         let l = rect("organ.drawbar_ladder.4").unwrap();
         assert!(l.x >= d.right() - 1e-3);
+    }
+
+    /// The A and B vibrato buttons keep a visible gap (the old 7.6 mm width left 0.4 mm and the
+    /// bezels touched). EMPIRICAL: the pitch is 8.0 mm from the anchors; the Layer buttons of the
+    /// Program bay keep about 1.4 mm between bezels on the render.
+    #[test]
+    fn vibrato_buttons_keep_a_gap() {
+        let a = rect("organ.vibrato_on.a").unwrap();
+        let b = rect("organ.vibrato_on.b").unwrap();
+        assert!(b.x - a.right() >= 1.3, "gap {}", b.x - a.right());
     }
 
     #[test]

@@ -20,7 +20,6 @@ mod pots;
 mod strip;
 mod widgets;
 
-use super::layout_px::to_px;
 use super::prelude::*;
 use super::ui_state::{Legacy, DIAL_COUNT};
 
@@ -83,11 +82,7 @@ pub(super) fn render_bay_synth(
         .samples
         .observe_loaded(state.loaded_sample_name.as_deref());
 
-    let frame = to_px(
-        nord_panel::layout::section_rect(nord_panel::Section::Synth),
-        o,
-    );
-    section_frame(painter, frame, "SYNTH");
+    crate::panel::frames::paint_plate(painter, o, nord_panel::Section::Synth, "SYNTH");
     crate::panel::frames::paint_frames(painter, o, nord_panel::Section::Synth);
 
     let mut levels = [
