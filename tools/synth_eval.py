@@ -12,7 +12,7 @@ Metrics (pitch must match exactly, one-to-one greedy by smallest onset differenc
 - the same split by velocity mode and by phrase kind.
 
 Only the model run needs torch and transkun (``load_model``); the scoring is numpy. The base
-model is the default; an adapter is added in Phase 2 through ``--adapter``.
+model is the default; an adapter folder from ``synth_train.py`` is scored with ``--adapter``.
 """
 
 from __future__ import annotations
@@ -100,9 +100,11 @@ def score(entries: Sequence[dict], estimates: dict[str, list[dict]], tol: float)
 
 
 def load_model(device: str, adapter: str | None = None) -> Any:
-    """Pretrained Transkun 2.0 (needs torch + transkun); adapters arrive in Phase 2."""
+    """Pretrained Transkun 2.0, or base plus the adapter folder (needs torch + transkun)."""
     if adapter is not None:
-        raise NotImplementedError("adapter loading is Phase 2")
+        import synth_adapter
+
+        return synth_adapter.load_adapter(Path(adapter), device)
     import transcribe_clip
 
     return transcribe_clip.load_transkun(device)

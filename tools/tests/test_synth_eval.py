@@ -51,8 +51,3 @@ def test_score_groups_by_mode_and_kind():
     assert res["all"]["recall"] == 0.5
     assert res["vel_mode=loud"]["f1"] == 1.0 and res["vel_mode=ramp"]["f1"] == 0.0
     assert res["kind=melody"]["notes"] == 2
-
-
-def test_adapter_is_not_available_yet():
-    with pytest.raises(NotImplementedError):
-        ev.load_model("cpu", adapter="x")
