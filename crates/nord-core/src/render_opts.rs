@@ -81,6 +81,19 @@ pub fn parse_on_off(name: &str, v: &str) -> Result<bool, String> {
     }
 }
 
+/// `--synth-sustain-pedal`: the synth layers follow the SUSTPED bits of the loaded program, or
+/// the firmware default (on) without a program; off keeps them released (engine default).
+fn apply_synth_sustain(engine: &mut Stage4Engine, on: bool) {
+    engine.synth_sustain_program = on;
+    let routing = engine.program_routing();
+    let flags = match (on, routing.loaded) {
+        (false, _) => [false; 3],
+        (true, true) => routing.synth_sustain,
+        (true, false) => [true; 3],
+    };
+    engine.pedals.sustped[4..7].copy_from_slice(&flags);
+}
+
 /// Selects the B3 processor-tail response of both organ layers' `B3Wheels` source (`None` leaves
 /// the engine untouched).
 pub fn apply_b3_tail(engine: &mut Stage4Engine, tail: Option<bool>) {
@@ -600,7 +613,7 @@ impl FirmwareOptions {
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
         engine.synth_layer_law = self.synth_layer_law;
-        engine.pedals.sustped[4..7].fill(self.synth_sustain_pedal);
+        apply_synth_sustain(engine, self.synth_sustain_pedal);
         apply_b3_tail(engine, self.b3_tail);
         apply_farfisa_processor(engine, self.farfisa_processor);
         apply_b3_bass_processor(engine, self.b3_bass_processor);
@@ -663,7 +676,7 @@ impl FirmwareOptions {
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
         engine.synth_layer_law = self.synth_layer_law;
-        engine.pedals.sustped[4..7].fill(self.synth_sustain_pedal);
+        apply_synth_sustain(engine, self.synth_sustain_pedal);
         self.set_rotary(engine);
         let bass = self.b3_bass_processor == Some(true);
         apply_b3_tail(engine, Some(!bass && self.b3_tail.unwrap_or(true)));
@@ -896,6 +909,15 @@ mod tests {
             [false, false, true, true, true, true, true]
         );
         assert!(!FirmwareOptions::legacy_all().synth_sustain_pedal);
+        // a loaded program's own SUSTPED bits win over the blanket default
+        let mut prog = crate::cbin::ProgramDecoded::default();
+        prog.global.synth_sustain = [true, false, true];
+        let mut e = Stage4Engine::new(48_000.0);
+        e.apply_program(&prog);
+        on.apply_to(&mut e);
+        assert_eq!(e.pedals.sustped[4..7], [true, false, true]);
+        FirmwareOptions::default().apply_to(&mut e);
+        assert_eq!(e.pedals.sustped[4..7], [false; 3]);
     }
 
     #[test]
