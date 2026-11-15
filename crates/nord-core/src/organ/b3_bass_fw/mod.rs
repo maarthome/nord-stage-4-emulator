@@ -12,6 +12,7 @@
 
 mod exec;
 mod f40;
+mod fast;
 mod prog_gen;
 mod prog_proc;
 mod tables;
@@ -24,15 +25,13 @@ pub(super) use prog_proc::PROC_ROWS;
 /// One decoded row (`tools/sharc_listing_rust.py`).
 pub(super) type Row = [i32; 8];
 
-/// DM ranges of the machine (VERIFIED: the words the two routines address, research s13: weights
-/// and tables `0x95000`, generator / processor state and the delay line `0xB3000`, the output
-/// stream `0xC0000`, the cabinet / scanner words `0xC2B00`). Anything else reads 0.
-const RANGES: [(u32, usize); 4] = [
-    (0x9_5000, 0x1800),
-    (0xB_3000, 0x2000),
-    (0xC_0000, 0x400),
-    (0xC_2B00, 0x300),
-];
+/// DM window of the machine: one flat array from `DM_BASE` (VERIFIED: the words the Bass routines
+/// address are weights and tables `0x95000`, state and delay line `0xB3000`, the output stream
+/// `0xC0000`, cabinet and scanner words `0xC2B00`; the Farfisa processor adds `0xC27E0..0xC2E00` and
+/// `0xC4000`, research s13 / s16). A flat window is one bounds check per access; anything outside
+/// reads 0 and is dropped.
+pub(super) const DM_BASE: u32 = 0x9_5000;
+pub(super) const DM_LEN: usize = 0x3_0000;
 
 /// Output stream words of the processor (`DM 0xC00EA`, four words per call).
 pub(super) const OUT_BASE: u32 = 0xC_00EA;
@@ -53,13 +52,12 @@ pub(super) struct Machine {
     pub(super) mr: [i128; 2],
     pub(super) an: [bool; 2],
     pub(super) az: [bool; 2],
-    mem: Vec<u32>,
+    pub(super) mem: Vec<u32>,
 }
 
 impl Machine {
     /// Zeroed machine (allocates the DM ranges; setup time only).
     pub(super) fn new() -> Self {
-        let total = RANGES.iter().map(|r| r.1).sum();
         Self {
             d: [0; 32],
             i: [0; 16],
@@ -70,33 +68,24 @@ impl Machine {
             mr: [0; 2],
             an: [false; 2],
             az: [false; 2],
-            mem: vec![0; total],
+            mem: vec![0; DM_LEN],
         }
     }
 
-    #[inline]
-    fn slot(a: u32) -> Option<usize> {
-        let mut off = 0;
-        for &(base, len) in &RANGES {
-            let rel = a.wrapping_sub(base) as usize;
-            if rel < len {
-                return Some(off + rel);
-            }
-            off += len;
-        }
-        None
-    }
-
-    /// DM read (outside the ranges reads 0).
-    #[inline]
+    /// DM read (outside the window reads 0).
+    #[inline(always)]
     pub(super) fn rd(&self, a: u32) -> u32 {
-        Self::slot(a).map_or(0, |k| self.mem[k])
+        self.mem
+            .get(a.wrapping_sub(DM_BASE) as usize)
+            .copied()
+            .unwrap_or(0)
     }
 
-    /// DM write (outside the ranges is dropped).
+    /// DM write (outside the window is dropped).
+    #[inline(always)]
     pub(super) fn wr(&mut self, a: u32, v: u32) {
-        if let Some(k) = Self::slot(a) {
-            self.mem[k] = v;
+        if let Some(w) = self.mem.get_mut(a.wrapping_sub(DM_BASE) as usize) {
+            *w = v;
         }
     }
 
@@ -113,20 +102,31 @@ impl Machine {
     /// Runs decoded rows (instructions and loops).
     pub(super) fn run(&mut self, rows: &[Row]) {
         let mut pd = exec::Pending::default();
-        self.run_with(rows, &mut pd);
+        self.run_with(rows, 0, &mut pd);
     }
 
-    fn run_with(&mut self, rows: &[Row], pd: &mut exec::Pending) {
+    /// `start` is the absolute row index of `rows[0]` (jump targets are absolute).
+    fn run_with(&mut self, rows: &[Row], start: usize, pd: &mut exec::Pending) {
         let mut p = 0;
         while p < rows.len() {
             let row = &rows[p];
             let n = row[if row[0] == kind::INS { 1 } else { 2 }] as usize;
             let body = &rows[p + 1..p + 1 + n];
             if row[0] == kind::INS {
+                if row[3] != 0 {
+                    // jump: 1 always, 2 `if ne` (AZ clear), 3 `if eq`; PEx flags, no delay slots
+                    let taken = row[3] == 1 || (row[3] == 2) != self.az[0];
+                    p = if taken {
+                        row[4] as usize - start
+                    } else {
+                        p + 1
+                    };
+                    continue;
+                }
                 self.exec(body, row[2] != 0, pd);
             } else {
                 for _ in 0..row[1] {
-                    self.run_with(body, pd);
+                    self.run_with(body, start + p + 1, pd);
                 }
                 self.lcntr = 0;
             }

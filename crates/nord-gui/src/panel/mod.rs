@@ -12,6 +12,7 @@ mod bay_piano_select;
 pub(crate) mod bay_program;
 mod bay_synth;
 mod ctl;
+mod ctl_led_tag;
 #[cfg(test)]
 mod frame_cost_tests;
 mod frames;
@@ -22,6 +23,8 @@ mod layout_tweaks;
 #[cfg(test)]
 mod legibility_caps;
 #[cfg(test)]
+mod legibility_leds;
+#[cfg(test)]
 mod legibility_rules;
 #[cfg(test)]
 mod legibility_tests;
@@ -29,6 +32,7 @@ mod organ_drawbars;
 mod organ_logic;
 #[cfg(test)]
 mod organ_master_tests;
+mod organ_model;
 mod organ_preset;
 #[cfg(test)]
 mod organ_rewire_tests;

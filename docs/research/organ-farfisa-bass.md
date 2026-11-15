@@ -330,7 +330,52 @@ Cost. Release build: 3.6 s of CPU per second of audio (about 21.7 k calls per se
 
 Defaults. `--b3-bass-processor on` stays opt-in (D22): the key tables are the `888888888` key-down (the real default program writes smaller window steps), the `G` resync after a key-up is replayed (0.01 dB), and no B3 Bass hardware clip exists (the B3 clip of [organ-presence-gap](organ-presence-gap.md) plays the B3 model, so the `emu_vs_hw.py` bass band delta is 0.00 dB by construction). `render_hash` is unchanged.
 
-Not done (time box): drawbar and percussion dependence of the key tables (only `888000000` and `888888888` were captured), key-up capture and the `G` resync, a closed form of the voice jitter, a real time path, `tools/emu_vs_hw.py` on a Bass clip (none exists), and the whole Farfisa part: `0x122B85` needs branches (`if ne jump 0x122d88`), flags in the interpreter and a model 2 install with weights; the Farfisa gain-table FIRs in `farfisa_keys.rs` stay.
+Not done (time box; the Farfisa part and the real time path are s16 / s17): drawbar and percussion dependence of the key tables (only `888000000` and `888888888` were captured), key-up capture and the `G` resync, a closed form of the voice jitter, `tools/emu_vs_hw.py` on a Bass clip (none exists).
+
+## 16. Farfisa processor `0x122B85` on the firmware machine (2026-11-15)
+
+Tools: `tools/organ_farfisa_fw.py` (`check`, `image`, `golden`, `chords`, `rust`), `tools/sharc_listing_vm.py` / `sharc_listing_ext.py` (jumps, AZ / AN flags), `tools/sharc_listing_rust.py` (jump rows). Rust: `organ/farfisa_fw/` (`prog_proc.rs` GENERATED rows, `fast_proc.rs` straight line code, s17), `organ/farfisa_keys.rs` (the stage). Data: [farfisa-fw-image.csv](data/farfisa-fw-image.csv) (model 2 install, 802 words of the ranges the routine touches, start registers), [farfisa-fw-golden.csv](data/farfisa-fw-golden.csv) (24 calls, chord 60 64 67: output words and the generator ring of each call), [farfisa-fw-golden-flag1.csv](data/farfisa-fw-golden-flag1.csv) (12 calls, second lattice table), [farfisa-chord-goldens.csv](data/farfisa-chord-goldens.csv) (the 12 strongest 8192 point Hann lines of four oracle chords).
+
+```bash
+uv run --with unicorn --with capstone --with numpy python tools/organ_proc_oracle.py   # boot log (no sentinels) + 526 install words = m2.script
+python tools/organ_farfisa_fw.py check  target/PNO/core1_sram.bin f2_k3.script --calls 300 --exe target/release/sharc-chain
+python tools/organ_farfisa_fw.py image  target/PNO/core1_sram.bin m2.script docs/research/data/farfisa-fw-image.csv --exe ...
+python tools/organ_farfisa_fw.py golden target/PNO/core1_sram.bin f2_k3.script docs/research/data/farfisa-fw-golden.csv --calls 24 --exe ...
+python tools/organ_farfisa_fw.py chords target/PNO/core1_sram.bin --image-out docs/research/data/farfisa-chord-goldens.csv \
+    --chord k1:60:f2_k1.script --chord k3:60,64,67:f2_k3.script --chord k48:48,55,64:f2_k48.script --chord k72:72,76,79:f2_k72.script --exe ...
+python tools/organ_farfisa_fw.py rust   target/PNO/core1_sram.bin [--check]
+cargo test -p nord-core --lib farfisa
+```
+
+(`mK.script` = the ARM boot log `target/bulk/pno_core1.script` without the two sentinel words, then the 526 words of the model 2 install; `f2_kN.script` = that plus `organ_proc_oracle.farfisa_keydown(keys)`: weight `1/48` at `DM 0x95FE4 + key + {0, 0x62, 0xD0}` and the three bias words. `organ_fb_pass.py script --model 2` alone gives a silent pass: it replays the key-down items of the B3 sub-engines, which write nothing for model 2.)
+
+What the listing needed beyond s13 / s14: one conditional jump `if ne jump 0x122d88` (picks the lattice table `pm(i11 - 0x1E)` or `pm(i11 - 0x1C)`), one `jump 0x122e0a`, both forward and inside the frame loop, and the ALU flags. The jump condition is the PEx `AZ` of the instruction before it, `f1 = pass f1`, where `f1` is the state word `DM(i3 - 0x14)` = `DM 0xC2C2C` (0 in the image: the first table). The ALU sets `AZ` (result exponent 0 for a float, word 0 for a fixed op) and `AN` (sign) for pass / add / sub / abs and the fixed add / sub / clip / and; the multiplier and the shifter leave them alone (VERIFIED: 300 calls bit exact in both branches; a flag set by a PE that skipped an `if lt` instruction is not updated). The row format gains `INS n cond jcond target` (a jump is an `INS` with no items, the target an absolute row index); the Rust machine continues at that row; hardware loops and jumps do not mix with delay slots (none are used).
+
+| Check | Result | Tag |
+|---|---|---|
+| Python VM against `sharc-chain`, processor only, the oracle's own ring injected per call (`organ_farfisa_fw.py check`): chord 60 64 67, 300 calls, flag 0 and flag 1 (`DM 0xC2C2C` poked), 200 calls each | 0 calls with a differing output word (flag 0 and 1 give different outputs from call 0, so both tables run) | VERIFIED (run) |
+| Rust machine on the same words (`farfisa_fw::tests::decoded_processor_is_bit_exact_against_the_oracle_golden`, `second_lattice_table_is_bit_exact_too`) | 24 and 12 calls, both output words of each call equal | VERIFIED (run) |
+| Generator `0x122A71` | **not** run on the machine: it needs `float` clip, `max`, `fix` and a register loop count (`lcntr=r3`). The ring comes from `FarfisaWheels` at the DSP rate (frame 0 at `0xC2B52`, frame 1 at `0xC2BB4`, slot `12 r + n`), which agrees with the generator to 2e-4 (`farfisa_wheels::golden_rows_match_the_python_model`) | ASSUMED equal for the line check below |
+| **Line criterion** (<= 1 dB, target 0.01 dB) of the stage on the 12 strongest lines of each oracle chord (`farfisa_keys_tests::chord_lines_follow_the_oracle_goldens`, 8192 point Hann peak bin at the DSP rate, 1,200 samples skipped): chord 60 / 60 64 67 / 48 55 64 / 72 76 79 | worst 0.0039 / 0.0006 / 0.0008 / 0.0010 dB (mean 0.0014 / 0.0002 / 0.0003 / 0.0004 dB). The gain-table FIR stage of s9 was within 2.9 dB (EMPIRICAL, +0.2 dB on the chord a peak, 16' rows 2.5 dB low) | VERIFIED (run) |
+
+Key-down state the stage writes: weight `1/48 * velocity gain` (linear: the processor is linear in the weights) at `0x95FE4 + key + {0, 0x62, 0xD0}` for keys 24..108, the three bias words `0xC2D58 / 59 / 5C` (`-0.00958`) while any key is held; key-up writes 0 (a hard step, ASSUMED: the firmware key-up was not captured for model 2), 10,000 calls (0.46 s) of ring-down before the stage idles (ASSUMED, as the Bass), the lattice flag stays 0 (the image value; what sets 1 is not known, so ASSUMED the default). The divider runs only while the stage is active, so an idle divider is frozen. Not modelled: the Farfisa tab selection (key-down writes the same weights for every tab), the vibrato (LFO words `0xC27D6`, `0xC27D7`).
+
+Defaults. `--farfisa-processor on` stays opt-in (D22): there is no Farfisa hardware clip of a program that plays the Farfisa model (the clips of [organ-presence-gap](organ-presence-gap.md) play B3), so `tools/emu_vs_hw.py` has nothing to compare and the on / off delta of the Farfisa band would be by construction. `render_hash` is unchanged.
+
+## 17. Cost of the firmware stages and what was tried (2026-11-15)
+
+Tool: `cargo run --release -p nord-core --example organ_fw_bench` (three keys, 4 s of audio at 48 kHz, wall time / audio time; the machine was shared with other builds, so figures vary by about 30 % between runs).
+
+| Stage | Interpreter, 128 bit float | + 64 bit add / multiply fast path (`b3_bass_fw/fast.rs`) |
+|---|---|---|
+| B3 Bass | 4.3 s CPU per second of audio | 3.3 to 3.6 |
+| Farfisa | 2.4 | 1.8 to 2.0 |
+
+`fast.rs` computes `Fx + Fy` and `Fx * Fy` of two normal operands in 64 bit integers (31 guard bits and a sticky bit are enough); VERIFIED equal to the 128 bit routines on 400,000 random operand pairs including cancellation and every exponent distance (`fast::tests::fast_paths_equal_the_general_routines`), and the oracle goldens still hold. **Not real time** (target 0.3 s): the Bass would need about 12 times, the Farfisa 7 times.
+
+Tried and dropped: straight line Rust (one `Machine::exec` call with literal rows per instruction, `#[inline(always)]` so the compiler folds the row dispatch; loops as `for`, forward jumps as labelled blocks, split into functions at positions no jump crosses). It was bit exact against the interpreter and the goldens (Bass 48 calls, Farfisa both tables, whole machine state equal), but `rustc` in release mode did not finish the crate in 10 minutes of CPU and 1 GB (even with 24 line functions), so it was removed. The next candidates are a code generator that emits the arithmetic itself (locals, no `Pending` collection) or a 64 bit float path (a 40 bit value is exact in `f64`; rounding to 32 significant bits after each operation differs from the hardware in about 1 of 2^21 products) with an error bound.
+
+Not done: the drawbar / percussion dependence of the Bass key tables and the key-up `G` resync (needs new ARM captures of non `888888888` drawbars and percussion; nothing captured in this pass), the Farfisa generator `0x122A71` on the machine (`float` clip, `max`, `fix`, register loop count), `tools/emu_vs_hw.py` (no B3 Bass or Farfisa hardware clip exists; both stages stay opt-in, D22).
 
 ## Implications
 

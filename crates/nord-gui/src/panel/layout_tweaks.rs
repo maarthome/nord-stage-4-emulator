@@ -55,12 +55,23 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("comp.global", 0.0, 8.0),
     ("reverb.on", 0.0, 6.0),
     ("reverb.global", 0.0, 6.0),
-    ("delay.on", 0.0, 6.0),
-    ("delay.global", 0.0, 6.0),
+    ("delay.on", 0.0, 7.0),
+    ("delay.global", 0.0, 7.0),
     // The ARP/POLY/GATE legend printed into the RATE `8` and RANGE `2` numerals.
     ("synth.arp.range", 5.0, 0.0),
     // The Rotary DRIVE knob moves up so its name fits between the numerals and the ORGAN legend.
     ("rotary.drive", 0.0, -4.0),
+    // The ORGAN / STOP MODE names and the SLOW / FAST row need a button pitch of 34 px at the
+    // 7.5 px minimum font; the verified layout rects (PR #375) already give more.
+    // LED spacing (rules `B`, `T`): buttons whose LED moved up 3.3 px need their legends clear.
+    ("organ.zone_leds", 0.0, 1.5),
+    ("organ.vibrato_on.a", 0.0, 2.0),
+    ("organ.vibrato_on.b", 0.0, 2.0),
+    ("piano.soft_release", 1.5, 0.0), // SOFT REL / STR RES LEDs touched the level ladder (rule `D`)
+    ("piano.string_res", 1.5, 0.0),
+    ("piano.ped_noise", 1.5, 0.0),
+    ("organ.on", 0.0, -1.0),
+    ("organ.solo", 0.0, -1.0),
 ];
 
 /// `(id prefix, dx, dy)`: shift of every control whose id starts with the prefix, added to its
@@ -68,6 +79,9 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
 /// (`nord_panel::layout::frames`): the 2000 px photo leaves too little between rows for 7.5 px
 /// legends plus a frame border and its title.
 pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
+    // Rotary Speaker box: its controls sit on the frame's vertical centre line (the frame was
+    // built around the button column and grew to the left; now the column moves 11 px left).
+    ("rotary.", -11.0, 0.0),
     // Synth: the Arpeggiator/Gate row moves up (free space under the header), the LFO / Oscillators
     // / Filter / Amp / Unison row moves down (free space above the section's lower edge).
     ("synth.arp.rate", 0.0, -12.0),

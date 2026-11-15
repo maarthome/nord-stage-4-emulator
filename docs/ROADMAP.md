@@ -116,7 +116,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Layer mode flag resolved (Reverb GLOBAL) and scale cells per engine (organ 1.6, piano 1.0, synth 1.0; `tools/arm_master_level.py modes`), verified chain exposed opt-in (`--organ-level chain`, `--firmware-piano-chain`), Part A clips re-run ([piano-receiver-scale](research/piano-receiver-scale.md) s6, D49)
 - [x] SMP voice gain slew loop (`0x1C06B9`) decoded and bit exact on the oracle (`piano/smp_slew.rs`, `piano/ext40.rs`, `tools/smp_slew_scn.py`), stream edge rules (loop wrap, rate switch, stop, no step clamp) verified by runs ([smp-slew](research/smp-slew.md), D68)
 - [x] SMP voice gain slew wired as the opt-in `piano_slew` (`piano/slew_voice.rs`, `--piano-slew-fw`, GUI Piano group): ARM note-on / note-off messages replayed through the SMP voice-start handler (`tools/arm_smp_slew_init.py`), first 8 updates exact at 4 velocities, extra voice muted, release 44 ms ([smp-slew](research/smp-slew.md) s6, D68); default stays off
-- [ ] Clip comparison of the slew voice (White Grand / Velvet Grand, attack / decay / release) and the default decision (D22); rate word law `F17`, release sample record, `+-1 LSB` multiplier ties
+- [x] Clip comparison of the slew voice (Velvet Grand Part A, DSoundman held chord; level, hold decay, release, attack; `tools/emu_env.py`) and the default decision: chain + slew reads -2.2 / -3.0 dB on Part A, the held chord contradicts by 22 dB, no default flips ([piano-receiver-scale](research/piano-receiver-scale.md) s7, D72); rate word law over velocity and key in `rate_for`
+- [ ] Reconcile the two piano clips (hardware-side gain of a held stroke or per-video recording level), then decide the slew / chain default (D22); rate word law for other sounds, release sample record, `+-1 LSB` multiplier ties
 - [ ] Close the absolute level chain end to end: the ~25 dB piano / organ spread under the common path, White Grand / DSoundman / Audible Genius clips under the chain, source of the start-up volume event; then flip the level defaults (re-baseline `render_hash`, GUI Firmware bar)
 
 ---
@@ -260,7 +261,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Farfisa key stage (`--farfisa-processor on`: key-down weights `1/48` x measured per-sum line gain, chord a peak within 0.2 dB, [organ-farfisa-bass](research/organ-farfisa-bass.md) s9)
 - [x] `--firmware-routing`: an enabled section with no layer on plays layer A in every section, scene I and II (OQ25: VERIFIED by the real program load; the 9 silent programs and the section-scenes beside sounding sections)
 - [x] OQ23: the writer of the MIDI channel to virtual channel map (`0xC01048C0`), the velocity curve selector (constant 6) and the transposed key at the zone test found in the ARM ([keydown-zones](research/keydown-zones.md) s2.3 / s2.4)
-- [ ] Farfisa processor `0x122B85` bit-exact (lattice, phase; branches and flags in the interpreter, model 2 install) and the B3 processor `0x121E2B` (the Bass processor `0x122296` is done, s15): bit-exact models, then Rust (inputs known, OQ18)
+- [x] Farfisa processor `0x122B85` on the firmware machine (jumps and ALU flags, model 2 install with key-down weights; bit exact over 36 oracle calls, stage within 0.004 dB on 48 chord lines, replaces the FIRs; [organ-farfisa-bass](research/organ-farfisa-bass.md) s16, D74)
+- [ ] Real time firmware organ stages (Bass 3.3 to 3.6, Farfisa about 2 s of CPU per second of audio, s17, TD-15), Farfisa generator `0x122A71` on the machine, and the B3 processor `0x121E2B` (the Bass processor `0x122296` is done, s15): bit-exact models, then Rust (inputs known, OQ18)
 - [ ] Percussion path (second engine family `0xC00BF890`, `0xC00BE348`), key-up and velocity source
 
 ### 7b.4 Effects
