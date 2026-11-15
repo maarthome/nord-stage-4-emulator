@@ -49,7 +49,7 @@ c01e17a0  bl 0xc006ca48 ; str sl, [port] ; str r5, [port]       ; message (addre
 | Pitch | decoded and run in section 7: integer exponent tables (closed forms), the result is `float(int) * 2^-23`; the ARM-side law is VERIFIED, its join with the DSP step table is open | VERIFIED (law), open (join) |
 | Loop handling | no ARM-side loop code was found in the sender; the second read position of Stage B (mask words at frame `+0x28`) is the DSP's loop splice or crossfade, role open ([sy-dsp-map](sy-dsp-map.md) section 6). The engine loops with a crossfade (`sample_osc.rs`), unverified | open |
 | Voice record fields written before prepare (`+0x0A`, `+0x0C..+0x0F`, `+0x13`, ...) | not decoded | open |
-| WAVE bank (14 Wavetable layers in 12 factory programs) | no ARM path decoded; the engine plays a synthetic 64-table placeholder. Whether WAVE layers run on SY (kernel record), on SMP (6-tap Q31, [smp-voice](smp-voice.md)) or on the ORG / PNO strips is not known | open |
+| WAVE bank (14 Wavetable layers in 12 factory programs) | **answered in [synth-stage-models-13](synth-stage-models-13.md):** not SY, not SMP: core 2 stage `0x1247B6` (strip type 54, `kOscBank 3`) with 46 firmware-rodata tables; the engine still plays the 64-table placeholder unless `--synth-wave-bank` is given | VERIFIED (stage 320 of 320; registry) |
 
 ## 5. Program sweep coverage (SAMPLE layers)
 
@@ -101,7 +101,7 @@ Consequence: the structural evidence says the chain key is the layer note withou
 | Item | Result | Tag |
 |---|---|---|
 | Loop and second read position | no ARM-side loop code in the sender (unchanged); the voice update writes `+0x0A`, `+0x0C .. +0x0F`, `+0x13` from stack fields it copies out of the event record (`0xC01E0334..0xC01E0378`, `0xC01E09B8..0xC01E0A48`): roles of the stack slots not decoded | open |
-| WAVE (Wavetable) layers | in the harness the oscillator edits (`kMode` 0..3 x `kOscBank` 0..3, `kOscWave` applied) send only PNO core 1 / core 2 and ORG messages (24 or 32 words each, identical for every bank), **no SY or SMP word**; banks 1 and 2 only change the strip type index to 49..53 ([synth-wave-stages](synth-wave-stages.md): stages `0x124269`, `0x12453F`). So the 14 WAVE layers are most likely strip stages on PNO core 2 plus a table stored on the host, not SY / SMP voices; the table read path is not decoded | EMPIRICAL (negative run) |
+| WAVE (Wavetable) layers | in the harness the oscillator edits (`kMode` 0..3 x `kOscBank` 0..3, `kOscWave` applied) send only PNO core 1 / core 2 and ORG messages (24 or 32 words each, identical for every bank), **no SY or SMP word**; banks 1 and 2 only change the strip type index to 49..53 ([synth-wave-stages](synth-wave-stages.md): stages `0x124269`, `0x12453F`). Corrected in [synth-stage-models-13](synth-stage-models-13.md): banks 1 and 2 are the FM banks; `kOscBank 3` is WAVE (type 54, stage `0x1247B6`, core 2, tables in rodata). Not SY / SMP voices, as read here | EMPIRICAL (negative run), answered by batch 13 |
 
 ## 10. SAMPLES layer in the ARM harness: what was tried (2026-11-14, `tools/arm_sample_probe.py`)
 
@@ -125,7 +125,7 @@ Run it: `uv run --with unicorn python tools/arm_sample_probe.py <CODE> <SRAM> --
 
 1. (loader done, section 11) Register the voice groups of the handler instance `0x9062E330` (or run the ring consumer task) so that `0xC01E00AC` reaches the key store `0xC01E0A00`; then the three captures are one note-on: record write `0x9243B + 0x38 k`, pitch message, fields `+0x0A, +0x0C .. +0x0F, +0x13`.
 2. Decode the DSP side of the pair-block write `0x9219E + 0x20` (which SY routine reads it and fills `DM(0x9354A + index)`), then compare the six measured steps with `sinc::pitch_law`.
-3. WAVE bank: unchanged (section 9, negative run on PNO core 2); the strip stages `0x124269 / 0x12453F` and the table read path are not decoded.
+3. WAVE bank: answered in [synth-stage-models-13](synth-stage-models-13.md) (stage `0x1247B6`, 46 rodata tables); `0x124269 / 0x12453F` are the FM banks, not decoded.
 
 ## 11. The sample loader found and driven (2026-11-14, `tools/arm_sample_probe.py`)
 
