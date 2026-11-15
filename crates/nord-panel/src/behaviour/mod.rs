@@ -2,13 +2,14 @@
 //! modes, selector cycling, pot pick-up, Live Mode, and the `PanelHost` seam.
 //! Pure logic with caller-supplied time; no UI toolkit and no audio thread.
 
+pub mod firmware;
 pub mod gesture;
 pub mod host;
 pub mod live;
 pub mod pot;
 pub mod shift;
 
-pub use gesture::{ButtonTracker, Gesture, DOUBLE_TAP_MS, HOLD_MS};
+pub use gesture::{ButtonTracker, Gesture, DOUBLE_TAP_MS, HOLD_MS, HOLD_MS_MORPH};
 pub use host::{dispatch, PanelAction, PanelHost};
 pub use live::{LiveMode, LIVE_SLOTS};
 pub use pot::{PotTracker, SNAP_TOLERANCE};

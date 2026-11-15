@@ -239,7 +239,10 @@ pub struct Fed {
 
 /// Run the button state machine for `id` with the pointer `down` at time `now`.
 pub fn feed(pu: &mut ProgramUi, id: &'static str, down: bool, now: u32) -> Fed {
-    let t = pu.trackers.entry(id).or_default();
+    let t = pu
+        .trackers
+        .entry(id)
+        .or_insert_with(|| nord_panel::behaviour::ButtonTracker::for_control(id));
     let was = t.is_down();
     let mut gesture = None;
     if down && !was {

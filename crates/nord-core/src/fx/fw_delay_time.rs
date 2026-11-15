@@ -5,28 +5,33 @@
 //!
 //! * ARM: the handler (`0xC010C514`) turns the value `v` into a fractional index `k` by a bracket
 //!   search in [`FW_DELAY_TABLE`] and a linear interpolation in `f64`; the delay unit writes
-//!   `c[0x15] = min(61438, floor(K * k))` (a float holding an integer; samples at 48 kHz).
+//!   `c[0x15] = min(61438, floor(K * k))` (a float holding an integer; samples at the DSP frame
+//!   rate `F = 43,402.34375 Hz`, and `k` is a time in **milliseconds**: `K = F / 1000`).
 //! * DSP: routine `0x120AB5` reads `c[0x15]` (and `c[0x16]`, the previous time) as ring buffer
 //!   tap offsets; an input echoes `trunc(c[0x15]) + 2` samples later (oracle, 7 times in
 //!   `tools/fx_delay_time.py oracle`).
 //!
-//! Only the free-running time path is covered; the tempo sync path (`kDlyClkEnable`) goes through
-//! the master clock object and is not decoded.
+//! The free-running path is covered here; the tempo sync law (`kDlyClkEnable`) is in
+//! [`super::fw_delay_sync`].
 
 use super::fw_delay_table::{FW_DELAY_TABLE, FW_DELAY_TABLE_LEN};
 
-/// Delay samples per table index. VERIFIED: `floor(K * k)` reproduces all 264 captured words of
-/// `docs/research/data/fx-delay-time.csv` for `K` in `[43.402338, 43.402340]` (the rest of the
-/// tight interval is the float32 rounding of the firmware constant); the exact firmware literal
-/// is not decoded (the double arithmetic of the delay unit runs through soft-float calls).
+/// Delay samples per millisecond (the table index `k` is a time in ms). VERIFIED: `floor(K * k)`
+/// reproduces all 264 captured words of `docs/research/data/fx-delay-time.csv` for `K` in
+/// `[43.402338, 43.402340]`; this is `F / 1000` with `F = 43,402.34375 Hz` (the DSP frame rate,
+/// `docs/research/dsp-frame-rate.md`) to 2e-7 relative: the ARM scales `k` by `5555.4993`
+/// (`= 128 K`, listener argument `8333249` at `k = 1500`, hook on `0xC01FF70C`) and the unit
+/// shifts it right by 7, so two words (`v = 164, 896`) sit one count below `floor(F / 1000 * k)`.
 pub const SAMPLES_PER_INDEX: f64 = 43.402_339;
-/// Longest time word. VERIFIED: every `v <= 150` captured `61438` (1.28 s at 48 kHz).
+/// Longest time word. VERIFIED: every `v <= 150` captured `61438` (1.416 s at the 43.4 kHz frame
+/// rate; the earlier 48 kHz reading, 1.28 s, was wrong).
 pub const MAX_SAMPLES: f64 = 61_438.0;
 /// Samples from an input to its first echo beyond the tap word. VERIFIED in the `sharc-fx` oracle
 /// (impulse at tap words 2 to 2000, always `trunc(c[0x15]) + 2`).
 pub const ECHO_LATENCY: f32 = 2.0;
-/// Sample rate the time words are counted at (the DSP runs at 48 kHz).
-pub const FW_SAMPLE_RATE: f32 = 48_000.0;
+/// Rate the time words are counted at. VERIFIED: the ARM converts a time in ms with `K = F / 1000`
+/// (hook on the delay unit method `0xC01FF70C`, `docs/research/fx-delay-tempo.md`).
+pub const FW_SAMPLE_RATE: f32 = crate::organ::FIRMWARE_FRAME_RATE_HZ as f32;
 /// Highest 14-bit UI value.
 pub const MAX_RATE: u16 = 16_383;
 
@@ -64,19 +69,23 @@ pub fn delay_index(v: u16) -> f64 {
     i as f64 + f64::from(i32::from(t[i]) - v) / f64::from(i32::from(t[i]) - i32::from(t[i + 1]))
 }
 
-/// The tap word `c[0x15]` for `kDlyRateClkDiv = v`: delay samples at 48 kHz, an integer value.
-pub fn delay_word(v: u16) -> f32 {
-    (SAMPLES_PER_INDEX * delay_index(v))
-        .floor()
-        .min(MAX_SAMPLES) as f32
+/// The tap word `c[0x15]` for a delay time of `ms` milliseconds (free running `k` or the tempo
+/// sync time): `min(61438, floor(K * ms))`, an integer value in frame-rate samples.
+pub fn word_from_ms(ms: f64) -> f32 {
+    (SAMPLES_PER_INDEX * ms).floor().min(MAX_SAMPLES) as f32
 }
 
-/// Samples from an input to its first echo at 48 kHz: `trunc(c[0x15]) + 2`.
+/// The tap word `c[0x15]` for `kDlyRateClkDiv = v`: delay samples at the frame rate, an integer.
+pub fn delay_word(v: u16) -> f32 {
+    word_from_ms(delay_index(v))
+}
+
+/// Samples from an input to its first echo at the frame rate: `trunc(c[0x15]) + 2`.
 pub fn echo_samples(v: u16) -> f32 {
     delay_word(v) + ECHO_LATENCY
 }
 
-/// [`echo_samples`] scaled to another engine sample rate (the law is a time, `samples / 48 kHz`).
+/// [`echo_samples`] scaled to another engine sample rate (the law is a time, `samples / F`).
 pub fn echo_samples_at(v: u16, sample_rate: f32) -> f32 {
     echo_samples(v) * (sample_rate / FW_SAMPLE_RATE)
 }
@@ -148,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn longer_values_are_shorter_delays_and_the_range_is_18_to_1280_ms() {
+    fn longer_values_are_shorter_delays_and_the_range_is_20_to_1416_ms() {
         let mut prev = f32::MAX;
         for v in (0..=MAX_RATE).step_by(7) {
             let w = delay_word(v);
@@ -158,13 +167,14 @@ mod tests {
         assert_eq!(delay_word(0), 61_438.0);
         assert_eq!(delay_word(MAX_RATE), 868.0);
         let ms = |v| echo_samples(v) / FW_SAMPLE_RATE * 1000.0;
-        assert!((ms(0) - 1280.0).abs() < 0.1 && (ms(MAX_RATE) - 18.1).abs() < 0.1);
+        assert!((ms(0) - 1415.6).abs() < 0.1 && (ms(MAX_RATE) - 20.04).abs() < 0.1);
     }
 
     #[test]
     fn echo_adds_the_two_sample_latency_and_scales_with_the_sample_rate() {
         assert_eq!(echo_samples(1024), 46_500.0);
-        assert_eq!(echo_samples_at(1024, 96_000.0), 93_000.0);
-        assert_eq!(echo_samples_at(1024, 48_000.0), echo_samples(1024));
+        let f = FW_SAMPLE_RATE;
+        assert_eq!(echo_samples_at(1024, 2.0 * f), 93_000.0);
+        assert_eq!(echo_samples_at(1024, f), echo_samples(1024));
     }
 }

@@ -21,6 +21,11 @@ pub struct PianoLayerDecoded {
     pub variation: u8,
     pub name_hash: u32,
     pub timbre: PianoTimbre,
+    /// Stored `Edt_Pno_kEq` (`+70`, 3 bits, `0..=7`) behind `timbre` (`None`: built in code).
+    /// For a Clav it is the rocker mask `1` Soft, `2` Treble, `4` Brilliant (manual, Clav settings: Soft,
+    /// Treble, Soft+Treble, Brilliant, Soft+Brilliant, Treble+Brilliant, Soft+Treble+Brilliant), so
+    /// `6` and `7` are Clav settings the engine approximates as `Bright`.
+    pub timbre_raw: Option<u8>,
     pub touch: VelocityTouch,
     pub string_res: bool,
     pub acoustic_level: u8,
@@ -42,6 +47,7 @@ impl Default for PianoLayerDecoded {
             variation: 0,
             name_hash: 0,
             timbre: PianoTimbre::Off,
+            timbre_raw: None,
             touch: VelocityTouch::Medium,
             string_res: true,
             acoustic_level: 2,
@@ -92,6 +98,40 @@ impl PartialEq for PianoPresetDecoded {
     }
 }
 
+/// Engine timbre of a raw `Edt_Pno_kEq`.
+///
+/// ASSUMED: the Clav-only values `6` (Treble+Brilliant) and `7` (Soft+Treble+Brilliant) are
+/// approximated by `Bright`; `5` (Soft+Brilliant on a Clav) by `Dyno2`. The engine has no Clav
+/// rocker EQ. What would confirm it: a hardware recording of a Clav with each setting.
+pub fn timbre_of_raw(raw: u8) -> PianoTimbre {
+    match raw {
+        0 => PianoTimbre::Off,
+        1 => PianoTimbre::Soft,
+        2 => PianoTimbre::Mid,
+        3 | 6 | 7 => PianoTimbre::Bright,
+        4 => PianoTimbre::Dyno1,
+        _ => PianoTimbre::Dyno2,
+    }
+}
+
+/// Raw `Edt_Pno_kEq` to write: the stored one while it still decodes to `timbre`, else the
+/// canonical value of `timbre`.
+pub fn timbre_bits(timbre: PianoTimbre, hint: Option<u8>) -> u32 {
+    if let Some(h) = hint {
+        if h < 8 && timbre_of_raw(h) == timbre {
+            return u32::from(h);
+        }
+    }
+    match timbre {
+        PianoTimbre::Off => 0,
+        PianoTimbre::Soft => 1,
+        PianoTimbre::Mid => 2,
+        PianoTimbre::Bright => 3,
+        PianoTimbre::Dyno1 => 4,
+        PianoTimbre::Dyno2 => 5,
+    }
+}
+
 fn unpack_piano_layer_block(
     r: &mut BitReader,
     base: usize,
@@ -121,14 +161,8 @@ fn unpack_piano_layer_block(
     let unison = r.read_bits(2)? as u8;
     let dyn_comp = r.read_bits(2)? as u8;
     let _reserved_pad = r.read_bool()?;
-    let timbre = match r.read_bits(3)? {
-        0 => PianoTimbre::Off,
-        1 => PianoTimbre::Soft,
-        2 => PianoTimbre::Mid,
-        3 | 6 | 7 => PianoTimbre::Bright, // 6/7 = Clav Treble+Brill / Soft+Treble+Brill
-        4 => PianoTimbre::Dyno1,
-        _ => PianoTimbre::Dyno2,
-    };
+    let timbre_raw = r.read_bits(3)? as u8;
+    let timbre = timbre_of_raw(timbre_raw);
     let touch = match r.read_bits(2)? {
         1 => VelocityTouch::Light,
         2 => VelocityTouch::Heavy,
@@ -145,6 +179,7 @@ fn unpack_piano_layer_block(
         variation,
         name_hash,
         timbre,
+        timbre_raw: Some(timbre_raw),
         touch,
         string_res,
         acoustic_level,
@@ -184,15 +219,7 @@ fn pack_piano_layer_block(
     w.write_bits(u32::from(layer.unison.min(3)), 2)?;
     w.write_bits(u32::from(layer.dyn_comp.min(3)), 2)?;
     w.write_bool(false)?;
-    let timbre_idx = match layer.timbre {
-        PianoTimbre::Off => 0,
-        PianoTimbre::Soft => 1,
-        PianoTimbre::Mid => 2,
-        PianoTimbre::Bright => 3,
-        PianoTimbre::Dyno1 => 4,
-        PianoTimbre::Dyno2 => 5,
-    };
-    w.write_bits(timbre_idx, 3)?;
+    w.write_bits(timbre_bits(layer.timbre, layer.timbre_raw), 3)?;
     let touch_idx = match layer.touch {
         VelocityTouch::Medium => 0,
         VelocityTouch::Light => 1,
@@ -358,5 +385,28 @@ mod tests {
         assert_eq!(dec_hw.layer_a.timbre, PianoTimbre::Soft);
         assert_eq!(dec_hw.layer_a.touch, VelocityTouch::Medium);
         assert_eq!(&dec_hw.pack().unwrap()[13..25], &hw[13..25]);
+    }
+
+    #[test]
+    fn clav_eq_values_six_and_seven_round_trip_and_an_edit_wins() {
+        let mut bytes = PianoPresetDecoded::default().pack().unwrap();
+        for (base, raw) in [(104usize, 6u32), (200, 7)] {
+            let mut w = BitWriter::new(&mut bytes);
+            w.set_bit_pos(base + 70).unwrap();
+            w.write_bits(raw, 3).unwrap();
+        }
+        let dec = PianoPresetDecoded::unpack(&bytes).unwrap();
+        assert_eq!(dec.layer_a.timbre, PianoTimbre::Bright);
+        assert_eq!(dec.layer_a.timbre_raw, Some(6));
+        assert_eq!(dec.layer_b.timbre_raw, Some(7));
+        assert_eq!(dec.pack().unwrap(), bytes);
+
+        let mut edited = dec.clone();
+        edited.layer_a.timbre = PianoTimbre::Soft;
+        let back = PianoPresetDecoded::unpack(&edited.pack().unwrap()).unwrap();
+        assert_eq!(back.layer_a.timbre_raw, Some(1));
+        assert_eq!(back.layer_b.timbre_raw, Some(7));
+        assert_eq!(timbre_bits(PianoTimbre::Bright, None), 3);
+        assert_eq!(timbre_of_raw(5), PianoTimbre::Dyno2);
     }
 }
