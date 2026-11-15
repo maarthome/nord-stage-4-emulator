@@ -4,6 +4,8 @@
 - **Sources (local, never committed):** `target/fw_unpacked/bank0_CODE.bin` and `bank0_SRAM.bin` (OS v1.66, ARM base `0xC0000000`), the `unicorn` ARM harness settled snapshot ([fx-contexts](fx-contexts.md) s2, `tools/arm_edit_capture.py`, `tools/fx_clients.py`), `capstone` listings of the handler, the FX Core 2 flat SRAM image (`tools/ns4_dsp_ldr.py --sram`), ADI `elfdump` listing (`tools/adi_dis.py 0x240000 0x250000`), the `sharc-fx` oracle. Derived data committed: [data/fx-delay-time.csv](data/fx-delay-time.csv) (264 captured `(value, word)` pairs) and the 1501-entry threshold list in `crates/nord-core/src/fx/fw_delay_table.rs`; no firmware bytes beyond that numeric list.
 - **Question:** what does `Edt_Effects_kDlyRateClkDiv` (0..16383) do to the delay, i.e. what is the closed form from the UI value to the delay in samples, and what do the delay routine variants `0x1206B0` / `0x1208AF` / `0x120AB5` / `0x120D15` do with the three words `c[0x15]`, `c[0x16]`, `c[0x19]` the ARM writes?
 
+> **Correction (2026-11-14, [fx-delay-tempo](fx-delay-tempo.md)):** the table index `k` is a time in **milliseconds** and the word counts frames of the DSP rate `F = 43,402.34375 Hz` (`K = F / 1000`), not 48 kHz samples: the range is 20 ms to 1.416 s, and `D_ms = (c15 + 2) / F`. Statements below that say "48 kHz", "1.28 s" or "18.1 ms" use the old reading. Tempo sync (`kDlyClkEnable`) is decoded in the new file.
+
 Tags follow `.agents/rules/provenance-in-code.md`: **VERIFIED** = reproduced by a command below, **EMPIRICAL** = fitted or position only, **ASSUMED** = reading of a purpose.
 
 ## 1. Short answer
