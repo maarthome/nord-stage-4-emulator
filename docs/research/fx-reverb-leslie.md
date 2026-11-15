@@ -315,6 +315,8 @@ The routine is allocation free after `new` (a type change runs `set_type`: clear
 | Comparison with the hardware clips | **not done** in this pass: the Part A programs that use Room, Stage, Hall and Cathedral have to be identified first, then the s10 method; the default stays on the engine FDN (D22, D26) | open |
 
 
+Colour words (`kRvbColor`) and tail times per type: [fx-reverb-colors](fx-reverb-colors.md) (D91).
+
 ## Implications
 
 - The reverb dry / send law is exact, and types 0 and 1 are reproduced word for word in Rust (s10, opt-in `FirmwareFx::reverb`); types 2..11 are ported as well (s14, wrapper `0x120FDB` plus core `0x120D8A`, bit exact on nine types, opt-in); the video comparison and the organ rows are open.

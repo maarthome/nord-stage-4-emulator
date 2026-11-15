@@ -17,6 +17,7 @@ use super::biquad::FW_BUTTERWORTH_FS4_WORDS;
 use super::fw_ext40::{Fp, E40};
 use super::fw_leslie_core::Core;
 use super::fw_map;
+use super::fw_rvbm_colors::COLOR_WORDS;
 use super::fw_rvbm_words as words;
 
 /// One stereo frame.
@@ -38,6 +39,8 @@ const BANKS: [u32; 2] = [0x9437A, 0x9437F];
 pub struct ReverbMulti<F: Fp> {
     core: Core<F>,
     rvb_type: usize,
+    /// `kRvbColor`: 0 Normal, 1 Dark, 2 Bright (0 is the type's own block).
+    color: usize,
     last_ui: f32,
     inp: [Frame; 4],
     out: [Frame; 4],
@@ -61,6 +64,7 @@ impl<F: Fp> ReverbMulti<F> {
         let mut r = Self {
             core,
             rvb_type,
+            color: 0,
             last_ui: f32::NAN,
             inp: [[0.0; 2]; 4],
             out: [[0.0; 2]; 4],
@@ -77,6 +81,7 @@ impl<F: Fp> ReverbMulti<F> {
             Some(k) => {
                 self.rvb_type = rvb_type;
                 self.load(k);
+                self.write_color(k, self.color);
                 true
             }
             None => false,
@@ -109,6 +114,51 @@ impl<F: Fp> ReverbMulti<F> {
         self.out = [[0.0; 2]; 4];
         self.n = 0;
         self.set_amount_words(1.0, 0.0, true);
+    }
+
+    /// Switches `kRvbColor` (0 Normal, 1 Dark, 2 Bright) in place, as the ARM handler does: it
+    /// rewrites the colour words and keeps the delay line and the filter state. Returns `false`
+    /// (and keeps the state) for a value above 2.
+    ///
+    /// VERIFIED (`docs/research/fx-reverb-colors.md`, `tools/fx_rvb_color_capture.py`): the words
+    /// of [`COLOR_WORDS`] are what the colour handler sends beyond the type block.
+    pub fn set_color(&mut self, color: usize) -> bool {
+        if color > 2 {
+            return false;
+        }
+        if let Some(k) = words::TYPES.iter().position(|&t| t == self.rvb_type) {
+            self.write_color(k, color);
+        }
+        true
+    }
+
+    /// Restores the type's own words at every address any colour touches, then writes the delta
+    /// of `color` (none for 0).
+    fn write_color(&mut self, k: usize, color: usize) {
+        for delta in COLOR_WORDS[k] {
+            for &(a, _) in delta {
+                if let Some(&(_, w)) = words::TYPE_WORDS[k].iter().find(|(b, _)| *b == a) {
+                    self.core.wr(a, w);
+                }
+            }
+        }
+        if color > 0 {
+            for &(a, w) in COLOR_WORDS[k][color - 1] {
+                self.core.wr(a, w);
+            }
+        }
+        self.color = color;
+    }
+
+    /// The `kRvbColor` this instance runs.
+    pub fn color(&self) -> usize {
+        self.color
+    }
+
+    /// The word at DM address `addr` (tests).
+    #[cfg(test)]
+    pub(super) fn word(&self, addr: u32) -> u32 {
+        self.core.rd(addr)
     }
 
     /// The `kRvbType` this instance runs.
