@@ -111,7 +111,9 @@ impl SynthLayer {
                     let semis = 2.0f64.powf((f64::from(note) - f64::from(zone.root_key)) / 12.0);
                     (f64::from(zone.sample_rate) / f64::from(self.sample_rate)) * semis
                 };
-                (Some(z_idx), step)
+                // The layer octave shifts the sounding pitch, not the zone choice: one octave
+                // doubles the step (as `freq` above does for the oscillators).
+                (Some(z_idx), step * f64::from(oct).exp2())
             } else {
                 (None, 1.0)
             }

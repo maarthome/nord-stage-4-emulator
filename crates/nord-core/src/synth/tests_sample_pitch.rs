@@ -46,3 +46,32 @@ fn firmware_step_equals_the_step_join_of_the_zone() {
     let want = crate::sinc::step_join::output_step(48, 60, 48_000.0, 48_000.0);
     assert!((step(true, 48) - want).abs() < 1e-12);
 }
+
+fn step_at_octave(fw: bool, note: u8, octave: i8) -> f64 {
+    let pcm: Vec<f32> = (0..512).map(|i| (i as f32 / 32.0).sin()).collect();
+    let sound = Arc::new(SynthSampleSound::new_synthetic(
+        "Octave", 60, &pcm, 48_000.0, None, 16,
+    ));
+    let mut s = SynthLayer::new(48_000.0);
+    s.osc_mode = SynthOscMode::Sample;
+    s.sample_pitch_fw = fw;
+    s.octave_offset = octave;
+    s.load_sample(Some(sound));
+    s.note_on(note, 100);
+    s.voices[0].sample_step
+}
+
+#[test]
+fn octave_offset_scales_the_sample_step_by_two_per_octave() {
+    for fw in [false, true] {
+        let base = step_at_octave(fw, 60, 0);
+        for oct in [-3i8, -1, 1, 2, 3] {
+            let got = step_at_octave(fw, 60, oct);
+            let want = base * 2.0f64.powi(i32::from(oct));
+            assert!(
+                (got / want - 1.0).abs() < 1e-9,
+                "fw {fw} oct {oct}: {got} vs {want}"
+            );
+        }
+    }
+}
