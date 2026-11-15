@@ -11,10 +11,10 @@ schedule (5 % warm-up, ``div_factor`` 20, ``final_div_factor`` 2, as upstream); 
 are clipped at the 0.8 quantile of the last 100 norms, as upstream's adaptive clipping.
 ASSUMED: AdamW instead of upstream's AdaBelief (same state size), weight decay 1e-4 as upstream.
 
-Every ``--eval-every`` steps: validation NLL on fixed held-out segments, onset F1 / velocity MAE
-on ``--eval-items`` held-out items (``synth_eval``), and a checkpoint (``step_N``, ``last`` and
-``best`` by validation NLL). Output, never committed: adapter folders, ``log.csv``,
-``evals.jsonl``.
+Every ``--nll-every`` steps: validation NLL on fixed held-out segments. Every ``--eval-every``
+steps: NLL plus onset F1 / velocity MAE on ``--eval-items`` held-out items (``synth_eval``) and
+the checkpoints ``last`` and ``best`` (by NLL); every ``--snapshot-every`` steps also ``step_N``.
+Output, never committed: adapter folders, ``log.csv``, ``evals.jsonl``.
 """
 
 from __future__ import annotations
@@ -88,8 +88,33 @@ def val_scores(model: Any, root: Path, entries: list, device: str, tol: float) -
     return synth_eval.score(entries, est, tol)["all"]
 
 
-def run_eval(step: int, model: Any, peft_model: Any, ctx: dict, best: float) -> float:
-    """Validation NLL + onset F1 / velocity MAE, checkpoint ``last`` and ``best``; returns best."""
+def log_record(ctx: dict, rec: dict) -> None:
+    with (ctx["out"] / "evals.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(rec) + chr(10))
+    print("EVAL", rec, flush=True)
+
+
+def quick_nll(step: int, model: Any, ctx: dict) -> None:
+    """Validation NLL only (about 15 s), logged as ``kind: nll``."""
+    v = validation_nll(model, ctx["val_segments"], ctx["device"])
+    log_record(
+        ctx,
+        {
+            "step": step,
+            "kind": "nll",
+            "val_nll": round(v, 2),
+            "seconds": round(time.time() - ctx["t0"]),
+        },
+    )
+
+
+def run_eval(
+    step: int, model: Any, peft_model: Any, ctx: dict, best: float, snapshot: bool = False
+) -> float:
+    """Validation NLL + onset F1 / velocity MAE, checkpoint ``last`` and ``best``; returns best.
+
+    ``snapshot`` also keeps the adapter as ``step_N`` (4 MB), so any step can be scored later.
+    """
     v = validation_nll(model, ctx["val_segments"], ctx["device"])
     scores = val_scores(model, ctx["root"], ctx["f1_entries"], ctx["device"], 0.05)
     rec = {
@@ -98,10 +123,10 @@ def run_eval(step: int, model: Any, peft_model: Any, ctx: dict, best: float) -> 
         "seconds": round(time.time() - ctx["t0"]),
         **scores,
     }
-    with (ctx["out"] / "evals.jsonl").open("a", encoding="utf-8") as f:
-        f.write(json.dumps(rec) + chr(10))
-    print("EVAL", rec, flush=True)
+    log_record(ctx, {**rec, "kind": "full"})
     synth_adapter.save_adapter(peft_model, ctx["out"] / "last")
+    if snapshot:
+        synth_adapter.save_adapter(peft_model, ctx["out"] / f"step_{step}")
     if v < best:
         synth_adapter.save_adapter(peft_model, ctx["out"] / "best")
         return v
@@ -136,7 +161,8 @@ def train(args: argparse.Namespace) -> None:
     )
     history: collections.deque = collections.deque(maxlen=GRAD_WINDOW)
     best, t0 = float("inf"), time.time()
-    log = csv.writer((out / "log.csv").open("w", newline=""))
+    logf = (out / "log.csv").open("w", newline="")
+    log = csv.writer(logf)
     log.writerow(["step", "loss", "grad_norm", "clip", "lr", "seconds"])
     ctx = {
         "root": root,
@@ -171,9 +197,14 @@ def train(args: argparse.Namespace) -> None:
                 round(time.time() - t0),
             ]
             log.writerow(row)
+            logf.flush()
             print(*row, flush=True)
+        if step % args.nll_every == 0 and step % args.eval_every != 0:
+            quick_nll(step, model, ctx)
+            model.train()
         if step % args.eval_every == 0 or step == args.steps:
-            best = run_eval(step, model, peft_model, ctx, best)
+            snap = step % args.snapshot_every == 0 or step == args.steps
+            best = run_eval(step, model, peft_model, ctx, best, snap)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -189,8 +220,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--bf16", action="store_true")
     p.add_argument("--log-every", type=int, default=20)
-    p.add_argument("--eval-every", type=int, default=1000)
-    p.add_argument("--eval-items", type=int, default=24, help="Held-out items for F1 per eval.")
+    p.add_argument("--nll-every", type=int, default=250, help="Quick validation NLL.")
+    p.add_argument("--eval-every", type=int, default=500, help="Full eval with F1 / velocity.")
+    p.add_argument("--snapshot-every", type=int, default=500, help="Keep step_N adapters.")
+    p.add_argument("--eval-items", type=int, default=12, help="Held-out items for F1 per eval.")
     p.add_argument("--val-segments", type=int, default=24, help="Held-out segments for NLL.")
     p.add_argument("--out", required=True, help="Run folder (outside the repo).")
     return p
