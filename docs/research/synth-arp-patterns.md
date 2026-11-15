@@ -95,7 +95,7 @@ Where the words are consumed: the Glue update method copies Dur, Pan and Acc int
 
 Examples (type per slot, slot 0 first): `EE` = `0303`; `QE` = `0223` (one note of 3 slots = 12 eighths); `Qq.` = one note of 4 slots; `EEq.` = `03030232` (the `q` lasts two slots and ends at the rest). The first step of a cycle never continues a tie, so a `Q` on the last step lasts a full step. The per-step engine rule (`E` 4, `q` 8, `Q` 8 + tie, `.` 0) reproduces every note of the 29 presets and of all 1360 gate strings of 2 to 5 steps (0 differences, `check_gates`).
 
-Limits: that **one slot is half a step in time** is structural (two slots per step in the compiler; the manual, p.36, says the arpeggiator plays 1/8 notes and one step is one 1/8 note), but the player that walks the records was not located (the ARM scan for readers of the Dur registry slot found only the Glue, the compiler input copy and the OLED grid drawer `0xC012CB2C`), so the absolute duration is EMPIRICAL. Presets 10, 12, 22 and 24 (`q`) become full-step notes instead of the earlier 6/8.
+Limits: that **one slot is half a step in time** is structural (two slots per step in the compiler; the manual, p.36, says the arpeggiator plays 1/8 notes and one step is one 1/8 note). The scan for readers of the Dur registry slot did not find the player; the fifth pass found it as a clock listener (section 9) and VERIFIED the duration: one record per grid point, `15 / D` s, a step `30 / D` s. The gate fractions of `E` are refined there too (9.5). Presets 10, 12, 22 and 24 (`q`) become full-step notes instead of the earlier 6/8.
 
 ### 7.3 Importing factory patterns (done)
 
@@ -112,7 +112,7 @@ Limits: that **one slot is half a step in time** is structural (two slots per st
 
 ## 8. Fourth pass: record player search, rate clock, mode bits, tie editor
 
-### 8.1 The record player was not found (negative result)
+### 8.1 The record player was not found (negative result; superseded by section 9)
 
 What the records are and who reads them, from the ARM code image (`tools/arm_xref.py`, a capstone scan of every function for the field offsets of the arp object, `tools/arm_emu.py`):
 
@@ -122,7 +122,7 @@ What the records are and who reads them, from the ARM code image (`tools/arm_xre
 | After the compiler, the pattern object only **publishes two numbers to its listeners**: the tick count `[obj+0xB4]` and an "has accent" flag `[obj+0xB8] != 0`, through the generic node update (`0xC023C984`, inlined in `0xC0242070`, listener list at `[obj+0xC0]`). The records themselves are handed to nobody. | VERIFIED by reading `0xC0242070..0xC02421C4` and `0xC02424DC`. |
 | No other function reads the record array: the literal-pool scan finds the table `0xC054CBD0` only in the Glue constructor / update code (`0xC0119940`, `0xC011A520`, `0xC011C090`, `0xC011C510`, `0xC011DF68`, `0xC01232F0`); the OLED grid drawer reads the Dur / Pan registry words, not the records. | EMPIRICAL (negative: a function that reaches the object through a pointer copied elsewhere would not show up in a literal scan). |
 
-So the slot duration in time still has no firmware proof. Two readings stay open, see 8.3 and the open question in `docs/OPEN-QUESTIONS.md`. Tags in code are unchanged (`EMPIRICAL`, "one slot = half a step").
+The literal scan missed the player because it is not reached through the table: it is the **listener method of the pattern object** (vtable `0xC02B79FC`, word 1), called by the clock `0xC01E6368` (section 9).
 
 ### 8.2 The rate clock (VERIFIED, replayed)
 
@@ -142,7 +142,7 @@ The step grid of the free-running arp (`0xC02BBF98`: count 8, entry k = `k * 2**
 
 - The engine (`SynthLayer::step_seconds`) plays one step per `15 / D` s (16th note at `arp_rate_bpm`). That equals the firmware grid spacing **if a grid point is a step**.
 - The manual (p.36) says the rate is shown as quarter-note BPM and that "the arpeggiator plays 1/8 notes in the given tempo, which also equals one step of a pattern" (`30 / D` s). That equals **two grid points**, i.e. a grid point would be a slot (half a step): then "one slot = half a step" is right and the engine's step is twice as fast as the hardware.
-- Without the consumer of the grid (the player) the two readings cannot be told apart. Needed: the player, or a hardware recording of the arp at a known dial value. Tracked in bean ns4-rwhu together with the rate mapping: the program decoder maps the stored 7-bit rate linearly to 30..300 BPM (`ASSUMED`) while the firmware table is exponential (16..1200 BPM displayed); the table itself is now VERIFIED by the replay.
+- Settled in section 9: a grid point is a record (half a step), a step is `30 / D` s, so the engine's `15 / D` s step was twice as fast. The program decoder's linear 30..300 BPM mapping is replaced by the firmware table (bean ns4-rwhu).
 
 ### 8.4 Arp mode bits of a program (decoded)
 
@@ -165,7 +165,66 @@ Status: offsets EMPIRICAL (ns4decode map ids; the run switch and rate positions 
 
 ### 8.6 Implications and follow-ups
 
-- Slot / step duration: still `EMPIRICAL`; the manual and the firmware grid pull in different directions (ns4-rwhu).
-- Rate mapping of programs: replace the linear 30..300 BPM by `R[v] / 2` (ns4-rwhu).
+- Slot / step duration: VERIFIED in section 9 (ns4-rwhu).
+- Rate mapping of programs: done in section 9 (`R[v] / 2`).
 - OLED: show dial value 0 after a gate edit and the tie mark (ns4-xo2v, other lane).
 - Find the player: the grid consumer is a listener of the clock objects (`0xC054CC10`); the listener registration is not in the literal scan, so look for the code that appends to the clock's list at `[clock+4]`.
+
+## 9. Fifth pass: the record player, the time base, the step length (VERIFIED)
+
+Checked: 2026-11-14. Question: is one grid point of the arp clock one pattern step or half of it (OQ28, bean ns4-rwhu)? Sources: `bank0_CODE.bin` (OS v1.66) with `capstone` and the `unicorn` ARM harness (`tools/arm_emu.py`, the booted steady state of `tools/arm_keydown.py`), `tools/ns4_arp_gate.py`, `tools/ns4_arp_player.py`, the manual p.36.
+
+### 9.1 The player is `0xC023B3EC`
+
+The clock `0xC01E6368` calls vtable word 1 of every listener with its 64-bit phase (`r2` low, `r3` high). The six pattern objects (`0xC054CBD0`, vtable `0xC02B79FC`) are the listeners of the six clocks (`0xC054CC10`): word 1 of that vtable is `0xC023B3EC` (read from the booted state: `clock[+8]` = pattern object for layers 0, 2, 4). The method, in order:
+
+| Step | Code | Rule |
+|---|---|---|
+| phase | `0xC023B3F8..0xC023B41C` | `p = low & 0x1FFFFF`: one pattern cycle is `2**21` = 4 firmware beats of `2**19` |
+| grid hit | `0xC023B424..0xC023B488` | grid point `g[k]` (grid at `[obj+0x10]`: count word, then 64-bit entries) is hit when `g[k] <= p < g[k] + 0x10000` and it was crossed since the previous call (`[obj+0x14]`) |
+| record | `0xC023B49C..0xC023B4CC` | `slot = ((tick >> 21) * count + k) % [obj+0x24]`, `[obj+0x24]` = steps * 2: **one record per grid point** |
+| event | `0xC023B56C..0xC023B6E8` | type 0 / 1 note-on, 3 note-off, 2 nothing; the event is `{on = 1 / off = 0, index, tick count, pan, has-accent byte, accent == 1}` with `index = quotient * ticks + record.tick`; type 1 (and record 0 while a note sounds, flag `[obj+0xBC]`) first sends a pseudo event whose first word is the object pointer, which the listeners read as a note-off |
+| listeners | `0xC011C6BC` -> `0xC0123A18` (Glue), `0xC0114CD0` | a note-on starts the held notes of the arp engine at once (`0xC01E81DC`, voice events), anything else releases them (`0xC01E80B8`); `[ev+0xC]` is the pan index 0 / 1 / 2 (table `0xC02BBC30` is the identity) and an accented note passes `0x38` as accent argument (its use downstream is not traced; the engine's +32 velocity boost stays `ASSUMED`) |
+
+`python tools/ns4_arp_player.py CODE gates` runs the real compiler and the real player (a fake listener stub, two cycles, the phase advanced in steps of `2**15`) for six gate strings (`EE`, `qq`, `EqQ.`, `Q.E.`, `EEEEEEEE`, `QQE.q`) on both grids: the event kinds equal the model "one record per grid point" and every call phase lies inside the hit window of its point (0 differences). `tools/tests/test_ns4_arp_player.py` pins the model without the firmware.
+
+### 9.2 End to end on the booted firmware
+
+The same check with the whole firmware instead of the isolated player: layer 0 of the booted state (`arm_keydown` snapshot), the Rate dial set through the edit dispatcher (`Edt_Syn_kArpRateClkDiv` `0x113`), RUN on (`0x10D`), two keys down; the instants of the arp engine's note-on (`0xC01E81DC`) counted in time-base units (`0x80001DC0`, 24 per millisecond):
+
+| Dial | `R` | `D = R / 2` | Pattern | Note-on spacing measured | `30 / D` |
+|---|---|---|---|---|---|
+| 127 | 2400 | 1200 | off | 24.7, 25.3, 24.7, 25.3 ms | 25.0 ms |
+| 127 | 2400 | 1200 | on, `EqQE.E` | 24.7 ms between the first two `E` steps | 25.0 ms |
+| 105 | 900 | 450 | off | 66.67, 66.67 ms (1600 units) | 66.67 ms |
+
+The player is called every 16 timer units, so the instants carry 0.67 ms of jitter at dial 127; at dial 105 the grid is hit on the unit. With Pattern off the Glue compiles all-zero words (`0xC011DF58..0xC011DF80`: `Edt_Syn_kArpPtnEnable` `0x10C` = 0 takes this path, `0x10C` = 1 `0xC011E610`), so every step is an `E`, and the cadence equals the patterned one.
+
+### 9.3 The time base is 24 kHz
+
+The timer set-up `0xC005019C(dev, 1, 0x5DC0)` (call sites `0xC00699C0`, `0xC0069B54`) divides `0x016E3600` = 24,000,000 by its third argument, so `0x5DC0` = 24000 is a **frequency**: the 64-bit tick `0x80001DC0` (`+1` per interrupt, handler `0x800007D8`) runs at 24 kHz, not 1 kHz (the earlier reading took `24 MHz / 0x5DC0` as a 1 ms period). With 24000 units per second the rate formula of section 8.2 gives `R = 240`, 0.25 s per firmware beat, for the registry default dial 54, i.e. the 120 BPM the panel shows by default; a 1 kHz tick would make it 2880 BPM. The timer input clock itself (24 MHz) is the firmware's own constant, not checked against the board. OQ22 still lists the ARM tick as 1 kHz assumed; the DSP frame arithmetic that used it should be rechecked (not done here).
+
+### 9.4 Answer
+
+A grid point is a **record**, a **step is two records**, so at the displayed tempo `D` (= `R / 2`) a step lasts **`30 / D` s: a 1/8 note**, as the manual (p.36) says. The engine's `15 / D` s was twice as fast. The grids of Master Clock sync (`0xC02BC3A8`, nine densities of 4, 6, 8, 12, 16, 24, 32, 48 and 64 points per cycle) give steps of 2, 4/3, 1, 2/3, 1/2, 1/3, 1/4, 1/6 and 1/8 beats: exactly the engine's `ClockDivision` list from Half to ThirtySecond, so the synced engine already agreed with the hardware.
+
+### 9.5 Gate lengths, swing, tie, pan, accent
+
+| Item | Result | Status |
+|---|---|---|
+| `q` | note-on, hold: one full step | VERIFIED (player replay, both grids) |
+| `Q` | tie: the next step does not trigger (same tick), the note ends with the next step's gate | VERIFIED (compiler, section 7.2; the player plays the records unchanged) |
+| `E` | note-off at the second grid point of its step. On the straight free-run grid that is 1/2 step; the pattern objects are built with the flag `[obj+0xC]` = 1 (constructor `0xC00FD7B8`), which selects the grid `0xC02BC1A0` (0, 2/3 beat, 1 beat, 5/3 beat, ...), so **`E` lasts 2/3 of a step** in the firmware's boot state. Nothing in the ARM image writes the flag again (literal scan of the pattern table, a write hook over the edit ids `0x10B..0x114` found no store) | VERIFIED in the replayed boot state; the meaning of the flag (swing, triplet) ASSUMED |
+| Pattern off | all-zero words = every step `E` (9.2): the plain arpeggio is staccato (2/3 of a step) | VERIFIED as above |
+| `type 1` record | retrigger: pseudo note-off, then note-on | VERIFIED |
+| Pan | per record, 0 = C, 1 = L, 2 = R (`CLR.`), passed with every note-on | VERIFIED (event layout) |
+| Accent | per record `acc == 1`, passed as `0x38` when the pattern has any accent, else 0 | VERIFIED the argument, EMPIRICAL its meaning (a velocity boost; the engine's +32 stays `ASSUMED`) |
+
+The engine keeps `E` = 4/8 of a step and holds the plain arpeggio note to the next step. Moving them to 2/3 and staccato is OQ32 (bean ns4-hwe8), a separate change: the gate lengths are stored as eighths (GUI dial 0..8, host parameters, pattern words).
+
+### 9.6 Implications and follow-ups
+
+- Engine: `SynthLayer::step_seconds` = `30 / D` (`synth/arp_rate.rs`); the stored Rate is the firmware table (`D = R / 2`, 16..1200 BPM, `SynthLayerDecoded::arp_rate_raw`); tests derive from the replay (D61).
+- A saved plugin state or program now steps at half the old speed for the same BPM, as the hardware does; the GUI / host knob keeps its 20..300 BPM span (a wider host range is left to a later change).
+- OQ32: gate fraction of `E` and of the plain arpeggio.
+- OQ22: the ARM tick looks like 24 kHz (9.3).
