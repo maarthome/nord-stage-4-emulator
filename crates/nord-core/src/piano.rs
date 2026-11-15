@@ -26,6 +26,7 @@ pub mod velocity_curve;
 pub mod velocity_level;
 
 mod extra_voice;
+mod slew_voice;
 #[cfg(test)]
 mod interp_switch;
 
@@ -796,6 +797,8 @@ struct PianoVoice {
     sample_step_detune: f64,
     /// Extra first voice of a firmware note-on (released with its note, no release sample of its own).
     extra: bool,
+    /// Firmware gain slew of the voice (`piano/slew_voice.rs`); inactive unless `firmware_slew`.
+    slew: slew_voice::SlewVoice,
 }
 
 /// 2-pole modal harmonic string resonator for Advanced String Resonance.
@@ -867,6 +870,12 @@ pub struct PianoLayer {
     /// (`piano/extra_voice.rs`). SFZ/WAV and synthetic sounds have no model and always use the
     /// legacy touch curve; set `false` to force the legacy path for `.npno` sounds too.
     pub firmware_velocity_level: bool,
+    /// Voice gain follows the SMP slew of the real firmware (`piano/slew_voice.rs`,
+    /// `docs/research/smp-slew.md`): hold gain `0.21875 * level` with the velocity dependent
+    /// slow decay and the firmware release, instead of the engine envelope (80 / 180 ms release),
+    /// and the first (extra) voice, which the SMP mutes, is not started. Only `.npno` sounds with a
+    /// level model; needs `firmware_velocity_level`. Default `false` (D22, OQ20).
+    pub firmware_slew: bool,
     /// Scale the sample path by the SMP bus convention (`downstream::FIRMWARE_SAMPLE_SCALE`,
     /// 0.5) instead of the legacy 0.55. Default `false`: the Q31 receiver convention is ASSUMED.
     pub firmware_bus_scale: bool,
@@ -961,6 +970,7 @@ impl PianoLayer {
             soft_pedal_down: false,
             sound,
             firmware_velocity_level: true,
+            firmware_slew: false,
             firmware_bus_scale: false,
             receiver_chain_scale: false,
             firmware_layer_law: false,
@@ -1123,6 +1133,7 @@ impl PianoLayer {
             sample_step,
             sample_step_detune: sample_step * detune_ratio,
             extra: false,
+            slew: slew_voice::SlewVoice::default(),
         };
     }
 
@@ -1165,6 +1176,7 @@ impl PianoLayer {
             sample_step: step,
             sample_step_detune: step,
             extra: false,
+            slew: slew_voice::SlewVoice::default(),
         };
     }
 
@@ -1494,11 +1506,28 @@ impl PianoLayer {
                 self.receiver_chain_scale,
             );
             let voice_gain = v.amp * v.env * v.gain * sample_scale;
-            sum_l += sig_l * voice_gain;
-            sum_r += sig_r * voice_gain;
+            let (slew_l, slew_r) = if v.slew.is_active() {
+                if v.releasing {
+                    v.slew.release();
+                }
+                v.slew.tick()
+            } else {
+                (1.0, 1.0)
+            };
+            sum_l += sig_l * voice_gain * slew_l;
+            sum_r += sig_r * voice_gain * slew_r;
 
             // The decay factors depend on the sample rate only; each is evaluated at most once
             // per frame, on first use (the same `exp` of the same argument, so bit-identical).
+            if v.slew.is_active() {
+                // The slew is the whole envelope; the voice ends when the release has faded out.
+                if v.slew.is_done() {
+                    v.active = false;
+                    v.releasing = false;
+                    v.sostenuto_held = false;
+                }
+                continue;
+            }
             if v.is_release_sample {
                 v.env *= *dec_release_sample.get_or_insert_with(|| (-inv_fs / 1.15).exp());
             } else if v.releasing {

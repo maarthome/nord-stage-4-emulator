@@ -8,6 +8,7 @@
 //! nothing here allocates. Release treats them as one note (`extra` voices do not trigger a
 //! second release sample).
 
+use super::slew_voice::{rate_for_velocity, SlewVoice};
 use super::{PianoLayer, PianoVoice};
 
 /// Amplitude cap of one voice (the engine's `0..=1` voice amplitude).
@@ -58,6 +59,10 @@ impl PianoLayer {
         let cents = f32::from(sound.tuning_cents[usize::from(effective_note.min(127))]);
         let last = voices.len() - 1;
         for (position, voice) in voices.iter().enumerate() {
+            // The SMP mutes every voice but the last (ramp `F-2 = F3 = 0`): not started.
+            if self.firmware_slew && position != last {
+                continue;
+            }
             let Some(stroke) = sound.strokes.get(usize::from(voice.record)) else {
                 continue;
             };
@@ -72,13 +77,25 @@ impl PianoLayer {
                 3 => level.powf(0.55),
                 _ => level,
             };
+            let slew = if self.firmware_slew && level > 0.0 {
+                SlewVoice::start(level, rate_for_velocity(velocity), self.sample_rate)
+            } else {
+                SlewVoice::default()
+            };
+            // The slew already carries the level; keep only the dynamics and soft pedal ratio.
+            let amp = if slew.is_active() {
+                compressed / level * una_corda_scale
+            } else {
+                compressed * una_corda_scale
+            };
             let slot = self.allocate_voice_slot(None);
             self.voices[slot] = PianoVoice {
                 active: true,
                 note,
                 last_velocity: velocity,
                 freq,
-                amp: (compressed * una_corda_scale).clamp(0.0, AMP_MAX),
+                slew,
+                amp: amp.clamp(0.0, AMP_MAX),
                 env: 1.0,
                 gain: gain.clamp(0.0, 1.0),
                 stroke_idx: Some(usize::from(voice.record)),
@@ -244,5 +261,39 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn slew_starts_only_the_main_voice_with_the_firmware_gain_and_releases() {
+        let image = two_voice_image();
+        let model = NpnoLevel::parse(&image).unwrap();
+        let level = model.voices(60, 64).last().unwrap().amplitude_q23 as f32 / 8_388_608.0;
+        let mut layer = layer_with(&image, 3, true);
+        layer.firmware_slew = true;
+        layer.note_on(60, 64);
+        let active: Vec<_> = layer.voices.iter().filter(|v| v.active).collect();
+        assert_eq!(active.len(), 1, "the muted extra voice is not started");
+        assert!(active[0].slew.is_active() && !active[0].extra);
+        assert!((active[0].amp - 1.0).abs() < 1e-6, "level lives in the slew");
+        let (gl, gr) = layer.voices.iter().find(|v| v.active).unwrap().slew.clone().tick();
+        assert!((gl - 0.21875 * level).abs() < 2e-3 * level && gl == gr, "{gl} vs {level}");
+        for _ in 0..4800 {
+            layer.render_frame();
+        }
+        layer.note_off(60);
+        for _ in 0..48_000 * 3 {
+            layer.render_frame();
+        }
+        assert!(layer.voices.iter().all(|v| !v.active), "release fades out");
+    }
+
+    #[test]
+    fn slew_off_keeps_two_voices_and_no_slew() {
+        let image = two_voice_image();
+        let mut layer = layer_with(&image, 3, true);
+        layer.note_on(60, 64);
+        let active: Vec<_> = layer.voices.iter().filter(|v| v.active).collect();
+        assert_eq!(active.len(), 2);
+        assert!(active.iter().all(|v| !v.slew.is_active()));
     }
 }
