@@ -15,6 +15,7 @@
 //! A higher-resolution photo or a tape measure on the instrument would
 //! confirm or replace them.
 
+pub mod dump;
 mod effects;
 mod estimated;
 mod frames;

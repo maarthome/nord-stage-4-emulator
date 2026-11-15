@@ -24,23 +24,35 @@ const Q31: f32 = 2_147_483_648.0;
 /// Below this gain (about -120 dB of full scale) a released voice is done.
 const DONE_GAIN: f32 = 1e-6;
 
-/// Rate word (`F17`) the ARM sends for a velocity.
-/// EMPIRICAL: `1 - d / 2^24` with `d` interpolated linearly over the four Velvet Grand note-on
-/// words at note 60 (velocity 20 / 64 / 100 / 127 give `d = 374 / 314 / 190 / 154`, clamped
-/// outside). Other sounds differ by a factor of 0.5 to 2 (Bright Grand, Wurlitzer 1, Amber Upright
-/// at velocity 90: `d = 224 / 444 / 284`, Velvet interpolates to 221); the real law is not decoded
-/// (ASSUMED: one table for every sound; what would confirm it: the ARM rate writer).
-pub(super) fn rate_for_velocity(velocity: u8) -> f32 {
-    const POINTS: [(f32, f32); 4] = [(20.0, 374.0), (64.0, 314.0), (100.0, 190.0), (127.0, 154.0)];
-    let v = f32::from(velocity).clamp(POINTS[0].0, POINTS[3].0);
-    let mut d = POINTS[3].1;
-    for w in POINTS.windows(2) {
-        let ((x0, y0), (x1, y1)) = (w[0], w[1]);
-        if v <= x1 {
-            d = y0 + (y1 - y0) * (v - x0) / (x1 - x0);
-            break;
-        }
+/// Rate word (`F17`) the ARM sends for a velocity and a key.
+/// EMPIRICAL: `1 - d / 2^24` with `d` interpolated bilinearly (velocity, then key) over the Velvet
+/// Grand note-on words of the firmware run (`tools/arm_smp_slew_init.py rates`; velocity 20 / 64 /
+/// 88 / 100 / 127 at notes 36 / 60 / 84, each point an exact ARM word: note 60 gives `d = 374 / 314 /
+/// 226 / 190 / 154`). Between and outside the points the law is interpolated and clamped; Bright
+/// Grand (velocity 20, 64, 100 at notes 36 / 60 / 84) differs from Velvet by at most 15 %, Wurlitzer
+/// 1 and Amber Upright (velocity 90, note 60) by a factor 1.5 to 2 (ASSUMED: one table for every
+/// sound; what would confirm it: the ARM rate writer, `docs/research/smp-slew.md` s6).
+pub(super) fn rate_for(velocity: u8, note: u8) -> f32 {
+    const VEL: [f32; 5] = [20.0, 64.0, 88.0, 100.0, 127.0];
+    const KEY: [f32; 3] = [36.0, 60.0, 84.0];
+    // d[velocity][key]
+    const D: [[f32; 3]; 5] = [
+        [238.0, 374.0, 790.0],
+        [188.0, 314.0, 572.0],
+        [162.0, 226.0, 404.0],
+        [140.0, 190.0, 404.0],
+        [118.0, 154.0, 316.0],
+    ];
+    fn locate(axis: &[f32], x: f32) -> (usize, f32) {
+        let x = x.clamp(axis[0], axis[axis.len() - 1]);
+        let i = axis.windows(2).position(|w| x <= w[1]).unwrap_or(0);
+        (i, (x - axis[i]) / (axis[i + 1] - axis[i]))
     }
+    let (vi, vt) = locate(&VEL, f32::from(velocity));
+    let (ki, kt) = locate(&KEY, f32::from(note));
+    let lerp = |a: f32, b: f32, t: f32| a + (b - a) * t;
+    let at = |row: usize| lerp(D[row][ki], D[row][ki + 1], kt);
+    let d = lerp(at(vi), at(vi + 1), vt);
     1.0 - d.round() / 16_777_216.0
 }
 
@@ -183,14 +195,24 @@ mod tests {
             (100, 0x3F7F_FF42),
             (127, 0x3F7F_FF66),
         ] {
-            assert_eq!(rate_for_velocity(vel).to_bits(), word, "velocity {vel}");
+            assert_eq!(rate_for(vel, 60).to_bits(), word, "velocity {vel}");
         }
-        assert_eq!(
-            rate_for_velocity(1).to_bits(),
-            rate_for_velocity(20).to_bits()
-        );
-        let mid = rate_for_velocity(80);
-        assert!(mid > rate_for_velocity(64) && mid < rate_for_velocity(100));
+        assert_eq!(rate_for(1, 60).to_bits(), rate_for(20, 60).to_bits());
+        assert_eq!(rate_for(100, 0).to_bits(), rate_for(100, 36).to_bits());
+        let mid = rate_for(80, 60);
+        assert!(mid > rate_for(64, 60) && mid < rate_for(100, 60));
+    }
+
+    /// Firmware run (`tools/arm_smp_slew_init.py rates`, Velvet Grand, velocity 88): the rate word
+    /// `d = 1 - word` of notes 36 / 60 / 84 is 162 / 226 / 404, notes between them are interpolated
+    /// (the run gave 190 at note 48 and 298 at note 72: the interpolation lands within 8 %).
+    #[test]
+    fn rate_follows_the_key_and_is_faster_for_high_notes() {
+        let d = |v: u8, n: u8| ((1.0 - rate_for(v, n)) * 16_777_216.0).round();
+        assert_eq!((d(88, 36), d(88, 60), d(88, 84)), (162.0, 226.0, 404.0));
+        assert!((d(88, 48) - 190.0).abs() / 190.0 < 0.08, "{}", d(88, 48));
+        assert!((d(88, 72) - 298.0).abs() / 298.0 < 0.08, "{}", d(88, 72));
+        assert!(d(100, 84) > d(100, 60) && d(100, 60) > d(100, 36));
     }
 
     #[test]

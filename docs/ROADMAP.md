@@ -116,7 +116,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Layer mode flag resolved (Reverb GLOBAL) and scale cells per engine (organ 1.6, piano 1.0, synth 1.0; `tools/arm_master_level.py modes`), verified chain exposed opt-in (`--organ-level chain`, `--firmware-piano-chain`), Part A clips re-run ([piano-receiver-scale](research/piano-receiver-scale.md) s6, D49)
 - [x] SMP voice gain slew loop (`0x1C06B9`) decoded and bit exact on the oracle (`piano/smp_slew.rs`, `piano/ext40.rs`, `tools/smp_slew_scn.py`), stream edge rules (loop wrap, rate switch, stop, no step clamp) verified by runs ([smp-slew](research/smp-slew.md), D68)
 - [x] SMP voice gain slew wired as the opt-in `piano_slew` (`piano/slew_voice.rs`, `--piano-slew-fw`, GUI Piano group): ARM note-on / note-off messages replayed through the SMP voice-start handler (`tools/arm_smp_slew_init.py`), first 8 updates exact at 4 velocities, extra voice muted, release 44 ms ([smp-slew](research/smp-slew.md) s6, D68); default stays off
-- [ ] Clip comparison of the slew voice (White Grand / Velvet Grand, attack / decay / release) and the default decision (D22); rate word law `F17`, release sample record, `+-1 LSB` multiplier ties
+- [x] Clip comparison of the slew voice (Velvet Grand Part A, DSoundman held chord; level, hold decay, release, attack; `tools/emu_env.py`) and the default decision: chain + slew reads -2.2 / -3.0 dB on Part A, the held chord contradicts by 22 dB, no default flips ([piano-receiver-scale](research/piano-receiver-scale.md) s7, D72); rate word law over velocity and key in `rate_for`
+- [ ] Reconcile the two piano clips (hardware-side gain of a held stroke or per-video recording level), then decide the slew / chain default (D22); rate word law for other sounds, release sample record, `+-1 LSB` multiplier ties
 - [ ] Close the absolute level chain end to end: the ~25 dB piano / organ spread under the common path, White Grand / DSoundman / Audible Genius clips under the chain, source of the start-up volume event; then flip the level defaults (re-baseline `render_hash`, GUI Firmware bar)
 
 ---
@@ -292,6 +293,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] SMP 6-tap Q31 kernel (bit exact, default), SMP voice loop bit-exact on real `.npno` pages ([smp-voice](research/smp-voice.md), [smp-kernel-fit](research/smp-kernel-fit.md))
 - [x] Pitch law helper `piano/step_q32.rs` (1,201-entry cents table VERIFIED against ARM `0xC02A6168`) and level law helper `piano/level_q23.rs` (61-entry table VERIFIED against ARM `0xC02A1A08`) ([piano-dsp-path](research/piano-dsp-path.md) s7)
 - [ ] Wire the pitch (cents) and level (60 steps per octave) laws into `PianoLayer`
+- [x] Felt Upright against the Part A video (`piano_felt` segment, [piano-felt-upright-soft](research/piano-felt-upright-soft.md)); on-screen keybed velocity 88 (D76)
 - [ ] Piano velocity law: the call-frame word `X` of the level procedure is not traced (needs the key-down capture); the engine keeps `VelocityTouch` power laws until then
 - [ ] Edge handling of the sample stream and the step limit of one decoded sample per frame
 

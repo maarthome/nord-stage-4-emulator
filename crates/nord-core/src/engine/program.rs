@@ -124,7 +124,7 @@ impl Stage4Engine {
         // Global
         self.master_clock.bpm = prog.global.tempo_bpm;
         self.master_bus.compressor_amount = (prog.global.master_compressor / 10.0).clamp(0.0, 1.0);
-        for fx in &mut self.fx_chains {
+        for fx in self.fx_chains.iter_mut() {
             fx.snap_delay_time(self.master_clock.bpm);
         }
 

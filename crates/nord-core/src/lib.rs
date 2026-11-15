@@ -4,6 +4,7 @@ pub mod cbin;
 pub mod engine;
 pub mod firmware;
 pub mod fx;
+pub mod heap_array;
 pub mod library_ops;
 pub mod midi;
 pub mod morph;

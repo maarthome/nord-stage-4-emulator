@@ -8,7 +8,7 @@
 //! nothing here allocates. Release treats them as one note (`extra` voices do not trigger a
 //! second release sample).
 
-use super::slew_voice::{rate_for_velocity, SlewVoice};
+use super::slew_voice::{rate_for, SlewVoice};
 use super::{PianoLayer, PianoVoice};
 
 /// Amplitude cap of one voice (the engine's `0..=1` voice amplitude).
@@ -78,7 +78,7 @@ impl PianoLayer {
                 _ => level,
             };
             let slew = if self.firmware_slew && level > 0.0 {
-                SlewVoice::start(level, rate_for_velocity(velocity), self.sample_rate)
+                SlewVoice::start(level, rate_for(velocity, effective_note), self.sample_rate)
             } else {
                 SlewVoice::default()
             };

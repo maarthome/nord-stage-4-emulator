@@ -11,13 +11,13 @@ use super::*;
 /// the notes currently held.
 #[derive(Debug, Clone)]
 pub struct ProgramState {
-    pub(super) organ_a: OrganLayer,
-    pub(super) organ_b: OrganLayer,
-    pub(super) piano_a: PianoLayer,
-    pub(super) piano_b: PianoLayer,
-    pub(super) synth_a: SynthLayer,
-    pub(super) synth_b: SynthLayer,
-    pub(super) synth_c: SynthLayer,
+    pub(super) organ_a: Box<OrganLayer>,
+    pub(super) organ_b: Box<OrganLayer>,
+    pub(super) piano_a: Box<PianoLayer>,
+    pub(super) piano_b: Box<PianoLayer>,
+    pub(super) synth_a: Box<SynthLayer>,
+    pub(super) synth_b: Box<SynthLayer>,
+    pub(super) synth_c: Box<SynthLayer>,
     pub(super) fx: [FxParams; 7],
     pub(super) layer_levels: [MorphParameter; 7],
     pub(super) synth_cutoff_morph: [MorphParameter; 3],
@@ -30,9 +30,9 @@ pub struct ProgramState {
     pub(super) fx_sharing: FxSharing,
 }
 
-/// Clones `layer` with every note released (all 128 note-offs on the copy).
-pub(super) fn released<L: Clone>(layer: &L, off: impl Fn(&mut L, u8)) -> L {
-    let mut copy = layer.clone();
+/// Clones `layer` onto the heap with every note released (all 128 note-offs on the copy).
+pub(super) fn released<L: Clone>(layer: &L, off: impl Fn(&mut L, u8)) -> Box<L> {
+    let mut copy = Box::new(layer.clone());
     for note in 0..128u8 {
         off(&mut copy, note);
     }
@@ -86,7 +86,7 @@ impl Stage4Engine {
         self.fx_sharing = s.fx_sharing;
         self.master_clock.bpm = s.tempo_bpm;
         self.master_bus.compressor_amount = s.compressor_amount;
-        for fx in &mut self.fx_chains {
+        for fx in self.fx_chains.iter_mut() {
             fx.snap_delay_time(self.master_clock.bpm);
         }
     }
