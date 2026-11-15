@@ -137,3 +137,22 @@ D22 bar not met (sub, mid and brilliance outside 3 dB, RMS 4.9 dB under, one cli
 1. Model the DMA ring that fills `0xB0078 / 0xB008C` and the 8-pass restart; then re-run the table (the sub excess and the brilliance should move with it).
 2. The value of `DM(0xB00EE)` (chain dry weight) and a run of `sharc-pass` with a Leslie record in the organ chain, to confirm the mix reading of s6.1.
 3. A hardware clip of a lone held B3 note, rotary slow and fast: fixes the speed history and removes the note-set uncertainty.
+
+## 8. Review follow-up (2026-11-15): drive words, caveat, open probes
+
+**Correction to s1.** The linearity probe ran with the drive words `0xB2F2D` / `0xB2F31` at the boot value 0. With them poked at call 0 (seeded noise, 300 calls, last-call output words `0xB6000..3`, same method as s2):
+
+| Drive | out(0.3) / out(0.03) | out(1.0) / out(0.3) | level at input 0.03 vs drive 0 |
+|---|---|---|---|
+| 0 | 9.91, 9.84, 9.76, 9.92 | 3.24, 3.17, 3.10, 3.25 | 0 dB |
+| 0.5 | 7.84, 6.72, 3.84, 8.26 | 1.60, 1.41, -0.40, 1.75 | +4 dB |
+| 1.0 | 2.08, 1.66, -0.84, 2.32 | 1.02, 1.01, 1.21, 1.04 | +9.6 dB |
+
+(ideal 10.0 and 3.33.) So the processor **is** a saturating stage once a drive word is non-zero: small-signal gain up by about 10 dB and hard compression above input 0.3 (output ratio 1.02 for x3.3 input). VERIFIED (run, `/tmp` driver on `fx_leslie_run.py` arguments). The "no saturation, drive changes nothing" rows of s1 hold only for drive 0, the boot value. What sets the words at run time (`Edt_OrgCom_kEffectsLeslieDrv` is `v / 127` into the row, [fx-leslie](fx-leslie.md) s4) and the B3 program value are the open link; the engine's firmware path uses the word for word port with the boot words, so a program with Leslie drive > 0 would differ. No code change here.
+
+**Caveat (point 4 of the review).** Transkun is a piano model on a sustained organ clip: the +1.5 .. +5.4 dB presence and the sub excess are partly note-set artefacts (s6.2 shows 525 notes are 96 keys); durations are an upper bound.
+
+## 9. Not run (follow-ups)
+
+1. Boot-installed chain elements `[0x1250CF, 0x125371, 0x121BBA]` at `0xB0476` and `[0x1250CF, 0x1235AA, 0x1236F8]` at `0xB047E` through `sharc-pass` with noise / sine at 0.03, 0.3, 1.0 (`0x125371` nonlinear resonant filter; `0x1235AA` shares the 0.9908 smoothing constant of row `0xB2F39`). Needs a pass harness with the organ lane wired: not cheap here.
+2. Sweep `kEffectsLeslieDrv` 0..127 from the settled snapshot (`tools/arm_edit_capture.py`) and log which DSP words it writes; then re-run s8 with the real word values and the B3 program value.
