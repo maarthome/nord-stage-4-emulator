@@ -194,6 +194,10 @@ The firmware filter engine also runs `FwFilterType::Lp2` (stage `0x1253BD`, one 
 
 ---
 
+### 4.4 WAVE bank (`synth/fw_wave.rs`, `synth/fw_wave_tables.rs`, `SynthLayer::wave_bank`, opt-in)
+
+A `Wavetable` layer is the firmware stage `0x1247B6` (strip type 54, `kOscBank 3`) on PNO / ORG core 2, not an SY / SMP voice ([synth-stage-models-13](../research/synth-stage-models-13.md), D62). It is the two-oscillator sibling of SUPER 2..4: pitch `f = clip(p, 0.5)`, increments `D_j = fix(f ho_j 2^{31})`, positions `ph + 2 D_j` and `ph + 4 D_j`, band row from `2 f`, six-word buffer, 512-phase 8-tap FIR, mix `(cross_a + own_a) + own_b + cross_b`, scale `P[16] g`, hold `a a b b`, three biquads (VERIFIED: 320 of 320 oracle words, `tools/synth_stage_wave.py`). The 46 tables are firmware rodata (registry `0xC02FD4B0`, census `docs/research/data/synth-wave-registry.csv`): the port reads them from the user's own OS image at run time (`--synth-wave-tables PATH`, never committed, D22) and lays the bands out as the ARM boot copy does (VERIFIED for table 0: 1970 of 1970 samples, 512 of 512 row words). `--synth-wave-bank` alone plays the boot table (wave id 0) for every wave. ASSUMED: ratios `1, 1`, weights `0.5, 0.5` (P block open), sign extension of the int16 samples, the last band's guard trim for tables 1..45. Default off: the 64-table placeholder stays the default (OQ22).
+
 ## 5. Envelopes, LFO & Arpeggiator
 
 - **Amp Envelope (ADR / ADSR):** Exponential Attack (`ENV_ATTACK_MS_TABLE`: $0.5\text{ ms}..45\text{ s}$), Decay/Sustain (`ENV_DECAY_MS_TABLE`: $3.0\text{ ms}..43\text{ s}$, index `127 = Hold/Inf`), and Release (`ENV_RELEASE_MS_TABLE`: $3.0\text{ ms}..45\text{ s}$) with velocity sensitivity switch.
