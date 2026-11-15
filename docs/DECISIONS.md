@@ -85,6 +85,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D81](#d81-the-multi--super-stages-read-the-verified-arm-words-by-default-super-wave-0-on-lp24-has-its-own-cutoff-factor) | 2026-11-15 | The MULTI / SUPER stages read the verified ARM words by default; SUPER wave 0 on LP24 has its own cutoff factor | accepted |
 | [D84](#d84-the-mouse-velocity-of-the-on-screen-keybed-follows-the-hit-position-along-the-key) | 2026-11-15 | The mouse velocity of the on-screen keybed follows the hit position along the key | proposed |
 | [D85](#d85-organ-level-k--28-stays-empirical-the-image-audit-finds-no-1--021875-lane-word-the-d72-lead-is-pinned-by-a-test) | 2026-11-15 | Organ level `K = 2.8` stays EMPIRICAL: the image audit finds no `1 / 0.21875` lane word; the D72 lead is pinned by a test | accepted |
+| [D105](#d105-the-sy-pitch-entry-writer-is-still-not-found-the-table-index-is-the-voice-number-sample-pitch-fw-stays-opt-in) | 2026-11-15 | The SY pitch entry writer is still not found; the table index is the voice number; `--sample-pitch fw` stays opt-in | accepted |
 | [D104](#d104-synth-velocity-follows-the-org-core-2-laws-behind---firmware-synth-velocity-the-default-stays-off) | 2026-11-15 | Synth velocity follows the ORG core 2 laws behind `--firmware-synth-velocity`; the default stays off | proposed |
 | [D101](#d101-the-fx-default-words-are-derived-per-block-from-the-arm-edit-table-and-applied-opt-in-the-engine-defaults-stay) | 2026-11-15 | The FX default words are derived per block from the ARM edit table and applied opt-in; the engine defaults stay | accepted |
 | [D102](#d102-the-synth-cutoff-with-a-sounding-voice-is-exponential-no-type-factor-is-replaced-yet) | 2026-11-15 | The synth cutoff with a sounding voice is exponential (12 knobs per octave, key tracking in semitones); no type factor is replaced yet | accepted |
@@ -1073,6 +1074,16 @@ Add `tanh` preamp or gain before exists, be fitted flip `--leslie firmware` D22)
 - **Why:** Single-bit flips of a factory program in the firmware recall reach the matching setters with the matching values for every field (table in [piano-touch-curves](research/piano-touch-curves.md) s4); the layout equals `ns4decode`; 12 real factory blocks are pinned in unit tests that fail on the old decoder; `ns4 preset-check` stays at 0 problems (544 presets, 384 programs) and `to_file_like` keeps unedited bits. The default does not flip (D22): the Light and Heavy curves have no hardware clip, and the sounds without a level model apply only the curve difference to the Medium response. Which bit of `kAcoustic` is soft release stays EMPIRICAL.
 - **Alternatives:** Realign only the Touch bits (rejected: the neighbouring fields read the same shifted bits and would collide); flip `firmware_touch` now (rejected, see Why).
 - **Impact:** A loaded program now carries its Touch, string resonance, soft release and pedal noise from the real bits (`PianoLayer::touch`, `string_resonance_enabled`, `soft_release`, `pedal_noise_enabled`); with the switch off only the sounds without a level model feel the Touch (ASSUMED powers). `render_hash` and the goldens use synthetic setups and do not change.
+
+### D105. The SY pitch entry writer is still not found; the table index is the voice number; `--sample-pitch fw` stays opt-in
+
+- **Status:** accepted 2026-11-15
+- **Decided by:** Yuri Olive (follow-up task from the parent session; evidence [sy-pitch-entry-writer](research/sy-pitch-entry-writer.md) section 6)
+- **Context:** D89 left the writer of the 16-bit entry `e` at `DM(0x9354A + index)` open and listed follow-up checks (pool of slot objects, allocator, SHARC ISRs, other members).
+- **Decision:** (1) The pool object index is allocated at note-on by `0xC01E31C8` (stores at `0xC01E3AB8..`), and equals the voice number; the pool stride is `0x20`. (2) No ARM message, literal, packer or SY / SMP store writes the window in any run here (cold boot, load, bind, note on / off, pitch bend, mod wheel, sustain). (3) The SHARC ISR sweep is blocked by the unmodelled ring refill; the replay of the ARM initialisation script is the next step and is recorded, not done. (4) `--sample-pitch fw` stays opt-in; no engine change, no golden or `render_hash` moves.
+- **Why:** D22 needs the written value verified end to end; no written value exists to port. The step model stays within 0.5 % of the semitone law.
+- **Alternatives:** Invent the missing refill path in the harness (rejected: would restate the model); flip the model (rejected, as D65 / D89).
+- **Impact:** Docs only (research section 6, OQ22, TD-08, ROADMAP, audio-remaining row 2); no code, test or render change.
 
 ### D104. Synth velocity follows the ORG core 2 laws behind `--firmware-synth-velocity`; the default stays off
 
