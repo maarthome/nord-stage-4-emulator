@@ -9,44 +9,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import synth_fm_oracle as fo  # noqa: E402
-import synth_fm_tables as ft  # noqa: E402
+import synth_fm_golden as gold  # noqa: E402
 import synth_stage_fm as sf  # noqa: E402
 import synth_wave_model as m  # noqa: E402
 
-DATA = Path(__file__).resolve().parents[2] / "docs" / "research" / "data"
-# The nine image words the stages read outside the pokes (local ORG core 2 image, measured with
-# the listing interpreter): P block pointer, curve base, FIX scale, constants.
-IMAGE_WORDS = {
-    0xC0B72: 0xC2356,
-    0xC15A8: 0xE0926,
-    0xC1DF8: 0x1F,
-    0xC1DF9: 0x1F,
-    0xC1F76: 0xC169A,
-    0xC1F79: 0x3C23D70A,
-    0xC1F7A: 0x3C23D70A,
-    0xC1F91: 0x3E4CCCCC,
-    0xC1F92: 0x3E4CCCCC,
-}
-
 
 def memory(seed: int, table_type: int) -> dict[int, int]:
-    table = ft.load_csv(DATA / "synth-fm-tables.csv")[table_type]
-    pre = fo.random_pokes(seed, table, fo.wo_words(table_type))
-    return {**IMAGE_WORDS, **pre}
+    return gold.memory(seed, table_type)
 
 
 def run(stage, seed: int, table_type: int) -> dict[int, int]:
-    mem = memory(seed, table_type)
-    out: dict[int, int] = {}
-
-    def write(a: int, w: int) -> None:
-        mem[a] = w
-        out[a] = w
-
-    r = fo.REGS
-    stage(lambda a: mem.get(a, 0), write, fo.I0_BASE, r[1], r[2], r[3])
-    return out
+    return gold.run(stage, seed, table_type)[1]
 
 
 def digest(words: dict[int, int]) -> str:
@@ -109,3 +82,10 @@ def test_stage_fingerprints_lock_the_verified_models() -> None:
 
 GOLD1 = "f6fce486bbd0a8c3"
 GOLD2 = "bcd355e625f8da65"
+
+
+def test_rust_golden_file_is_in_sync_with_the_generator(capsys) -> None:
+    gold.main()
+    text = capsys.readouterr().out.replace("\r\n", "\n")
+    path = Path(__file__).resolve().parents[2] / "crates/nord-core/src/synth/tests_fw_fm_golden.rs"
+    assert path.read_text(encoding="utf-8").replace("\r\n", "\n") == text

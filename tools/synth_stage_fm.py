@@ -4,7 +4,8 @@
 Listings `0x2484D2..0x248A7E` and `0x248A7E..0x248F6C` (ORG core 2,
 [fm-banks-1-2](../docs/research/fm-banks-1-2.md)).
 The models run on a word memory (`rd(addr)`, `wr(addr, word)`) with the DAG base registers of the
-stage and are checked word for word against the listing interpreter (`tools/sharc_text_vm.py`, itself
+stage and are checked word for word against the listing interpreter
+(`tools/sharc_text_vm.py`, itself
 bit exact against `sharc-org`): `tools/tests/test_synth_stage_fm.py`.
 
 SIMD: a data load or store moves `addr + lane`; a lane pair is `(PEx, PEy)`. The stage ends with a
