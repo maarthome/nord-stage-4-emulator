@@ -79,6 +79,13 @@ pub fn layer_level_gain(level: f32) -> f32 {
 /// the clip, which also holds the synth). The spread is +-1.6 dB around 3.0 (K = 3: B3 -2.1, Vox -0.1, Pipe +3.5 dB); the clips fix neither
 /// the performance velocity nor the pedal. 2.8 centres the RMS errors of the three clips (B3
 /// -2.7, Vox -0.7, Pipe +2.9 dB). Open: the FX chain input trim of the organ unit.
+///
+/// Audit (D84, `organ-output-law.md` s8): `K` equals `ORGAN_CHAIN_GAIN_WORD * 0.3732 / 0.21875`
+/// within 0.23 dB (test `k_is_within_a_quarter_db_of_the_chain_over_the_slew_gain`), but no word
+/// of the ORG, PNO or FX images or of the ARM code scales the organ lanes by `1 / 0.21875`
+/// (byte scan of the DSP images: `0x3E600000` and `0x40333333` occur only at non-word-aligned
+/// offsets, i.e. inside packed code or data, never as a stored float), so the equality stays a
+/// lead, not a derivation.
 pub const ORGAN_BUS_GAIN: f32 = 2.8;
 
 /// `+14.39 dB`: the Legacy drawbar bus `0.08` against the ARM weight unit `0.01526` (`L = 1`),
@@ -320,6 +327,15 @@ mod tests {
             (ratio - 0.5).abs() < 0.02,
             "0.25 / 0.5 expected, got {ratio}"
         );
+    }
+
+    #[test]
+    fn k_is_within_a_quarter_db_of_the_chain_over_the_slew_gain() {
+        // 0.21875 = 0.25 * 0.875, the SMP slew hold gain of the piano (smp-slew.md s6)
+        let lead = organ_chain_bus_gain() / 0.218_75;
+        let db = 20.0 * (ORGAN_BUS_GAIN / lead).log10();
+        assert!((lead - 2.729).abs() < 0.01, "{lead}");
+        assert!(db.abs() < 0.25, "{db} dB");
     }
 
     #[test]

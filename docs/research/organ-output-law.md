@@ -81,6 +81,21 @@ Before this change the same B3 default read RMS +14.9 dB with the rotary drive 8
 
 `render_hash` (the golden dump uses a B3 layer on the Legacy path and no program) is unchanged: `c7f06ca7ff6f8663be3bf2af772c6d6854f23593808ff3382d1895cf5f5ddbd5`. Real renders change: every program with the rotary on (drive 0.1 times) and every Pipe layer (level).
 
+## 6. Audit of the images for the `K` lead (D84, 2026-11-15)
+
+- **Checked:** 2026-11-15. **Sources (local):** `target/DSP/dsp_image_{0_FX,1_PNO,2_ORG}.bin`, `target/fw_unpacked/bank0_CODE.bin`.
+- **Question:** is there a stored word that scales the organ lanes by `1 / 0.21875` (or equals `K = 2.8`), which would turn the D72 lead `K = 1.6 * 0.3732 / 0.21875 = 2.729` (0.23 dB from 2.8) into a derivation?
+
+| Check | Result | Tag |
+|---|---|---|
+| Big-endian float `0x40333333` (2.8) in the FX / PNO / ORG images | ORG at `0x18B97`, `0x3C783`, PNO at `0x3A8D7`; all at byte offsets `= 3 mod 4`, so not a stored word (packed data stream); none in FX | VERIFIED (byte scan) |
+| `0x3E600000` (0.21875) | FX `0x97E`, `0x15376`, PNO `0x826` (all `= 2 mod 4`), none in ORG: instruction-stream matches, not data words | VERIFIED (byte scan) |
+| `0x40924925` (1 / 0.21875) | no match in any DSP image or the ARM code | VERIFIED (byte scan) |
+| ARM code: 3 big-endian matches of `0x3E600000` (and 14 of `0x40333333`) in `bank0_CODE.bin` | not decoded (literal pools / immediates of unrelated code are expected); a hit that feeds an organ sender would need the xref (`tools/fw_xref.py`) | open |
+| Common path | unchanged: organ and piano share `0.3732` per float (s1 of [piano-receiver-scale](piano-receiver-scale.md)); organ words 1.6, piano 1.0 | VERIFIED (run, earlier) |
+
+**Result.** No firmware word was found that makes the organ-to-piano ratio `1.6 * 0.3732 / 0.21875`. The equality stays a numerical lead; `K` stays EMPIRICAL, the opt-in `chain` law stays 13 dB under the clips, and no default changes (D22 not met: nothing new is verified end to end). The remaining ways to close it are a clip with a known recording level and both instruments, or a decode of the ARM xrefs above (follow-up 5).
+
 ## Implications
 
 - One structure, three words: `output = K * swell_word(pedal) * level^2 * bank`. Two factors are firmware, one scale is not.
@@ -93,3 +108,4 @@ Before this change the same B3 default read RMS +14.9 dB with the rotary drive 8
 2. Run `0xC011AB8C` with the real per-layer controller to confirm the squared law dynamically; capture a second swell value (`v = 64`) to check `520 v^2`.
 3. Remove or rescale the Legacy key click on the firmware B3 path; re-run the B3 presence.
 4. A Pipe-only and a pedal-position-known clip to replace the three-clip centring of `K`.
+5. Decode the three ARM-code literals `0x3E600000` and the 14 of `0x40333333` in `bank0_CODE.bin` (`tools/fw_xref.py`) to rule an organ lane or bus gain in or out (D84).
