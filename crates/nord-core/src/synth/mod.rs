@@ -80,8 +80,8 @@ pub use fw_filter::{
     FW_CUTOFF_MAX_FRACTION, FW_CUTOFF_MIN_HZ,
 };
 pub use fw_fm::{
-    fm_stage1, fm_stage2, fm_table, FmInputs, FmState, FmTable, FmVoice,
-    TABLE_WORDS as FM_TABLE_WORDS,
+    fm_stage1, fm_stage2, fm_table, fm_table_for, partial_words as fm_partial_words, FmInputs,
+    FmState, FmTable, FmVoice, TABLE_WORDS as FM_TABLE_WORDS,
 };
 pub use fw_knob_laws::{
     cutoff_word_for_knob, rate_index_for_knob, rate_word_for_knob, unit_word_for_knob, EnvKnobs,

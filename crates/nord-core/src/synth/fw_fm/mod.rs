@@ -15,6 +15,7 @@
 //!
 //! Real-time safe: fixed arrays only, no allocation in [`fm_stage1`] / [`fm_stage2`].
 
+pub mod generator;
 #[cfg(test)]
 mod golden;
 mod stage1;
@@ -22,6 +23,7 @@ mod stage2;
 pub mod table;
 pub mod voice;
 
+pub use generator::{fm_table_for, partial_words};
 pub use stage1::fm_stage1;
 pub use stage2::fm_stage2;
 pub use table::{fm_table, FmTable, TABLE_WORDS};
