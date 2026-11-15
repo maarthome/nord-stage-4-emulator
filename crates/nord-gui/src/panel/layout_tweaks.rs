@@ -36,8 +36,6 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     // The MON/COPY name sat 1.5 px under the LAYER INIT legend of SECT EDIT.
     ("program.mon_copy", 0.0, 3.0),
     ("program.paste", 0.0, 3.0),
-    // The piano ZONE -/+ legends (now clear of the OCT bezels) printed into the zone LEDs.
-    ("piano.zone_leds", 0.0, 3.0),
     // The SPLIT name touched the L M H LED strip above its button.
     ("split.leds", 0.0, -2.0),
     // The Mod 1 numerals need the room the LAYER FX button legend used (round 4).
@@ -104,13 +102,6 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     ("synth.unison", 0.0, 16.0),
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
     ("organ.perc_", 3.0, 0.0),
-    // Piano: the PIANO SELECT box (type names, dial) moves under the KB TOUCH / DYN COMP LEDs; the
-    // TIMBRE button moves left so its two name columns end before the box.
-    ("piano.type", 0.0, 52.0),
-    ("piano.select_dial", 0.0, 45.0),
-    ("piano.info", 0.0, 52.0),
-    ("piano.list", 0.0, 45.0),
-    ("piano.timbre", -9.0, 0.0),
     // Layer Effects: Mod 1 clear of the header's ON button legend, Mod 2 and Amp Sim/EQ down,
     // Comp and Reverb down under the Delay box.
     ("mod1.", 0.0, 6.0),
@@ -131,9 +122,6 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     ("split.", 0.0, -14.0),
     ("mst_clk.", 0.0, -14.0),
     ("transp.", 0.0, -14.0),
-    // Piano: KB TOUCH and DYN COMP clear of the PED NOISE legend above their titles.
-    ("piano.kb_touch", 0.0, 20.0),
-    ("piano.dyn_comp", 0.0, 20.0),
     ("comp.", 0.0, 14.0),
     ("reverb.dry_wet", 6.0, 0.0),
     ("reverb.", 8.0, 14.0),
