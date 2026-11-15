@@ -26,6 +26,7 @@ mod fw_env_rates;
 mod fw_filter;
 mod fw_filter_table_d;
 mod fw_filter_tables;
+mod fw_fm;
 mod fw_knob_laws;
 mod fw_ladder;
 mod fw_ladder_tables;
@@ -76,6 +77,9 @@ pub use fw_filter::{
     cutoff_to_r, FilterEngine, FwCoefs, FwFilter, FwFilterType, TablePos, FW_CLIP_LIMIT,
     FW_CUTOFF_MAX_FRACTION, FW_CUTOFF_MIN_HZ,
 };
+pub use fw_fm::{
+    fm_stage1, fm_stage2, fm_table, FmInputs, FmState, FmTable, TABLE_WORDS as FM_TABLE_WORDS,
+};
 pub use fw_knob_laws::{
     cutoff_word_for_knob, rate_index_for_knob, rate_word_for_knob, unit_word_for_knob, EnvKnobs,
     StripKnobs, DECAY_DISPLAY_TAU,
@@ -118,6 +122,9 @@ pub use voice::SynthVoice;
 mod tests_envelope;
 #[cfg(test)]
 mod tests_fw_filter_golden;
+#[cfg(test)]
+#[rustfmt::skip]
+mod tests_fw_fm_golden;
 #[cfg(test)]
 mod tests_fw_ladder_golden;
 #[cfg(test)]
