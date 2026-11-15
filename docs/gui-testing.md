@@ -131,6 +131,15 @@ Round 6 adds the VIB/CHORUS type names (`panel/organ_vib_matrix.rs`) and the Rot
 
 Round 5 adds LED names (`bay_synth/names.rs`), KB TOUCH full names and the amp second list column with no new rule; first run 1 L (MED against the PIANO SELECT title), then 1 S (LIST at the section edge) while nudging, 0 after.
 
+Round 7 (`panel/legibility_leds.rs`, LED spacing; records `Kind::Led` and the ladder bars `Kind::LedSeg`) adds:
+
+| Rule | Meaning |
+|---|---|
+| `B` | an LED bezel is closer than 2.5 px to a button bezel (button layout rectangle + 1.5 px); LEDs whose centre lies on the button are exempt |
+| `D` | two LED bezels closer than 2 px (centre pitch under diameter + 2), or two ladder bars / an LED and a ladder bar closer than 1.5 px (2 px for LED to bar) |
+
+First run 53 `B` + 21 `D` (+ 40 bars at the old 1.0 px gap), 0 after; the allow-list stays empty. Shared fixes: `ctl::led_above` / `LED_LIFT`, `ctl::TAG_LIFT_LED`, `ctl_led_tag::tag_led`, `SEG_GAP` of the ladders, list pitch `COL_DX` and `NAME_GAP` of the Effects lists, plus nudges in `layout_tweaks.rs`.
+
 `legibility_allow.txt` lists tolerated violations (empty now; the test also fails on stale
 entries). Run with `NS4_WRITE_COLLISIONS=<file> cargo test -p nord-gui collisions_match` to dump
 the current list. Fixes go into the shared helpers first: `widgets::label_fit` / `fit_size`

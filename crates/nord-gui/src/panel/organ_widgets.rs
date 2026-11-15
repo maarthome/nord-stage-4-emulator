@@ -72,6 +72,9 @@ pub(super) fn ladder_lit(level: f32, active: bool) -> usize {
     }
 }
 
+/// Dark gap (px) between ladder segments (audit rule `D`: at least 1.5 px).
+const SEG_GAP: f32 = 1.5;
+
 /// 11-segment level ladder (green, amber, red) filling `rect`, lit from the bottom.
 pub(super) fn level_ladder(ui: &Ui, rect: Rect, id: &str, level: f32, active: bool) {
     let p = ui.painter();
@@ -79,9 +82,14 @@ pub(super) fn level_ladder(ui: &Ui, rect: Rect, id: &str, level: f32, active: bo
     let h = rect.height() / 11.0;
     for i in 0..11 {
         let r = Rect::from_min_size(
-            pos2(rect.left(), rect.bottom() - (i as f32 + 1.0) * h + 0.5),
-            vec2(rect.width(), h - 1.0),
+            pos2(
+                rect.left(),
+                rect.bottom() - (i as f32 + 1.0) * h + SEG_GAP * 0.5,
+            ),
+            vec2(rect.width(), h - SEG_GAP),
         );
+        #[cfg(test)]
+        crate::widgets::probe::led_seg(p, r);
         let on = i < lit;
         let col = match (i, on) {
             (10, true) => LED_RED,

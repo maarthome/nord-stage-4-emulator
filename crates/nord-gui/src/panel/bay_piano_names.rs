@@ -96,7 +96,7 @@ pub(super) fn draw_timbre(
     let electric = state.piano_cat == PianoCategory::Electric;
     let (names, lit) = timbre_rows(clav, logic::timbre_index(state), state.piano_ui.clav_timbre);
     let top = rect.center().y - ROW * 1.0;
-    let x0 = rect.right() + 7.0;
+    let x0 = rect.right() + 7.4;
     let mut col2_x = x0;
     for (row, name) in names.iter().enumerate() {
         let c = pos2(x0, top + row as f32 * ROW);

@@ -213,6 +213,7 @@ fn collisions_match_the_allow_list() {
     let mut found = violations(&audit);
     found.extend(super::legibility_rules::extra_violations(&audit));
     found.extend(super::legibility_caps::violations(&audit));
+    found.extend(super::legibility_leds::violations(&audit));
     let labs = audit.labs;
     println!(
         "legibility: {} labels, {} collisions",
