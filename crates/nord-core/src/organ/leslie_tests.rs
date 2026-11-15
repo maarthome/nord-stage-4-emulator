@@ -94,6 +94,36 @@ fn the_firmware_leslie_with_a_frozen_ring_is_the_booted_minus_50_db() {
 }
 
 #[test]
+fn the_program_drive_saturates_the_firmware_leslie_and_boot_drive_does_not() {
+    let peak = |drive: bool, amp: f32| {
+        let mut o = OrganLayer::new(FS);
+        o.leslie_fw = Some(Box::new(FwLeslie::new()));
+        o.rotary_drive = 1.0;
+        o.leslie_fw_drive = drive;
+        let mut m = 0.0f32;
+        for n in 0..4000 {
+            let y = o.process_leslie_firmware(amp * (n as f32 * 0.37).sin());
+            if n > 2000 {
+                m = m.max(y[0].abs()).max(y[1].abs());
+            }
+        }
+        m
+    };
+    let (b_lo, b_hi) = (peak(false, 0.03), peak(false, 0.3));
+    let (d_lo, d_hi) = (peak(true, 0.03), peak(true, 0.3));
+    assert!(
+        b_hi / b_lo > 8.0,
+        "boot drive stays linear: {}",
+        b_hi / b_lo
+    );
+    assert!(
+        d_hi / d_lo < 0.7 * (b_hi / b_lo),
+        "drive compresses: {}",
+        d_hi / d_lo
+    );
+}
+
+#[test]
 fn stop_mode_freezes_the_firmware_rotor() {
     let mut o = OrganLayer::new(FS);
     o.leslie_fw = Some(Box::new(FwLeslie::new()));
