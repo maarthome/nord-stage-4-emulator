@@ -33,8 +33,8 @@ with `CODE` = `target/fw_unpacked/bank0_CODE.bin`.
 **Clock (fourth pass).** `clock` replays the Glue rate update `0xC011A51C` and checks the model of
 the free-running arp clock (`0xC01E6368`): a phase of `2**19` units per firmware beat at the
 `RATE_TABLE` BPM, in a time base of 24000 units per second. See section 8 of the research note for
-what this proves about the step and slot duration and what it does not (the record player itself
-was not found).
+what this proves about the step and slot duration. The record player that consumes the grid is
+`0xC023B3EC` (`tools/ns4_arp_player.py`, section 9 of the research note): one record per grid point.
 
 Evidence and limits: `docs/research/synth-arp-patterns.md` section 7.
 """

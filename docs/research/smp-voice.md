@@ -93,10 +93,10 @@ The engine columns compare from `counter >= 6`: before that the DSP history is z
 |---|---|
 | Second loop (`0x1C0865..0x1C08E3`, `DM(0x9268A)` entries) | listing only: same fields, `R13 = 0x20`, three-unit window and SIMD mode (`MODE1 0xE00000`), residual added through `MRF = R6 * R2 (SUI)` with `R2 = 1`, one bus word per voice with gain `+0`. Not run; the CNSP widths (1..16) are served by the first loop. EMPIRICAL |
 | Page boundaries | page `p > 0` restarts with the history 64 frames before the end of page `p - 1` and a new width/order/ring: the ARM must rewrite the record (and for a changed width recompute `counter`/`base` so that `stride * counter - base` is the page position). Not driven; the decoder side is the Rust `decode_npno_stroke` |
-| ARM-side refill and record writes | the ARM code that writes these records (`0xC0503600..` init script, SMP FIFO messages) is not decoded; the pitch (`step`) to MIDI note map is open |
+| ARM-side refill and record writes | The slew fields `F11..F18, F-2, F-1, F2, F3` and the gains `F0 / F1` are updated by the SMP every second interrupt ([smp-slew](smp-slew.md)); the ARM writers of ten of the inputs are still not run. Also: the ARM code that writes these records (`0xC0503600..` init script, SMP FIFO messages) is not decoded; the pitch (`step`) to MIDI note map is open |
 | `.nsmp4` strokes | layout differs (section 4) |
 | Stage A/B state machine | the SY voice start (prepare/go) has no counterpart in this loop: the voice runs whenever its record is on the list |
-| Edge handling at stream start and end | zero history here, edge repeat in the engine |
+| Edge handling at stream start and end | Answered in [smp-slew](smp-slew.md) s3 (VERIFIED runs): counter at or above `F-8` wraps by `F-7` (history offset rotated), `F+6` / `F+7` rate switch at `F-8 - F-7`, counter at or above `F-9` frees the voice; start history is zero in the DSP, the engine repeats the edge sample (ASSUMED) |
 | Accuracy of `(LW)` in SIMD loop B | not exercised (listing only) |
 
 ## 8. Reproduce

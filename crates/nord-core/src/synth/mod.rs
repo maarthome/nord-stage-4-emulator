@@ -18,6 +18,7 @@ use crate::synth_wavetable::{sample_wavetable, wavetable_bank};
 
 mod arp;
 mod arp_order;
+pub mod arp_rate;
 mod dsp;
 mod fw_adr_chain;
 mod fw_coef_memo;

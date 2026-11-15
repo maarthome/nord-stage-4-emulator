@@ -6,6 +6,7 @@
 //! bit is off loads as `Off` exactly as before.
 
 use crate::cbin::SynthLayerDecoded;
+use crate::synth::arp_rate::arp_bpm_from_raw;
 use crate::synth::{ArpMode, ClockDivision, SynthLayer};
 
 /// Number of Master Clock subdivisions the Rate dial selects (`1/2` .. `1/32`, with triplets).
@@ -31,10 +32,11 @@ pub fn engine_arp_mode(dec: &SynthLayerDecoded) -> ArpMode {
     }
 }
 
-/// The stored rate raw value (`0..=127`) recovered from the decoded BPM (the decoder maps the
-/// raw linearly to `30..300`; the Master Clock subdivision is stored in the same field).
+/// The stored rate raw value (`0..=127`; the Master Clock subdivision is stored in the same
+/// field). It is the decoded raw while `arp_bpm` still is its tempo, else the dial position nearest
+/// to an edited `arp_bpm`.
 fn rate_raw(dec: &SynthLayerDecoded) -> usize {
-    (((dec.arp_bpm - 30.0) / 270.0).clamp(0.0, 1.0) * 127.0).round() as usize
+    dec.packed_arp_rate() as usize
 }
 
 /// Applies mode, direction, zig zag, Master Clock sync, KB sync and range to `synth`.
@@ -98,7 +100,9 @@ pub fn invert_arp_modes(synth: &SynthLayer, dec: &mut SynthLayerDecoded) {
     }
     let division = usize::from(perf.arp_division.index()).min(CLOCK_DIVISIONS - 1);
     if dec.arp.mst_clk && CLOCK_DIVISIONS * rate_raw(dec) / 128 != division {
-        dec.arp_bpm = 30.0 + 270.0 * rate_raw_for_division(division) as f32 / 127.0;
+        let raw = rate_raw_for_division(division);
+        dec.arp_rate_raw = raw as u8;
+        dec.arp_bpm = arp_bpm_from_raw(raw as u32);
     } else {
         dec.arp_bpm = synth.arp_rate_bpm;
     }
@@ -119,6 +123,7 @@ pub fn sync_arp_modes(
         arp.range => perf.gate_env, arp.range => arp_octave_range,
         arp.range => perf.range_extra_thirds,
         arp_bpm => arp_rate_bpm, arp_bpm => perf.arp_division,
+        arp_rate_raw => arp_rate_bpm, arp_rate_raw => perf.arp_division,
     );
 }
 
@@ -196,7 +201,7 @@ mod tests {
         );
         let mut s = applied(&dec);
         assert_eq!(s.arp_mode, ArpMode::Poly);
-        s.arp_rate_bpm = 240.0;
+        s.arp_rate_bpm = 480.0;
         for note in [60, 64, 67] {
             s.note_on(note, 100);
         }
@@ -230,11 +235,11 @@ mod tests {
 
     #[test]
     fn master_clock_rate_selects_the_subdivision() {
-        // The decoder turns raw 0..=127 into 30..300 BPM; the subdivision is floor(9 * raw / 128).
+        // The subdivision is floor(9 * raw / 128) of the stored Rate value.
         let div = |raw: usize| {
-            let bpm = 30.0 + raw as f32 / 127.0 * 270.0;
             let dec = SynthLayerDecoded {
-                arp_bpm: bpm,
+                arp_bpm: arp_bpm_from_raw(raw as u32),
+                arp_rate_raw: raw as u8,
                 ..layer(
                     SynthArpDecoded {
                         mst_clk: true,
@@ -248,6 +253,31 @@ mod tests {
         assert_eq!(div(0), ClockDivision::Half);
         assert_eq!(div(67), ClockDivision::Eighth); // the most common factory value
         assert_eq!(div(127), ClockDivision::ThirtySecond);
+    }
+
+    #[test]
+    fn master_clock_keeps_a_duplicate_dial_value_and_its_subdivision() {
+        // Raw 29 is the second 78 BPM entry of the firmware table; Master Clock stores the
+        // subdivision floor(9 * 29 / 128) = 2 (Quarter) there, and an unedited layer inverts to
+        // the same raw, not to raw 28 (subdivision 1).
+        let dec = SynthLayerDecoded {
+            arp_bpm: arp_bpm_from_raw(29),
+            arp_rate_raw: 29,
+            ..layer(
+                SynthArpDecoded {
+                    mst_clk: true,
+                    ..Default::default()
+                },
+                true,
+            )
+        };
+        let mut s = applied(&dec);
+        s.arp_rate_bpm = dec.arp_bpm; // `apply_params` copies the tempo too
+        assert_eq!(s.perf.arp_division, ClockDivision::Quarter);
+        let mut back = dec.clone();
+        invert_arp_modes(&s, &mut back);
+        assert_eq!(back.arp_rate_raw, 29);
+        assert_eq!(back.packed_arp_rate(), 29);
     }
 
     #[test]

@@ -22,7 +22,7 @@ Every decoded field round-trips its own raw value, so the base merge (`to_file_l
 - [x] `ns4 preset-check <backup>` reports 0 problems and 0 lossy presets, and a decode + pack of all 384 programs reproduces their bits without the merge.
 - [x] `ns4 preset-check <backup> --bits` lists the collapsed runs (empty now) for future regressions.
 - [x] Unit tests on synthetic bits (no firmware or backup committed).
-- [x] Spec section 5.8, OQ31 resolved, decision D64.
+- [x] Spec section 5.8, OQ31 resolved, decision D67.
 
 ## Out of Scope
 
