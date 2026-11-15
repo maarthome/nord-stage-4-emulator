@@ -59,6 +59,21 @@ uv run pytest tools/tests/test_arm_sy_slot_probe.py
 
 The byte scans are plain: the 32-bit literals `0x93540..0x93591` in `bank0_CODE`, and 16-bit runs through `unpack_ratio` of `docs/research/sy-smp-audio.md` section 4 / `sinc::step_join`.
 
+## 5. Follow-up checks (2026-11-15, review suggestions, each verified here)
+
+| Check | Result | Tag |
+|---|---|---|
+| (1) xrefs of `0x9062F0F0` and what allocates it | `0x9062F0F0` is a heap address; no literal `0x9062F0F0` / `0x9062F0F4` in `bank0_CODE`. It is object 0 of a **pool of 56 slot objects** (`0x1C` bytes each, `0x9062F0F0 .. 0x9062F7D0`, list at `0xC0563664`) built at boot by `0xC01ED7FC..0xC01ED838`: `[+0] = 0`, `[+4] = -1`, the other five words 0 (stores at `0xC01ED81C`, `0xC01ED820`). 56 = the SY voice count. Users of the list literal `0xC0563664`: `0xC01E0FB4` (voice update), `0xC01E23CC` (`0xC01E23D0`, a per-event walk that calls `0xC01D69A4` / `0xC01D662C`, not an allocator), `0xC01E41B8`, `0xC01ECD74` (not read yet) | VERIFIED (run, byte scan, listing) |
+| (1) trigger of `go` (`0x1C084C`) | the only ARM literals of the four stage A states are the ones listed in [sy-smp-audio](sy-smp-audio.md) s3; no ARM store of `0x1C084C` in any run here (the message list of the note-on ends with `0x92432 <- 0xBF800000`) | VERIFIED (run); trigger open |
+| (2) bulk records spanning the window | the SY stream (`dsp_image_3_SY1SY2.bin`, 569 blocks) has **zero fill `0x93045 .. 0x93580` (1,339 words, tag 1)**, data `0x93580` (1 word), zero fill `0x93581 .. 0x9358E`, data `0x9358E .. 0x935D2` (68 words). So the table `0x9354A..0x9357F` is explicitly zeroed by the loader and must be filled at run time. Literals in `0x934A0..0x935A0` outside the DSP streams: none; `movw` / `movt` pairs with `#0x9` high half and a low half in `0x3400..0x35A0`: none | VERIFIED (block parse, byte scan) |
+| (3) cold boot, write watch | `arm_bulk_tables.capture_boot` from the cold image (not `keydown.snap`), 96,111 port messages: **0** SY or SMP messages in `0x93500..0x935A0`; write hooks on all 56 pool objects over boot and 12 settle windows: **112 writes = the 56 constructor stores `0` and `-1`**, nothing else. So the allocator does not run in boot or in the settled main loop; it needs a user action not driven here (a SAMPLES layer activation beyond `bind_layer`, a program recall, or the real ring consumer) | VERIFIED (run) |
+| (4) SY ISRs, opcode handlers 1 to 15 under `sharc-ref --watch` | **not run** (cost); the note-on message list has no opcode 1 to 15 word, so no handler is reached from the ARM side; an ISR other than the audio ISR writing the table is still possible | open |
+| (5) other `.nsmp4` members with `[zone + 0x6C] == 1` | **not run**; the kernel-rule note section 12 captured one member only | open |
+
+### Two observations of `0xC01E24F0`
+
+[synth-sample-kernel-rule](synth-sample-kernel-rule.md) section 14 says the type 4 event `0xC01E24F0` sends no SY message **during the sample bind** (`load_sample`, `EDIT_SMP_ID`, `EDIT_MODE`, `bind_layer`, two ticks): at that point no note is on and the event is not in the queue. Section 2 above (and follow-up 2 of that note) describe the **note-on**: the key event queues the type 4 event first and the voice update (slot 1) second, `pump` delivers them in that order, so the event sends the voice reset (`0x92414 <- 0x1C0794`) and word 0 (`0x9219E <- 0xFFFFFFFF`) while the slot fields of the voice object are still `-1`; only then does the voice update copy slot `0` and `-1` from the pool object into `[obj + 0x24]`, `[obj + 0x28]` (`0xC01E09D8`, `0xC01E09F0`). Same code, different harness state (no note, then a queued note); the earlier statement is about bind, this one about note-on. Whether the hardware sends word 0 a second time after the voice update (value `0x04000000`) is not shown: the pump delivers each event once.
+
 ## Implications
 
 - `--sample-pitch fw` stays opt-in (D89); `step_join::table_entry_for_key` remains a model. No default, golden or `render_hash` moves.
@@ -67,6 +82,6 @@ The byte scans are plain: the 32-bit literals `0x93540..0x93591` in `bank0_CODE`
 
 ## Follow-ups
 
-1. Find the object class of `0x9062F0F0` (two words, 0 and -1, handle table `[sp + 0x154]`) and its constructor and allocator; a write watch over the whole boot (not from the settled snapshot) is the next step.
+1. Read the two unread users of the pool list `0xC0563664` (`0xC01E41B8`, `0xC01ECD74`) and the activation that gives a pool object a slot; the cold-boot watch (section 5) shows boot and the settled loop never write it.
 2. Drive an SMP / SY ISR set in `sharc-ref` (vector sweep beyond vector 0) with the full message list and a table fill poked at `0x9354A`, to see whether the zero entry really mutes the voice.
 3. Run opcode 9 (`0x1C03AA`) with a harness SPI model if the ARM ever sends it.
