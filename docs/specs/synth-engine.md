@@ -220,6 +220,10 @@ Strip types 49..53 select the FM stages `0x124269` (stage 1) and `0x12453F` (sta
 
 The default render is unchanged (D22).
 
+### 4.6 Derived filter laws (`synth/fw_filter_law.rs`, opt-in `--synth-filter-law`, `--synth-fw-resonance`)
+
+Every stage of the family (`0x1253BD`, `0x12566E`, `0x125913`, `0x125A50`) takes the frame word `R` and has the nominal cutoff `atan(R) / pi` cycles per sample, whatever the type (VERIFIED, [synth-filter-type-corners](../research/synth-filter-type-corners.md), table [synth-filter-type-corners.csv](../research/data/synth-filter-type-corners.csv)). The ARM `kFltRes` word `knob / 127 - 0.5` reaches the stage as the position `idx = 64 + 33.25 w`, 47.38 to 80.62 (VERIFIED run, idle LFO scale ASSUMED neutral). `SynthLayer::fw_resonance` applies that position; `SynthLayer::fw_filter_law = Some(u)` also replaces the row and type cutoff factors by `u` on the display Hz (`u = 2 / 1.971` or `1 / 1.971`, the stage rate `2 F` or `F` is open). Both default off: the fitted factors of `p_type.rs` score better on 12 clips (D108).
+
 ## 5. Envelopes, LFO & Arpeggiator
 
 - **Amp Envelope (ADR / ADSR):** Exponential Attack (`ENV_ATTACK_MS_TABLE`: $0.5\text{ ms}..45\text{ s}$), Decay/Sustain (`ENV_DECAY_MS_TABLE`: $3.0\text{ ms}..43\text{ s}$, index `127 = Hold/Inf`), and Release (`ENV_RELEASE_MS_TABLE`: $3.0\text{ ms}..45\text{ s}$) with velocity sensitivity switch.
