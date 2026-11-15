@@ -74,9 +74,16 @@ TD_ORIGIN = (400.0, 482.0)
 # k on both axes (multi-scale `cv2.matchTemplate` of the crop against the render, TM_CCOEFF_NORMED:
 # organ 0.920 at k 0.995, piano 0.919 at k 0.990). Section top edge: render y 691 px = 25.0 mm.
 # The older affine outline mapping stretched the 137 mm tall sections onto the 179 mm panel height.
+# `synth`: outline x 12..1988 onto the section's x edges (k = 1.08978), outline top y 12 on the
+# plate top (691 px = 25.0 mm; the origin used to be 26.0 mm, 8.4 px lower). `program`, `keybed`
+# and `wheels` are crops of the render itself (k = 1, origin 0).
 ISO = {
     "organ": (2166.5, 678.75, 0.995),
     "piano": (4112.3, 674.2, 0.990),
+    "synth": (5955.69, 678.15, 1.08978),
+    "program": (0.0, 0.0, 1.0),
+    "keybed": (0.0, 0.0, 1.0),
+    "wheels": (0.0, 0.0, 1.0),
 }
 CROPS = {
     "program": (

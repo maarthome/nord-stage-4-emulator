@@ -42,7 +42,6 @@ pub fn rect(id: &str) -> Option<Rect> {
         "fx.focus.organ" => btn(97.0, 323.0),
         "fx.focus.piano" => btn(97.0, 575.0),
         "fx.focus.synth" => btn(97.0, 828.0),
-        "fx.focus.leds" => cp(93.0, 737.0, 13.2, 3.5),
         // Mod 1 / Mod 2.
         "mod1.rate" => knob(308.0, 257.0),
         "mod1.amount" => knob(548.0, 257.0),

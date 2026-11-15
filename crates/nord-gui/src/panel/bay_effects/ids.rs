@@ -12,14 +12,13 @@ use egui::{pos2, vec2, Pos2, Rect};
 
 /// All 51 inventory ids of the Layer Effects section, drawn by this bay.
 #[cfg_attr(not(test), allow(dead_code))]
-pub(super) const HANDLED: [&str; 51] = [
+pub(super) const HANDLED: [&str; 50] = [
     "fx.layer_effects_on",
     "fx.focus.organ",
     "fx.focus.piano",
     "fx.focus.synth",
     "fx.focus.group_piano",
     "fx.focus.group_synth",
-    "fx.focus.leds",
     "mod1.on",
     "mod1.selector",
     "mod1.variation",

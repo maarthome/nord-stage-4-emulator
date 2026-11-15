@@ -38,7 +38,6 @@ pub fn controls() -> Vec<ControlEntry> {
         )
         .shift()
         .bound("fxy_group_{n}"),
-        e("fx.focus.leds", s, K::Led, "FX FOCUS LEDs", 48).ui("show the focused section or layer"),
         // Mod 1 (p.49-50)
         e("mod1.on", s, K::Button, "MOD 1 ON", 49).bound("ui:fx.mod1_on"),
         e("mod1.selector", s, K::Button, "MOD 1 TYPE (6)", 49).bound("mod1_type"),
@@ -190,7 +189,7 @@ mod tests {
 
     #[test]
     fn effects_total() {
-        assert_eq!(controls().len(), 51);
+        assert_eq!(controls().len(), 50);
     }
 
     #[test]

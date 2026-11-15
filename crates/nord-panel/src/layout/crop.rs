@@ -69,6 +69,19 @@ pub(crate) const PIANO: Crop = Crop {
     k: 0.99,
 };
 
+/// `NS4-Panel-synth...png` (2000 x 1067; Synth section, outline x 12..1988 / y 12..1066).
+///
+/// VERIFIED: the outline's left / right edges map onto the section's x edges (hero px 1029..1401),
+/// so `k = 372 * MM_PER_PX / 1976 / MM_PER_TD_PX = 1.08978`; the outline top (crop y 12) lands on
+/// the render's plate top, 691 px = 25.0 mm (`ry = 691 - 12 k`), like Organ and Piano. It used to
+/// sit at 26.0 mm (8.4 px lower). Checked by `centres_match_the_photo_anchors` (synth.rs) and
+/// `python tools/layout_overlay.py synth`.
+pub(crate) const SYNTH: Crop = Crop {
+    rx: 5955.69,
+    ry: 678.15,
+    k: 1.08978,
+};
+
 /// Test helper: every `id,x,y` row of `csv` (crop px) has a rectangle centred on that point
 /// within `tol` mm; returns the number of rows checked.
 #[cfg(test)]
@@ -101,6 +114,9 @@ pub(crate) mod tests {
         assert!((y - SECTION_TOP_PX).abs() < 2.0, "organ {y}");
         let (_, y) = PIANO.to_render(0.0, 17.0);
         assert!((y - SECTION_TOP_PX).abs() < 2.0, "piano {y}");
+        // Synth outline top y = 12 px.
+        let (_, y) = SYNTH.to_render(0.0, 12.0);
+        assert!((y - SECTION_TOP_PX).abs() < 0.5, "synth {y}");
     }
 
     #[test]
