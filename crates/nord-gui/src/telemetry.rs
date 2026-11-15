@@ -120,6 +120,12 @@ impl PanelTelemetry {
         self.0.as_ref().is_some_and(|t| t.undo.is_none())
     }
 
+    /// Name of the operation Undo would revert (`Load Preset`, `Paste`, ...); `None` without an
+    /// engine or without history.
+    pub fn undo_label(&self) -> Option<&'static str> {
+        self.0.as_ref().and_then(|t| t.undo).map(|op| op.label())
+    }
+
     /// `true` only when the engine reports an undone operation to redo.
     pub fn redo_available(&self) -> bool {
         self.0.as_ref().is_some_and(|t| t.redo.is_some())
@@ -265,6 +271,9 @@ mod tests {
         assert!(!live(&e).undo_blocked());
         e.undo();
         assert!(live(&e).redo_available());
+        e.begin_undoable(nord_core::engine::UndoOp::LayerInit);
+        assert_eq!(live(&e).undo_label(), Some("Layer Init"));
+        assert_eq!(PanelTelemetry::default().undo_label(), None);
     }
 
     #[test]

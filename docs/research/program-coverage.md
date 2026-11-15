@@ -18,50 +18,50 @@ This is a coverage and risk map, not an audio-quality claim. All numbers are der
 
 | Engine mix | Programs |
 |---|---|
-| piano+synth | 173 (45%) |
-| synth | 90 (23%) |
+| piano+synth | 170 (44%) |
+| synth | 95 (25%) |
 | piano | 77 (20%) |
-| organ+piano+synth | 16 (4%) |
+| organ+piano+synth | 14 (4%) |
 | organ | 12 (3%) |
 | organ+synth | 10 (3%) |
 | organ+piano | 6 (2%) |
 
 | Layers sounding | Programs |
 |---|---|
-| 1 | 99 |
+| 1 | 100 |
 | 2 | 111 |
-| 3 | 90 |
-| 4 | 63 |
+| 3 | 92 |
+| 4 | 61 |
 | 5 | 18 |
-| 6 | 2 |
+| 6 | 1 |
 | 7 | 1 |
 
 Scene II used by 213 programs, split enabled in 48, non-default key zone code on a sounding layer in 172.
 
 | Key zone code (sounding layers) | Programs |
 |---|---|
-| 0 | 40 |
+| 0 | 39 |
 | 1 | 4 |
 | 10 | 3 |
 | 2 | 2 |
 | 3 | 1 |
 | 4 | 9 |
 | 5 | 256 |
-| 6 | 37 |
+| 6 | 36 |
 | 9 | 119 |
 
 ## 3. Organ
 
 | Path | Programs | Occurrences |
 |---|---|---|
-| `organ.model=B3` | 27 | 36 |
-| `organ.model=B3 Bass` | 4 | 4 |
+| `organ.model=B3` | 26 | 35 |
+| `organ.model=B3 Bass` | 3 | 3 |
 | `organ.model=Farfisa` | 2 | 3 |
 | `organ.model=Pipe1` | 3 | 4 |
 | `organ.model=Pipe2` | 4 | 5 |
 | `organ.model=Vox` | 7 | 8 |
 | `organ.rotary_speed=Fast` | 1 | 2 |
-| `organ.rotary_speed=Slow` | 18 | 27 |
+| `organ.rotary_speed=Slow` | 16 | 25 |
 | `organ.rotary_speed=Stop` | 5 | 6 |
 | `organ.vibrato_type=0` | 1 | 1 |
 | `organ.vibrato_type=1` | 3 | 4 |
@@ -69,7 +69,7 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | `organ.vibrato_type=4` | 3 | 3 |
 | `organ.vibrato_type=5` | 12 | 15 |
 | `organ.percussion` (enabled) | 6 | 8 |
-| `organ.rotary` (enabled) | 24 | 35 |
+| `organ.rotary` (enabled) | 22 | 33 |
 | `organ.vibrato` (enabled) | 21 | 25 |
 
 ## 4. Piano
@@ -77,23 +77,23 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | Path | Programs | Occurrences |
 |---|---|---|
 | `piano.category=Clav` | 12 | 12 |
-| `piano.category=Digital` | 14 | 14 |
+| `piano.category=Digital` | 12 | 12 |
 | `piano.category=Electric` | 59 | 63 |
-| `piano.category=Grand` | 153 | 156 |
+| `piano.category=Grand` | 152 | 155 |
 | `piano.category=Misc` | 8 | 9 |
-| `piano.category=Upright` | 50 | 57 |
-| `piano.sample=loaded` | 272 | 311 |
+| `piano.category=Upright` | 48 | 55 |
+| `piano.sample=loaded` | 267 | 306 |
 | `piano.class=1` | 5 | 5 |
-| `piano.class=14` | 10 | 10 |
+| `piano.class=14` | 8 | 8 |
 | `piano.class=15` | 4 | 4 |
 | `piano.class=16` | 8 | 9 |
 | `piano.class=2` | 52 | 55 |
 | `piano.class=3` | 8 | 8 |
 | `piano.class=4` | 9 | 9 |
-| `piano.class=5` | 150 | 151 |
-| `piano.class=6` | 50 | 57 |
+| `piano.class=5` | 149 | 150 |
+| `piano.class=6` | 48 | 55 |
 | `piano.class=7` | 3 | 3 |
-| `piano.string_res` (enabled) | 240 | 258 |
+| `piano.string_res` (enabled) | 238 | 256 |
 
 ## 5. Synth
 
@@ -116,6 +116,12 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | `synth.wave=KEYS` | 2 | 2 |
 | `synth.wave=ORGAN` | 1 | 1 |
 | `synth.sample=loaded` | 119 | 215 |
+| `synth.sample.kernel=0` | 115 | 208 |
+| `synth.sample.kernel=1` | 119 | 215 |
+| `synth.sample.kernel=2` | 119 | 215 |
+| `synth.sample.kernel=3` | 119 | 215 |
+| `synth.sample.kernel=4` | 119 | 215 |
+| `synth.sample.kernel=5` | 119 | 215 |
 | `synth.filter=BandPass` | 18 | 24 |
 | `synth.filter=HighPass` | 11 | 14 |
 | `synth.filter=Ladder24` | 52 | 69 |
@@ -131,6 +137,8 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | `synth.arp` (enabled) | 32 | 49 |
 | `synth.mono` (enabled) | 34 | 48 |
 
+SAMPLE layer kernels (384 programs, `96000` frames): 215 of 215 SAMPLES layers (119 programs) load their `.nsmp4`; over the key spans of their zones the firmware key rule ([synth-sample-kernel-rule](synth-sample-kernel-rule.md)) reaches kernels 1, 2, 3, 4, 5 in every loaded layer and kernel 0 in 208 layers of 115 programs. The ASSUMED ratio rule never picks kernels 0 and 1, so it differs from the firmware in every SAMPLES program that reaches them. The 14 WAVE (Wavetable) layers in 12 programs (BELLS/TINES 3, DIGITAL 8, KEYS 2, ORGAN 1) stay unmodelled.
+
 ## 6. Effects
 
 | Path | Programs | Occurrences |
@@ -141,7 +149,7 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | `fx.mod1=RM` | 3 | 3 |
 | `fx.mod1=TREM` | 21 | 23 |
 | `fx.mod1=WAH` | 2 | 2 |
-| `fx.mod2=CHOR` | 93 | 155 |
+| `fx.mod2=CHOR` | 93 | 154 |
 | `fx.mod2=ENS` | 3 | 5 |
 | `fx.mod2=FLANG` | 10 | 15 |
 | `fx.mod2=PHAS` | 12 | 16 |
@@ -156,32 +164,32 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | `fx.amp=TWIN` | 4 | 4 |
 | `fx.amp=TWIN II` | 19 | 20 |
 | `fx.amp=VERY SMALL` | 5 | 6 |
-| `fx.amp=off` | 214 | 389 |
-| `fx.delay.mode=0` | 42 | 68 |
-| `fx.delay.mode=1` | 74 | 112 |
+| `fx.amp=off` | 214 | 387 |
+| `fx.delay.mode=0` | 41 | 67 |
+| `fx.delay.mode=1` | 73 | 111 |
 | `fx.delay.mode=2` | 32 | 48 |
 | `fx.delay.mode=3` | 17 | 24 |
 | `fx.delay_fb=CHOR` | 22 | 28 |
 | `fx.delay_fb=ENS` | 5 | 10 |
 | `fx.delay_fb=FLAM` | 11 | 14 |
-| `fx.delay_fb=SPACE` | 22 | 28 |
+| `fx.delay_fb=SPACE` | 21 | 27 |
 | `fx.delay_fb=VIBE` | 11 | 17 |
-| `fx.reverb=BOOTH` | 195 | 360 |
-| `fx.reverb=ROOM` | 150 | 325 |
+| `fx.reverb=BOOTH` | 193 | 358 |
+| `fx.reverb=ROOM` | 150 | 323 |
 | `fx.reverb=SPRING` | 57 | 71 |
 | `fx.reverb.type=0` | 40 | 47 |
 | `fx.reverb.type=1` | 17 | 24 |
 | `fx.reverb.type=2` | 39 | 57 |
-| `fx.reverb.type=3` | 160 | 303 |
-| `fx.reverb.type=4` | 136 | 269 |
-| `fx.reverb.type=5` | 28 | 56 |
-| `fx.amp` (enabled) | 261 | 480 |
-| `fx.comp` (enabled) | 117 | 204 |
-| `fx.delay` (enabled) | 155 | 252 |
-| `fx.eq` (enabled) | 265 | 503 |
+| `fx.reverb.type=3` | 158 | 301 |
+| `fx.reverb.type=4` | 136 | 268 |
+| `fx.reverb.type=5` | 28 | 55 |
+| `fx.amp` (enabled) | 261 | 478 |
+| `fx.comp` (enabled) | 117 | 202 |
+| `fx.delay` (enabled) | 153 | 250 |
+| `fx.eq` (enabled) | 265 | 501 |
 | `fx.mod1` (enabled) | 90 | 124 |
-| `fx.mod2` (enabled) | 158 | 260 |
-| `fx.reverb` (enabled) | 358 | 756 |
+| `fx.mod2` (enabled) | 158 | 259 |
+| `fx.reverb` (enabled) | 358 | 752 |
 
 ## 7. Verification status of the paths in use
 
@@ -189,31 +197,31 @@ Uses count a path once per layer or enabled FX unit that needs it; one layer or 
 
 | Path | Programs | Uses | Default | Firmware-all | Basis |
 |---|---|---|---|---|---|
-| `fx.amp` | 261 | 480 | verified | verified | effects-and-routing: firmware drive stage and cabinet are the default amp path (words VERIFIED, voicing ASSUMED) |
+| `fx.amp` | 261 | 478 | verified | verified | effects-and-routing: firmware drive stage and cabinet are the default amp path (words VERIFIED, voicing ASSUMED) |
 | `fx.amp=HP24` | 8 | 13 | assumed | assumed | effects-and-routing: topology ASSUMED |
 | `fx.amp=LP24` | 19 | 26 | assumed | assumed | effects-and-routing: topology ASSUMED |
 | `fx.amp=TO ROTARY` | 2 | 2 | unmodelled | unmodelled | effects-and-routing: To Rotary is a pass-through |
-| `fx.comp` | 117 | 204 | assumed | verified | effects-and-routing: firmware compressor routine VERIFIED, parameters and bus position ASSUMED |
-| `fx.delay` | 155 | 252 | assumed | verified | effects-and-routing: firmware time/mix words VERIFIED (firmware_fx.delay_laws), loop is the engine's |
-| `fx.delay_fb` | 68 | 97 | assumed | assumed | effects-and-routing: feedback effects approximated |
-| `fx.eq` | 265 | 503 | assumed | assumed | effects-and-routing: RBJ biquads; gain step and Q ASSUMED |
+| `fx.comp` | 117 | 202 | assumed | verified | effects-and-routing: firmware compressor routine VERIFIED, parameters and bus position ASSUMED |
+| `fx.delay` | 153 | 250 | assumed | verified | effects-and-routing: firmware time/mix words VERIFIED (firmware_fx.delay_laws), loop is the engine's |
+| `fx.delay_fb` | 67 | 96 | assumed | assumed | effects-and-routing: feedback effects approximated |
+| `fx.eq` | 265 | 501 | assumed | assumed | effects-and-routing: RBJ biquads; gain step and Q ASSUMED |
 | `fx.mod1` | 90 | 124 | assumed | assumed | effects-and-routing: Mod 1 types are engine models, constants ASSUMED |
-| `fx.mod2` | 158 | 260 | assumed | assumed | effects-and-routing: Mod 2 types are engine models, constants ASSUMED |
+| `fx.mod2` | 158 | 259 | assumed | assumed | effects-and-routing: Mod 2 types are engine models, constants ASSUMED |
 | `fx.mod2=ENS` | 3 | 5 | assumed | assumed | effects-and-routing: Ensemble approximated (DSP not in ARM image) |
 | `fx.mod2=SPIN` | 11 | 14 | assumed | assumed | effects-and-routing: Spin approximated (DSP not in ARM image) |
-| `fx.reverb` | 358 | 756 | assumed | assumed | effects-and-routing: reverb network is the engine FDN; wrap routine not wired; mix law verified under firmware-all |
-| `organ.drawbars` | 44 | 60 | assumed | assumed | organ-engine: drawbar scaling per model, Legacy for non-Pipe |
-| `organ.model=B3` | 27 | 36 | assumed | assumed | organ-model-paths: B3 tone source not located; Legacy wheels; firmware-all forces the Pipe bank (attribution disproved) |
-| `organ.model=B3 Bass` | 4 | 4 | assumed | assumed | organ-model-paths: raw model 5 decodes to B3 plus the bass flag (was folded into Pipe2); bass processor 0x122296 not bit-exact (OQ18) |
+| `fx.reverb` | 358 | 752 | assumed | assumed | effects-and-routing: reverb network is the engine FDN; wrap routine not wired; mix law verified under firmware-all |
+| `organ.drawbars` | 42 | 58 | assumed | assumed | organ-engine: drawbar scaling per model, Legacy for non-Pipe |
+| `organ.model=B3` | 26 | 35 | assumed | assumed | organ-model-paths: B3 tone source not located; Legacy wheels; firmware-all forces the Pipe bank (attribution disproved) |
+| `organ.model=B3 Bass` | 3 | 3 | assumed | assumed | organ-model-paths: raw model 5 decodes to B3 plus the bass flag (was folded into Pipe2); bass processor 0x122296 not bit-exact (OQ18) |
 | `organ.model=Farfisa` | 2 | 3 | assumed | assumed | organ-model-paths: Farfisa tone source not located; Legacy wheels |
 | `organ.model=Pipe1` | 3 | 4 | verified | verified | organ-model-paths: 92-wheel bank VERIFIED, role for the pipes ASSUMED |
 | `organ.model=Pipe2` | 4 | 5 | verified | verified | organ-model-paths: 92-wheel bank VERIFIED, role for the pipes ASSUMED |
 | `organ.model=Vox` | 7 | 8 | assumed | assumed | organ-model-paths: Vox bank is VERIFIED but opt-in (`--tone-source vox`), not in firmware-all |
 | `organ.percussion` | 6 | 8 | assumed | assumed | organ-engine: percussion ASSUMED |
-| `organ.rotary` | 24 | 35 | assumed | assumed | organ-engine: Rotary 122 model ASSUMED; Leslie routine not wired into the program path |
+| `organ.rotary` | 22 | 33 | assumed | assumed | organ-engine: Rotary 122 model ASSUMED; Leslie routine not wired into the program path |
 | `organ.vibrato` | 21 | 25 | assumed | assumed | organ-engine: scanner vibrato/chorus ASSUMED (B3 tail opt-in) |
-| `piano.extra_voice=not_played` | 250 | 276 | assumed | assumed | piano-sound-load: classes 1,2,3,5,6 start an extra voice the engine does not play |
-| `piano.sample=loaded` | 272 | 311 | verified | verified | piano-engine: .npno stream decode and firmware level law (D23 default) |
+| `piano.extra_voice=not_played` | 247 | 273 | assumed | assumed | piano-sound-load: classes 1,2,3,5,6 start an extra voice the engine does not play |
+| `piano.sample=loaded` | 267 | 306 | verified | verified | piano-engine: .npno stream decode and firmware level law (D23 default) |
 | `routing.split` | 48 | 48 | assumed | verified | morph-and-zones: splits/zones follow the program only with --firmware-routing (zone codes partly verified) |
 | `synth.analog=MISC` | 8 | 8 | unmodelled | unmodelled | synth-wave-models: not modelled |
 | `synth.analog=MULTI` | 43 | 44 | unmodelled | unmodelled | synth-wave-models: not modelled |
@@ -243,21 +251,21 @@ Uses count a path once per layer or enabled FX unit that needs it; one layer or 
 
 | Configuration | verified | assumed | unmodelled |
 |---|---|---|---|
-| default | 1015 (15%) | 5677 (83%) | 119 (2%) |
-| firmware-all | 2634 (39%) | 4058 (60%) | 119 (2%) |
+| default | 1008 (15%) | 5656 (83%) | 119 (2%) |
+| firmware-all | 2623 (39%) | 4041 (60%) | 119 (2%) |
 
 Use-weighted: a path used by two layers counts twice. A `verified` row means the algorithm is firmware-verified, not that its parameters or the panel mapping are.
 
 ## 8. Render health
 
-- `default`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 30, clipping >= 0.1%: 6.
+- `default`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 36, clipping >= 0.1%: 9.
 - `firmware`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 36, clipping >= 0.1%: 8.
 
-Level difference firmware minus default (RMS, dB) over 384 programs: min -9.02, p10 -1.54, median 0.43, p90 3.05, max 9.22, mean 0.6.
+Level difference firmware minus default (RMS, dB) over 384 programs: min -9.02, p10 -2.26, median 0.39, p90 2.83, max 18.39, mean 0.4.
 
 ### Outliers
 
-Counts: panic 0, non-finite 0, silent 0, clipping 14, level jump 10.
+Counts: panic 0, non-finite 0, silent 0, clipping 17, level jump 12.
 
 **Clipping (top 30)**
 
@@ -266,11 +274,14 @@ Counts: panic 0, non-finite 0, silent 0, clipping 14, level jump 10.
 | Program/Bank D/Windhoek B3 II.ns4p | firmware | 1.0 | 0.135667 |
 | Program/Bank B/Burning Lead.ns4p | firmware | 1.0 | 0.114094 |
 | Program/Bank D/Windhoek B3 II.ns4p | default | 1.0 | 0.09574 |
-| Program/Bank B/Burning Lead.ns4p | default | 1.0 | 0.09299 |
+| Program/Bank A/B3 Shade.ns4p | default | 1.0 | 0.037714 |
 | Program/Bank A/B3 Shade.ns4p | firmware | 1.0 | 0.021974 |
 | Program/Bank D/Vox Inna-Gadda.ns4p | firmware | 1.0 | 0.019714 |
-| Program/Bank A/B3 Shade.ns4p | default | 1.0 | 0.011813 |
+| Program/Bank B/Solo n Walk B3.ns4p | default | 1.0 | 0.019104 |
+| Program/Bank D/Door Knob.ns4p | default | 1.0 | 0.017057 |
 | Program/Bank D/Vox Inna-Gadda.ns4p | default | 1.0 | 0.009443 |
+| Program/Bank B/Burning Lead.ns4p | default | 1.0 | 0.008812 |
+| Program/Bank C/LoFi Piano.ns4p | default | 1.0 | 0.008188 |
 | Program/Bank E/Wah EP Ondre J.ns4p | firmware | 1.0 | 0.004646 |
 | Program/Bank B/Q and A.ns4p | firmware | 1.0 | 0.004323 |
 | Program/Bank C/Vox Like Me.ns4p | firmware | 1.0 | 0.002406 |
@@ -282,23 +293,30 @@ Counts: panic 0, non-finite 0, silent 0, clipping 14, level jump 10.
 
 | entry | rms_delta_db |
 |---|---|
+| Program/Bank C/Farfisa II.ns4p | 18.39 |
 | Program/Bank B/Fan Club Piano.ns4p | 9.22 |
 | Program/Bank E/PineScape Synth.ns4p | -9.02 |
 | Program/Bank A/Jazz Guitar II.ns4p | 8.64 |
 | Program/Bank D/16th Note Bass.ns4p | 8.52 |
 | Program/Bank E/Snappy D6.ns4p | 8.35 |
+| Program/Bank B/Wormhole Organ.ns4p | -7.54 |
 | Program/Bank C/Bounce Clav.ns4p | 7.53 |
+| Program/Bank C/LoFi Piano.ns4p | -7.47 |
 | Program/Bank E/24 Frames J3.ns4p | 7.32 |
-| Program/Bank E/J3 Split Special.ns4p | 6.86 |
 | Program/Bank F/OD Rock Bass.ns4p | 6.46 |
-| Program/Bank C/LoFi Piano.ns4p | 6.07 |
+| Program/Bank A/B3 Old Forest.ns4p | -6.39 |
 
 ## 9. Implications
 
-(see the data file)
+Regenerated 2026-11-14 for the D59 synth defaults (per-wave P rows, Ladder24 cutoff factor 0.8, knob laws default since D57, SUPER and SHAPE stages), `96000` frames, both modes in one run (`default` and `--firmware-all --firmware-routing`), against the numbers committed before (same 384 programs, same notes). Derived numbers only.
+
+- Health: panic 0, non-finite 0, silent 0 in both modes, as before. No program newly clips at >= 0.1 %. Programs with any clipped sample: `default` 37 to 36 (Fat Wheel no longer clips), `firmware` 40 to 36 (Bounce Clav, Ice Pad, Cinema Rise, Fat Wheel, Moving Chords no longer clip; Calling Whl newly clips, below 0.1 %). Clipping >= 0.1 %: `default` 9 to 9, `firmware` 9 to 8 (Cinema Rise drops out).
+- Level against the previous numbers (RMS change of the same program, same mode): median 0.0 dB, 55 programs move by more than 1 dB and 23 by more than 6 dB in `default` (50 and 23 in `firmware`). Largest rises in `default`: Scream Lead AT +13.3 dB, 80s Sci-Fi +9.8, Statement Syn Bs +9.7, Warm Syn Brass, Classic Syn Bass, Paisley Synth, Dyn Octave Pad and Funk Hit Split +9.1 to +9.2. Largest drops: Glow Chords Whl -9.3 dB (-12.1 in `firmware`), Sine Rain Pad -7.0, ScissorSplit Whl -6.3, Trumpet Synth and Syn Flute -6.0, Moving Chords -5.8.
+- Firmware minus default level (section 8): minimum -7.54 to -9.02 dB, maximum unchanged at +18.39 (Farfisa II, an organ program). Resonant Peaks (+6.66) leaves the jump list; PineScape Synth (-9.02) and 24 Frames J3 (+7.32) enter it. The classification totals (section 7) are unchanged: the status table is a reading of the specs, not of the render.
+- The level shifts are model changes validated only by the 15 hardware clips ([synth-validation](synth-validation.md)); no factory program has a hardware level reference, so they stay open under TD-11.
 
 ## 10. Follow-ups
 
--
+- Hardware level references for the synth programs with the largest shifts (Scream Lead AT, 80s Sci-Fi, Glow Chords Whl) to confirm or refit the per-wave P rows (TD-11).
 
 Data: [data/program-sweep.json](data/program-sweep.json). Reproduce: `cargo build --release -p nord-tools --bin program_sweep` then `uv run python tools/program_sweep.py --ns4b ".reference/<backup>.ns4b"`.
