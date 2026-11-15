@@ -26,7 +26,7 @@
 //! All factory files carry the version word `0x464`; the firmware branches for the words 2 and 5
 //! are never used by them and are not modelled.
 
-use super::velocity_curve::{velocity_position, x_from_curve};
+use super::touch_curve::TouchCurve;
 use super::velocity_level::amplitude_q23;
 
 const KEYMAP: usize = 0xB8;
@@ -193,10 +193,10 @@ impl NpnoLevel {
             .is_some_and(|(_, strokes)| strokes.iter().any(|s| s.layer == layer))
     }
 
-    fn level(&self, note: u8, velocity: u8, stroke: &Stroke) -> VoiceLevel {
+    fn level(&self, note: u8, velocity: u8, stroke: &Stroke, touch: TouchCurve) -> VoiceLevel {
         VoiceLevel {
             record: stroke.index,
-            amplitude_q23: amplitude_q23(stroke.offset, x_from_curve(velocity), self.key_sum(note)),
+            amplitude_q23: amplitude_q23(stroke.offset, touch.x(velocity), self.key_sum(note)),
         }
     }
 
@@ -207,16 +207,33 @@ impl NpnoLevel {
 
     /// Q23 amplitude of one voice: `layer` list, velocity position `T(velocity) + bias`.
     pub fn amplitude_q23(&self, note: u8, velocity: u8, layer: u8, bias: u16) -> Option<u32> {
-        let position = (u16::from(velocity_position(velocity)) + bias).min(POSITION_MAX);
+        self.amplitude_q23_touch(note, velocity, layer, bias, TouchCurve::Medium)
+    }
+
+    /// [`Self::amplitude_q23`] under a Touch curve ([`TouchCurve`], opt-in).
+    pub fn amplitude_q23_touch(
+        &self,
+        note: u8,
+        velocity: u8,
+        layer: u8,
+        bias: u16,
+        touch: TouchCurve,
+    ) -> Option<u32> {
+        let position = (u16::from(touch.velocity_position(velocity)) + bias).min(POSITION_MAX);
         let stroke = self.pick(note, layer, position)?;
-        Some(self.level(note, velocity, stroke).amplitude_q23)
+        Some(self.level(note, velocity, stroke, touch).amplitude_q23)
     }
 
     /// The voices a note-on starts, extra first voice (if any) then the main voice; empty when
     /// the note is unmapped or the root has no layer-0 stroke.
     pub fn voices(&self, note: u8, velocity: u8) -> VoiceList {
+        self.voices_touch(note, velocity, TouchCurve::Medium)
+    }
+
+    /// [`Self::voices`] under a Touch curve ([`TouchCurve`], opt-in).
+    pub fn voices_touch(&self, note: u8, velocity: u8, touch: TouchCurve) -> VoiceList {
         let velocity = velocity.clamp(1, 127);
-        let t = u16::from(velocity_position(velocity));
+        let t = u16::from(touch.velocity_position(velocity));
         let Some(main) = self.pick(note, 0, t) else {
             return VoiceList::default();
         };
@@ -228,16 +245,21 @@ impl NpnoLevel {
                 self.pick(note, 0, (t + EXTRA_VOICE_BIAS).min(POSITION_MAX))
             };
             if let Some(extra) = extra {
-                out.push(self.level(note, velocity, extra));
+                out.push(self.level(note, velocity, extra, touch));
             }
         }
-        out.push(self.level(note, velocity, main));
+        out.push(self.level(note, velocity, main, touch));
         out
     }
 
     /// Q23 amplitude of the main voice (layer 0, no bias).
     pub fn main_voice_q23(&self, note: u8, velocity: u8) -> Option<u32> {
-        self.amplitude_q23(note, velocity, 0, 0)
+        self.main_voice_q23_touch(note, velocity, TouchCurve::Medium)
+    }
+
+    /// [`Self::main_voice_q23`] under a Touch curve ([`TouchCurve`], opt-in).
+    pub fn main_voice_q23_touch(&self, note: u8, velocity: u8, touch: TouchCurve) -> Option<u32> {
+        self.amplitude_q23_touch(note, velocity, 0, 0, touch)
     }
 }
 
@@ -263,6 +285,7 @@ pub(crate) fn test_image(root: u8, strokes: &[(u8, i16, u8)], key_sum: i8) -> Ve
 
 #[cfg(test)]
 mod tests {
+    use super::super::velocity_curve::velocity_position;
     use super::super::velocity_level::{
         note_amplitude_q23, stroke_at, AMBER_UPRIGHT_STROKES, BRIGHT_GRAND_STROKES,
         CLAVINET_D6_STROKES, X_SWEEP,
@@ -432,6 +455,33 @@ mod tests {
         d[B3] = 49;
         let model = NpnoLevel::parse(&d).unwrap();
         assert_eq!(model.key_sum(60), 48);
+    }
+
+    #[test]
+    fn touch_curves_move_the_level_and_medium_is_the_default() {
+        let model = level(0, &CLAVINET_LIST, 40);
+        for velocity in [1u8, 20, 64, 100, 126] {
+            let medium = model.main_voice_q23_touch(60, velocity, TouchCurve::Medium);
+            assert_eq!(medium, model.main_voice_q23(60, velocity));
+            assert_eq!(
+                model.voices_touch(60, velocity, TouchCurve::Medium),
+                model.voices(60, velocity)
+            );
+            let heavy = model
+                .main_voice_q23_touch(60, velocity, TouchCurve::Heavy)
+                .unwrap();
+            let light = model
+                .main_voice_q23_touch(60, velocity, TouchCurve::Light)
+                .unwrap();
+            assert!(
+                heavy <= medium.unwrap() && medium.unwrap() <= light,
+                "velocity {velocity}"
+            );
+        }
+        // Velocity 64: X = 74 / 66 / 57 (Heavy / Medium / Light), so the level steps differ.
+        let at = |touch| model.main_voice_q23_touch(60, 64, touch).unwrap();
+        assert!(at(TouchCurve::Heavy) < at(TouchCurve::Medium));
+        assert!(at(TouchCurve::Medium) < at(TouchCurve::Light));
     }
 }
 #[cfg(test)]

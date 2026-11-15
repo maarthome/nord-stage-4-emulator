@@ -294,6 +294,9 @@ pub struct FirmwareOptions {
     pub piano_firmware_level: bool,
     /// `--firmware-piano-bus`: `PianoLayer::firmware_bus_scale` (opt-in, ASSUMED receiver scale).
     pub piano_bus_scale: bool,
+    /// `--firmware-piano-touch`: `PianoLayer::firmware_touch` (program Touch from the firmware
+    /// velocity curves, VERIFIED against the ARM; opt-in because the program file bits are not).
+    pub piano_touch: bool,
     /// `--piano-slew-fw`: `PianoLayer::firmware_slew` (SMP voice-gain slew, opt-in; D22).
     pub piano_slew: bool,
     /// `--firmware-piano-chain`: `PianoLayer::receiver_chain_scale` (verified FX path 0.7464 per
@@ -301,7 +304,8 @@ pub struct FirmwareOptions {
     pub piano_chain_scale: bool,
     /// `--firmware-piano-layer-law`: the piano layer fader follows `(v / 127)^2` (opt-in).
     pub piano_layer_law: bool,
-    /// `--firmware-synth-layer-law`: the synth layer faders follow `(v / 127)^2` (opt-in, EMPIRICAL).
+    /// The synth layer faders follow `(v / 127)^2` (default on, VERIFIED: the handler `0xC011BB48`
+    /// run in the ARM harness, D87); `--legacy-synth-layer-law` turns it off.
     pub synth_layer_law: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,
@@ -366,10 +370,11 @@ impl Default for FirmwareOptions {
             fx: FirmwareFx::DEFAULT,
             piano_firmware_level: true,
             piano_bus_scale: false,
+            piano_touch: false,
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
-            synth_layer_law: false,
+            synth_layer_law: true,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -398,6 +403,7 @@ impl FirmwareOptions {
             synth_stages: false,
             synth_knob_laws: false,
             piano_firmware_level: false,
+            synth_layer_law: false,
             sample_kernel_key: false,
             firmware_routing: false,
             ..Self::default()
@@ -417,10 +423,11 @@ impl FirmwareOptions {
             fx: FirmwareFx::ALL,
             piano_firmware_level: true,
             piano_bus_scale: false,
+            piano_touch: false,
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
-            synth_layer_law: false,
+            synth_layer_law: true,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -489,10 +496,14 @@ impl FirmwareOptions {
             o.piano_firmware_level = false;
         }
         o.piano_bus_scale |= has("--firmware-piano-bus");
+        o.piano_touch |= has("--firmware-piano-touch");
         o.piano_slew |= has("--piano-slew-fw");
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
         o.synth_layer_law |= has("--firmware-synth-layer-law");
+        if has("--legacy-synth-layer-law") {
+            o.synth_layer_law = false;
+        }
         o.measured_laws |= has("--measured-laws");
         o.synth_stages |= has("--synth-stages");
         o.synth_knob_laws |= has("--synth-knob-laws");
@@ -572,6 +583,8 @@ impl FirmwareOptions {
         apply_piano_level(engine, self.piano_firmware_level);
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
         engine.piano_b.firmware_bus_scale = self.piano_bus_scale;
+        engine.piano_a.firmware_touch = self.piano_touch;
+        engine.piano_b.firmware_touch = self.piano_touch;
         engine.piano_a.firmware_slew = self.piano_slew;
         engine.piano_b.firmware_slew = self.piano_slew;
         engine.piano_a.receiver_chain_scale = self.piano_chain_scale;
@@ -632,6 +645,8 @@ impl FirmwareOptions {
         engine.piano_b.firmware_velocity_level = self.piano_firmware_level;
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
         engine.piano_b.firmware_bus_scale = self.piano_bus_scale;
+        engine.piano_a.firmware_touch = self.piano_touch;
+        engine.piano_b.firmware_touch = self.piano_touch;
         engine.piano_a.firmware_slew = self.piano_slew;
         engine.piano_b.firmware_slew = self.piano_slew;
         engine.piano_a.receiver_chain_scale = self.piano_chain_scale;
@@ -788,6 +803,9 @@ impl FirmwareOptions {
         if self.piano_bus_scale {
             parts.push("piano-bus".into());
         }
+        if self.piano_touch {
+            parts.push("piano-touch".into());
+        }
         if self.piano_slew {
             parts.push("piano-slew".into());
         }
@@ -797,8 +815,8 @@ impl FirmwareOptions {
         if self.piano_layer_law {
             parts.push("piano-layer-law".into());
         }
-        if self.synth_layer_law {
-            parts.push("synth-layer-law".into());
+        if !self.synth_layer_law {
+            parts.push("legacy-synth-layer".into());
         }
         if let Some(m) = self.synth_shape_milli {
             parts.push(format!("shape={:.2}", f32::from(m) / 1000.0));
@@ -889,6 +907,12 @@ mod tests {
         assert!(!o.piano_bus_scale, "the bus scale is opt-in");
         let bus = FirmwareOptions::from_args(&args(&["--firmware-piano-bus"])).unwrap();
         assert!(bus.piano_bus_scale);
+        assert!(!o.piano_touch, "the program Touch curves are opt-in");
+        let touch = FirmwareOptions::from_args(&args(&["--firmware-piano-touch"])).unwrap();
+        assert!(touch.piano_touch && touch.summary().contains("piano-touch"));
+        let mut e = Stage4Engine::new(48_000.0);
+        touch.apply_to(&mut e);
+        assert!(e.piano_a.firmware_touch && e.piano_b.firmware_touch);
         assert!(!o.piano_chain_scale, "the receiver chain scale is opt-in");
         let chain = FirmwareOptions::from_args(&args(&["--firmware-piano-chain"])).unwrap();
         assert!(chain.piano_chain_scale && chain.summary().contains("piano-chain"));
@@ -900,12 +924,24 @@ mod tests {
         assert!(!o.piano_layer_law, "the layer law is opt-in");
         let law = FirmwareOptions::from_args(&args(&["--firmware-piano-layer-law"])).unwrap();
         assert!(law.piano_layer_law && law.summary().contains("piano-layer-law"));
-        assert!(!o.synth_layer_law, "the synth layer law is opt-in");
-        let sl = FirmwareOptions::from_args(&args(&["--firmware-synth-layer-law"])).unwrap();
-        assert!(sl.synth_layer_law && sl.summary().contains("synth-layer-law"));
+        assert!(
+            o.synth_layer_law,
+            "the verified synth layer law is the default"
+        );
+        assert!(!o.summary().contains("synth-layer"));
+        assert!(!FirmwareOptions::legacy_all().synth_layer_law);
+        let sl = FirmwareOptions::from_args(&args(&["--legacy-synth-layer-law"])).unwrap();
+        assert!(!sl.synth_layer_law && sl.summary().contains("legacy-synth-layer"));
         let mut e = Stage4Engine::new(48_000.0);
+        assert!(
+            e.synth_layer_law,
+            "the engine default follows the verified law"
+        );
         sl.apply_to(&mut e);
-        assert!(e.synth_layer_law);
+        assert!(!e.synth_layer_law);
+        let again = FirmwareOptions::from_args(&args(&["--firmware-synth-layer-law"])).unwrap();
+        again.apply_to(&mut e);
+        assert!(e.synth_layer_law, "the old opt-in flag stays accepted");
         let mut e = Stage4Engine::new(48_000.0);
         bus.apply_to(&mut e);
         assert!(e.piano_a.firmware_bus_scale && e.piano_b.firmware_bus_scale);

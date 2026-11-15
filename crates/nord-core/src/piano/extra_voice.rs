@@ -38,7 +38,7 @@ impl PianoLayer {
         let Some(model) = sound.firmware_level.as_ref() else {
             return false;
         };
-        let voices = model.voices(effective_note, velocity);
+        let voices = model.voices_touch(effective_note, velocity, self.touch_curve());
         // Every voice needs a stroke; otherwise keep the legacy path.
         let usable = !voices.is_empty()
             && voices
