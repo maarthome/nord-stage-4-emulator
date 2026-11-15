@@ -101,6 +101,17 @@ Chorus rate position 0 and 1 are both 0 (the lowest two knob steps share a rate)
 - Kontakt versions other than 8.4 and protected libraries: untested.
 - Compression runs ~12x (1 MB to 12 MB); decode time ~1 s.
 
+## Known UP2 versus Nord differences (reviewer clips, qualitative)
+
+Source: three public reviewer clips of a player alternating the Nord and Ultimate Pianos 2 (`Video by carvalho_teclas`, local only, not committed; subtitles transcribed by the user's tool, Portuguese). They are live takes with speech and no common notes, so no number was measured from them (ASSUMED qualitative only). Segment times and notes come from a Gemini 4 Hydrogen listening pass over clip 3 plus the subtitles; the model's pitch and pedal claims are unchecked.
+
+| Observation (clip time) | Meaning for the oracle |
+|---|---|
+| "same sound" in direct A/B, one clip says "tá igualzinho" (clip 3, 0:52) | The sample set and tone are close to the hardware, as the 1 dB band agreement of `L.wav` / `R.wav` also shows. |
+| Above about F5 to F6 the Nord rings on after key release without the pedal (undamped treble, as on a grand), below that the notes cut off; the player then plays the UP2 and says its author even modelled "this small detail" (clip 3, 0:25 to 0:50) | The UP2 reproduces the undamped treble, so it is a valid reference for that behaviour; the boundary key is only approximate (F5 to F6 from a listening pass, not measured). |
+| In the demo the UP2 has a lowered release ("release baixo"); the Nord has no release control (clip 3, 0:56 to 1:07) | A UP2 setting, not an inherent difference. The UP2 `on release` law (section "What the script shows") is still a Kontakt addition, so UP2 release tails are only a Nord reference at the default release. |
+| The clips are not all the Stage 4: clip 3 (`DaMGni-pgPb`) compares with a Nord Stage 3 (0:06) and clip 2 (`DcmqHBcJCs1`) with a Nord Piano 6 (user, 2026-11-15) | Those clips are weaker references for the Stage 4 piano and its effects. |
+
 ## Implications
 
 Velocity shaping and release-sample behaviour for the UP2 oracle can be taken from the script instead of screenshots. The effect parameter values still need the tables or Kontakt screenshots.
