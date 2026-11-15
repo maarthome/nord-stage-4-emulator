@@ -64,6 +64,6 @@ Absolute band power, emulator minus hardware (dB, same clip):
 
 ## 5. Follow-ups
 
-1. Replay the pedal of the transcription (PR 381 `render-patch` pedal support) and re-measure the tail time and width.
+1. Done (D93): pedal replayed (`--events-from transkun`): tail 6.7 s, width 0.46.
 2. Done (D87, [synth-layer-level-law](synth-layer-level-law.md)): the handler `0xC011BB48` stores `(v / 127)^2`; the law is the default.
-3. Decode the program's synth FX rack against the hardware width (Reverb type 4 colour 1, EQ mid -5 dB).
+3. Done (D93, [grand-pad-leftovers](grand-pad-leftovers.md)): the rack is irrelevant here, the pedal replay raises width 0.37 to 0.46 and tail 3.7 to 6.7 s; the remainder is reverb and the synth SUSTPED default.

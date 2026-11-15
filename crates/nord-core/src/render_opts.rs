@@ -307,6 +307,10 @@ pub struct FirmwareOptions {
     /// The synth layer faders follow `(v / 127)^2` (default on, VERIFIED: the handler `0xC011BB48`
     /// run in the ARM harness, D87); `--legacy-synth-layer-law` turns it off.
     pub synth_layer_law: bool,
+    /// `--synth-sustain-pedal`: the sustain pedal (CC 64) also holds the three synth layers
+    /// (`PedalState::sustped`, opt-in; ASSUMED, the SUSTPED default of the hardware synth layers
+    /// is not decoded, `docs/research/grand-pad-leftovers.md`).
+    pub synth_sustain_pedal: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,
     /// `--synth-shape <0..1>`: strip shape word of the SHAPE oscillator (`fw_shape.rs`) in
@@ -375,6 +379,7 @@ impl Default for FirmwareOptions {
             piano_chain_scale: false,
             piano_layer_law: false,
             synth_layer_law: true,
+            synth_sustain_pedal: false,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -404,6 +409,7 @@ impl FirmwareOptions {
             synth_knob_laws: false,
             piano_firmware_level: false,
             synth_layer_law: false,
+            synth_sustain_pedal: false,
             sample_kernel_key: false,
             firmware_routing: false,
             ..Self::default()
@@ -428,6 +434,7 @@ impl FirmwareOptions {
             piano_chain_scale: false,
             piano_layer_law: false,
             synth_layer_law: true,
+            synth_sustain_pedal: false,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -501,6 +508,7 @@ impl FirmwareOptions {
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
         o.synth_layer_law |= has("--firmware-synth-layer-law");
+        o.synth_sustain_pedal |= has("--synth-sustain-pedal");
         if has("--legacy-synth-layer-law") {
             o.synth_layer_law = false;
         }
@@ -592,6 +600,7 @@ impl FirmwareOptions {
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
         engine.synth_layer_law = self.synth_layer_law;
+        engine.pedals.sustped[4..7].fill(self.synth_sustain_pedal);
         apply_b3_tail(engine, self.b3_tail);
         apply_farfisa_processor(engine, self.farfisa_processor);
         apply_b3_bass_processor(engine, self.b3_bass_processor);
@@ -654,6 +663,7 @@ impl FirmwareOptions {
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
         engine.piano_b.firmware_layer_law = self.piano_layer_law;
         engine.synth_layer_law = self.synth_layer_law;
+        engine.pedals.sustped[4..7].fill(self.synth_sustain_pedal);
         self.set_rotary(engine);
         let bass = self.b3_bass_processor == Some(true);
         apply_b3_tail(engine, Some(!bass && self.b3_tail.unwrap_or(true)));
@@ -818,6 +828,9 @@ impl FirmwareOptions {
         if !self.synth_layer_law {
             parts.push("legacy-synth-layer".into());
         }
+        if self.synth_sustain_pedal {
+            parts.push("synth-sustain-pedal".into());
+        }
         if let Some(m) = self.synth_shape_milli {
             parts.push(format!("shape={:.2}", f32::from(m) / 1000.0));
         }
@@ -865,6 +878,26 @@ impl FirmwareOptions {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn synth_sustain_pedal_is_opt_in_and_only_touches_the_synth_layers() {
+        let o = FirmwareOptions::default();
+        assert!(!o.synth_sustain_pedal && !o.summary().contains("synth-sustain-pedal"));
+        let mut e = Stage4Engine::new(48_000.0);
+        o.apply_to(&mut e);
+        assert_eq!(
+            e.pedals.sustped,
+            [false, false, true, true, false, false, false]
+        );
+        let on = FirmwareOptions::from_args(&args(&["--synth-sustain-pedal"])).unwrap();
+        assert!(on.summary().contains("synth-sustain-pedal"));
+        on.apply_to(&mut e);
+        assert_eq!(
+            e.pedals.sustped,
+            [false, false, true, true, true, true, true]
+        );
+        assert!(!FirmwareOptions::legacy_all().synth_sustain_pedal);
+    }
+
     #[test]
     fn rotary_drive_scaled_maps_the_preset_unit_to_the_engine_unit() {
         let mut e = Stage4Engine::new(48_000.0);
