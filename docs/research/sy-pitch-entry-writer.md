@@ -74,6 +74,29 @@ The byte scans are plain: the 32-bit literals `0x93540..0x93591` in `bank0_CODE`
 
 [synth-sample-kernel-rule](synth-sample-kernel-rule.md) section 14 says the type 4 event `0xC01E24F0` sends no SY message **during the sample bind** (`load_sample`, `EDIT_SMP_ID`, `EDIT_MODE`, `bind_layer`, two ticks): at that point no note is on and the event is not in the queue. Section 2 above (and follow-up 2 of that note) describe the **note-on**: the key event queues the type 4 event first and the voice update (slot 1) second, `pump` delivers them in that order, so the event sends the voice reset (`0x92414 <- 0x1C0794`) and word 0 (`0x9219E <- 0xFFFFFFFF`) while the slot fields of the voice object are still `-1`; only then does the voice update copy slot `0` and `-1` from the pool object into `[obj + 0x24]`, `[obj + 0x28]` (`0xC01E09D8`, `0xC01E09F0`). Same code, different harness state (no note, then a queued note); the earlier statement is about bind, this one about note-on. Whether the hardware sends word 0 a second time after the voice update (value `0x04000000`) is not shown: the pump delivers each event once.
 
+## 6. Second hunt (2026-11-15, follow-up task)
+
+Question: who writes the SY pitch entry `e` at `DM(0x9354A + index)`, with ARM and SHARC only. Checked against the section 5 list and the outside-review ideas.
+
+| Check | Result | Tag |
+|---|---|---|
+| Who gives a pool object its index | The note-on function `0xC01E31C8..0xC01E3DC0` writes the pool object: `[+0] = voice number k`, `[+4] = -1`, `[+8] = key`, `[+0xC] = layer type 4`, `[+0x10] = 0xFF800000`, `[+0x14] = 0x480000`, `[+0x18]` counter (stores at pc `0xC01E3AB8..0xC01E3AE0`, found with a write watch on the pool and the pc, not `lr`). The boot constructor writes only `0, -1`. So the table index is the **voice number** (0..55 for the pool of 56, stride `0x20`, not `0x1C`), allocated at note-on; the first SAMPLES voice reads `DM(0x9354A + k)` | VERIFIED (run, `arm_sy_slot_probe`-style watch) |
+| Broad MIDI flow | note on / off, pitch bend, mod wheel, sustain on the sample rig: no SY or SMP message into `0x93500..0x935A0`; the ARM sends opcode 0 only | VERIFIED (run) |
+| ARM packer | no ARM routine or literal that builds the 16-bit `E:5 / m:11` entry (capstone scan of `bank0_CODE` for the window literals and for the pack shifts) | VERIFIED (scan); a computed address is not excluded |
+| SY / SMP DSP stores | SY listing: the only literal into the window is `i5 = 0x9354A` at `0x379` (the reader); the neighbours `DM(0x9358E)` / `DM(0x93590)` (stores at `0x29D..0x2B6`) lie past the table end `0x9358D`. No `FPACK` in the SY or SMP listings. The SMP image keeps its own records at `0x93542` / `0x9354A` (pointer pairs, a different table) | VERIFIED (listing grep) |
+| SY ISR sweep under `sharc-ref --watch 0x93500:0xA0` | **blocked**: vector 12 stops at `0x1C0B33` (wait) and vector 17 inside the ring refill unpacker `0x1C1276..0x1C12DD` (2,000,000 steps, `unfinished`), because the external-port refill DMA and the unpacker pointer table `DM(0x95C7C)` are not modelled ([sy-smp-audio](sy-smp-audio.md) s5). No write into the window was seen before the stop | open |
+| Other `.nsmp4` members, ring consumer `0xC01CE7D8`, `0xC01E41B8` / `0xC01ECD74` | not run | open |
+
+Reading: the table is zero-filled by the image loader, the ARM only sends the index, and nothing the harness drives writes the value. Most likely the entry arrives through the unmodelled path (external-port DMA of a packed stream, or the ARM initialisation script `0xC0503600 ..` replay, [sy-smp-audio](sy-smp-audio.md) s5) which this harness does not run. That stays a hypothesis (ASSUMED) until the script is decoded and replayed.
+
+Decision: D105. `--sample-pitch fw` stays opt-in.
+
+### Follow-ups (replace section 5 follow-ups 1 to 3)
+
+1. Decode the ARM initialisation script `0xC0503600 ..` (type 4 bulk records) and replay it with the unpacker table and the ring refill modelled; then repeat the ISR sweep with the watch.
+2. Read `0xC01E41B8` and `0xC01ECD74` (remaining pool-list users) and run the ring consumer `0xC01CE7D8`.
+3. Try the other `.nsmp4` members with `[zone + 0x6C] == 1`.
+
 ## Implications
 
 - `--sample-pitch fw` stays opt-in (D89); `step_join::table_entry_for_key` remains a model. No default, golden or `render_hash` moves.
