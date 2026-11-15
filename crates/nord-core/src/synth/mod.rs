@@ -51,6 +51,7 @@ mod measured;
 mod p_block;
 mod p_table;
 mod p_type;
+mod p_words;
 mod pattern;
 mod pattern_presets;
 mod perf;
@@ -91,6 +92,7 @@ pub use measured::{
 pub use p_block::{PBlock, PSpec};
 pub use p_table::{PTable, PTableSpec, PWave, PWAVE_COUNT};
 pub use p_type::type_cutoff_scale;
+pub use p_words::{type_count, type_of, words_for, words_of_type, PWords, GAIN_PER_P16};
 pub use pattern::{pan_gains, CustomPattern, PatternPan, ACCENT_VELOCITY_BOOST, PATTERN_MAX_STEPS};
 pub use perf::{
     ClockDivision, GatePattern, PerfState, PATTERN_PRESETS, PATTERN_PRESET_COUNT,

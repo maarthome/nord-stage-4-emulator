@@ -78,6 +78,8 @@ The P block (`P[-32]`, `P[-30]` ratios, `P[-14..-10]` weights, `P[16]` gain) and
 
 ## 9. Where the P block and the shape words come from (oracle experiments, third round)
 
+> **Superseded by [synth-p-writer](synth-p-writer.md):** the ARM writes the P block (strip apply `0xC01CE7D8` and 44 word senders), not another core or DMA; the idle block below is an image default that every loaded program replaces (`P[-32 .. -29]` become 1.0 and the unison ratios, the gains 0.25 and so on). The oracle observations of this section stay correct for the image block; the conclusion about the writer does not.
+
 Experiments with `sharc-org` on the ORG and PNO core 2 images (commands in this section; `--watch` logs every store of the pass):
 
 | Question | Result | Tag |
@@ -90,7 +92,7 @@ Experiments with `sharc-org` on the ORG and PNO core 2 images (commands in this 
 
 Consequence: with the oscillator increment `inc = FIX(f r 2^31)` (cycles per sample `f r / 2`), a played pitch needs `r = 2` (or a pitch word of twice the note frequency), and the idle `P[-32] = 0.077` cannot be the ratio of a running voice. Since no DSP-side routine in the pass, the setup or the key-down path writes the block, **the real P block is written from outside the ORG / PNO core 2 program**: by the other core of the same chip or by DMA (hypothesis, not tested: the oracle runs core 2 only). The ARM never sends a word into `0xC1600..0xC1700` (the captured messages in [data/synth-edit-messages.csv](data/synth-edit-messages.csv) go to `0xE0000..`, `0xC13A9..AC`, `0xC1B3C..46`, `0xB00xx`, `0x92xxx`). The next experiment is therefore on the core 1 image of the chip that plays the synth: which routine of it writes `0xC1672..` (find with `--watch` on core 1, `sharc-organ` / `sharc-bank`), fed by the same ARM messages.
 
-## 10. What is needed to get the real P block (stopped here)
+## 10. What is needed to get the real P block (stopped here; done in [synth-p-writer](synth-p-writer.md))
 
 Searched in the time box: (a) the ORG core 1 image never stores into the core 2 alias window (the only core-2 immediates in its code are the memory-map set-up words `0x28240000`, `0x28b90000` written to system registers); core 1 does not run as a pass engine under `sharc-org` (step limit), so its stores could not be watched dynamically; (b) the ARM message tables ([arm-param-messages](arm-param-messages.md)) target only the strip arrays (`0x28B80000 + 0xF8 k`, `0x28380000 + 0xF8 k`), the controller words (`0x28B07730 + 4 i`) and the FX / PNO record bases; `DM 0xC169A` is system address `0x28B05A68` and no table reaches it; (c) the core 2 pass, setup routine and key-down path write nothing there (section 9). So the block in the image is what the DSP uses, and the contradiction with a playable pitch (ratio 0.077 against a needed 2) means one of the assumed words is wrong, which only a measurement on a playing device can settle:
 
