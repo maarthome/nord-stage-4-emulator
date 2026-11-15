@@ -1,5 +1,5 @@
 //! Frame-by-frame adapter around the generated firmware Mod 2 routines that are driven by
-//! tabulated laws: `PHAS` ([`super::fw_phas0`], `kFx2Type` 0) and `FLANG` (2, 3), behind `FirmwareFx::mod2` (opt-in, D22).
+//! tabulated laws: `PHAS` ([`super::fw_phas0`], `kFx2Type` 0, 1), `FLANG` (2, 3), `ENS` (8, 9) and `SPIN` (10, 11), behind `FirmwareFx::mod2` (opt-in, D22).
 //!
 //! The routines run once per pass on 2 blocks of two stereo frames, so the stage collects 4
 //! frames and releases them one call later: **latency 4 frames (83 us at 48 kHz)**. The delay and
@@ -178,18 +178,17 @@ pub(super) struct FwLawStage {
 }
 
 impl FwLawStage {
-    /// Stage for `kFx2Type` `ty` (0, 2, 3), `kFx2Rate` and `kFx2Amt` in `0..=127`, at
-    /// `fs`; `None` for the other types.
+    /// Stage for `kFx2Type` `ty` (0 to 3, 8 to 11), `kFx2Rate` and `kFx2Amt` in `0..=127`, at
+    /// `fs`; `None` for the other types. ENS (8, 9) runs with circular tap registers
+    /// (ASSUMED, D95; `docs/research/fx-mod2-validation.md` s5): without them its left output
+    /// stays exactly 0. The ARM writes no rate or amount word for ENS (one type-switch message).
     pub(super) fn new(ty: u8, rate: u32, amount: u32, fs: f32) -> Option<Self> {
-        // ENS (8, 9) is not wired: with the boot row its left output element stays exactly 0
-        // unless the tap registers are circular (`docs/research/fx-mod2-validation.md` s5).
-        if matches!(ty, 8 | 9) {
-            return None;
-        }
-        Self::build(ty, rate, amount, fs)
+        let mut me = Self::build(ty, rate, amount, fs)?;
+        me.st.circular_taps = matches!(ty, 8 | 9);
+        Some(me)
     }
 
-    /// [`Self::new`] without the ENS guard (the experiment of the validation note).
+    /// [`Self::new`] with the boot register state (the experiment of the validation note).
     fn build(ty: u8, rate: u32, amount: u32, fs: f32) -> Option<Self> {
         let sp = spec(ty)?;
         let ratio = crate::organ::FIRMWARE_FRAME_RATE_HZ / f64::from(fs);
@@ -339,7 +338,7 @@ mod tests {
     use super::super::tests_mod2_dense_golden as g;
     use super::*;
 
-    const TYPES: [u8; 6] = [0, 1, 2, 3, 10, 11];
+    const TYPES: [u8; 8] = [0, 1, 2, 3, 8, 9, 10, 11];
 
     fn run(ty: u8, rate: u32, amount: u32, fs: f32, n: usize) -> Vec<[f32; 2]> {
         let mut st = FwLawStage::new(ty, rate, amount, fs).unwrap();
@@ -373,7 +372,7 @@ mod tests {
                 );
             }
         }
-        for ty in [4, 5, 6, 7, 8, 9] {
+        for ty in [4, 5, 6, 7] {
             assert!(
                 FwLawStage::new(ty, 0, 0, 48_000.0).is_none(),
                 "type {ty} has its own stage or is not wired"
@@ -475,10 +474,10 @@ mod tests {
 
     #[test]
     fn the_ensemble_left_voice_needs_circular_tap_registers() {
-        // Boot row, no registers set by the caller: the left output is exactly 0 (why ENS is
-        // not wired). With B4 = B7 = ring and L4 = L7 = 0x200 both outputs run: the left voice
+        // Boot row, no registers set by the caller: the left output is exactly 0 (why ENS needs
+        // `new`'s circular taps). With B4 = B7 = ring and L4 = L7 = 0x200 both outputs run: the left voice
         // reads a mirror of the ring that only a circular tap pointer reaches. Whether the
-        // hardware has these register values is open (OQ21), so this stays a test, not a stage.
+        // hardware has these register values is open (OQ21), so `new` sets them for ENS as an ASSUMED opt-in (D95).
         let peak = |circular: bool| {
             let mut st = FwLawStage::build(8, 64, 100, 48_000.0).unwrap();
             st.st.circular_taps = circular;
@@ -495,6 +494,24 @@ mod tests {
         assert!(linear[1] > 0.1);
         let circular = peak(true);
         assert!(circular[0] > 0.1 && circular[1] > 0.1);
+    }
+
+    #[test]
+    fn ens_has_no_rate_or_amount_words_and_is_deterministic() {
+        for ty in [8, 9] {
+            assert_eq!(
+                run(ty, 0, 0, 48_000.0, 2000),
+                run(ty, 127, 127, 48_000.0, 2000),
+                "type {ty}"
+            );
+            assert_eq!(
+                run(ty, 64, 64, 44_100.0, 2000),
+                run(ty, 64, 64, 44_100.0, 2000)
+            );
+            let st = FwLawStage::new(ty, 64, 64, 48_000.0).unwrap();
+            assert_eq!(st.ty(), ty);
+            assert!(st.st.circular_taps);
+        }
     }
 
     #[test]
@@ -531,7 +548,8 @@ mod tests {
 
     #[test]
     fn rate_and_amount_change_the_output() {
-        for ty in TYPES {
+        // ENS (8, 9): the ARM writes no rate or amount word, so the knobs change nothing.
+        for ty in TYPES.into_iter().filter(|t| !matches!(t, 8 | 9)) {
             assert_ne!(
                 run(ty, 20, 90, 48_000.0, 3000),
                 run(ty, 100, 90, 48_000.0, 3000),
