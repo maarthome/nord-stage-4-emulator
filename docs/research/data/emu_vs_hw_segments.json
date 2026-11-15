@@ -99,6 +99,16 @@
      "variants": [
        {"label": "default", "flags": []},
        {"label": "legacy", "flags": ["--synth-chain", "legacy"]}]},
+    {"id": "synth_leaky", "entry": "Program/Bank A/Leaky Stabs II.ns4p", "engine": "A:46 SHAPE saw + white noise, both Ladder24, filter-env stab", "at_s": 1275, "duration_s": 35,
+     "variants": [
+       {"label": "default", "flags": []},
+       {"label": "noise-idle", "flags": ["--synth-p", "table:noise=1/0/1/0.5/1"]},
+       {"label": "legacy", "flags": ["--synth-chain", "legacy"]},
+       {"label": "no-knob-laws", "flags": ["--no-synth-knob-laws"]},
+       {"label": "firmware-fx", "flags": ["--firmware-fx"]},
+       {"label": "layer_a_only", "edits": {"synth.layer_b.enabled": false}},
+       {"label": "layer_b_only", "edits": {"synth.layer_a.enabled": false}},
+       {"label": "level-sq", "edits": {"synth.layer_a.level": 0.6706, "synth.layer_b.level": 0.1042}}]},
     {"id": "fx_amp", "entry": "Program/Bank A/Tiny Transistor.ns4p", "engine": "organ Farfisa + Small II amp + reverb", "at_s": 1812, "duration_s": 25,
      "variants": [
        {"label": "default", "flags": []},

@@ -137,6 +137,14 @@
    "what": "A:44 MULTI Ladder24"
   },
   {
+   "id": "leaky_stabs",
+   "source": "partA",
+   "segment": "synth_leaky",
+   "role": "holdout",
+   "wave": "shapesaw+noise",
+   "what": "A:46 SHAPE saw + white noise, both Ladder24 2500 Hz, filter-env stab"
+  },
+  {
    "id": "filter_bank",
    "source": "partA",
    "segment": "synth_filterbank",
