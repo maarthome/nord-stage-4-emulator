@@ -47,6 +47,8 @@ The state machine subroutine at `0x1C0A89` (listing `0x789`) is called twice per
 
 The engine's edge rule (repeat the edge sample, [piano-engine](../specs/piano-engine.md) s9) has no hardware counterpart in these words: the hardware loops (`F-8`, `F-7`) or stops (`F-9`) a stroke by position; whether a factory `.npno` stroke sets a loop at all is not read here (the stroke descriptor fields behind `F-9 .. F-4` are not mapped).
 
+**Update (D103).** The key-up sample record is wired into the opt-in slew voice (`slew_voice.rs::start_release_sample`): `F15` 1.0 (0.922 at velocity 127), `F17 = 0x3F7FF38E`; see [piano-attack-fw](piano-attack-fw.md). No attack-shaping word exists in the lists.
+
 ## 4. Damper-down strokes, unison, dynamics compressor, EQ
 
 No new hardware evidence. The slew loop and the voice loops are the whole per-record path of the SMP image (listing `0x1C0680..0x1C0A70`): there is no biquad coefficient, detune table or compressor state in them, and the post stage is the unity one-pole of [piano-bus-convention](piano-bus-convention.md) s2b. A counterpart of Unison, Dynamics or Timbre in the PNO or FX image is **not found** (consistent with [piano-dsp-path](piano-dsp-path.md): those ids send nothing); the engine's versions stay `ASSUMED`. Damper-down strokes (`kind = 1` harp strokes selected with the pedal down) have no list or record of their own in the SMP: they are ordinary strokes with a different level (`F-2..F3` ramp and `F19 / F20`), so the selection rule stays on the ARM side (stroke search, [piano-sound-load](piano-sound-load.md) s8) and is not decoded.

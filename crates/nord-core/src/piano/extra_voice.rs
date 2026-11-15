@@ -322,6 +322,52 @@ mod tests {
             .any(|v| v.active && !v.releasing && v.slew.is_active()));
     }
 
+    /// Layer whose sound also has a key-up (release) zone on record 2.
+    fn layer_with_release(slew: bool) -> PianoLayer {
+        use super::super::PianoSampleZone;
+        let mut snd = (*sound_with(&two_voice_image(), 3)).clone();
+        snd.zones = vec![PianoSampleZone {
+            key_low: 0,
+            key_high: 127,
+            vel_low: 1,
+            vel_high: 127,
+            root_key: 60,
+            tune_cents: 0,
+            trigger_release: true,
+            damper_down: false,
+            stroke_idx: 2,
+        }];
+        let mut layer = PianoLayer::new(48_000.0);
+        layer.set_sound(Some(Arc::new(snd)));
+        layer.firmware_velocity_level = true;
+        layer.firmware_slew = slew;
+        layer
+    }
+
+    #[test]
+    fn slew_note_off_starts_a_firmware_release_sample_not_the_engine_constant() {
+        let mut layer = layer_with_release(true);
+        layer.note_on(60, 64);
+        layer.note_off(60);
+        let rel: Vec<_> = layer
+            .voices
+            .iter()
+            .filter(|v| v.active && v.is_release_sample)
+            .collect();
+        assert_eq!(rel.len(), 1);
+        assert!(rel[0].slew.is_active() && (rel[0].amp - 1.0).abs() < 1e-6);
+        // Without the slew the engine constant 0.30 of the voice amplitude applies.
+        let mut plain = layer_with_release(false);
+        plain.note_on(60, 64);
+        plain.note_off(60);
+        let r = plain
+            .voices
+            .iter()
+            .find(|v| v.active && v.is_release_sample)
+            .unwrap();
+        assert!(!r.slew.is_active() && r.amp < 0.31);
+    }
+
     #[test]
     fn slew_off_keeps_two_voices_and_no_slew() {
         let image = two_voice_image();

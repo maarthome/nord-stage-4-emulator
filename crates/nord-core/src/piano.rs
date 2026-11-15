@@ -1170,6 +1170,21 @@ impl PianoLayer {
         let step = (pitch_ratio as f64) * ((st_sr as f64) / (self.sample_rate as f64));
         let slot = self.allocate_voice_slot(None);
         let rel_scale = if self.soft_release { 0.45 } else { 0.30 };
+        // Firmware slew voice released (a pedal-down note plays the legacy voice): the key-up record carries its own gain and decay (`F15`, `F17` of
+        // the ARM note-off list, `docs/research/smp-slew.md` s6), not the engine constants.
+        let slewed = self.firmware_slew
+            && self
+                .voices
+                .iter()
+                .any(|v| v.active && !v.is_release_sample && v.note == note && v.slew.is_active());
+        let (rel_scale, rel_slew) = if slewed {
+            (
+                1.0,
+                slew_voice::SlewVoice::start_release_sample(velocity, self.sample_rate),
+            )
+        } else {
+            (rel_scale, slew_voice::SlewVoice::default())
+        };
         self.voices[slot] = PianoVoice {
             active: true,
             sustained: false,
@@ -1191,7 +1206,7 @@ impl PianoLayer {
             sample_step: step,
             sample_step_detune: step,
             extra: false,
-            slew: slew_voice::SlewVoice::default(),
+            slew: rel_slew,
         };
     }
 
