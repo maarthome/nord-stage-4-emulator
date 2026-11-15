@@ -202,7 +202,7 @@ A `Wavetable` layer is the firmware stage `0x1247B6` (strip type 54, `kOscBank 3
 
 ### 4.5 FM stages (`synth/fw_fm/`, opt-in, not wired to a voice)
 
-Strip types 49..53 select the FM stages `0x124269` (stage 1) and `0x12453F` (stage 2) on ORG core 2 ([fm-banks-1-2](../research/fm-banks-1-2.md), D86). The ARM strip apply writes 361 float words (three band curves of 129 words at `+0`, `+129`, `+258` of `DM(0xE0926 + idx)`, `idx = sext7(W >> 25)`) that the stage lerps with the fraction `(W & 0x1FFFFFF) 2^-25`; the words depend on the type only ([data/synth-fm-tables.csv](../research/data/synth-fm-tables.csv), VERIFIED run, `tools/synth_fm_tables.py`).
+Strip types 49..53 select the FM stages `0x124269` (stage 1) and `0x12453F` (stage 2) on ORG core 2 ([fm-banks-1-2](../research/fm-banks-1-2.md), D92). The ARM strip apply writes 361 float words (three band curves of 129 words at `+0`, `+129`, `+258` of `DM(0xE0926 + idx)`, `idx = sext7(W >> 25)`) that the stage lerps with the fraction `(W & 0x1FFFFFF) 2^-25`; the words depend on the type only ([data/synth-fm-tables.csv](../research/data/synth-fm-tables.csv), VERIFIED run, `tools/synth_fm_tables.py`).
 
 | Item | Equation (per lane, `a` = `a1` pass 1, `a2` pass 2; `inc = FIX(min(e a, 0.99873), 31)`) | Status |
 |---|---|---|
