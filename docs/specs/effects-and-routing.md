@@ -115,6 +115,7 @@ Manual p.53: with STOP MODE active, Shift + STOP MODE selects ANGLE from a list 
 | Free | The rotors keep their residual rate (no pull to a fixed phase), so the rest phase depends on where they stopped. Before this change the legacy path always pulled to phase 0 | `organ/rotary.rs` |
 | Angle 1..6 | Once Stop is active and a rate is below 0.05 Hz, horn (6/s) and drum (3/s) phases ease along the shortest arc to `STOP_ANGLE_RAD[angle]`; no allocation, deterministic | `ease_phase`, test `stop_angle_parks_horn_and_rotor_at_the_picked_position_from_any_start` |
 | Firmware Leslie | The firmware Leslie path (`leslie_fw`, opt-in) does not use the angle: its rotor phase lives in the ported state | not modelled |
+| Firmware Leslie feeds | Input of `0x1256AD` = chain lane pair (scaled by the record's `wet`) + aux pair at `DM(DM(0xB2F3B))` x `DM(0xB2F3C)` (gain 0 at boot) + DMA input lanes `DM(0xB00E5)` and `+0x14`; all feeds see the same linear processor (-48 dB). The engine feeds only the lane pair; the ring that the DMA fills is the surrogate `--leslie-ring` (D94, [organ-preamp-search](../research/organ-preamp-search.md) s6) | VERIFIED (listing, oracle run), ring ASSUMED |
 | Host | `organy_stop_angle_{1,2}` (int `0..=6`, default 0, additive; `organ_extra_params.rs`) | `param-ids.snapshot` |
 | GUI | `OrganEdit::RotaryStopAngle`; popup `panel/rotor_angle.rs` opened by Shift + STOP MODE (a last row keeps the wide/narrow mic toggle, previously the Shift function) | inventory `rotary.stop_angle` |
 
