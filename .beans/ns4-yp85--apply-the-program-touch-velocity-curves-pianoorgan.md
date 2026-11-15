@@ -16,8 +16,8 @@ Closer audio parity: the same program and the same MIDI velocity must give the s
 ## Acceptance Criteria
 - [x] Find in the ARM firmware where the per-program Touch setting (Piano, Organ, Synth sections) is read and how the velocity is mapped (curve tables, edit ids, which core applies it).
 - [x] Verify whether the curve applies to incoming MIDI velocity as well as to the keybed (run the real note-on path in the harness for the three Touch values).
-- [x] Implement the verified curves in the engine, opt-in first (FirmwareOptions switch and a GUI Firmware bar control); the default flip waits for the decoder realignment (D84, D22): the clips are Medium and no program from a file carries its Touch yet.
-- [x] Unit tests with oracle/ARM goldens, docs (piano-engine spec, OQ20, ROADMAP, D84, research note; Organ and Synth have no Touch, nothing to document in their specs).
+- [x] Implement the verified curves in the engine, opt-in first (FirmwareOptions switch and a GUI Firmware bar control); the default flip waits for the decoder realignment (D88, D22): the clips are Medium and no program from a file carries its Touch yet.
+- [x] Unit tests with oracle/ARM goldens, docs (piano-engine spec, OQ20, ROADMAP, D88, research note; Organ and Synth have no Touch, nothing to document in their specs).
 
 ## Out of Scope
 The Nord keybed raw-timing to velocity profile curve (hardware keybed only). MIDI port selection (separate task).
@@ -25,5 +25,5 @@ The Nord keybed raw-timing to velocity profile curve (hardware keybed only). MID
 ## Summary of Changes
 - Firmware: Touch is edit id `0x159` of the Piano section only (values 0 heavy / 1 medium / 2 light); handler `0xC011AA24` stores `curveId` 10 / 11 / 13 in the layer object, the voice init reads `T = byte[0xC0532664 + (curveId << 10) + r8]`. It applies to MIDI notes. Organ and Synth have no Touch id. 27 of 27 `T` bytes equal the composed tables in the ARM run; the program file field is at file bit `1991` (layer A) / `2087` (layer B) and equals the edit value (6 of 6 in the program recall).
 - Code: `piano/touch_curve.rs` (`TouchCurve`, derived tables, fingerprint test), `piano/touch_layer.rs`, `NpnoLevel::*_touch`, `PianoLayer::firmware_touch`, `FirmwareOptions::piano_touch` (`--firmware-piano-touch`), GUI Firmware bar switch, `tools/arm_touch_curves.py`. Defaults and `render_hash` unchanged.
-- Docs: `docs/research/piano-touch-curves.md`, D84, piano-engine spec, OQ20, ROADMAP, gui-testing.
+- Docs: `docs/research/piano-touch-curves.md`, D88, piano-engine spec, OQ20, ROADMAP, gui-testing.
 - Open: the Piano layer decoder reads the Touch (and string resonance / soft release / pedal noise) at the wrong bits, so every factory program decodes as Medium; realign it, then decide the default flip. The System-menu MIDI velocity curves are not modelled.

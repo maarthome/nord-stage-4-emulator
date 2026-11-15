@@ -4,7 +4,7 @@
 - **Sources (local, never committed):** OS v1.66 firmware (`target/fw_unpacked/bank0_CODE.bin`, `bank0_SRAM.bin`, ARM base `0xC0000000`), factory backup `Nord Stage 4 Factory Restore RevK v1.66.ns4b` (Clavinet D6 `.npno`, Felt Upright program) under `.reference/`, `docs/research/arm-edit-params.csv`, `ns4decode` (`ns4names.py`, `ns4maps.py`).
 - **Question:** Which velocity curves does the per-program Touch setting (Piano `KB TOUCH`, Organ, Synth) select in the firmware, do they apply to MIDI notes, and what are the tables?
 
-Tags follow `.agents/rules/provenance-in-code.md`. Bean `ns4-yp85`, decision D84.
+Tags follow `.agents/rules/provenance-in-code.md`. Bean `ns4-yp85`, decision D88.
 
 ## 1. Result
 

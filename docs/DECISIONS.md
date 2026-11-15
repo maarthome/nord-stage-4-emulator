@@ -67,7 +67,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D73](#d73-firmwarerouting-is-the-default-the-loader-rule-for-an-empty-layer-mask-is-verified) | 2026-11-14 | `FirmwareRouting` is the default; the loader rule for an empty layer mask is VERIFIED | accepted |
 | [D79](#d79-piano-comparisons-replay-transcribed-velocities-and-pedal) | 2026-11-15 | Piano comparisons replay transcribed velocities and pedal | proposed |
 | [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
-| [D84](#d84-the-piano-program-touch-plays-the-firmware-velocity-curves-opt-in) | 2026-11-15 | The Piano program Touch plays the firmware velocity curves (opt-in) | proposed |
+| [D88](#d88-the-piano-program-touch-plays-the-firmware-velocity-curves-opt-in) | 2026-11-15 | The Piano program Touch plays the firmware velocity curves (opt-in) | proposed |
 | [D83](#d83-the-pure-noise-row-of-the-p-table-takes-the-saw-gain-verified-arm-word-the-synth-layer-level-law-stays-open) | 2026-11-15 | The PURE noise row of the P table takes the saw gain (VERIFIED ARM word); the synth layer level law stays open | proposed |
 | [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | accepted |
 | [D78](#d78-library-drawer-loads-start-from-an-init-program-the-organ-ladders-follow-the-section-state) | 2026-11-15 | Library drawer loads start from an Init Program; the organ ladders follow the section state | accepted |
@@ -889,7 +889,7 @@ Grand Pad best squared (1.24 1.46 2.69 1.0; RMS +0.6 +2.3), estimated contradict
 Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out document comparison switch).
 `engine/mod.rs`, `engine/mix.rs`, `render_opts.rs` (test `synth_layer_law_squares_the_fader_only_when_selected`), segment `pianopad_grand`, OQ22. renders hashes unchanged.
 
-### D84. The Piano program Touch plays the firmware velocity curves (opt-in)
+### D88. The Piano program Touch plays the firmware velocity curves (opt-in)
 
 - **Status:** proposed
 - **Context:** The 2026-11-15 listening test showed that key force changes the piano sound strongly, and the emulator played raw MIDI velocity through one fixed curve (the `.npno` level law already used the firmware's Medium curve whatever the program's Touch; the other sounds used ASSUMED powers 0.65 / 1.0 / 1.55). Bean `ns4-yp85` asked where the per-program Touch (Piano, Organ, Synth) lives in the firmware and whether it applies to MIDI notes.
