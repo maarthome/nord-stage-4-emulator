@@ -68,7 +68,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D79](#d79-piano-comparisons-replay-transcribed-velocities-and-pedal) | 2026-11-15 | Piano comparisons replay transcribed velocities and pedal | proposed |
 | [D76](#d76-the-on-screen-keybed-plays-velocity-88-not-100) | 2026-11-15 | The on-screen keybed plays velocity 88, not 100 | proposed |
 | [D83](#d83-the-pure-noise-row-of-the-p-table-takes-the-saw-gain-verified-arm-word-the-synth-layer-level-law-stays-open) | 2026-11-15 | The PURE noise row of the P table takes the saw gain (VERIFIED ARM word); the synth layer level law stays open | proposed |
-| [D84](#d84-piano-decay-and-attack-no-engine-change-the-t60-gap-was-a-replay-artefact-per-octave-t60-is-measured-by-toolspiano_decaypy) | 2026-11-15 | Piano decay and attack: no engine change; the T60 gap was a replay artefact; per-octave T60 measured by `tools/piano_decay.py` | accepted |
+| [D86](#d86-piano-decay-and-attack-no-engine-change-the-t60-gap-was-a-replay-artefact-per-octave-t60-is-measured-by-toolspiano_decaypy) | 2026-11-15 | Piano decay and attack: no engine change; the T60 gap was a replay artefact; per-octave T60 measured by `tools/piano_decay.py` | accepted |
 | [D82](#d82-the-synth-layer-level-law-is-an-opt-in-v--1272-grand-pad-clip) | 2026-11-15 | The synth layer level follows `(v / 127)^2` only under `--firmware-synth-layer-law`; the default stays linear | accepted |
 | [D78](#d78-library-drawer-loads-start-from-an-init-program-the-organ-ladders-follow-the-section-state) | 2026-11-15 | Library drawer loads start from an Init Program; the organ ladders follow the section state | accepted |
 | [D70](#d70-the-arm-p-words-drive-the-multi-and-super-stages-under---synth-p-verified-the-default-stays-the-empirical-table) | 2026-11-14 | The ARM P words drive the MULTI and SUPER stages under `--synth-p verified`; the default stays the EMPIRICAL table | accepted |
@@ -889,7 +889,7 @@ Grand Pad best squared (1.24 1.46 2.69 1.0; RMS +0.6 +2.3), estimated contradict
 Flip conflicting clips, Space Drama II 15 validation re-run); leave flag out document comparison switch).
 `engine/mod.rs`, `engine/mix.rs`, `render_opts.rs` (test `synth_layer_law_squares_the_fader_only_when_selected`), segment `pianopad_grand`, OQ22. renders hashes unchanged.
 
-### D84. Piano decay and attack: no engine change; the T60 gap was a replay artefact; per-octave T60 is measured by `tools/piano_decay.py`
+### D86. Piano decay and attack: no engine change; the T60 gap was a replay artefact; per-octave T60 is measured by `tools/piano_decay.py`
 
 - **Status:** accepted
 - **Context:** [piano-felt-upright-soft](research/piano-felt-upright-soft.md) s2 reported a hardware T60 of 3.2 s against 1.3 s in the emulator, and [piano-transcription](research/piano-transcription.md) s4 an attack of 121 / 99 ms (chain + slew) against 64 / 56 ms. Both came from the uniform-velocity, pedal-less replay or an older build. D22 forbids flipping defaults on weak evidence.
