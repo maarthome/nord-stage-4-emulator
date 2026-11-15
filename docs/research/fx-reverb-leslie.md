@@ -310,7 +310,7 @@ The routine is allocation free after `new` (a type change runs `set_type`: clear
 |---|---|---|
 | Wrapper and core algorithm, words of the synth units | bit exact against the oracle (18 golden cases, 9,660 traced steps per type) | VERIFIED |
 | The `kRvbAmt` words of the multi-tap module | the two captured points (127, 63) are the golden inputs; other values use the type 0, 1 law | VERIFIED at 127, 63; ASSUMED between |
-| Model and variation flag to `kRvbType` | by size order of the type words (s3) onto the pairs | ASSUMED (UI names not read from a program) |
+| Model and variation flag to `kRvbType` | the firmware name list `0xC02CD2BC` ([fx-reverb-names](fx-reverb-names.md)) gives the same pairs as the size order | VERIFIED |
 | Piano and synth unit rows other than L6, organ rows | not covered | open |
 | Comparison with the hardware clips | **not done** in this pass: the Part A programs that use Room, Stage, Hall and Cathedral have to be identified first, then the s10 method; the default stays on the engine FDN (D22, D26) | open |
 
