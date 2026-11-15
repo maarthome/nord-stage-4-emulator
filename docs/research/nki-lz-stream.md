@@ -110,7 +110,7 @@ Source: three public reviewer clips of a player alternating the Nord and Ultimat
 | "same sound" in direct A/B, one clip says "tá igualzinho" (clip 3, 0:52) | The sample set and tone are close to the hardware, as the 1 dB band agreement of `L.wav` / `R.wav` also shows. |
 | Above F in the top octave the Nord sustains longer without the pedal, the UP2 does not (clip 3, 0:25 to 0:37) | UP2 high-note decay or its release layer differs from the Nord; do not use UP2 as ground truth for high-note sustain. |
 | UP2 has a shorter release and the Nord has no release control (clip 3, 0:56 to 1:07) | The UP2 `on release` law (section "What the script shows") is a Kontakt addition, not Nord behaviour. |
-| One clip compares with a Nord Stage 3, not the 4 (clip 3, 0:06) | That clip is a weaker reference for the Stage 4. |
+| The clips are not all the Stage 4: clip 3 (`DaMGni-pgPb`) compares with a Nord Stage 3 (0:06) and clip 2 (`DcmqHBcJCs1`) with a Nord Piano 6 (user, 2026-11-15) | Those clips are weaker references for the Stage 4 piano and its effects. |
 
 ## Implications
 
