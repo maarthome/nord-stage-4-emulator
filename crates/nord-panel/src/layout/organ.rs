@@ -2,7 +2,14 @@
 //! `x = 485 + 25.4 * (n - 1)` photo px; its LED ladder is the 15 px column
 //! just to the right of the slot.
 //!
-//! ASSUMED: read from the 2000 px photo; higher-resolution photo confirms.
+//! VERIFIED: every control centre listed in `data/photo_anchors_organ.csv` (crop
+//! `NS4-Panel-organ.max-2000x2000.format-png.png`, x/y mapped affinely from the crop's section
+//! outline onto [`super::section_rect`]); checked by `python tools/layout_overlay.py organ`,
+//! max centre error 0.34 mm before the GUI label nudges (1.3 mm for the drawbar LED ladders,
+//! whose height and offset stay as before so the ladder numerals clear the next slot).
+//! Only the centres were verified: sizes are the old photo reads, except the faders, level
+//! LED ladders and drawbar slots (heights from the crop). ASSUMED: the crop's section is
+//! 1.29x taller in mm than the real one would be at the horizontal scale (see the spec).
 
 use super::{px, Rect};
 

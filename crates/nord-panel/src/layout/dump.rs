@@ -9,8 +9,7 @@
 use std::fmt::Write;
 
 use super::{
-    frame_rect, rect_for, section_rect, shared_base, Rect, ESTIMATED, FRAMES, MM_PER_PX,
-    ORIGIN_PX,
+    frame_rect, rect_for, section_rect, shared_base, Rect, ESTIMATED, FRAMES, MM_PER_PX, ORIGIN_PX,
 };
 use crate::inventory::all_controls;
 use crate::types::Section;
@@ -41,8 +40,11 @@ fn rect_json(r: Rect) -> String {
     )
 }
 
+/// Maps a control id to the rectangle (mm) that is really drawn.
+pub type DrawnRect<'a> = &'a dyn Fn(&str) -> Option<Rect>;
+
 /// The layout as JSON. `gui` maps a control id to the rectangle (mm) that is really drawn.
-pub fn to_json(gui: Option<&dyn Fn(&str) -> Option<Rect>>) -> String {
+pub fn to_json(gui: Option<DrawnRect<'_>>) -> String {
     let mut s = String::new();
     let _ = write!(
         s,

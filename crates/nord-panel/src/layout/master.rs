@@ -1,6 +1,9 @@
 //! Master level, wheels and the Rotary Speaker box (photo crop x 67..415).
 //!
-//! ASSUMED: read from the 2000 px photo; higher-resolution photo confirms.
+//! VERIFIED (level knob, Rotary drive / buttons / LEDs): centres in `data/photo_anchors_master.csv`
+//! (organ crop, red strip), max error 0.2 mm before nudges, checked by
+//! `python tools/layout_overlay.py master`. ASSUMED: `master.pitch_stick` and `master.mod_wheel`
+//! (not on any straight-on crop; the HA88 photos are perspective views).
 
 use super::{px, Rect};
 
