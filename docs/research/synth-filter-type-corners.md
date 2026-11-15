@@ -62,4 +62,6 @@ The derived uniform factor does not reproduce the clips under either unit readin
 
 ## Follow-ups
 
-Section 4, items 1 to 5. `agy` was not used: the questions were closed by equations and runs.
+Section 4, items 1 to 5.
+
+`agy` (`gemini-4-hydrogen-medium`, plan mode, isolated docs-only directory, answer from files) was given this note, the voice-law note and the CSV and asked for ranked hypotheses. Hypotheses only, none is evidence. It returned five, all restating this note: (1) co-fitted compensation for the wrong resonance map and the row factors (tested: `--synth-fw-resonance` alone worsens 5 clips, so the fits are entangled, the cause is not isolated); (2) the `kFltType` to stage link (open item 3; note `from_model` already maps LP12 to the 12 dB stage `0x1253BD`, so the "4-pole LP12" premise it cites is out of date); (3) the Ladder24 position word (open item 4); (4) the stage rate `F` against `2 F` (open item 1; the clips favour `2 F`, 3.88 against 5.42); (5) SUPER LP24 4.4 entangled with the row factor 0.45 (consistent with `synth_horizon` scoring 2.11 under the uniform 1.015, near the fitted 1.89). It proposed no measurement beyond the captures already listed.
