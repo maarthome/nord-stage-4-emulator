@@ -81,6 +81,7 @@ Every custom UI widget in `crates/nord-gui` / `crates/nord-plugin` must render t
 - **Adjacent 8-Segment Red LED Ladder (`1..8`):**
   - Next to every drawbar slot is a white-framed vertical strip numbered `1` through `8` with 8 rectangular red LEDs (`#FF2A2A`).
   - Lights from the top down (`1..N`) to display the active drawbar registration (and any live Morph transition).
+  - Unlit while the Organ section is off and in Drawbar Live (EMPIRICAL: the hardware frame of the piano program `A:13 Felt Upright` shows no lit ladder, [D78](../DECISIONS.md)).
 - **Drawbar Cap Colors:**
   - Indices `0, 1` (`16'`, `5 1/3'`): Black (`#1A1C1E`)
   - Indices `2, 3` (`8'`, `4'`): White (`#ECEBE6`)
