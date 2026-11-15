@@ -18,7 +18,7 @@ The SHARC routines of all six types are ported instruction by instruction and ch
 | 1 PHAS 1 | rate `c[-32]` | dense knots; no shared word |
 | 2, 3 FLANG | `c[-16]` both ids, `c[-15] = -100 - c[-16]` | product `A(a) R(r) / R(64)` VERIFIED on 3 x 44 (9.5e-8 relative); knots dense |
 | 6, 7 VIBE | amount `v / 128`, rate `0x3200 + 512 (v^2 >> 2)` | VERIFIED exactly at all 44 values (test) |
-| 8, 9 ENS | none (one type-switch message) | wired in D95 with ASSUMED circular tap registers (s5) |
+| 8, 9 ENS | amount `c[-3]`, `c[2]`, `c[3]`, `c[4]`, rate `c[-6]` (D100; D95 had missed them) | wired with ASSUMED circular tap registers (s5, [fx-mod1-validation](fx-mod1-validation.md) s3) |
 | 10, 11 SPIN | rate `c[-16]`, amount words `c[-21]`, ... | dense knots; no shared word |
 
 `FirmwareFx::mod2` stays opt-in ([D90](../DECISIONS.md)): only CHOR has a hardware clip, and it did not close the delay ([fx-chorus-hw-clip](fx-chorus-hw-clip.md)). The ARM plus SHARC check is VERIFIED for the parameter mapping and the algorithm of every wired type.

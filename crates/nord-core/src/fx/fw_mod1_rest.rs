@@ -16,6 +16,7 @@
 
 use super::fw_chorus::CTX_I1;
 use super::fw_mod1_data as d;
+use super::fw_mod1_dense as dense;
 use super::fw_mod2_data::{Law, SAMPLES};
 use super::fw_mod2_run::{process, Mod2State, Routine};
 
@@ -200,9 +201,14 @@ impl FwMod1Rest {
     /// Writes the targets of `kFx1RateClkDiv` and `kFx1Amt`.
     pub(super) fn set_params(&mut self, rate: u32, amount: u32) {
         let Some(sp) = spec(self.ty) else { return };
-        for (laws, v) in [(sp.amt, amount), (sp.rate, rate)] {
+        for (laws, v, is_rate) in [(sp.amt, amount, false), (sp.rate, rate, true)] {
             for law in laws {
-                let mut x = eval(law, v);
+                // The RM phase increment and the A-WAH rate are not linear between the 11 samples:
+                // they have 44 knots (`fw_mod1_dense`, VERIFIED at the knots, D100).
+                let mut x = match is_rate.then(|| dense::dense(self.ty, law.off)).flatten() {
+                    Some(w) => dense::eval(w, law.float, v),
+                    None => eval(law, v),
+                };
                 if sp.phase.contains(&law.off) {
                     x = (f64::from(x) * self.phase_scale).round() as f32;
                 }
@@ -270,6 +276,26 @@ mod tests {
                     assert_eq!(to_word(law, eval(law, v)), law.words[k], "type {ty} v {v}");
                 }
             }
+        }
+    }
+
+    #[test]
+    fn the_dense_rate_words_follow_the_arm_between_the_samples() {
+        // ARM words at v = 120 (`fx-mod1-dense.csv`): RM phase increment 0xaa84a00, A-WAH 0x3c...
+        // The 11-sample law was 6.4 % of the range off there.
+        let rm = FwMod1Rest::new(4, 120, 64, crate::organ::FIRMWARE_FRAME_RATE_HZ as f32).unwrap();
+        assert_eq!(rm.st.ctx[index(-32)], 0x0aa8_4a00);
+        let sample_only = eval(&spec(4).unwrap().rate[0], 120);
+        assert!((sample_only - 0x0aa8_4a00_u32 as f32).abs() > 1.0e6);
+        for ty in [4, 5] {
+            let at = |v| {
+                FwMod1Rest::new(ty, v, 64, crate::organ::FIRMWARE_FRAME_RATE_HZ as f32)
+                    .unwrap()
+                    .st
+                    .ctx[index(-32)]
+            };
+            assert_eq!(at(127), 0x0fb6_3b00, "type {ty}");
+            assert_eq!(at(2), 0x0003_ed00, "type {ty}");
         }
     }
 

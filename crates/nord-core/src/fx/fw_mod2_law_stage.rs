@@ -91,8 +91,8 @@ fn spec(ty: u8) -> Option<Spec> {
                 0xC129E,
                 boot::ROW_ENS,
                 if ty == 8 { d::WORDS_8 } else { d::WORDS_9 },
-                &[],
-                &[],
+                if ty == 8 { dn::AMT_8 } else { dn::AMT_9 },
+                if ty == 8 { dn::RATE_8 } else { dn::RATE_9 },
                 &[-6],
                 &[],
             ),
@@ -181,7 +181,7 @@ impl FwLawStage {
     /// Stage for `kFx2Type` `ty` (0 to 3, 8 to 11), `kFx2Rate` and `kFx2Amt` in `0..=127`, at
     /// `fs`; `None` for the other types. ENS (8, 9) runs with circular tap registers
     /// (ASSUMED, D95; `docs/research/fx-mod2-validation.md` s5): without them its left output
-    /// stays exactly 0. The ARM writes no rate or amount word for ENS (one type-switch message).
+    /// stays exactly 0. `kFx2Amt` writes `c[-3]`, `c[2]`, `c[3]`, `c[4]` and `kFx2Rate` the phase increment `c[-6]` (44 knots, D100).
     pub(super) fn new(ty: u8, rate: u32, amount: u32, fs: f32) -> Option<Self> {
         let mut me = Self::build(ty, rate, amount, fs)?;
         me.st.circular_taps = matches!(ty, 8 | 9);
@@ -497,13 +497,38 @@ mod tests {
     }
 
     #[test]
-    fn ens_has_no_rate_or_amount_words_and_is_deterministic() {
+    fn the_ens_laws_hit_every_knot() {
+        for law in dn::AMT_8
+            .iter()
+            .chain(dn::RATE_8)
+            .chain(dn::AMT_9)
+            .chain(dn::RATE_9)
+        {
+            for (k, &v) in dn::KNOTS.iter().enumerate() {
+                assert_eq!(
+                    to_word(law, eval(law, v)),
+                    law.words[k],
+                    "off {} v {v}",
+                    law.off
+                );
+            }
+        }
+        assert_eq!(dn::AMT_8.len(), 4);
+        assert_eq!(dn::RATE_8.len(), 1);
+    }
+
+    #[test]
+    fn ens_follows_the_arm_amount_and_rate_words_and_is_deterministic() {
+        // Dense ARM words (`fx-mod2-dense.csv`, piano unit): rate `c[-6]` 0x3200 at 0 and
+        // 0x13000 at 127 (DSP-frame phase increments), amount `c[-3]` 0.33 .. 0.65.
+        let at = |ty, r, a| FwLawStage::new(ty, r, a, crate::organ::FIRMWARE_FRAME_RATE_HZ as f32);
         for ty in [8, 9] {
-            assert_eq!(
-                run(ty, 0, 0, 48_000.0, 2000),
-                run(ty, 127, 127, 48_000.0, 2000),
-                "type {ty}"
-            );
+            let lo = at(ty, 0, 0).unwrap();
+            let hi = at(ty, 127, 127).unwrap();
+            assert_eq!(word(&lo, -6), 0x3200, "type {ty}");
+            assert_eq!(word(&hi, -6), 0x1_3000, "type {ty}");
+            assert!(f32::from_bits(word(&hi, -3)) > f32::from_bits(word(&lo, -3)));
+            assert_eq!(f32::from_bits(word(&lo, 2)), 0.0);
             assert_eq!(
                 run(ty, 64, 64, 44_100.0, 2000),
                 run(ty, 64, 64, 44_100.0, 2000)
@@ -548,8 +573,7 @@ mod tests {
 
     #[test]
     fn rate_and_amount_change_the_output() {
-        // ENS (8, 9): the ARM writes no rate or amount word, so the knobs change nothing.
-        for ty in TYPES.into_iter().filter(|t| !matches!(t, 8 | 9)) {
+        for ty in TYPES {
             assert_ne!(
                 run(ty, 20, 90, 48_000.0, 3000),
                 run(ty, 100, 90, 48_000.0, 3000),
