@@ -14,6 +14,7 @@ use super::synth_arp::SynthArpDecoded;
 use super::synth_osc::map_osc_mode_and_wave;
 use super::synth_osc::wave_from_flat_index;
 use super::synth_pattern::SynthPatternDecoded;
+use super::synth_raw::{filter_model_of_type, filter_type_bits, hinted_idx, SynthLayerRaw};
 use crate::synth::{EnvKnobs, FilterModel, StripKnobs, SynthOscMode, VaWaveform};
 use serde::{Deserialize, Serialize};
 
@@ -76,6 +77,15 @@ pub struct SynthLayerDecoded {
     pub lfo_shape: crate::synth::LfoShape,
     pub lfo_dest: crate::synth::LfoDestination,
     pub lfo_mst_clk: bool,
+    /// LFO Rate morph deltas (`Edt_Syn_kLFORateClkDiv`, sound `+140`). The engine has no slot.
+    pub lfo_rate_morph: MorphDeltas,
+    /// LFO Amount morph deltas (`Edt_Syn_kLFOAmt`, sound `+171`, e.g. Mod Wheel to LFO depth).
+    /// The engine has no slot.
+    pub lfo_amount_morph: MorphDeltas,
+    /// Filter Env Amount morph deltas (`Edt_Syn_kFltEnvAmt`, sound `+294`). The engine has no slot.
+    pub filter_env_amount_morph: MorphDeltas,
+    /// Stored table indices and filter type behind the decoded values (`None`: built in code).
+    pub raw: Option<SynthLayerRaw>,
     pub arp_enabled: bool,
     pub arp_bpm: f32,
     /// Arpeggiator / Gate pattern words (`cbin::synth_pattern`); the engine imports them as the
@@ -171,6 +181,10 @@ impl Default for SynthLayerDecoded {
             lfo_shape: crate::synth::LfoShape::Triangle,
             lfo_dest: crate::synth::LfoDestination::FilterCutoff,
             lfo_mst_clk: false,
+            lfo_rate_morph: MorphDeltas::default(),
+            lfo_amount_morph: MorphDeltas::default(),
+            filter_env_amount_morph: MorphDeltas::default(),
+            raw: None,
             arp_enabled: false,
             arp_bpm: 120.0,
             pattern: SynthPatternDecoded::default(),
@@ -345,8 +359,8 @@ fn unpack_synth_layer_pair(
     let lfo_target = r.read_bits(2)?;
     let lfo_shape_raw = r.read_bits(3)?;
     let lfo_mst_clk = r.read_bool()?;
-    let (lfo_rate_raw, _) = read_morph(r, sound_base + 133, 7, 127)?;
-    let (lfo_amt_raw, _) = read_morph(r, sound_base + 164, 7, 127)?;
+    let (lfo_rate_raw, lfo_rate_morph) = read_morph(r, sound_base + 133, 7, 127)?;
+    let (lfo_amt_raw, lfo_amount_morph) = read_morph(r, sound_base + 164, 7, 127)?;
 
     r.set_bit_pos(sound_base + 195)?;
     let atk_raw = r.read_bits(7)? as usize;
@@ -359,19 +373,14 @@ fn unpack_synth_layer_pair(
     let amp_velocity = r.read_bits(2)? as u8;
 
     r.set_bit_pos(sound_base + 218)?;
-    let filter_model = match r.read_bits(3)? {
-        0 | 3 => FilterModel::Lp12,
-        1 => FilterModel::Lp24,
-        2 => FilterModel::Ladder24,
-        4 => FilterModel::BandPass,
-        _ => FilterModel::HighPass,
-    };
+    let filter_type_raw = r.read_bits(3)?;
+    let filter_model = filter_model_of_type(filter_type_raw);
     let (flt_freq_raw, filter_cutoff_morph) = read_morph(r, sound_base + 221, 7, 127)?;
     let (flt_res_raw, filter_resonance_morph) = read_morph(r, sound_base + 252, 7, 127)?;
     r.set_bit_pos(sound_base + 283)?;
     let kb_track = r.read_bits(2)? as u8;
     let filter_drive = r.read_bits(2)? as f32 / 3.0;
-    let (flt_env_raw, _) = read_morph(r, sound_base + 287, 7, 127)?;
+    let (flt_env_raw, filter_env_amount_morph) = read_morph(r, sound_base + 287, 7, 127)?;
     // Filter envelope ADR (+318..+339, 3x7b): same layout as the amp ADR at +195.
     r.set_bit_pos(sound_base + 318)?;
     let fenv_atk = r.read_bits(7)? as usize;
@@ -432,6 +441,19 @@ fn unpack_synth_layer_pair(
             _ => crate::synth::LfoDestination::Off,
         },
         lfo_mst_clk,
+        lfo_rate_morph,
+        lfo_amount_morph,
+        filter_env_amount_morph,
+        raw: Some(SynthLayerRaw {
+            filter_type: filter_type_raw as u8,
+            cutoff_idx: flt_freq_raw.min(127) as u8,
+            lfo_rate_idx: lfo_rate_raw.min(127) as u8,
+            osc_env_idx: [
+                oenv_atk.min(127) as u8,
+                oenv_dcy.min(127) as u8,
+                oenv_rel.min(127) as u8,
+            ],
+        }),
         arp_enabled,
         arp_bpm,
         pattern,
@@ -472,7 +494,13 @@ fn unpack_synth_layer_pair(
     })
 }
 
-fn decay_idx(ms: f32) -> u32 {
+/// Decay / release index: the stored `hint` while it still holds `ms`, `127` for the open end.
+fn decay_idx(ms: f32, hint: Option<u8>) -> u32 {
+    if let Some(h) = hint {
+        if hinted_idx(&ENV_DECAY_MS_TABLE, ms, Some(h)) == u32::from(h) {
+            return u32::from(h);
+        }
+    }
     if ms >= 44_000.0 || !ms.is_finite() {
         127
     } else {
@@ -554,14 +582,28 @@ fn pack_synth_layer_pair(
         encode_signed(i32::from(layer.pitch_coarse_semi.clamp(-32, 31)), 6),
         6,
     )?;
+    let raw = layer.raw.unwrap_or_default();
+    let hint = |on: bool, v: u8| on.then_some(v);
+    let has_raw = layer.raw.is_some();
     w.set_bit_pos(sound_base + 71)?;
     w.write_bits(
-        table_val_to_idx(&ENV_ATTACK_MS_TABLE, layer.osc_env_attack_ms),
+        hinted_idx(
+            &ENV_ATTACK_MS_TABLE,
+            layer.osc_env_attack_ms,
+            hint(has_raw, raw.osc_env_idx[0]),
+        ),
         7,
     )?;
-    w.write_bits(decay_idx(layer.osc_env_decay_ms), 7)?;
     w.write_bits(
-        table_val_to_idx(&ENV_RELEASE_MS_TABLE, layer.osc_env_release_ms),
+        decay_idx(layer.osc_env_decay_ms, hint(has_raw, raw.osc_env_idx[1])),
+        7,
+    )?;
+    w.write_bits(
+        hinted_idx(
+            &ENV_RELEASE_MS_TABLE,
+            layer.osc_env_release_ms,
+            hint(has_raw, raw.osc_env_idx[2]),
+        ),
         7,
     )?;
     w.set_bit_pos(sound_base + 92)?;
@@ -587,44 +629,51 @@ fn pack_synth_layer_pair(
     };
     w.write_bits(shape, 3)?;
     w.write_bool(layer.lfo_mst_clk)?;
-    let lfo_rate = table_val_to_idx(&LFO_RATE_HZ_TABLE, layer.lfo_rate_hz);
-    write_morph(
-        w,
-        sound_base + 133,
-        lfo_rate,
-        MorphDeltas::default(),
-        7,
-        127,
-    )?;
+    let lfo_rate = hinted_idx(
+        &LFO_RATE_HZ_TABLE,
+        layer.lfo_rate_hz,
+        hint(has_raw, raw.lfo_rate_idx),
+    );
+    write_morph(w, sound_base + 133, lfo_rate, layer.lfo_rate_morph, 7, 127)?;
     let lfo_amt = (layer.lfo_amount.clamp(0.0, 1.0) * 127.0).round() as u32;
-    write_morph(w, sound_base + 164, lfo_amt, MorphDeltas::default(), 7, 127)?;
+    write_morph(w, sound_base + 164, lfo_amt, layer.lfo_amount_morph, 7, 127)?;
 
+    // Amp ADR: the stored knobs are the index hints (`knobs` is only set by a decode).
+    let amp = layer.knobs.map(|k| k.amp);
     w.set_bit_pos(sound_base + 195)?;
     w.write_bits(
-        table_val_to_idx(&ENV_ATTACK_MS_TABLE, layer.env_attack_ms),
+        hinted_idx(
+            &ENV_ATTACK_MS_TABLE,
+            layer.env_attack_ms,
+            amp.map(|k| k.attack),
+        ),
         7,
     )?;
-    w.write_bits(decay_idx(layer.env_decay_ms), 7)?;
+    w.write_bits(decay_idx(layer.env_decay_ms, amp.map(|k| k.decay)), 7)?;
     w.write_bits(
-        table_val_to_idx(&ENV_RELEASE_MS_TABLE, layer.env_release_ms),
+        hinted_idx(
+            &ENV_RELEASE_MS_TABLE,
+            layer.env_release_ms,
+            amp.map(|k| k.release),
+        ),
         7,
     )?;
     w.set_bit_pos(sound_base + 216)?;
     w.write_bits(u32::from(layer.amp_velocity.min(3)), 2)?;
 
     w.set_bit_pos(sound_base + 218)?;
-    let flt_idx = match layer.filter_model {
-        FilterModel::Lp12 => 0,
-        FilterModel::Lp24 => 1,
-        FilterModel::Ladder24 => 2,
-        FilterModel::BandPass => 4,
-        FilterModel::HighPass => 5,
-    };
-    w.write_bits(flt_idx, 3)?;
+    w.write_bits(
+        filter_type_bits(layer.filter_model, hint(has_raw, raw.filter_type)),
+        3,
+    )?;
     write_morph(
         w,
         sound_base + 221,
-        table_val_to_idx(&FILTER_CUTOFF_HZ_TABLE, layer.filter_cutoff_hz),
+        hinted_idx(
+            &FILTER_CUTOFF_HZ_TABLE,
+            layer.filter_cutoff_hz,
+            hint(has_raw, raw.cutoff_idx),
+        ),
         layer.filter_cutoff_morph,
         7,
         127,
@@ -645,19 +694,31 @@ fn pack_synth_layer_pair(
         w,
         sound_base + 287,
         env_amt_raw,
-        MorphDeltas::default(),
+        layer.filter_env_amount_morph,
         7,
         127,
     )?;
 
+    let flt = layer.knobs.map(|k| k.filter);
     w.set_bit_pos(sound_base + 318)?;
     w.write_bits(
-        table_val_to_idx(&ENV_ATTACK_MS_TABLE, layer.filter_env_attack_ms),
+        hinted_idx(
+            &ENV_ATTACK_MS_TABLE,
+            layer.filter_env_attack_ms,
+            flt.map(|k| k.attack),
+        ),
         7,
     )?;
-    w.write_bits(decay_idx(layer.filter_env_decay_ms), 7)?;
     w.write_bits(
-        table_val_to_idx(&ENV_RELEASE_MS_TABLE, layer.filter_env_release_ms),
+        decay_idx(layer.filter_env_decay_ms, flt.map(|k| k.decay)),
+        7,
+    )?;
+    w.write_bits(
+        hinted_idx(
+            &ENV_RELEASE_MS_TABLE,
+            layer.filter_env_release_ms,
+            flt.map(|k| k.release),
+        ),
         7,
     )?;
     w.set_bit_pos(sound_base + 339)?;

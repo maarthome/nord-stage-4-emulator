@@ -27,27 +27,26 @@ python tools/arm_leslie_settings.py target/fw_unpacked/bank0_CODE.bin
 
 ## 2. What changed in the engine
 
+`organ/rotor_arm.rs` (PR 357, same day) already carries the Normal section (0.80 / 7.0 and 0.73 / 6.4 nominal Hz, steps 0.06 and 0.01 up / -0.0218 down, the 10 ms update from the period word `0xF0` = 240 ticks at 24,000 per second, physical ratio `F / 44,100 = 0.98418`). This note adds the other two choices of each setting:
+
 | Constant | Before | After | Tag |
 |---|---|---|---|
-| Horn slow / fast (engine Hz) | 0.80 / 6.85 (Hammond 122 textbook) | `0.80 x r`, `7.0 x r` = 0.787 / 6.889 | ASSUMED -> VERIFIED |
-| Rotor slow / fast | 0.67 / 5.70 | `0.73 x r`, `6.4 x r` = 0.718 / 6.299 | ASSUMED -> VERIFIED |
-| Speed choices | x 0.85 / 1 / 1.15, both speeds | tables above, per speed and per rotor | ASSUMED -> VERIFIED |
-| Acceleration choices | tau x 1.5 / 1 / 0.67 | horn tau x 2 / 1 / 0.5; rotor tau up x 1.667 / 1 / 0.5 | ASSUMED -> VERIFIED (ratios) |
-| Rotor braking | same tau as speed-up | tau x `0.01 / 0.0218` (x 0.46 at Normal) | ASSUMED -> VERIFIED (ratio) |
-| Base tau 0.7 s horn, 4.2 s rotor | | unchanged | ASSUMED (the ARM update period is not read) |
+| Speed choices (Low / High) | x 0.85 / 1.15 of both speeds, same for horn and rotor | per setting tables above (`organ/rotor_choices.rs`, `horn_section` / `rotor_section`) | ASSUMED -> VERIFIED |
+| Acceleration choices | step stretch 1 / 1.5, 1 / 0.67 (`tau_scale`) | the ARM step per update: horn 0.5x / 1x / 2x, rotor up 0.6x / 1x / 2x, down 0.55x / 1x / 1.1x | ASSUMED -> VERIFIED |
+| `OrganGlobals` | `horn_speed_scale`, `rotor_speed_scale`, `horn_tau_scale`, `rotor_tau_scale` | `horn_speed_choice`, `rotor_speed_choice`, `horn_acc_choice`, `rotor_acc_choice` (0..2, default 1) | |
 
-`r = (44_444_000 / 1024) / 44_100 = 0.98418`: the ARM converts Hz to the speed word with the nominal 44.1 kHz frame rate, the DSP runs at 43,402.34 Hz ([dsp-frame-rate](dsp-frame-rate.md)), so the horn that the firmware calls 7.0 Hz turns at 6.889 Hz. The firmware Leslie path (`--leslie firmware`) maps the engine Hz back to the nominal Hz with `1 / r`; with Normal it produces the same words as before (the old piecewise map ended at the same points), so those renders are unchanged.
+The default engine is unchanged by this note (the Normal section is the one `rotor_arm` already used), so no golden or `ns4 bench` hash moves from it.
 
 ## 3. Not settled
 
-- The update period of the rotor tick in seconds (the steps are Hz per update): the absolute ramp times stay at the engine's 0.7 s / 4.2 s (ASSUMED). The ratio between choices and between speed-up and braking is verified.
 - Whether the menu value 0 is labelled Low on the panel (the table is the identity and the default 1 is Normal; the choice names come from the manual).
+- The Low and High rotor braking step (0.012 and 0.024 against 0.0218 at Normal) is not monotone in the ARM; the engine copies it.
 
 ## Implications
 
 - Rotary speed choices no longer need a hardware timing run; only the absolute ramp time does.
-- The engine fast rates were 0.6 % (horn) and 9.5 % (rotor) off the firmware values; the rotor slow rate was 7 % low.
+- The firmware stores the Low and High choices as plain constants: no hardware timing run is needed for them.
 
 ## Follow-ups
 
-1. Read the periodic rotor update interval (the caller of `0xC0209728` and the timer period) to turn the steps into seconds.
+1. None: the update interval (10 ms) is settled in [fx-leslie](fx-leslie.md) s11.

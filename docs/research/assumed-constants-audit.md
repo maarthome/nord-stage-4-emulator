@@ -10,9 +10,9 @@ Tags follow `.agents/rules/provenance-in-code.md`. The census: 291 `ASSUMED` men
 
 | # | Constant (file) | Before | After | Source / reproduce | Engine change |
 |---|---|---|---|---|---|
-| 1 | Rotary Horn / Rotor Speed choices: speed factors 0.85 / 1 / 1.15 (`engine/settings.rs`, `organ/globals.rs`) | ASSUMED | **VERIFIED** | ARM `0xC0112BD0` / `0xC0112C7C`: horn 0.74 / 0.80 / 0.86 and 6.5 / 7.0 / 7.5 Hz, rotor 0.65 / 0.73 / 0.76 and 5.7 / 6.4 / 6.65 Hz. `python tools/arm_leslie_settings.py target/fw_unpacked/bank0_CODE.bin`, [leslie-settings](leslie-settings.md), `organ/rotary_laws.rs` | yes (tables) |
-| 2 | Rotary Horn / Rotor Acceleration: tau 1.5 / 1 / 0.67 (`engine/settings.rs`) | ASSUMED | **VERIFIED** (ratios) | ARM `0xC0112C14` / `0xC0112CC8`: step per update horn 0.03 / 0.06 / 0.12, rotor 0.006 / 0.01 / 0.02 up, 0.012 / 0.0218 / 0.024 down; same tool | yes (tau ratios, rotor brakes faster) |
-| 3 | Base rotary speeds 0.80 / 0.67 slow, 6.85 / 5.70 fast (`organ/rotary.rs`, spec `organ-engine.md`) | ASSUMED (Hammond 122 textbook) | **VERIFIED** | Normal block of the same handlers = settled harness state (0.8 / 7.0, 0.73 / 6.4 Hz nominal) times the DSP frame ratio 0.98418 (`dsp-frame-rate.md`): 0.787 / 6.889 and 0.718 / 6.299 Hz | yes: `ns4 bench` hashes move |
+| 1 | Rotary Horn / Rotor Speed choices: speed factors 0.85 / 1 / 1.15 (`engine/settings.rs`, `organ/globals.rs`) | ASSUMED | **VERIFIED** | ARM `0xC0112BD0` / `0xC0112C7C`: horn 0.74 / 0.80 / 0.86 and 6.5 / 7.0 / 7.5 Hz, rotor 0.65 / 0.73 / 0.76 and 5.7 / 6.4 / 6.65 Hz. `python tools/arm_leslie_settings.py target/fw_unpacked/bank0_CODE.bin`, [leslie-settings](leslie-settings.md), `organ/rotary_laws.rs` | yes (choice tables replace the x0.85 / x1.15 factors) |
+| 2 | Rotary Horn / Rotor Acceleration: tau 1.5 / 1 / 0.67 (`engine/settings.rs`) | ASSUMED | **VERIFIED** (ratios) | ARM `0xC0112C14` / `0xC0112CC8`: step per update horn 0.03 / 0.06 / 0.12, rotor 0.006 / 0.01 / 0.02 up, 0.012 / 0.0218 / 0.024 down; same tool | yes (ARM step ratios per choice) |
+| 3 | Base rotary speeds 0.80 / 0.67 slow, 6.85 / 5.70 fast and the exponential ramp (`organ/rotary.rs`) | ASSUMED (Hammond 122 textbook) | **VERIFIED** | found independently by PR 357 (`organ/rotor_arm.rs`: Normal block 0.8 / 7.0, 0.73 / 6.4 Hz times 0.98418, linear ramp, 10 ms update); this branch reproduces the same Normal values from the handlers above (the settled block equals choice 1) | already on main; merged, no extra change |
 | 4 | Pitch Stick Range list and ceiling 12 (`engine/pstick.rs`) | ASSUMED | **VERIFIED** | firmware strings `bank0_CODE.bin@0x2D3479`: `1, 2, 3, 4, 5, 7, 10, 12, -12, -24 semi`, id range 0..9, default 1 = 2 semi. `python tools/ns4_fw_choices.py` | list constant and test only (the GUI still steps 1..12; 6, 8, 9, 11 do not exist on the hardware, the negative entries invert the stick: follow-up) |
 | 5 | Vibrato delay `0.1 + 2.9 raw / 29` (`cbin/synth_preset.rs`) | untagged | **VERIFIED** | firmware strings `@0x2CD714..0x2CD7FC`: 30 choices `0.1 s .. 3.0 s`, ids 1..30, default 7 = 0.7 s (the 0.7 s of the Audible Genius clip). Same tool | formula unchanged, test added |
 | 6 | Strip pass length 2 SY frames, ADR attack / decay mapping (`synth/strip_map.rs`) | ASSUMED | **VERIFIED** (index law) | [synth-knob-laws](synth-knob-laws.md) s3 (ARM writes `knob - 64`; 2 frames per pass reproduce the displayed attack at plateau starts, ratio 1.000 to 1.011) | retag only; `DECAY_TAU_FRACTION` stays EMPIRICAL 0.18, see s2 |
@@ -38,7 +38,7 @@ Tags follow `.agents/rules/provenance-in-code.md`. The census: 291 `ASSUMED` men
 
 ## Implications
 
-- The Leslie menu choices needed no hardware: the firmware stores them as constants, and the engine defaults for the rotor were 0.6 % (horn) to 9.5 % (rotor) off.
+- The Leslie menu choices needed no hardware: the firmware stores them as constants (the Normal speeds and the 10 ms ramp had been found in parallel on main).
 - Two audible laws remain gated on one DSP read (glide) and one clip (FX rate), not on the ARM.
 
 ## Follow-ups
@@ -46,4 +46,3 @@ Tags follow `.agents/rules/provenance-in-code.md`. The census: 291 `ASSUMED` men
 1. Glide: watch reads of strip word 55 in the ORG core 2 pass (see s3).
 2. GUI: step the Pitch Stick Range through `PSTICK_RANGE_LIST` and model the inverted `-12` and `-24` entries.
 3. Find the writer of the velocity curve selector (`[manager + 0x134]`) by driving the MIDI menu in `tools/arm_menu_edit.py` (needs the booted OLED state).
-4. Read the rotor update period (caller of `0xC0209728`, timer) to turn the Leslie steps into seconds.

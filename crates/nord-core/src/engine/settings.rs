@@ -9,7 +9,7 @@
 //! Provenance of the numeric choices: the manual names the entries and their choices (`VERIFIED`
 //! text on p.57-58) but never the resulting gains, speeds or ramp times. Those factors are
 //! `ASSUMED`; the dB ranges and defaults are `VERIFIED` against the manual text. The four Rotary
-//! speed and acceleration choices are `VERIFIED` against the firmware (`organ::rotary_laws`).
+//! speed and acceleration choices are `VERIFIED` against the firmware (`organ::rotor_choices`).
 
 use super::*;
 use crate::organ::OrganGlobals;
@@ -32,7 +32,7 @@ pub enum Level3 {
 
 impl Level3 {
     /// Firmware menu choice `0..=2` (Low, Normal, High): the index into the VERIFIED speed and
-    /// acceleration tables of `organ::rotary_laws` (`docs/research/leslie-settings.md`).
+    /// acceleration tables of `organ::rotor_choices` (`docs/research/leslie-settings.md`).
     pub fn choice(self) -> usize {
         match self {
             Level3::Low => 0,

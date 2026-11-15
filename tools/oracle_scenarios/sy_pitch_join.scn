@@ -1,0 +1,27 @@
+# SY1SY2: the DSP join of the ARM pitch word and the 16-bit table entry into the Stage B step.
+#
+# ISR step 3 (0x1C0679..0x1C06E6) computes  step = ratio(e) * 0.05 / word  with
+#   e    = low 16 bits of DM(0x9354A + index)   (index = low half of pair word 0, 0x36 -> 0x93580)
+#   word = DM(0x921A6), the pair-block pitch word the ARM sends (boot value 0x3D4CCCCD = 0.05)
+# docs/research/synth-sample-kernel-rule.md section 13. Edit the two pokes for another point.
+# Run:  sharc-ref sy.bin tools/oracle_scenarios/sy_pitch_join.scn --out target/oracle/join
+#       the `step` series is the record word 0x9242D (step / 2^24 = ratio); expected for
+#       e = 0x0800 (ratio 0.625), word = 0x3C748500 (key 60, tune -946): 0x21809F8.
+meta rate 48000
+warmup 0x1c0b2d 100000 flag12=1
+irq 13
+msg 0x92414 0x1c07cd
+irq 17
+fill 0xC0000 128 sine stride=2 freq=0.0625 amp=0.5
+fill 0xC0001 128 sine stride=2 freq=0.0625 amp=0.5
+poke 0x93580 0x0800
+poke 0x921a6 0x3c748500
+irq 13
+msg 0x92414 0x1c084c
+loop 12
+poke 0x92410 0x200
+irq 17
+capture step 0x9242d 1
+capture word 0x921a6 1
+capture entry 0x93580 1
+end

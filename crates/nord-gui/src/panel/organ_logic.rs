@@ -16,13 +16,16 @@ pub(super) const MODELS: [(OrganModel, bool); 6] = [
     (OrganModel::Pipe2, false),
 ];
 
-/// The six vibrato/chorus LEDs in panel order (manual p.20).
+/// The six vibrato/chorus types in selector order (the button steps through them).
+/// VERIFIED: `V1, C1, V2, C2, V3, C3` is the stored `VibratoTypeB3` order (`0..5`,
+/// `docs/specs/cbin-and-presets.md`), and the printed LED matrix (`C2 V3 C3` over `V2 C1 V1`,
+/// photo `NS4_Panel-crop-left.jpg`) is the same sequence drawn as a snake from bottom right.
 pub(super) const VIB_TYPES: [ScannerMode; 6] = [
     ScannerMode::V1,
-    ScannerMode::V2,
-    ScannerMode::V3,
     ScannerMode::C1,
+    ScannerMode::V2,
     ScannerMode::C2,
+    ScannerMode::V3,
     ScannerMode::C3,
 ];
 

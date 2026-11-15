@@ -27,7 +27,8 @@ mod output_level;
 mod percussion_poly;
 mod preset_live;
 mod rotary;
-mod rotary_laws;
+mod rotor_arm;
+mod rotor_choices;
 mod rotor_stop;
 mod scanner;
 #[cfg(test)]
@@ -235,6 +236,7 @@ pub struct OrganLayer {
     drum_phase: f32,
     horn_rate_hz: f32,
     drum_rate_hz: f32,
+    rotor_clock: rotor_arm::UpdateClock,
     lp_state: f32,
     rotary_horn_buf: Box<[f32; ROTARY_BUFFER_SIZE]>,
     rotary_drum_buf: Box<[f32; ROTARY_BUFFER_SIZE]>,
@@ -330,8 +332,9 @@ impl OrganLayer {
             rng_state: 0x6D2B_79F5,
             horn_phase: 0.0,
             drum_phase: 0.0,
-            horn_rate_hz: 0.80,
-            drum_rate_hz: 0.67,
+            horn_rate_hz: rotor_arm::HORN.slow_hz(),
+            drum_rate_hz: rotor_arm::ROTOR.slow_hz(),
+            rotor_clock: rotor_arm::UpdateClock::default(),
             lp_state: 0.0,
             rotary_horn_buf: Box::new([0.0; ROTARY_BUFFER_SIZE]),
             rotary_drum_buf: Box::new([0.0; ROTARY_BUFFER_SIZE]),

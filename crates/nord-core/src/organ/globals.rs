@@ -7,7 +7,7 @@
 
 /// Factors and offsets applied on top of the per-layer Organ state.
 ///
-/// The four rotary speed / acceleration choices are VERIFIED (`rotary_laws.rs`). ASSUMED: the other
+/// The four rotary speed / acceleration choices are VERIFIED (`rotor_choices.rs`). ASSUMED: the other
 /// non-default values below are not measured on hardware. The manual (p.58) names the
 /// menu entries and their choices, never the resulting gains or speeds. What would confirm them:
 /// a recording of the same B3 chord with each menu choice, compared against `render` output.
@@ -19,7 +19,7 @@ pub struct OrganGlobals {
     pub click_scale: f32,
     /// Master Fine Tune in cents, added to the layer's `fine_tune_cents` (System menu 3).
     pub master_tune_cents: f32,
-    /// Rotary Rotor Speed choice `0..=2` (Low / Normal / High), VERIFIED speeds in `rotary_laws`.
+    /// Rotary Rotor Speed choice `0..=2` (Low / Normal / High), VERIFIED speeds in `rotor_choices`.
     pub rotor_speed_choice: usize,
     /// Rotary Horn Speed choice `0..=2` (Low / Normal / High).
     pub horn_speed_choice: usize,
@@ -39,10 +39,10 @@ impl Default for OrganGlobals {
             crosstalk_scale: 1.0,
             click_scale: 1.0,
             master_tune_cents: 0.0,
-            rotor_speed_choice: super::rotary_laws::NORMAL,
-            horn_speed_choice: super::rotary_laws::NORMAL,
-            rotor_acc_choice: super::rotary_laws::NORMAL,
-            horn_acc_choice: super::rotary_laws::NORMAL,
+            rotor_speed_choice: super::rotor_choices::NORMAL,
+            horn_speed_choice: super::rotor_choices::NORMAL,
+            rotor_acc_choice: super::rotor_choices::NORMAL,
+            horn_acc_choice: super::rotor_choices::NORMAL,
             bass_gain: 1.0,
             horn_gain: 1.0,
         }
@@ -91,11 +91,13 @@ mod tests {
 
     #[test]
     fn speed_choices_set_the_settled_rotor_rates() {
-        use super::super::rotary_laws as laws;
+        use super::super::rotor_arm::physical_ratio;
+        use super::super::rotor_choices as rc;
         let (horn, drum) = settled_rates(OrganGlobals::default());
-        // VERIFIED firmware Normal fast speeds, 7.0 and 6.4 nominal Hz at the DSP frame rate
-        assert!((horn - laws::horn_hz(1, true)).abs() < 0.06, "{horn}");
-        assert!((drum - laws::rotor_hz(1, true)).abs() < 0.06, "{drum}");
+        assert!(
+            (horn - 6.889).abs() < 0.01 && (drum - 6.299).abs() < 0.01,
+            "{horn} {drum}"
+        );
         for choice in [0, 2] {
             let g = OrganGlobals {
                 horn_speed_choice: choice,
@@ -103,8 +105,10 @@ mod tests {
                 ..OrganGlobals::default()
             };
             let (h, d) = settled_rates(g);
-            assert!((h - laws::horn_hz(choice, true)).abs() < 0.06, "{h}");
-            assert!((d - laws::rotor_hz(choice, true)).abs() < 0.06, "{d}");
+            let want_h = rc::HORN_FAST[choice] as f32 * physical_ratio();
+            let want_d = rc::ROTOR_FAST[choice] as f32 * physical_ratio();
+            assert!((h - want_h).abs() < 0.01, "{h} {want_h}");
+            assert!((d - want_d).abs() < 0.01, "{d} {want_d}");
         }
     }
 
@@ -171,7 +175,7 @@ mod tests {
             g.horn_acc_choice,
             g.rotor_acc_choice,
         ] {
-            assert_eq!(choice, super::super::rotary_laws::NORMAL);
+            assert_eq!(choice, super::super::rotor_choices::NORMAL);
         }
     }
 
