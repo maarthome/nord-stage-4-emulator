@@ -20,10 +20,12 @@ The Stage 4 organizes piano banks into 6 acoustic and electro-mechanical categor
 
 ### Velocity Response Curves (`KBD TOUCH`)
 
-Maps incoming MIDI velocity $v \in [1, 127]$ to normalized gain/timbre excitation $v_{\text{norm}} \in (0, 1]$:
-- **`Light`:** $\left(\dfrac{v}{127}\right)^{0.65}$ (easier to reach fortissimo layers)
+Legacy path (sounds without a firmware level model, `VelocityTouch::map_velocity`, ASSUMED powers) maps MIDI velocity $v \in [1, 127]$ to $v_{\text{norm}} \in (0, 1]$:
+- **`Light`:** $\left(\dfrac{v}{127}\right)^{0.65}$
 - **`Medium` (Default):** $\left(\dfrac{v}{127}\right)^{1.00}$ (linear response)
-- **`Heavy`:** $\left(\dfrac{v}{127}\right)^{1.55}$ (wider pianissimo dynamic control)
+- **`Heavy`:** $\left(\dfrac{v}{127}\right)^{1.55}$
+
+Firmware curves (opt-in `PianoLayer::firmware_touch`, `ns4 render-patch --firmware-piano-touch`, GUI Firmware bar "Touch curves", D88, [piano-touch-curves](../research/piano-touch-curves.md)): the program Touch is edit id `0x159` (0 heavy, 1 medium, 2 light, default 1; program file bits `1991..1992` of layer A, `+96` of layer B). The handler `0xC011AA24` stores `curveId = 10 / 11 / 13` in the piano layer object, and the voice init reads the velocity position `T = byte[0xC0532664 + (curveId << 10) + r8(v)]` of every note (including MIDI notes). `T` selects the stroke records and gives `X = clamp(((128 - 0x13) T) >> 7, 0, 249)` of the level law below. `piano/touch_curve.rs` holds `T(v)` for the three curves (VERIFIED, 27 of 27 against the ARM run, fingerprint pinned by a unit test). At velocity 64 `T` is 88 / 78 / 68 (heavy / medium / light), i.e. the light curve is 1.8 dB louder and the heavy one 1.6 dB quieter than medium; at velocity 10 the spread is +2.6 / -2.4 dB, at 120 +0.2 / -1.0 dB. Sounds with a level model play the layer's curve (`NpnoLevel::voices_touch`); other sounds multiply the Medium response by `2^(-2 (X - X_medium) / 60)` (`TouchCurve::gain_vs_medium`). Off (default): `.npno` notes play the Medium curve whatever the setting, other sounds the powers above. The decoder (`cbin/piano_preset.rs`) still reads the Touch bits 10 positions late (every factory program decodes as Medium); realigning it is a follow-up before the default can flip. The System menu MIDI velocity curve (`Edt_Sys_kMIDIVelCurve`) and the Organ / Synth sections are not part of this model (the Organ and Synth have no Touch id).
 
 ### Downstream level after the voice (`piano/downstream.rs`)
 
@@ -180,3 +182,7 @@ The modal resonators of section 4 are the shipped model; this bank would replace
 ## 5. Piano types and models (PIANO SELECT, manual p.24-25)
 
 The TYPE button selects one of six types (Grand, Upright, Electric, Clav, Digital, Misc); the PIANO SELECT dial steps through the models of that type; the TYPE LEDs show the type of the current model; LIST shows `Piano <Type> n/N` and INFO `Type: <Type> n/N`. The model's type is the `bank_index` of its `.npno` CBIN header and its place in the type is `location_index` (VERIFIED, [piano-types](../research/piano-types.md)). The GUI library (`library/piano_catalog.rs`) reads only the 16 header bytes of each `.npno` entry (archive folder, then `Misc`, as fallbacks), lists models in hardware order and publishes `(entry, type)` pairs; TYPE loads the last used (else first) model of the next type that has models. Without a library TYPE only changes the engine type (Electric timbre set, Dyno steps) and the OLED reads `No piano library`. Engine `category` is set when a sound loads (its header type) and by TYPE; loading a program sets it from the preset.
+
+## Decay and attack against the hardware (D86)
+
+`tools/piano_decay.py` measures the T60 of each note's fundamental per octave in a hardware clip and in emulator renders of the same transcribed notes and pedal (EMPIRICAL). Result ([piano-decay-attack](../research/piano-decay-attack.md), `docs/research/data/piano_decay_per_octave.json`): the default engine's median T60 over the hardware's is 1.00 over 9 octave groups of four clips; held library notes fall 40 dB in 3.7 to 5.8 s and then end with the sample. A stroke voice has no engine decay envelope while held; after key-up the engine envelope is 80 ms (hard) or 180 ms (soft release / half pedal) and the release sample decays with 1.15 s (all ASSUMED). The firmware hold decay (time constant 2.1 to 5 s, VERIFIED on Velvet Grand) and the 44 ms note-off decay live only in the opt-in slew voice (`--piano-slew-fw`). Default attack is about 10 ms faster than the hardware; chain + slew 47 to 70 ms against 56 to 64 ms.

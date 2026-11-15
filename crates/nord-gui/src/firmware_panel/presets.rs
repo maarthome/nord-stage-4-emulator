@@ -11,7 +11,7 @@ pub enum Engine {
     Organ,
     /// Level law, bus scale, layer law.
     Piano,
-    /// Chain, stages, P table, filter, measured laws, shape, sample kernel / pitch.
+    /// Chain, stages, P table, filter, measured laws, shape, sample kernel / pitch, layer law.
     Synth,
     /// Amp path and every firmware FX port.
     Fx,
@@ -47,6 +47,7 @@ pub fn copy_engine(dst: &mut FirmwareOptions, src: &FirmwareOptions, engine: Eng
         Engine::Piano => {
             dst.piano_firmware_level = src.piano_firmware_level;
             dst.piano_bus_scale = src.piano_bus_scale;
+            dst.piano_touch = src.piano_touch;
             dst.piano_slew = src.piano_slew;
             dst.piano_chain_scale = src.piano_chain_scale;
             dst.piano_layer_law = src.piano_layer_law;
@@ -61,6 +62,7 @@ pub fn copy_engine(dst: &mut FirmwareOptions, src: &FirmwareOptions, engine: Eng
             dst.synth_shape_milli = src.synth_shape_milli;
             dst.sample_kernel_key = src.sample_kernel_key;
             dst.sample_pitch_fw = src.sample_pitch_fw;
+            dst.synth_layer_law = src.synth_layer_law;
         }
         Engine::Fx => {
             dst.fx = src.fx;

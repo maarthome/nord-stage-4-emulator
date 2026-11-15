@@ -38,7 +38,7 @@ impl PianoLayer {
         let Some(model) = sound.firmware_level.as_ref() else {
             return false;
         };
-        let voices = model.voices(effective_note, velocity);
+        let voices = model.voices_touch(effective_note, velocity, self.touch_curve());
         // Every voice needs a stroke; otherwise keep the legacy path.
         let usable = !voices.is_empty()
             && voices
@@ -298,6 +298,28 @@ mod tests {
             layer.render_frame();
         }
         assert!(layer.voices.iter().all(|v| !v.active), "release fades out");
+    }
+
+    /// With the damper pedal down the firmware voice list (and with it the slew) is bypassed and
+    /// the legacy damper-stroke path plays the note: `chain + slew` clip replays mix both paths
+    /// (25 to 77 % of the Part A piano notes start with the pedal down,
+    /// `docs/research/piano-decay-attack.md` s6).
+    #[test]
+    fn pedal_down_bypasses_the_slew_voice() {
+        let image = two_voice_image();
+        let mut layer = layer_with(&image, 3, true);
+        layer.firmware_slew = true;
+        layer.set_damper_pedal(true, 64);
+        layer.note_on(60, 64);
+        let active: Vec<_> = layer.voices.iter().filter(|v| v.active).collect();
+        assert!(!active.is_empty());
+        assert!(active.iter().all(|v| !v.slew.is_active()));
+        layer.set_damper_pedal(false, 64);
+        layer.note_on(60, 64);
+        assert!(layer
+            .voices
+            .iter()
+            .any(|v| v.active && !v.releasing && v.slew.is_active()));
     }
 
     #[test]
