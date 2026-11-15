@@ -354,7 +354,7 @@
      "hold_emu_ms": 1.7,
      "release_emu_ms": 252.1,
      "vel_slope_emu_db": -0.01,
-     "label": "chain+slew",
+     "label": "piano-chain+slew",
      "score": 1.64
     },
     {
@@ -383,7 +383,7 @@
      "hold_emu_ms": 1.7,
      "release_emu_ms": 339.7,
      "vel_slope_emu_db": -0.063,
-     "label": "vel-88-chain+slew",
+     "label": "vel-88-piano-chain+slew",
      "score": 1.64
     },
     {

@@ -16,8 +16,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-import emu_env
 import midi_events
+import note_env
 
 STREAM_DIR = Path(__file__).resolve().parents[1] / "docs" / "research" / "data"
 STREAM_NAME = "transkun"
@@ -59,10 +59,10 @@ def env_row(hw: tuple[int, Any], emu: tuple[int, Any], events: Path) -> dict[str
     notes = json.loads(events.read_text(encoding="utf-8"))["events"]
     row: dict[str, Any] = {}
     for tag, (sr, mono) in (("hw", hw), ("emu", emu)):
-        m = emu_env.envelope_metrics(mono, sr, notes)
+        m = note_env.envelope_metrics(mono, sr, notes)
         row[f"hold_{tag}_ms"] = m["hold_ms"]
         row[f"release_{tag}_ms"] = m["release_ms"]
-        slope, n = emu_env.velocity_slope_db(mono, sr, notes)
+        slope, n = note_env.velocity_slope_db(mono, sr, notes)
         row[f"vel_slope_{tag}_db"] = slope
         row["vel_slope_notes"] = n
     return row

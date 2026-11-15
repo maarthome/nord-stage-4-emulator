@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+import emu_env
 import emu_events
 import numpy as np
 import video_ref
@@ -129,6 +130,10 @@ def segment_metrics(
         "attack_emu_ms": emu_att,
         "t60_hw_s": tail_t60_s(hw, sr_h, intervals) if intervals else None,
         "t60_emu_s": tail_t60_s(emu, sr_e, intervals) if intervals else None,
+        "hold_hw_db": emu_env.hold_decay_db(hw, sr_h, intervals),
+        "hold_emu_db": emu_env.hold_decay_db(emu, sr_e, intervals),
+        "rel_hw_db": emu_env.release_drop_db(hw, sr_h, intervals),
+        "rel_emu_db": emu_env.release_drop_db(emu, sr_e, intervals),
     }
 
 
@@ -363,7 +368,8 @@ def run_all(args: argparse.Namespace) -> dict[str, Any]:
 def markdown_table(result: dict[str, Any]) -> str:
     head = (
         "| Segment | Variant | " + " | ".join(BAND_NAMES) + " | centroid Hz | RMS dB | "
-        "width hw/emu | attack hw/emu ms | T60 hw/emu s | score |"
+        "width hw/emu | attack hw/emu ms | T60 hw/emu s | "
+        "hold dB hw/emu | release dB hw/emu | score |"
     )
     lines = [head, "|" + "---|" * (head.count("|") - 1)]
     for seg in result["segments"]:
@@ -375,7 +381,9 @@ def markdown_table(result: dict[str, Any]) -> str:
                 + f" | {v['centroid_delta_hz']:+.0f} | {v['rms_delta_db']:+.1f} | "
                 f"{v['width_hw']:.2f}/{v['width_emu']:.2f} | "
                 f"{v['attack_hw_ms']}/{v['attack_emu_ms']} | "
-                f"{v.get('t60_hw_s')}/{v.get('t60_emu_s')} | {v['score']:.2f} |"
+                f"{v.get('t60_hw_s')}/{v.get('t60_emu_s')} | "
+                f"{v.get('hold_hw_db')}/{v.get('hold_emu_db')} | "
+                f"{v.get('rel_hw_db')}/{v.get('rel_emu_db')} | {v['score']:.2f} |"
             )
     return "\n".join(lines)
 
