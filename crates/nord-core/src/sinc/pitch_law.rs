@@ -192,7 +192,10 @@ mod tests {
         for (ratio, bits, step) in rows {
             let got = dsp_step(ratio, f32::from_bits(bits));
             let want = f64::from(step) / 16_777_216.0;
-            assert!(((got - want) / want).abs() < 5e-5, "{bits:#x}: {got} vs {want}");
+            assert!(
+                ((got - want) / want).abs() < 5e-5,
+                "{bits:#x}: {got} vs {want}"
+            );
         }
     }
 
