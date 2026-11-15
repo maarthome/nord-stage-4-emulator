@@ -85,6 +85,10 @@ impl ProgramState {
         o.percussion_soft = a.percussion_soft;
         o.percussion_fast = a.percussion_fast_decay;
         o.percussion_third = a.percussion_third_harmonic;
+        o.percussion_on_b = b.percussion_enabled;
+        o.percussion_soft_b = b.percussion_soft;
+        o.percussion_fast_b = b.percussion_fast_decay;
+        o.percussion_third_b = b.percussion_third_harmonic;
         o.rotary_enabled = a.rotary_enabled;
         o.rotary_speed = a.rotary_speed;
         o.rotary_drive = a.rotary_drive * 10.0;

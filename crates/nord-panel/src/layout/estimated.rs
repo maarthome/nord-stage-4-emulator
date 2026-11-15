@@ -8,8 +8,9 @@
 //! control outlines (about +-3 px).
 //!
 //! VERIFIED against the real-panel crops (and so removed from the list): the Master / Rotary,
-//! Organ and Piano LEDs and the Layer Effects controls (all but `fx.focus.leds` and the amp halves), see `docs/specs/control-inventory.md` section 7 (photo anchors in
-//! `crates/nord-panel/data/photo_anchors_{master,organ,piano,effects}.csv`).
+//! Organ, Piano and Synth layer-strip LEDs and the Layer Effects controls (all but `fx.focus.leds` and the
+//! amp halves), see `docs/specs/control-inventory.md` section 7 (photo anchors in
+//! `crates/nord-panel/data/photo_anchors_{master,organ,piano,synth,effects}.csv`).
 //!
 //! Shared entries ([`super::SHARED`]) inherit the accuracy of their base;
 //! the "(direct)" rows there are listed here as well.
@@ -21,13 +22,6 @@ pub const ESTIMATED: &[&str] = &[
     // (`organ_rewire_tests`) loses the click to the hover tooltip when they are higher.
     "organ.aux_led.a",
     "organ.aux_led.b",
-    "synth.aux_led.a",
-    "synth.aux_led.b",
-    "synth.aux_led.c",
-    "synth.focus_led.a",
-    "synth.focus_led.b",
-    "synth.focus_led.c",
-    "synth.fx_focus_led",
     "synth.zone_leds",
     // LEDs and LED groups placed near their control.
     "fx.focus.leds",
@@ -55,6 +49,6 @@ mod tests {
         for id in ESTIMATED {
             assert!(seen.insert(*id), "duplicate {id}");
         }
-        assert_eq!(ESTIMATED.len(), 21);
+        assert_eq!(ESTIMATED.len(), 14);
     }
 }

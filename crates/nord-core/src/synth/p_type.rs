@@ -1,5 +1,6 @@
 //! Cutoff factor per filter type of the strip chain (applied with the P table).
 
+use super::p_table::PWave;
 use crate::synth_types::FilterModel;
 
 /// Cutoff factor per filter type, applied with the table on top of the row factor (the strip
@@ -22,9 +23,38 @@ pub fn type_cutoff_scale(model: FilterModel) -> f32 {
     }
 }
 
+/// Type factor of the SUPER wave 0 row on an LP24 filter (D81). EMPIRICAL: `horizon_whl` (A:16,
+/// LP24 277 / 554 Hz at -12 semitones, `docs/research/synth-validation.md` s12) wants a total
+/// factor 2.0 with the verified words (grid on the row factor 0.45 / 1.0 / 2.0 / 4.0: score 3.4 /
+/// 3.5 / 1.4 / 3.4 at LP24 factor 1.0); the row factor 0.45 (`pad_silk`, LP12 x 1.4) times 4.4 is
+/// 1.98. One LP24 clip, so ASSUMED for other LP24 SUPER programs.
+pub const SUPER_LP24_TYPE_SCALE: f32 = 4.4;
+
+/// Total cutoff factor of a table row on a filter type: the row factor times the type factor
+/// ([`type_cutoff_scale`]), with the SUPER wave 0 / LP24 exception [`SUPER_LP24_TYPE_SCALE`].
+pub fn row_type_cutoff_scale(row: PWave, row_scale: f32, model: FilterModel) -> f32 {
+    if row == PWave::Super && model == FilterModel::Lp24 {
+        row_scale * SUPER_LP24_TYPE_SCALE
+    } else {
+        row_scale * type_cutoff_scale(model)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn super_wave_zero_on_lp24_has_its_own_total() {
+        let t = |m| row_type_cutoff_scale(PWave::Super, 0.45, m);
+        assert!(
+            (t(FilterModel::Lp12) - 0.63).abs() < 1e-6,
+            "pad_silk unchanged"
+        );
+        assert!((t(FilterModel::Lp24) - 1.98).abs() < 1e-6);
+        let saw = row_type_cutoff_scale(PWave::PureSaw, 0.85, FilterModel::Lp24);
+        assert!((saw - 0.85).abs() < 1e-6, "other rows keep row x type");
+    }
 
     #[test]
     fn type_factors_are_the_fitted_values() {

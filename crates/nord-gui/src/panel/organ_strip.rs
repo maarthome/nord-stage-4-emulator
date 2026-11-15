@@ -188,7 +188,12 @@ pub(super) fn render_strip(
             ui,
             rc(focus_id),
             focus_id,
-            &[focus == l && phase],
+            &[super::bay_piano::layer_led_lit(
+                active,
+                focus == l,
+                state.organ_a_active && state.organ_b_active,
+                phase,
+            )],
             (LED_GREEN, LED_GREEN_DIM),
             None,
         );
@@ -250,9 +255,10 @@ pub(super) fn render_strip(
                 }
             }
             Some(Trigger::Shifted) => {
-                let z = kb_zone::step(state.organ_ui.kb_zone[focus], up);
+                let pos = kb_zone::position_of(state.organ_ui.kb_zone[focus]);
+                let z = kb_zone::step(pos, up);
                 for t in state.edit_layers(focus, 2) {
-                    state.organ_ui.kb_zone[t] = z;
+                    state.organ_ui.kb_zone[t] = kb_zone::leds(z);
                     audio.send_command(AudioCommand::Organ(OrganEdit::Zone {
                         layer: t as u8,
                         leds: kb_zone::leds(z),
@@ -267,7 +273,10 @@ pub(super) fn render_strip(
         ui,
         rc("organ.zone_leds"),
         "organ.zone_leds",
-        &kb_zone::lits(state.organ_ui.kb_zone[focus]),
+        &kb_zone::shown(
+            kb_zone::lits_of(state.organ_ui.kb_zone[focus]),
+            state.program_ui.split.on,
+        ),
         (LED_GREEN, LED_GREEN_DIM),
         None,
     );
