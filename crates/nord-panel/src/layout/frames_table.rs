@@ -60,7 +60,7 @@ pub const FRAMES: &[FrameDef] = &[
             "organ.vibrato_on.a",
             "organ.vibrato_on.b",
         ],
-        [3.0, 20.0, 29.0, 6.0],
+        [3.0, 20.0, 26.0, 6.0],
     ),
     boxed(
         "organ.frame.perc",

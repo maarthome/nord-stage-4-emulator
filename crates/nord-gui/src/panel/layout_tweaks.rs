@@ -93,7 +93,7 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     // Organ: the VIB/CHORUS A / B buttons move down so their names clear the bottom type names.
     ("organ.vibrato_on.", 0.0, 5.0),
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
-    ("organ.perc_", 6.0, 0.0),
+    ("organ.perc_", 3.0, 0.0),
     // Piano: the PIANO SELECT box (type names, dial) moves under the KB TOUCH / DYN COMP LEDs; the
     // TIMBRE button moves left so its two name columns end before the box.
     ("piano.type", 0.0, 52.0),
