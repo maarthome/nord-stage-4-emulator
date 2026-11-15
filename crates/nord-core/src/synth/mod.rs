@@ -44,6 +44,8 @@ mod fw_sync1;
 mod fw_sync3;
 mod fw_sync6;
 mod fw_sync_table;
+mod fw_wave;
+mod fw_wave_tables;
 mod gain_dezip;
 mod hw_saw;
 mod key_velocity;
@@ -78,6 +80,9 @@ pub use fw_knob_laws::{
 pub use fw_shape::{fw_shape_wave, fw_shape_width};
 pub use fw_stages::{noise_sample, noise_step, saw_diff, spread_u, FwStage, FwStageState};
 pub use fw_strip_cutoff::{fw_cutoff_cycles_per_sample, fw_strip_cutoff_r, FW_CUTOFF_CLIP};
+pub use fw_super2::tables as boot_tables;
+pub use fw_wave::{install_wave_tables, prepare_wave_bank, wave_table, WaveBankState};
+pub use fw_wave_tables::{tables_from_code, tables_from_file, WAVE_TABLES};
 pub use gain_dezip::{gain_pole_for, CONTROL_TICK_HZ, SY_FRAME_RATE_HZ, SY_GAIN_POLE};
 pub use hw_saw::{firmware_blep_step, firmware_saw, firmware_saw_fade, SawModel};
 pub use key_velocity::{
@@ -257,6 +262,10 @@ pub struct SynthLayer {
     /// Strip chain only, opt-in (default off): play `strip_stage` (noise, Shape Square, SUPER, MULTI)
     /// with the firmware stage models instead of the decoded legacy waveform.
     pub strip_stages: bool,
+    /// Strip chain only, opt-in (default off): `Wavetable` layers play the firmware WAVE bank stage
+    /// `0x1247B6` (`fw_wave.rs`, 320 of 320 oracle words) instead of the 64-table placeholder. Every
+    /// wave plays the one boot table until the per-wave loader is decoded (OQ22).
+    pub wave_bank: bool,
     /// Strip chain only, on by default since D57: the envelope rate indices come straight from the
     /// stored knobs (`strip_knobs`, `fw_knob_laws.rs`: index = knob - 64, VERIFIED run) instead of
     /// the ASSUMED displayed-time search of `strip_map.rs`. Layers without knobs keep the search.
@@ -419,6 +428,7 @@ impl SynthLayer {
             p_wave: PWave::Other,
             strip_stage: None,
             strip_stages: true,
+            wave_bank: false,
             knob_laws: true,
             strip_knobs: None,
             sample_kernel_by_key: true,
