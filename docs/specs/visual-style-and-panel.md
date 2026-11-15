@@ -61,6 +61,8 @@ The top panel is laid out horizontally above the 88-key triple-sensor keybed (wi
 └──────────┴────────────────────┴───────────────────┴────────────────────┴─────────────────────────┴───────────────────────┘
 ```
 
+**Keybed mouse velocity (D84).** A mouse press on the on-screen keybed sends velocity from where the pointer hits the key: `v = 20 + t * 107` (rounded), `t = y / key_length` clamped to 0..1, `y` measured from the top (back) of the key. White key length = keybed height; black key length = `0.62 * height`. Back = 20, front tip = 127 (ASSUMED ends and linear law; `keybed_velocity.rs`). The computer keyboard (default 88, C / V steps) and MIDI In keep their own velocity.
+
 ---
 
 ## 4. Custom Hardware Widget Specifications

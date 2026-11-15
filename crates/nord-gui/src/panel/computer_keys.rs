@@ -20,7 +20,7 @@ use egui::Key;
 pub const MIN_OCTAVE: i8 = 0;
 pub const MAX_OCTAVE: i8 = 7;
 pub const DEFAULT_OCTAVE: i8 = 4;
-/// Default velocity: the same as a mouse click on the on-screen keybed (`keybed::MOUSE_VELOCITY`).
+/// Default velocity: 88, as the on-screen keybed used before D84 (the mouse now derives it from the hit position).
 pub const DEFAULT_VELOCITY: u8 = 88;
 /// Velocity change of one C / V press.
 pub const VELOCITY_STEP: u8 = 8;
