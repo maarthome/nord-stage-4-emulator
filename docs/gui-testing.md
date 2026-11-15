@@ -210,6 +210,7 @@ live in `panel/layout_tweaks.rs`, never in the `ASSUMED` photo tables (one excep
 | `--piano-slew-fw` (Piano: SMP gain slew) | `.npno` voices use the firmware slew: hold gain 0.21875 x level with a 2 to 5 s decay, 44 ms release, no extra voice (opt-in; the rate table is EMPIRICAL) | MIXED |
 | `--firmware-piano-chain` (Piano: FX path scale) | Sample path scaled 0.7464, the verified FX receiver path (engine unit = DAC fraction ASSUMED; Velvet Grand clip +10 to +12 dB over) | MIXED |
 | `--firmware-piano-layer-law` (Piano: Layer law) | Piano layer fader follows `(v / 127)^2` | ASSUMED |
+| `--firmware-piano-touch` (Piano: Touch curves) | KB TOUCH plays the firmware velocity curves (ids 10 / 11 / 13, VERIFIED by ARM run); the program file bits are unverified (opt-in) | MIXED |
 | `--firmware-piano-bus` (Piano: SMP bus scale) | Sample path scaled 0.5 instead of 0.55 (Q31 receiver convention) | ASSUMED |
 | `--firmware-piano-chain` (Piano: FX path scale) | Sample path scaled 0.7464, the verified FX receiver path (engine unit = DAC fraction ASSUMED; Velvet Grand clip +10 to +12 dB over) | MIXED |
 | `--amp-path engine\|firmware` (FX: Amp path) | Firmware drive stage (engine default) or engine tanh drive and RBJ cabinet; 4 frames latency | VERIFIED (`tests_amp_golden.rs`) |

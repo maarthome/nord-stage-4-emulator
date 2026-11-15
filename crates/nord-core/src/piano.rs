@@ -22,6 +22,7 @@ pub mod smp_slew;
 pub mod smp_unpack;
 pub mod smp_voice;
 pub mod step_q32;
+pub mod touch_curve;
 pub mod velocity_curve;
 pub mod velocity_level;
 
@@ -29,6 +30,7 @@ mod extra_voice;
 #[cfg(test)]
 mod interp_switch;
 mod slew_voice;
+mod touch_layer;
 
 pub use q31_kernel::{SampleInterp, SmpKernel};
 
@@ -131,9 +133,14 @@ impl NpnoSound {
     /// float `level_q23 / 2^23` of the main voice to the SMP voice record (DM `0x9252A`, VERIFIED
     /// by run for two velocities), and the SMP scales the decoded stroke (`y / 8192`) by it.
     /// `None` when the sound has no model or the note is unmapped.
-    pub fn firmware_velocity_gain(&self, note: u8, velocity: u8) -> Option<f32> {
+    pub fn firmware_velocity_gain(
+        &self,
+        note: u8,
+        velocity: u8,
+        touch: touch_curve::TouchCurve,
+    ) -> Option<f32> {
         let model = self.firmware_level.as_ref()?;
-        let level = model.main_voice_q23(note, velocity.clamp(1, 127))?;
+        let level = model.main_voice_q23_touch(note, velocity.clamp(1, 127), touch)?;
         Some((level as f32 / 8_388_608.0).min(1.0))
     }
 
@@ -870,6 +877,12 @@ pub struct PianoLayer {
     /// (`piano/extra_voice.rs`). SFZ/WAV and synthetic sounds have no model and always use the
     /// legacy touch curve; set `false` to force the legacy path for `.npno` sounds too.
     pub firmware_velocity_level: bool,
+    /// Program Touch from the firmware velocity curves ([`touch_curve`], edit `0x159`, curve ids
+    /// 10 / 11 / 13, VERIFIED against the ARM): `.npno` sounds with a level model play the
+    /// curve of `touch` (stroke layer and level), other sounds scale the Medium response by the
+    /// verified level difference of the curve. Default `false`: Medium for every `.npno` note
+    /// (the factory default) and the ASSUMED power curves for the others (D22, OQ20).
+    pub firmware_touch: bool,
     /// Voice gain follows the SMP slew of the real firmware (`piano/slew_voice.rs`,
     /// `docs/research/smp-slew.md`): hold gain `0.21875 * level` with the velocity dependent
     /// slow decay and the firmware release, instead of the engine envelope (80 / 180 ms release),
@@ -970,6 +983,7 @@ impl PianoLayer {
             soft_pedal_down: false,
             sound,
             firmware_velocity_level: true,
+            firmware_touch: false,
             firmware_slew: false,
             firmware_bus_scale: false,
             receiver_chain_scale: false,
@@ -1085,14 +1099,15 @@ impl PianoLayer {
             }
         }
 
+        let touch = self.touch_curve();
         let firmware_gain = if self.firmware_velocity_level {
             self.sound
                 .as_ref()
-                .and_then(|snd| snd.firmware_velocity_gain(effective_note, velocity))
+                .and_then(|snd| snd.firmware_velocity_gain(effective_note, velocity, touch))
         } else {
             None
         };
-        let base_amp = firmware_gain.unwrap_or_else(|| self.touch.map_velocity(velocity));
+        let base_amp = firmware_gain.unwrap_or_else(|| self.touch_fallback_amp(velocity));
         let compressed_amp = match self.dyn_comp {
             1 => base_amp.powf(0.82),
             2 => base_amp.powf(0.68),

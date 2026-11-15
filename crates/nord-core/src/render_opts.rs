@@ -294,6 +294,9 @@ pub struct FirmwareOptions {
     pub piano_firmware_level: bool,
     /// `--firmware-piano-bus`: `PianoLayer::firmware_bus_scale` (opt-in, ASSUMED receiver scale).
     pub piano_bus_scale: bool,
+    /// `--firmware-piano-touch`: `PianoLayer::firmware_touch` (program Touch from the firmware
+    /// velocity curves, VERIFIED against the ARM; opt-in because the program file bits are not).
+    pub piano_touch: bool,
     /// `--piano-slew-fw`: `PianoLayer::firmware_slew` (SMP voice-gain slew, opt-in; D22).
     pub piano_slew: bool,
     /// `--firmware-piano-chain`: `PianoLayer::receiver_chain_scale` (verified FX path 0.7464 per
@@ -366,6 +369,7 @@ impl Default for FirmwareOptions {
             fx: FirmwareFx::DEFAULT,
             piano_firmware_level: true,
             piano_bus_scale: false,
+            piano_touch: false,
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
@@ -417,6 +421,7 @@ impl FirmwareOptions {
             fx: FirmwareFx::ALL,
             piano_firmware_level: true,
             piano_bus_scale: false,
+            piano_touch: false,
             piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
@@ -489,6 +494,7 @@ impl FirmwareOptions {
             o.piano_firmware_level = false;
         }
         o.piano_bus_scale |= has("--firmware-piano-bus");
+        o.piano_touch |= has("--firmware-piano-touch");
         o.piano_slew |= has("--piano-slew-fw");
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
@@ -572,6 +578,8 @@ impl FirmwareOptions {
         apply_piano_level(engine, self.piano_firmware_level);
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
         engine.piano_b.firmware_bus_scale = self.piano_bus_scale;
+        engine.piano_a.firmware_touch = self.piano_touch;
+        engine.piano_b.firmware_touch = self.piano_touch;
         engine.piano_a.firmware_slew = self.piano_slew;
         engine.piano_b.firmware_slew = self.piano_slew;
         engine.piano_a.receiver_chain_scale = self.piano_chain_scale;
@@ -632,6 +640,8 @@ impl FirmwareOptions {
         engine.piano_b.firmware_velocity_level = self.piano_firmware_level;
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
         engine.piano_b.firmware_bus_scale = self.piano_bus_scale;
+        engine.piano_a.firmware_touch = self.piano_touch;
+        engine.piano_b.firmware_touch = self.piano_touch;
         engine.piano_a.firmware_slew = self.piano_slew;
         engine.piano_b.firmware_slew = self.piano_slew;
         engine.piano_a.receiver_chain_scale = self.piano_chain_scale;
@@ -788,6 +798,9 @@ impl FirmwareOptions {
         if self.piano_bus_scale {
             parts.push("piano-bus".into());
         }
+        if self.piano_touch {
+            parts.push("piano-touch".into());
+        }
         if self.piano_slew {
             parts.push("piano-slew".into());
         }
@@ -889,6 +902,12 @@ mod tests {
         assert!(!o.piano_bus_scale, "the bus scale is opt-in");
         let bus = FirmwareOptions::from_args(&args(&["--firmware-piano-bus"])).unwrap();
         assert!(bus.piano_bus_scale);
+        assert!(!o.piano_touch, "the program Touch curves are opt-in");
+        let touch = FirmwareOptions::from_args(&args(&["--firmware-piano-touch"])).unwrap();
+        assert!(touch.piano_touch && touch.summary().contains("piano-touch"));
+        let mut e = Stage4Engine::new(48_000.0);
+        touch.apply_to(&mut e);
+        assert!(e.piano_a.firmware_touch && e.piano_b.firmware_touch);
         assert!(!o.piano_chain_scale, "the receiver chain scale is opt-in");
         let chain = FirmwareOptions::from_args(&args(&["--firmware-piano-chain"])).unwrap();
         assert!(chain.piano_chain_scale && chain.summary().contains("piano-chain"));
