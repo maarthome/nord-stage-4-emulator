@@ -101,6 +101,18 @@ pub fn legend(p: &Painter, rect: Rect, text: &str, dim: bool) {
     );
 }
 
+/// Tiny silkscreen caption right of `rect`, vertically centred (the SOLO name beside ON).
+pub fn legend_right(p: &Painter, rect: Rect, text: &str, dim: bool) -> Rect {
+    label(
+        p,
+        pos2(rect.right() + 4.0, rect.center().y),
+        text,
+        6.0,
+        legend_ink(Color32::from_gray(225), dim),
+        Align2::LEFT_CENTER,
+    )
+}
+
 /// Button label inside the face of `rect`.
 pub fn inside(p: &Painter, rect: Rect, text: &str, dim: bool) {
     label(
@@ -296,6 +308,15 @@ mod tests {
             });
         });
         out.shapes.len()
+    }
+
+    #[test]
+    fn legend_right_is_vertically_centred_right_of_the_button() {
+        let btn = Rect::from_min_size(pos2(100.0, 100.0), vec2(37.0, 22.0));
+        let mut r = Rect::NOTHING;
+        with_ui(|ui| r = legend_right(ui.painter(), btn, "SOLO", false));
+        assert!(r.left() > btn.right(), "{r:?}");
+        assert!((r.center().y - btn.center().y).abs() < 1.0, "{r:?}");
     }
 
     #[test]

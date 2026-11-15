@@ -2,10 +2,11 @@
 //! ladders, Aux KB LEDs, OCTAVE SHIFT, KB ZONE, SUSTPED and PSTICK.
 //!
 //! Positions come from `layout_px::rect_or_empty`. Shift functions share their base control's
-//! rect and are printed as legends below it ([`ctl::shift_legend`]).
+//! rect and are printed as legends below it ([`ctl_legend::shift_legend`]).
 
 use super::aux_flag::{aux_flag_from_telemetry, aux_led};
-use super::ctl::{gesture_button, led_row, mark, shift_legend, Face};
+use super::ctl::{gesture_button, led_row, mark, Face};
+use super::ctl_legend::{shift_legend, shift_legend_at};
 use super::kb_zone;
 use super::layout_px::rect_or_empty;
 use super::organ_logic::step_octave;
@@ -113,13 +114,14 @@ pub(super) fn render_strip(
         Some(Trigger::Hold) => state.organ_ui.solo = !state.organ_ui.solo,
         _ => {}
     }
-    shift_legend(
+    shift_legend_at(
         ui,
         rc("organ.on"),
         "organ.solo",
         "SOLO",
         Some(state.organ_ui.solo),
         None,
+        true,
     );
     super::ctl::fx_focus_caption(ui.painter(), rc("organ.fx_focus_led").center());
     led_row(

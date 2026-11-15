@@ -53,7 +53,7 @@ const NAMES: [&str; 9] = [
 const NAME_RISE: f32 = 7.0;
 /// Distance (px) of a ladder numeral from the LED column: past the LED bezel (5.2 px at the
 /// ladder pitch) and inside the ladder rectangle, so the numeral belongs to the ladder.
-const NUMERAL_DX: f32 = 9.2;
+const NUMERAL_DX: f32 = 8.3;
 
 /// Register name over the ladder and the numerals 1-8 beside its LEDs (photo
 /// `NS4_HA88_Organ-01`: numbers beside each ladder, the name above it).

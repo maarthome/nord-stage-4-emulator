@@ -186,10 +186,6 @@ pub(super) fn tag_fit(p: &Painter, rect: Rect, text: &str, lift: f32, max_w: f32
 /// Pitch of stacked [`tag_fit`] lines (px): the minimum font plus a 2 px gap (audit rule `V`).
 const TAG_LINE: f32 = 9.5;
 
-/// Distance (px) from the button bottom to the top of its Shift legend: with the legend LED
-/// (radius 1.4) beside the text it keeps 2.5 px clear of the bezel (audit rule `B`).
-const LEGEND_DROP: f32 = 2.3;
-
 /// Distance (px) from the start of a legend's text to the centre of its state LED.
 pub(super) const LEGEND_LED_GAP: f32 = 5.0;
 
@@ -288,54 +284,10 @@ pub(super) fn gesture_button(
     out
 }
 
-/// Shift / Hold function legend printed below `base` (the control it hangs off), with an
-/// optional state LED. `dim` greys it out and shows the missing-feature tooltip.
-pub(super) fn shift_legend(
-    ui: &mut Ui,
-    base: Rect,
-    id: &str,
-    text: &str,
-    lit: Option<bool>,
-    dim: Option<&str>,
-) {
-    let pos = pos2(base.center().x, base.bottom() + LEGEND_DROP);
-    let col = if dim.is_some() {
-        dim_legend(Color32::WHITE)
-    } else {
-        Color32::WHITE
-    };
-    let p = ui.painter().clone();
-    let drawn = label(&p, pos, text, 5.5, col, Align2::CENTER_TOP);
-    if let Some(l) = lit {
-        // State LED before the text, as printed on the instrument ("o SUSTPED"); keeps it away
-        // from a group frame that ends at the right of the legend.
-        let x = drawn.left() - LEGEND_LED_GAP;
-        led_small(
-            &p,
-            pos2(x, drawn.center().y),
-            l,
-            LED_AMBER,
-            LED_AMBER_DIM,
-            1.4,
-        );
-    }
-    let hit = Rect::from_min_size(pos2(base.center().x - 12.0, base.bottom()), vec2(24.0, 8.0));
-    let resp = ui.interact(hit, ui.id().with((id, "legend")), Sense::hover());
-    mark(ui, id);
-    match dim {
-        Some(t) => {
-            mark_dim(ui, id);
-            resp.on_hover_text(t);
-        }
-        None => {
-            resp.on_hover_text(format!("Shift / hold: {text}"));
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::panel::ctl_legend::shift_legend;
 
     #[test]
     fn led_above_a_button_keeps_the_audited_gap() {

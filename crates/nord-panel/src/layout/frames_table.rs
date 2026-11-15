@@ -80,7 +80,7 @@ pub const FRAMES: &[FrameDef] = &[
         Piano,
         "ACOUSTICS",
         &["piano.soft_release"],
-        [0.0, 10.0, 0.0, 0.0],
+        [0.0, 19.0, 0.0, 0.0],
     ),
     bare(
         "piano.frame.unison",
@@ -108,7 +108,7 @@ pub const FRAMES: &[FrameDef] = &[
         Piano,
         "PIANO SELECT",
         &["piano.type_leds", "piano.type", "piano.select_dial"],
-        [0.0, 8.0, 0.0, 8.0],
+        [0.0, 5.0, 0.0, 8.0],
     ),
     // Synth.
     boxed(

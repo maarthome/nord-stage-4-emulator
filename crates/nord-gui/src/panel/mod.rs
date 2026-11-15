@@ -18,6 +18,7 @@ mod computer_kb_tests;
 pub mod computer_keys;
 mod ctl;
 mod ctl_led_tag;
+mod ctl_legend;
 #[cfg(test)]
 mod frame_cost_tests;
 mod frames;

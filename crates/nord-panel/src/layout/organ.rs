@@ -28,7 +28,7 @@ fn drawbar(id: &str) -> Option<Rect> {
     Some(if ladder {
         C.rect_px(LADDER_X0 + step, 725.0, 86.0, 357.0)
     } else {
-        C.rect_px(DRAWBAR_X0 + step, 895.0, 46.0, 385.0)
+        C.rect_px(DRAWBAR_X0 + step, 895.0, 36.0, 385.0)
     })
 }
 
@@ -56,8 +56,8 @@ pub fn rect(id: &str) -> Option<Rect> {
         "organ.model_leds" => C.rect(804.0, 278.0, 9.0, 18.7),
         "organ.preset" => C.rect(428.0, 886.0, 15.9, 8.3),
         "organ.vibrato_selector" => C.rect(1078.0, 262.0, 16.6, 9.0),
-        "organ.vibrato_on.a" => C.rect(1122.0, 410.0, 7.6, 9.0),
-        "organ.vibrato_on.b" => C.rect(1189.0, 410.0, 7.6, 9.0),
+        "organ.vibrato_on.a" => C.rect(1122.0, 410.0, 7.6, 7.5),
+        "organ.vibrato_on.b" => C.rect(1189.0, 410.0, 7.6, 7.5),
         "organ.perc_volume" => C.rect(1470.0, 280.0, 15.9, 9.0),
         "organ.perc_decay" => C.rect(1631.0, 280.0, 15.9, 9.0),
         "organ.perc_third" => C.rect(1792.0, 280.0, 15.9, 9.0),

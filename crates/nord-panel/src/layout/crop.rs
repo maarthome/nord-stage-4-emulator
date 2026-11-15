@@ -31,24 +31,25 @@ pub(crate) struct Crop {
 
 impl Crop {
     /// Render px of a crop point.
-    pub fn to_render(&self, cx: f32, cy: f32) -> (f32, f32) {
+    pub fn to_render(self, cx: f32, cy: f32) -> (f32, f32) {
         (self.rx + self.k * cx, self.ry + self.k * cy)
     }
 
     /// Panel mm of a crop point (the same origin as [`td`]).
-    pub fn mm(&self, cx: f32, cy: f32) -> (f32, f32) {
+    #[cfg(test)]
+    pub fn mm(self, cx: f32, cy: f32) -> (f32, f32) {
         let r = self.rect(cx, cy, 0.0, 0.0);
         (r.x, r.y)
     }
 
     /// `w` x `h` mm rectangle centred on crop point `(cx, cy)`.
-    pub fn rect(&self, cx: f32, cy: f32, w: f32, h: f32) -> Rect {
+    pub fn rect(self, cx: f32, cy: f32, w: f32, h: f32) -> Rect {
         let (x, y) = self.to_render(cx, cy);
         td(x, y, w, h)
     }
 
     /// Rectangle centred on `(cx, cy)` with a size measured in crop px.
-    pub fn rect_px(&self, cx: f32, cy: f32, w_px: f32, h_px: f32) -> Rect {
+    pub fn rect_px(self, cx: f32, cy: f32, w_px: f32, h_px: f32) -> Rect {
         let s = self.k * MM_PER_TD_PX;
         self.rect(cx, cy, w_px * s, h_px * s)
     }

@@ -63,11 +63,15 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     // 7.5 px minimum font; the verified layout rects (PR #375) already give more.
     // LED spacing (rules `B`, `T`): buttons whose LED moved up 3.3 px need their legends clear.
     ("organ.zone_leds", 0.0, 1.5),
-    ("organ.vibrato_on.a", 0.0, 2.0),
-    ("organ.vibrato_on.b", 0.0, 2.0),
+    ("organ.vibrato_on.a", 0.0, 4.5),
+    ("organ.vibrato_on.b", 0.0, 4.5),
     ("piano.soft_release", 1.5, 0.0), // SOFT REL / STR RES LEDs touched the level ladder (rule `D`)
     ("piano.string_res", 1.5, 0.0),
     ("piano.ped_noise", 1.5, 0.0),
+    ("piano.zone_leds", 0.0, 4.0), // the ZONE - / + legends printed into the zone LEDs
+    // KB TOUCH / DYN COMP names and titles sit 1.2 mm lower so the PED NOISE legend clears them.
+    ("piano.kb_touch", 0.0, 3.0),
+    ("piano.dyn_comp", 0.0, 3.0),
     ("organ.on", 0.0, -1.0),
     ("organ.solo", 0.0, -1.0),
 ];
@@ -77,9 +81,6 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
 /// (`nord_panel::layout::frames`): the 2000 px photo leaves too little between rows for 7.5 px
 /// legends plus a frame border and its title.
 pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
-    // Rotary Speaker box: its controls sit on the frame's vertical centre line (the frame was
-    // built around the button column and grew to the left; now the column moves 11 px left).
-    ("rotary.", -11.0, 0.0),
     // Synth: the Arpeggiator/Gate row moves up (free space under the header), the LFO / Oscillators
     // / Filter / Amp / Unison row moves down (free space above the section's lower edge).
     ("synth.arp.rate", 0.0, -12.0),

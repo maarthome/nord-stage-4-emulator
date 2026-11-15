@@ -15,6 +15,10 @@ pub const TYPE_NAMES: [&str; 6] = ["Grand", "Upright", "Electric", "Clav", "Digi
 /// Distance (px) from a button edge to the centre of a side LED of radius 2.2: button bezel 1.5,
 /// gap 2.5 (audit rule `B`), LED bezel 3.2.
 const SIDE_LED: f32 = 7.3;
+/// Distance (px) from the PED NOISE LED to the start of its name, and the shift (px) that keeps
+/// LED plus name centred under the button.
+const PED_LED_GAP: f32 = 6.0;
+const PED_LED_SHIFT: f32 = 3.0;
 /// Distance (px) from a button edge to the bottom of its 6 px LED row (the row sits above KB
 /// TOUCH / DYN COMP / UNISON): the LED centres are 3 px inside, so the bezel (r + 1) keeps 2.5 px
 /// clear of the button bezel.
@@ -131,8 +135,13 @@ fn draw_acoustics(
     let l = state.piano_ui.layer();
     let clav = state.piano_cat == PianoCategory::Clav;
 
+    // The real panel has ONE ACOUSTICS button (rect `piano.soft_release`, verified) under the two
+    // LED rows SOFT REL / STRING RES, with PED NOISE printed below it. Here SOFT REL gets its own
+    // button in the space of those LED rows (just above) and STRING RES keeps the real button, so
+    // the PED NOISE legend sits where the panel prints it and clears the KB TOUCH names.
+    let real = rect_or_empty("piano.soft_release", o);
     // SOFT RELEASE (dimmed on Clav: manual p.25 "Clavinets and Harpsichords do not support it").
-    let soft = rect_or_empty("piano.soft_release", o);
+    let soft = real.translate(vec2(0.0, -(real.height() + 1.0)));
     let pr = w::press(
         ui,
         soft,
@@ -167,9 +176,8 @@ fn draw_acoustics(
         state.piano_ui.mark("piano.soft_release");
     }
 
-    // STRING RES (tap) and PED NOISE (Shift): the layout lists them as one ACOUSTICS button on the
-    // SOFT RELEASE rectangle; the STRING RES button sits just below it.
-    let sr = soft.translate(vec2(0.0, soft.height() + 1.0));
+    // STRING RES (tap) and PED NOISE (Shift): the layout lists them as one ACOUSTICS button.
+    let sr = real;
     let pr = w::press(
         ui,
         sr,
@@ -187,7 +195,6 @@ fn draw_acoustics(
     }
     w::face(p, sr, pr.down, false);
     w::inside(p, sr, "STR RES", false);
-    w::legend(p, sr, "PED NOISE", false);
     w::mini_led(
         p,
         pos2(sr.left() - SIDE_LED, sr.center().y),
@@ -197,9 +204,18 @@ fn draw_acoustics(
         2.2,
         false,
     );
+    // PED NOISE (Shift) legend below the button with its LED before the text, as printed.
+    let ped = label(
+        p,
+        pos2(sr.center().x + PED_LED_SHIFT, sr.bottom() + 7.8),
+        "PED NOISE",
+        6.0,
+        Color32::from_gray(225),
+        Align2::CENTER_CENTER,
+    );
     w::mini_led(
         p,
-        pos2(sr.right() + SIDE_LED, sr.center().y),
+        pos2(ped.left() - PED_LED_GAP, ped.center().y),
         state.pedal_noise,
         AMBER.0,
         AMBER.1,
