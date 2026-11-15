@@ -28,13 +28,23 @@ python -m pytest tools/tests/test_synth_fm_tables.py
 
 Disassembly: `python tools/ns4_dsp_ldr.py target/DSP/dsp_image_2_ORG.bin --sram DIR` then `sharc-disasm DIR/core2_sram.bin 0x2484D2 0x248F6C`.
 
-## 3. Implications
+## 3. Stage models (added 2026-11-15)
+
+| Step | Result | Tag |
+|---|---|---|
+| Listing interpreter `tools/sharc_text_vm.py` (SIMD move / exchange rules, `BDCST1` broadcast loads through `I1`) | equal to `sharc-org` on 620 of 620 (stage 1, types 49 and 53) and 520 of 520 (stage 2, types 50 to 52) written words, 10 trials each (`tools/synth_fm_oracle.py`) | VERIFIED (run) |
+| Python equation models `tools/synth_stage_fm.py` | equal to the interpreter on 1240 of 1240 (stage 1) and 1040 of 1040 (stage 2) words, 20 random trials x 5 types (`synth_fm_oracle.py --model`), plus random-word cases of the goldens | VERIFIED (run) |
+| Rust `synth/fw_fm/` (f32) | 20 goldens (`tools/synth_fm_golden.py`) within 1e-3, measured 6e-7; no allocation per call; not reachable from the default path (D22) | tolerance VERIFIED |
+
+Findings of the decode: stage 1 chains A -> B and C -> D (four samples per operator, two passes at `a1`, `a2`), stage 2 chains A -> B -> C; the sine is the verified helper `0x12522E`; the band curves are lerped with `frac = (W & 0x1FFFFFF) 2^-25` (`FDEP R0 BY 6:25` deposits 25 bits at bit 6, not 6 bits at bit 25); loads through `I1` broadcast the PEx word (this fixed 70 percent of the first interpreter mismatches); lane 1 of the curve 2 lerp runs reversed because `R3 = S2` reads the other lane.
+
+## 4. Implications
 
 - The "table not reachable" blocker is closed. What remains for a port is the stage maths itself (two SIMD stages of 290 and 300 lines: four phase accumulators per lane, eight sine polynomials of `abs(phase) + c`, the band-curve lerps), the P words of the FM wave types (already in [data/synth-p-words.csv](data/synth-p-words.csv), types 49..53) and the ARM writer of the per-wave ratio (`0x2D82A8` table).
-- Open: the curve index source (which register carries the pitch / note term into `FEXT R0 BY 25:7`), whether the table depends on strip state other than the type (only `a`, `b` were varied), and the analytic generator (values are float recurrences; the CSV is the source).
+- Open (unchanged by the models): the curve index source (which register carries the pitch / note term into `FEXT R0 BY 25:7`), whether the table depends on strip state other than the type (only `a`, `b` were varied), and the analytic generator (values are float recurrences; the CSV is the source).
 
-## 4. Follow-ups
+## 5. Follow-ups
 
-1. Decode `0x124269` word for word (Python model + `sharc-org` oracle with the table poked), then `0x12453F`.
-2. Rust opt-in port under `crates/nord-core/src/synth/`, tables loaded from the CSV derived numbers, defaults unchanged (D22).
-3. Specs, D-entry, OQ22, ROADMAP once a stage is bit exact.
+1. Decode the writers of the position word `W = DM(I2-31)`, the pitch term `DM(I2-29)`, the ARM block `DM(0xC1599 ..)` and the P words of types 49..53, then wire `fw_fm` to an FM voice (opt-in first, D22).
+2. Vary strip state other than `a`, `b` in the table capture (the models take the table as input, so this only changes the CSV).
+3. Validate against a hardware FM clip before any default change.

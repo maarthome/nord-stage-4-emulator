@@ -16,7 +16,7 @@ Stage 1 (`I0` constants, `I1` ARM words, `I2` record, `I3` accumulators, `I4` sc
     inc1, inc2 = FIX(P0 P[-32], M[I0-10]), FIX(P0 P[-30], ...)   a1, a2 = inc 2^-31
     idx = sext7(W >> 25) + M[I1-14],  frac = (W & 0x1FFFFFF) 2^-25
     A0 (lane 0) and A1 (lane 1) lerp the band curves T0, T1 at idx, B the curve T2 at idx + 258
-    g = (clip(0.6914 - e a1, 0.0576) + 0.0576) 2.17 per ARM word e
+    g = (clip(0.6912 - e a1, 0.2304) + 0.2304) 2.17 per ARM word e
     mA, mC = clip((r x^2 + c) h, A1 / B)
     two passes (F4 = a1, then a2), four samples of four operators each (stage 2: A, B, C):
         op A: phase = accA + k incA                          -> sA
@@ -138,7 +138,7 @@ def prologue(mm: Mem, i0: int, i1: int, i2: int):
 
 
 def fade(c: m.X) -> m.X:
-    """`(clip(0.6914 - c, 0.0576) + 0.0576) 2.17` (the fade of the ARM words)."""
+    """`(clip(0.6912 - c, 0.2304) + 0.2304) 2.17` (the fade of the ARM words)."""
     return m.mul(m.add(m.clip(m.sub(FADE_C0, c), FADE_C1), FADE_C1), FADE_C2)
 
 

@@ -31,7 +31,7 @@ use super::fw_sine_warps::sine_poly;
 /// curve index `sext7(W >> 25)` is added to it.
 pub const CURVE_BASE: u32 = 0xE0926;
 /// VERIFIED (listing `0x24864A`, `R12 = 0x3f7fbe77`): ceiling of an operator increment.
-const INC_CEIL: f32 = 0.998_73;
+const INC_CEIL: f32 = f32::from_bits(0x3F7F_BE77);
 
 /// DM words the stage reads; a lane pair is `[PEx, PEy]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
