@@ -32,25 +32,29 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("program.mon_copy", 0.0, 3.0),
     ("program.paste", 0.0, 3.0),
     ("split.leds", 0.0, -4.0),
-    // The Mod 1 numerals need the room the LAYER FX button legend used (round 4).
-    ("fx.layer_effects_on", 0.0, -10.0),
-    // The "VAR" legend under the amp model button printed into the TREBLE numeral `0`.
-    ("amp.model", 0.0, -12.0),
-    ("amp.variation", 0.0, -12.0),
-    ("amp.filter", 0.0, -12.0),
-    ("amp.to_rotary", 0.0, -12.0),
-    // The variation lists need the width between the AMOUNT numerals and the ON button.
-    ("mod1.selector", 8.0, 0.0),
-    ("mod1.variation", 8.0, 0.0),
-    ("mod2.selector", 9.0, 0.0),
-    ("mod2.variation", 9.0, 0.0),
-    // The FAST / CHOR / PING PONG legends of the knob columns touched the ON LEDs below them.
-    ("comp.on", 0.0, 8.0),
-    ("comp.global", 0.0, 8.0),
-    ("reverb.on", 0.0, 6.0),
-    ("reverb.global", 0.0, 6.0),
-    ("delay.on", 0.0, 7.0),
-    ("delay.global", 0.0, 7.0),
+    // Layer Effects: the printed lists RM / TREM / A-PAN and CHOR / FLANG / PHAS are wider than the
+    // 7.5 px minimum font allows between the AMOUNT numerals and the selector LEDs; the knob and
+    // the selector each give 1 mm (2.5 px).
+    ("mod1.amount", -2.5, 0.0),
+    ("mod2.amount", -2.5, 2.5), // and 1 mm down with RATE: the numerals `6` / `4` touched the MOD 2 title
+    ("mod2.rate", 0.0, 2.5),
+    ("mod1.selector", 2.5, 0.0),
+    ("mod2.selector", 2.5, 0.0),
+    ("mod1.variation", 2.5, 0.0), // shared rects move with their base
+    ("mod2.variation", 2.5, 0.0),
+    // The TREBLE numeral `10` ends against the ON rocker; the top numerals of the EQ row (`0`) need the
+    // room the model button's VAR legend printed into (the row moves 1.65 mm down, the model up 0.8 mm).
+    ("amp.treble", -1.5, 4.0),
+    ("amp.bass", 0.0, 4.0),
+    ("amp.mid", 0.0, 4.0),
+    ("amp.model", 0.0, -2.0),
+    ("amp.variation", 0.0, -2.0),
+    ("amp.filter", 0.0, -2.0),
+    ("amp.to_rotary", 0.0, -2.0),
+    // The AMP SIM/EQ title printed into the numerals of the top knob row below it.
+    ("amp.drive", 0.0, 4.0),
+    ("amp.mid_freq", 0.0, 4.0),
+    ("amp.res", 0.0, 4.0),
     // The Rotary DRIVE knob moves up so its name fits between the numerals and the ORGAN legend.
     ("rotary.drive", 0.0, -4.0),
     // The ORGAN / STOP MODE names and the SLOW / FAST row need a button pitch of 34 px at the
@@ -79,11 +83,6 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     ("synth.dial", 0.0, -4.0),
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
     ("organ.perc_", 3.0, 0.0),
-    // Layer Effects: Mod 1 clear of the header's ON button legend, Mod 2 and Amp Sim/EQ down,
-    // Comp and Reverb down under the Delay box.
-    ("mod1.", 0.0, 6.0),
-    ("mod2.", 0.0, 12.0),
-    ("amp.", 0.0, 30.0),
     // Program area: small nudges (at most 4 px = 1.7 mm, inside the 2 mm photo tolerance) that keep
     // the legends of neighbouring controls apart.
     ("preset_library.", 0.0, 4.0),
@@ -94,9 +93,6 @@ pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
     ("program.list", 0.0, 4.0),
     ("program.page_", 0.0, 4.0),
     ("program.bank_", 0.0, 4.0),
-    ("comp.", 0.0, 14.0),
-    ("reverb.dry_wet", 6.0, 0.0),
-    ("reverb.", 8.0, 14.0),
 ];
 
 /// Nudge of control `id` (zero when it has none).
@@ -138,10 +134,10 @@ mod tests {
 
     #[test]
     fn group_nudges_add_to_the_own_entry_and_match_known_ids() {
-        // comp.on: own +8, group +14.
-        assert_eq!(nudge("comp.on"), vec2(0.0, 22.0));
+        // program.page_up: group +4 only.
+        assert_eq!(nudge("program.page_up"), vec2(0.0, 4.0));
         assert_eq!(nudge("synth.arp.run"), Vec2::ZERO);
-        assert_eq!(nudge("mod2.rate"), vec2(0.0, 12.0));
+        assert_eq!(nudge("mod2.rate"), vec2(0.0, 2.5));
         for (prefix, _, _) in GROUP_TWEAKS {
             assert!(
                 nord_panel::all_controls()
