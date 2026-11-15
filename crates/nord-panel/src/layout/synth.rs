@@ -4,30 +4,20 @@
 //!
 //! VERIFIED: every control centre is the real centre listed in `data/photo_anchors_synth.csv`
 //! (crop `NS4-Panel-synth.max-2000x2000.format-png.png`, read by eye, +-3 crop px = +-0.4 mm),
-//! mapped isotropically from the crop's panel outline (x 12..1988 onto the section's left/right
-//! edges, y 12 = panel y 26.0 mm, the same mm per crop px on both axes); checked by the test `centres_match_the_photo_anchors` and by
+//! mapped with the isotropic registration [`super::crop::SYNTH`] (crop outline x 12..1988 onto the
+//! section's left/right edges, outline top y = 12 on the plate's top edge at 25.0 mm, the same mm
+//! per crop px on both axes); checked by the test `centres_match_the_photo_anchors` and by
 //! `python tools/layout_overlay.py synth`. Only the centres were verified: sizes are the old
 //! hero-photo reads, except the faders and level ladders (heights from the crop, same scale).
-//! The layer sections are about 137 mm tall (y 26..163 mm); the 26 mm above are the printed
-//! connector strip (see the spec).
+//! The layer sections are about 137 mm tall (y 25..162 mm); the 25 mm above are the printed
+//! connector strip (see the spec). The origin used to be 26.0 mm, 1 mm below the render's edge.
 
-use super::{px, Rect, MM_PER_PX, ORIGIN_PX};
-
-/// Crop px of the panel outline (left, top, width, height).
-const CROP: (f32, f32, f32, f32) = (12.0, 12.0, 1976.0, 1054.0);
-/// Section frame in hero-photo px (left, width).
-const SECTION_X: (f32, f32) = (1029.0, 372.0);
-/// Panel y (mm) of the crop's top edge: the layer sections start under the 26 mm connector strip
-/// (HA88 straight-on render, 0.1195 mm/px on both axes).
-const CROP_TOP_MM: f32 = 26.0;
+use super::crop::SYNTH as C;
+use super::{Rect, MM_PER_PX};
 
 /// Rectangle `w` x `h` hero px centred on crop pixel `(cx, cy)`.
 fn c(cx: f32, cy: f32, w: f32, h: f32) -> Rect {
-    let x = SECTION_X.0 + (cx - CROP.0) / CROP.2 * SECTION_X.1;
-    // Isotropic: the horizontal scale (mm per crop px) applies to both axes.
-    let mm_per_crop_px = SECTION_X.1 * MM_PER_PX / CROP.2;
-    let y = ORIGIN_PX.1 + (CROP_TOP_MM + (cy - CROP.1) * mm_per_crop_px) / MM_PER_PX;
-    px(x - w / 2.0, y - h / 2.0, x + w / 2.0, y + h / 2.0)
+    C.rect(cx, cy, w * MM_PER_PX, h * MM_PER_PX)
 }
 
 pub fn rect(id: &str) -> Option<Rect> {
@@ -100,6 +90,10 @@ mod tests {
     use super::*;
     use crate::layout::section_rect;
     use crate::types::Section;
+
+    /// Crop px of the panel outline (left, top, width) and the panel y (mm) of its top edge.
+    const CROP: (f32, f32, f32) = (12.0, 12.0, 1976.0);
+    const CROP_TOP_MM: f32 = 25.0;
 
     #[test]
     fn three_dials_left_to_right_under_the_oled() {

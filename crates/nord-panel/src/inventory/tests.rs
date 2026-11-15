@@ -210,7 +210,7 @@ fn per_section_counts_are_pinned() {
     assert_eq!(count(Section::Piano), 32);
     assert_eq!(count(Section::Program), 56);
     assert_eq!(count(Section::Synth), 73);
-    assert_eq!(count(Section::Effects), 51);
+    assert_eq!(count(Section::Effects), 50);
     assert_eq!(count(Section::Keybed), 2);
 }
 
@@ -227,7 +227,7 @@ fn per_kind_counts_are_pinned() {
 
 #[test]
 fn total_is_the_sum_of_sections() {
-    assert_eq!(all_controls().len(), 275);
+    assert_eq!(all_controls().len(), 274);
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn binding_provenance_and_morph_totals_are_pinned() {
     let all = all_controls();
     let b = |f: fn(&Binding) -> bool| all.iter().filter(|c| f(&c.binding)).count();
     assert_eq!(b(|x| matches!(x, Binding::Bound(_))), 208);
-    assert_eq!(b(|x| matches!(x, Binding::UiOnly(_))), 67);
+    assert_eq!(b(|x| matches!(x, Binding::UiOnly(_))), 66);
     assert_eq!(b(|x| matches!(x, Binding::Unsupported(_))), 0);
     let assumed = all
         .iter()

@@ -8,7 +8,7 @@
 //! control outlines (about +-3 px).
 //!
 //! VERIFIED against the real-panel crops (and so removed from the list): the Master / Rotary,
-//! Organ, Piano and Synth layer-strip LEDs and the Layer Effects controls (all but `fx.focus.leds` and the
+//! Organ, Piano and Synth layer-strip LEDs and the Layer Effects controls (all but the
 //! amp halves), see `docs/specs/control-inventory.md` section 7 (photo anchors in
 //! `crates/nord-panel/data/photo_anchors_{master,organ,piano,synth,effects}.csv`).
 //!
@@ -22,8 +22,6 @@ pub const ESTIMATED: &[&str] = &[
     "organ.aux_led.a",
     "organ.aux_led.b",
     "synth.zone_leds",
-    // LEDs and LED groups placed near their control.
-    "fx.focus.leds",
     // One photo button, several functions (halves or shared rectangles).
     "amp.filter",
     "amp.res",
@@ -48,6 +46,6 @@ mod tests {
         for id in ESTIMATED {
             assert!(seen.insert(*id), "duplicate {id}");
         }
-        assert_eq!(ESTIMATED.len(), 14);
+        assert_eq!(ESTIMATED.len(), 13);
     }
 }

@@ -30,7 +30,7 @@ pub(super) fn render_bay_piano(
     let mut out: Vec<PianoEdit> = Vec::new();
     let shift = ui.input(|i| i.modifiers.shift) || state.piano_ui.shift_latch;
 
-    section_frame(painter, to_px(section_rect(Section::Piano), o), "PIANO");
+    super::frames::paint_plate(painter, o, Section::Piano, "PIANO");
     super::frames::paint_frames(painter, o, Section::Piano);
     draw_shift_latch(ui, painter, o, state);
     draw_strip(ui, painter, o, state, shift, &mut out);
@@ -56,7 +56,7 @@ fn blink(ui: &Ui) -> bool {
 /// On-panel SHIFT latch (stand-in for the Program bay's SHIFT key; the keyboard Shift key works too).
 fn draw_shift_latch(ui: &mut Ui, p: &Painter, o: egui::Pos2, state: &mut Stage4PanelState) {
     let sec = to_px(section_rect(Section::Piano), o);
-    let r = Rect::from_min_size(pos2(sec.right() - 30.0, sec.top() + 4.0), vec2(26.0, 14.0));
+    let r = Rect::from_min_size(pos2(sec.right() - 30.0, sec.top() - 18.0), vec2(26.0, 14.0));
     let pr = w::press(ui, r, "piano_shift", &mut Default::default());
     if pr.resp.clicked() {
         state.piano_ui.shift_latch = !state.piano_ui.shift_latch;
