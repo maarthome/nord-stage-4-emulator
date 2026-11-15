@@ -147,5 +147,5 @@ Agreement with the video-confirmed notes (`tools/video_ref.py notes`, notes whos
 ## Follow-ups
 
 - Velocity-to-brightness at loud notes (presence +4.5, brilliance +8.0 on Velvet Grand): needs a hardware recording at known velocities (the single-note recording request of [piano-felt-upright-soft](piano-felt-upright-soft.md)).
-- Run the planned second transcriber on the same clips and compare the velocity series.
+- Second transcriber: MuScriptor was run on the synth clips (recall 0.13 to 0.25, no velocity, [synth-transcription-muscriptor](synth-transcription-muscriptor.md)); ByteDance / Aria-AMT on the piano clips (velocity series) are still open.
 - Part A programs other than the five compared (Bright Imperial, Grand Pad, Bright Felt, Shimmer Upright) can be sliced from the committed stream.
