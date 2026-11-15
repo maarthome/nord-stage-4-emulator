@@ -53,7 +53,7 @@ No new hardware evidence. The slew loop and the voice loops are the whole per-re
 
 ## 5. Level chain (item 6)
 
-The slew does not change the steady-state level of any stroke at the engine's unit of measure unless `F11`, `F19 / F20` and the ramp ceiling differ from unity, which the note-on message does not show. The master chain (`DM(0xB6518)` word, layer words 1.6 / 2.5 / 3.25) was not re-run against the clips in this pass: `tools/emu_vs_hw.py` now lists the verified-chain variants for the Velvet Grand segment (`piano-chain`, `vel-88-piano-chain`), and the standing result of [piano-receiver-scale](piano-receiver-scale.md) s6.3 (piano chain +10 to +12 dB, organ chain -14 to -15 dB, same video, same path) holds. Defaults stay (D66).
+The slew does not change the steady-state level of any stroke at the engine's unit of measure unless `F11`, `F19 / F20` and the ramp ceiling differ from unity, which the note-on message does not show. The master chain (`DM(0xB6518)` word, layer words 1.6 / 2.5 / 3.25) was not re-run against the clips in this pass: `tools/emu_vs_hw.py` now lists the verified-chain variants for the Velvet Grand segment (`piano-chain`, `vel-88-piano-chain`), and the standing result of [piano-receiver-scale](piano-receiver-scale.md) s6.3 (piano chain +10 to +12 dB, organ chain -14 to -15 dB, same video, same path) holds. Defaults stay (D68).
 
 ## Reproduce
 
@@ -83,7 +83,7 @@ cargo test -p nord-core --lib piano::smp_slew piano::ext40
 
 **Engine.** `piano/slew_voice.rs` (`PianoLayer::firmware_slew`, `ns4 render-patch --piano-slew-fw`, GUI Firmware bar Piano group "SMP gain slew"): the main voice runs `SlewRecord` at `43,402.34 / 2 / sample_rate` updates per sample; its gain is the slew gain `F0 / F1` instead of `amp * env`; the extra voice is not started; note-off (or pedal release, or a retrigger of the same note) applies the release write; the voice ends when the gain is below `1e-6`. Dynamics and una corda keep scaling. Not slewed: release samples, damper-down strokes (legacy path), SFZ / WAV / synthetic sounds.
 
-**Clip comparison: not run in this pass.** `tools/emu_vs_hw.py` on White Grand / Velvet Grand needs the local videos and a release build of `nord-tools`; the time box ended before it. The expected level effect is analytic: the slew gain is `0.21875 * level`, 13.2 dB below the amplitude `level` of the current default, against the standing +10 to +12 dB piano gap ([piano-receiver-scale](piano-receiver-scale.md) s6.3), so the opt-in is expected to land about 1 to 3 dB below the clips; that is a prediction, not a measurement. The default stays off (D22, D66).
+**Clip comparison: not run in this pass.** `tools/emu_vs_hw.py` on White Grand / Velvet Grand needs the local videos and a release build of `nord-tools`; the time box ended before it. The expected level effect is analytic: the slew gain is `0.21875 * level`, 13.2 dB below the amplitude `level` of the current default, against the standing +10 to +12 dB piano gap ([piano-receiver-scale](piano-receiver-scale.md) s6.3), so the opt-in is expected to land about 1 to 3 dB below the clips; that is a prediction, not a measurement. The default stays off (D22, D68).
 
 ```bash
 uv run --with unicorn python tools/arm_smp_slew_init.py capture target/fw_unpacked/bank0_CODE.bin \
