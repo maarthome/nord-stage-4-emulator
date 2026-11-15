@@ -1,0 +1,64 @@
+# Real control centres of the Layer Effects section, in px of
+# .reference/crops/NS4-Panel-effects.max-2000x2000.format-png.png (1799 x 1192, git-ignored), read by eye.
+# Scale: ISOTROPIC, 0.11743 mm per crop px on both axes (tools/layout_overlay.py ISOTROPIC["effects"]):
+#   panel x mm = 922.55 + 0.11743 * photo_x,   panel y mm = 22.85 + 0.11743 * photo_y.
+# Derived by registering the crop onto the straight-on HA88 render (NS4_HA88_TopDown-01_241008.jpg,
+# 0.119488 mm/px) with FFT cross-correlation: 1.0175 crop px per render px, peak 0.76. The crop shows
+# the section header strip but neither the 26 mm connector strip above nor the 18 mm lip below it, so it
+# is NOT stretched onto section_rect. Absolute y has the +-1.5 mm uncertainty of the render's panel edge.
+# Rows with shared_with draw on another control's rectangle (Shift function or LED choice): their real
+# position is listed here but not checked.
+# Knobs: centre of the cap. Buttons: centre of the button body. Rockers: centre of the rocker.
+id,photo_x,photo_y,shared_with
+fx.layer_effects_on,662,60
+fx.focus.organ,97,323
+fx.focus.piano,97,575
+fx.focus.synth,97,828
+fx.focus.leds,93,737
+fx.focus.group_piano,94,628,fx.focus.piano
+fx.focus.group_synth,94,881,fx.focus.synth
+program.shift.right,97,1065
+mod1.rate,308,257
+mod1.amount,548,257
+mod1.selector,757,331
+mod1.on,943,312
+mod1.mst_clk,246,382,mod1.rate
+mod1.variation,661,345,mod1.selector
+mod2.rate,308,540
+mod2.amount,548,540
+mod2.selector,757,607
+mod2.on,943,590
+mod2.variation,661,620,mod2.selector
+amp.drive,308,808
+amp.mid_freq,548,808
+amp.model,795,885
+amp.on,943,1050
+amp.bass,303,1052
+amp.mid,549,1052
+amp.treble,793,1052
+amp.variation,700,897,amp.model
+amp.res,546,1132,amp.mid_freq
+amp.to_rotary,897,728,amp.model
+amp.filter,890,795,amp.model
+delay.tempo,1135,283
+delay.feedback,1585,215
+delay.effects,1348,368
+delay.filter,1568,488
+delay.dry_wet,1357,585
+delay.tap_set,1130,565
+delay.on,1587,622
+delay.mst_clk,1073,406,delay.tempo
+delay.effects_variation,1283,435,delay.effects
+delay.ping_pong,1655,500,delay.filter
+delay.analog,1075,632,delay.tap_set
+delay.global,1530,690,delay.on
+comp.amount,1133,865
+comp.on,1133,1073
+comp.fast,1070,973,comp.amount
+comp.global,1077,1140,comp.on
+reverb.bright_dark,1346,873
+reverb.type,1555,918
+reverb.dry_wet,1365,1060
+reverb.on,1587,1073
+reverb.variation,1647,933,reverb.type
+reverb.global,1528,1140,reverb.on
