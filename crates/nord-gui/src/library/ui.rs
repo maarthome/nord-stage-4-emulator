@@ -1,5 +1,6 @@
 //! Library drawer and top-bar rendering.
 
+use super::init_load::InitTarget;
 use super::{BackupLibraryState, BackupTab};
 use crate::audio::AudioHandle;
 use crate::panel::Stage4PanelState;
@@ -195,6 +196,17 @@ impl BackupLibraryState {
                         ui.selectable_value(&mut self.synth_layer_idx, 1, "Synth B");
                         ui.selectable_value(&mut self.synth_layer_idx, 2, "Synth C");
                     }
+                    if self.active_tab != BackupTab::Programs {
+                        ui.checkbox(&mut self.merge_into_program, "Merge into current program")
+                            .on_hover_text(
+                                "Off: the sound loads into a fresh Init Program (other sections,                                  effects and levels reset). On: only this layer's sound changes.",
+                            );
+                        ui.weak(if self.merge_into_program {
+                            "Loads change only this layer's sound"
+                        } else {
+                            "Loads start from an Init Program"
+                        });
+                    }
                 });
 
                 ui.separator();
@@ -233,9 +245,11 @@ impl BackupLibraryState {
                     self.load_program_entry(&p, panel, audio);
                 }
                 if let Some(p) = selected_piano {
+                    self.init_before_load(InitTarget::Piano(self.piano_slot_b), panel, audio);
                     self.request_piano_entry(&p);
                 }
                 if let Some(s) = selected_sample {
+                    self.init_before_load(InitTarget::Synth(self.synth_layer_idx.min(2)), panel, audio);
                     self.request_sample_entry(&s);
                 }
             });

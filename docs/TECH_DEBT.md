@@ -119,6 +119,20 @@ This document tracks deliberate trade-offs, structural compromises, temporary wo
 - **Remediation Plan:** (1) keep the rows and the oracle goldens as the reference; (2) generate straight line Rust from the rows (tried in s17: bit exact, but `rustc` did not finish in 10 minutes; emit the arithmetic itself instead of inlined `exec` calls) and benchmark; (3) try a single precision path against the goldens (s13: 1 ulp drift after about 70 instructions, so it needs an error bound and an `EMPIRICAL` tag).
 - **Status:** Open.
 
+### TD-16: Classic Preset Routing Differs from Firmware in 17 Factory Programs
+
+- **Description:** With firmware routing off (the Classic preset), 17 factory programs sound an organ layer in scene I that the firmware routing does not, for example `LoFi Piano` (legacy mask `0100001` vs firmware `0000100`), `Ballad Layer Whl` and `Burning Lead`.
+- **Impact:** Classic-preset playback of those programs differs from the hardware; the default Firmware routing is correct.
+- **Remediation Plan:** Derive the Classic masks from the firmware routing for those programs or retire the legacy mask path.
+- **Status:** Open.
+
+### TD-17: Program Transpose Is Not Applied by the Engine
+
+- **Description:** `prog.global.transpose` is decoded but `Stage4Engine::apply_program` does not apply it to incoming notes.
+- **Impact:** Factory programs with a stored transpose sound at the wrong pitch.
+- **Remediation Plan:** Apply the transpose in the note path, verify against the firmware transpose handling, and add a unit test.
+- **Status:** Open.
+
 ---
 
 ## 3. Maintenance Policy

@@ -229,3 +229,19 @@ Defaults are unchanged: with no flag the engine and the `render_hash` stay as be
 work for `ns4 render-patch`; both parse them with `FirmwareOptions::from_args`, so a switch added to
 that struct needs a field, a parser, an `apply_exact` line (the GUI path), a per-engine preset entry in `firmware_panel/presets.rs`, `apply_to`/`apply_exact`, a `summary` entry, a `SwitchInfo` in
 `firmware_panel/info.rs`, a bar control and a row in this table (a unit test checks the table).
+
+## Library drawer loads
+
+The Pianos and Samples tabs load a sound into a fresh Init Program (only the target layer on, effects
+and levels default) unless "Merge into current program" is ticked ([D78](DECISIONS.md)). The
+Programs tab replaces the whole state. Evidence, with the local factory backup
+(`NS4_FACTORY_BACKUP` or `.reference/`):
+
+```bash
+cargo test -p nord-gui --test gui_piano_program_no_organ -- --nocapture
+```
+
+The test drives the GUI command path (`panel.apply_program` + `apply_audio_command` of
+`LoadProgram`, `LoadPianoSound`, `Keyboard`) and measures the organ energy as the RMS difference to
+the same render with both organ faders at zero. It also asserts that program Y after program X
+renders exactly like a fresh Y, and that the Organ ladders are unlit while the section is off.

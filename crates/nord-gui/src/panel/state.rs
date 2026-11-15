@@ -229,7 +229,16 @@ impl Stage4PanelState {
             0x2A..=0x2F | 0x06 | 0x0B | 0x0D | 0x34 => 1 << 4, // Synth A
             _ => (1 << 0) | (1 << 2) | (1 << 4),
         };
-        let scene_mask = if prog.global.scene_1_mask != 0 {
+        // The mask the engine plays under `FirmwareRouting` (the Firmware bar default): the stored
+        // scene mask plus layer A in every enabled section without a layer (OQ25). The category
+        // guess is only the fallback for a program with no enabled section (synthetic programs).
+        let firmware_mask = nord_core::engine::default_layer_a(
+            prog.global.section_enable_i,
+            prog.global.scene_1_mask,
+        );
+        let scene_mask = if firmware_mask != 0 {
+            firmware_mask
+        } else if prog.global.scene_1_mask != 0 {
             prog.global.scene_1_mask
         } else {
             cat_mask
