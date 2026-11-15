@@ -273,15 +273,11 @@ pub(super) fn render_bay_program(
             LED_GREEN,
             LED_GREEN_DIM,
         );
-        label(
-            painter,
-            pos2(cx, strip.top() - 1.0),
-            ["L", "M", "H"][i],
-            4.0,
-            Color32::WHITE,
-            Align2::CENTER_BOTTOM,
-        );
     }
+    // The L / M / H letters have no room between the SPLIT title and the ON/SET legend on the
+    // 25 mm plate top: they live in the tooltip.
+    ui.interact(strip, ui.id().with("split.leds"), egui::Sense::hover())
+        .on_hover_text("SPLIT zone LEDs: L = lower, M = middle, H = upper zone");
     pu.mark("split.leds");
 
     if pu.needs_repaint() || pu.popups.is_showing(now) || state.leds.needs_repaint() {

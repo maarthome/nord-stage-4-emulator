@@ -84,7 +84,7 @@ def test_build_mapping_uses_outline_or_anchors():
     m2 = lo.build_mapping(layout, "organ", "0,0,0,0;10,10,5,5")
     assert m2.ax == pytest.approx(0.5)
     with pytest.raises(SystemExit):
-        lo.build_mapping(layout, "synth", "")
+        lo.build_mapping(layout, "effects", "")
     m3 = lo.Mapping(lo.outline_anchors((250.0, 12.0, 1948.0, 1168.0), RECT))
     assert m3.to_mm(250, 12) == pytest.approx((10.0, 20.0))
 
@@ -126,5 +126,11 @@ def test_organ_and_piano_crops_map_isotropically_onto_the_render():
     piano = lo.Mapping.isotropic(*lo.ISO["piano"])
     assert organ.to_mm(0, 12)[1] == pytest.approx(25.0, abs=0.3)
     assert piano.to_mm(0, 17)[1] == pytest.approx(25.0, abs=0.3)
+    # Synth: same plate top (was 26.0 mm, 8.4 px lower); program / keybed / wheels are render crops.
+    synth = lo.Mapping.isotropic(*lo.ISO["synth"])
+    assert synth.to_mm(0, 12)[1] == pytest.approx(25.0, abs=0.05)
+    assert synth.anisotropy() == pytest.approx(1.0)
+    for name in ("program", "keybed", "wheels"):
+        assert lo.Mapping.isotropic(*lo.ISO[name]).to_mm(400, 482) == pytest.approx((0.0, 0.0))
     px = organ.to_px(*organ.to_mm(655.0, 895.0))
     assert px == pytest.approx((655.0, 895.0))

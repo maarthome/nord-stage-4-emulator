@@ -154,7 +154,7 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.lfo.mod_amt",
             "synth.lfo.dest",
         ],
-        [5.3, 7.9, 5.5, 12.0],
+        [5.3, 7.9, 5.5, 4.0],
     ),
     boxed(
         "synth.frame.osc",
@@ -166,7 +166,7 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.osc.ctrl",
             "synth.osc.env_amt",
         ],
-        [8.5, 10.9, 7.9, 14.0],
+        [8.5, 10.9, 7.9, 10.2],
     ),
     boxed(
         "synth.frame.filter",
@@ -179,7 +179,7 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.filter.freq",
             "synth.filter.res",
         ],
-        [4.5, 8.0, 5.3, 14.0],
+        [4.5, 8.0, 5.3, 10.2],
     ),
     boxed(
         "synth.frame.amp",
@@ -260,7 +260,7 @@ pub const FRAMES: &[FrameDef] = &[
             "reverb.dry_wet",
             "reverb.on",
         ],
-        [3.0, 14.0, 6.0, 12.0],
+        [3.0, 14.0, 6.0, 8.9],
     ),
     // Program area (the red central block). VERIFIED against the HA88 top-down render: the pads
     // reproduce the printed boxes (MORPH ASSIGN x 4905..5348 y 697..885 px, PRESET LIBRARY
@@ -271,28 +271,28 @@ pub const FRAMES: &[FrameDef] = &[
         Program,
         "MORPH ASSIGN",
         &["morph.wheel", "morph.at", "morph.ctrlped"],
-        [4.0, 14.0, 4.0, 12.0],
+        [4.0, 12.5, 4.0, 12.0],
     ),
     boxed(
         "program.frame.split",
         Program,
         "SPLIT",
         &["split.on_set", "split.leds"],
-        [0.5, 12.0, 0.5, 8.0],
+        [0.5, 3.5, 0.5, 8.0],
     ),
     boxed(
         "program.frame.mst_clk",
         Program,
         "MST CLK",
         &["mst_clk.tap_set"],
-        [1.7, 14.0, 1.7, 9.0],
+        [1.7, 11.5, 1.7, 9.0],
     ),
     boxed(
         "program.frame.transp",
         Program,
         "TRANSP",
         &["transp.on_set"],
-        [4.0, 14.0, 4.0, 8.5],
+        [4.0, 12.0, 4.0, 8.5],
     ),
     boxed(
         "program.frame.preset_library",
@@ -315,7 +315,7 @@ pub const FRAMES: &[FrameDef] = &[
             "program.button.5",
             "program.button.8",
         ],
-        [3.6, 14.9, 4.2, 9.5],
+        [3.6, 14.9, 4.2, 7.0],
     ),
 ];
 

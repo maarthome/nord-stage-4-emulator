@@ -25,6 +25,7 @@ mod keybed;
 mod master;
 mod organ;
 mod piano;
+mod plate;
 mod program;
 mod shared;
 mod synth;
@@ -35,6 +36,7 @@ use crate::types::Section;
 pub use estimated::ESTIMATED;
 pub use frames::{frame_def, frame_rect, frames_of, FrameDef, FrameKind, FRAMES};
 pub use keybed::SPLIT_LED_WHITE_KEYS;
+pub use plate::{plate_of, Plate, RIM_MM};
 pub use shared::{shared_base, SHARED};
 
 /// Instrument width in mm (88-key model).
@@ -120,21 +122,65 @@ pub fn panel_rect() -> Rect {
     px(ORIGIN_PX.0, ORIGIN_PX.1, 1932.0, KEYBED_BOTTOM_PX)
 }
 
+/// Top edge (mm) of the layer sections (Organ, Piano, Program, Synth, Effects): the red -> plate
+/// colour step of the header tab, 26 mm of printed connector strip above it.
+///
+/// VERIFIED: HA88 straight-on render row 691 px, `(691 - 482) * 0.1195 = 25.0 mm`; the five
+/// columns probed (Organ tab, Piano, Program, Effects tab) agree within 1 mm (blue-over-red mask,
+/// `python tools/layout_overlay.py` section dump); test `layer_sections_span_the_render_plate`.
+pub const SECTION_TOP_MM: f32 = 25.0;
+
+/// Bottom edge (mm) of the layer sections: the plate's lower edge above the 18 mm red lip.
+///
+/// VERIFIED: render row 1838 px = `(1838 - 482) * 0.1195 = 162.1 mm` (Organ, Piano and Synth
+/// columns 161.3..162.3 mm, same mask); 162.3 mm is the Organ / Piano reading.
+pub const SECTION_BOTTOM_MM: f32 = 162.3;
+
+/// Bottom edge (mm) of the Layer Effects section frame.
+///
+/// ASSUMED (TECH_DEBT): the real plate ends at [`SECTION_BOTTOM_MM`]. The Effects controls are
+/// still the 2000 px photo reads (no crop pass yet) and the GUI spreads them with large nudges
+/// (`layout_tweaks::GROUP_TWEAKS`, Amp Sim/EQ +12 mm) so that 7.5 px legends fit; the lowest frame
+/// (AMP SIM/EQ) ends at 174.6 mm. An Effects crop pass would bring this back to 162.3 mm.
+pub const EFFECTS_BOTTOM_MM: f32 = 175.0;
+
 /// Frame of a panel section.
 ///
-/// ASSUMED: section borders read from the photo (boundaries between the
-/// printed section boxes, rounded to whole photo pixels).
+/// The four other layer sections span `SECTION_TOP_MM ..= SECTION_BOTTOM_MM` (the bounding box of the
+/// plate including the header tab). Master has no plate and keeps the full control height; Keybed
+/// is the strip below the control area.
+///
+/// VERIFIED: Organ x 240.9..443.0 mm and Piano x 445.0..531.9 mm are plate edges on the HA88
+/// render (blue mask along rows 715 and 1828 px; Piano's right edge was 3.5 mm too wide when
+/// read from the 2000 px photo). ASSUMED: Program / Synth / Effects x edges, read from the photo
+/// (boundaries between the printed section boxes, whole photo pixels, +-2 mm).
 pub fn section_rect(section: Section) -> Rect {
-    let (x0, x1) = match section {
-        Section::Master => (67.0, 415.0),
-        Section::Organ => (415.0, 709.0),
-        Section::Piano => (709.0, 841.0),
-        Section::Program => (841.0, 1029.0),
-        Section::Synth => (1029.0, 1401.0),
-        Section::Effects => (1401.0, 1700.0),
-        Section::Keybed => return px(67.0, KEYBED_TOP_PX, 1932.0, KEYBED_BOTTOM_PX),
+    let layer = |x0: f32, x1: f32| {
+        Rect::new(
+            x0,
+            SECTION_TOP_MM,
+            x1 - x0,
+            SECTION_BOTTOM_MM - SECTION_TOP_MM,
+        )
     };
-    px(x0, ORIGIN_PX.1, x1, KEYBED_TOP_PX)
+    let hero = |x0: f32, x1: f32| {
+        layer(
+            (x0 - ORIGIN_PX.0) * MM_PER_PX,
+            (x1 - ORIGIN_PX.0) * MM_PER_PX,
+        )
+    };
+    match section {
+        Section::Master => px(67.0, ORIGIN_PX.1, 415.0, KEYBED_TOP_PX),
+        Section::Organ => layer(240.9, 443.0),
+        Section::Piano => layer(445.0, 531.9),
+        Section::Program => hero(841.0, 1029.0),
+        Section::Synth => hero(1029.0, 1401.0),
+        Section::Effects => {
+            let r = hero(1401.0, 1700.0);
+            Rect::new(r.x, r.y, r.w, EFFECTS_BOTTOM_MM - r.y)
+        }
+        Section::Keybed => px(67.0, KEYBED_TOP_PX, 1932.0, KEYBED_BOTTOM_PX),
+    }
 }
 
 /// Layout rectangle of control `id`, or `None` for an unknown id.
@@ -166,6 +212,29 @@ mod unit_tests {
         assert!((panel.w - INSTRUMENT_WIDTH_MM).abs() < 0.5);
         assert!((section_rect(Section::Keybed).y - PANEL_HEIGHT_MM).abs() < 1e-3);
         assert!(panel.contains(&Rect::new(0.0, 0.0, 1.0, 1.0)));
+    }
+
+    #[test]
+    fn layer_sections_span_the_render_plate() {
+        for sec in [
+            Section::Organ,
+            Section::Piano,
+            Section::Program,
+            Section::Synth,
+        ] {
+            let r = section_rect(sec);
+            assert!(
+                (r.y - 25.0).abs() < 1e-3 && (r.bottom() - 162.3).abs() < 1e-3,
+                "{sec:?}"
+            );
+            assert!((r.h - 137.3).abs() < 1e-3, "{sec:?}");
+        }
+        let (o, p) = (section_rect(Section::Organ), section_rect(Section::Piano));
+        assert!((p.right() - 531.9).abs() < 1e-3 && o.right() < p.x);
+        let fx = section_rect(Section::Effects);
+        assert!((fx.y - 25.0).abs() < 1e-3 && (fx.bottom() - EFFECTS_BOTTOM_MM).abs() < 1e-3);
+        // Master keeps the full control height; Keybed starts where the panel ends.
+        assert!(section_rect(Section::Master).y.abs() < 1e-3);
     }
 
     #[test]

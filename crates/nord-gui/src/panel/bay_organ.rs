@@ -6,7 +6,7 @@
 
 use super::ctl::{gesture_button, tag, tag_fit, Face, TAG_LIFT_LED};
 use super::ctl_legend::shift_legend;
-use super::layout_px::{rect_or_empty, to_px};
+use super::layout_px::rect_or_empty;
 use super::organ_drawbars::render_drawbars;
 use super::organ_logic::{model_index, scanner_for, vib_index, MODELS, VIB_TYPES};
 use super::organ_preset::render_preset;
@@ -24,11 +24,7 @@ pub(super) fn render_bay_organ(
     audio_handle: &AudioHandle,
 ) {
     let origin = panel_rect.min;
-    let frame = to_px(
-        nord_panel::layout::section_rect(nord_panel::Section::Organ),
-        origin,
-    );
-    section_frame(painter, frame, "ORGAN");
+    super::frames::paint_plate(painter, origin, nord_panel::Section::Organ, "ORGAN");
     super::frames::paint_frames(painter, origin, nord_panel::Section::Organ);
     render_strip(ui, origin, state, audio_handle);
     render_model(ui, painter, origin, state, audio_handle);

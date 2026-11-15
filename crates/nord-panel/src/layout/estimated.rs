@@ -21,8 +21,6 @@ pub const ESTIMATED: &[&str] = &[
     "organ.aux_led.a",
     "organ.aux_led.b",
     "synth.zone_leds",
-    // LEDs and LED groups placed near their control.
-    "fx.focus.leds",
     // One photo button, several functions (halves or shared rectangles).
     "amp.filter",
     "amp.res",
@@ -47,6 +45,6 @@ mod tests {
         for id in ESTIMATED {
             assert!(seen.insert(*id), "duplicate {id}");
         }
-        assert_eq!(ESTIMATED.len(), 14);
+        assert_eq!(ESTIMATED.len(), 13);
     }
 }

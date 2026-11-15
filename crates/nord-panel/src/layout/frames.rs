@@ -104,10 +104,21 @@ mod tests {
 
     #[test]
     fn frames_stay_inside_their_section() {
-        for f in FRAMES {
-            let r = frame_rect(f).unwrap();
-            assert!(section_rect(f.section).contains(&r), "{}: {r:?}", f.id);
-        }
+        let outside: Vec<String> = FRAMES
+            .iter()
+            .filter_map(|f| {
+                let r = frame_rect(f).unwrap();
+                (!section_rect(f.section).contains(&r)).then(|| {
+                    format!(
+                        "{}: bottom {:.2} right {:.2} {r:?}",
+                        f.id,
+                        r.bottom(),
+                        r.right()
+                    )
+                })
+            })
+            .collect();
+        assert!(outside.is_empty(), "{outside:#?}");
     }
 
     #[test]

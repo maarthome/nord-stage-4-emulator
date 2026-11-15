@@ -12,7 +12,6 @@ pub fn rect(id: &str) -> Option<Rect> {
         "fx.focus.organ" => px(1406.0, 166.0, 1429.0, 179.0),
         "fx.focus.piano" => px(1405.0, 208.0, 1428.0, 221.0),
         "fx.focus.synth" => px(1405.0, 251.0, 1428.0, 264.0),
-        "fx.focus.leds" => px(1404.0, 240.0, 1427.0, 245.0),
         // Mod 1 / Mod 2.
         "mod1.rate" => px(1442.0, 147.0, 1464.0, 169.0),
         "mod1.amount" => px(1482.0, 147.0, 1504.0, 169.0),
