@@ -16,6 +16,7 @@
 //! confirm or replace them.
 
 pub mod dump;
+mod crop;
 mod effects;
 mod estimated;
 mod frames;
