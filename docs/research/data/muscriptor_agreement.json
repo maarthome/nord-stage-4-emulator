@@ -1,0 +1,203 @@
+{
+ "note": "Derived numbers only. Agreement with video-confirmed notes (tools/transcribe_agree.py); MuScriptor drums dropped except the hint run; medium-hint = --instruments synth_lead,synth_pad,electric_bass. Not committed: audio, MIDI, weights.",
+ "clips": {
+  "synth_horizon": {
+   "at_s": 290,
+   "duration_s": 30,
+   "transkun-2.0": {
+    "tol_80ms": {
+     "matched_exact": 25,
+     "recall": 0.145,
+     "recall_pitch_class": 0.203,
+     "precision_lower_bound": 0.091
+    },
+    "tol_150ms": {
+     "matched_exact": 34,
+     "recall": 0.198,
+     "recall_pitch_class": 0.291,
+     "precision_lower_bound": 0.124
+    },
+    "estimated": 275
+   },
+   "video_confirmed": 172,
+   "video_detected": 405,
+   "muscriptor-small": {
+    "tol_80ms": {
+     "matched_exact": 16,
+     "recall": 0.093,
+     "recall_pitch_class": 0.174,
+     "precision_lower_bound": 0.055
+    },
+    "tol_150ms": {
+     "matched_exact": 22,
+     "recall": 0.128,
+     "recall_pitch_class": 0.215,
+     "precision_lower_bound": 0.076
+    },
+    "estimated": 291
+   },
+   "muscriptor-medium": {
+    "tol_80ms": {
+     "matched_exact": 20,
+     "recall": 0.116,
+     "recall_pitch_class": 0.174,
+     "precision_lower_bound": 0.057
+    },
+    "tol_150ms": {
+     "matched_exact": 32,
+     "recall": 0.186,
+     "recall_pitch_class": 0.262,
+     "precision_lower_bound": 0.091
+    },
+    "estimated": 351
+   },
+   "muscriptor-medium-hint": {
+    "tol_80ms": {
+     "matched_exact": 19,
+     "recall": 0.11,
+     "recall_pitch_class": 0.151,
+     "precision_lower_bound": 0.066
+    },
+    "tol_150ms": {
+     "matched_exact": 24,
+     "recall": 0.14,
+     "recall_pitch_class": 0.203,
+     "precision_lower_bound": 0.083
+    },
+    "estimated": 289
+   }
+  },
+  "synth_leaky": {
+   "at_s": 1275,
+   "duration_s": 35,
+   "transkun-2.0": {
+    "tol_80ms": {
+     "matched_exact": 33,
+     "recall": 0.115,
+     "recall_pitch_class": 0.156,
+     "precision_lower_bound": 0.204
+    },
+    "tol_150ms": {
+     "matched_exact": 40,
+     "recall": 0.139,
+     "recall_pitch_class": 0.188,
+     "precision_lower_bound": 0.247
+    },
+    "estimated": 162
+   },
+   "video_confirmed": 288,
+   "video_detected": 552,
+   "muscriptor-small": {
+    "tol_80ms": {
+     "matched_exact": 39,
+     "recall": 0.135,
+     "recall_pitch_class": 0.191,
+     "precision_lower_bound": 0.235
+    },
+    "tol_150ms": {
+     "matched_exact": 50,
+     "recall": 0.174,
+     "recall_pitch_class": 0.243,
+     "precision_lower_bound": 0.301
+    },
+    "estimated": 166
+   },
+   "muscriptor-medium": {
+    "tol_80ms": {
+     "matched_exact": 47,
+     "recall": 0.163,
+     "recall_pitch_class": 0.198,
+     "precision_lower_bound": 0.232
+    },
+    "tol_150ms": {
+     "matched_exact": 65,
+     "recall": 0.226,
+     "recall_pitch_class": 0.281,
+     "precision_lower_bound": 0.32
+    },
+    "estimated": 203
+   },
+   "muscriptor-medium-hint": {
+    "tol_80ms": {
+     "matched_exact": 47,
+     "recall": 0.163,
+     "recall_pitch_class": 0.201,
+     "precision_lower_bound": 0.193
+    },
+    "tol_150ms": {
+     "matched_exact": 67,
+     "recall": 0.233,
+     "recall_pitch_class": 0.278,
+     "precision_lower_bound": 0.276
+    },
+    "estimated": 243
+   }
+  },
+  "pianopad_grand": {
+   "at_s": 1171,
+   "duration_s": 30,
+   "transkun-2.0": {
+    "tol_80ms": {
+     "matched_exact": 26,
+     "recall": 0.178,
+     "recall_pitch_class": 0.24,
+     "precision_lower_bound": 0.205
+    },
+    "tol_150ms": {
+     "matched_exact": 36,
+     "recall": 0.247,
+     "recall_pitch_class": 0.363,
+     "precision_lower_bound": 0.283
+    },
+    "estimated": 127
+   },
+   "video_confirmed": 146,
+   "video_detected": 311,
+   "muscriptor-small": {
+    "tol_80ms": {
+     "matched_exact": 22,
+     "recall": 0.151,
+     "recall_pitch_class": 0.171,
+     "precision_lower_bound": 0.172
+    },
+    "tol_150ms": {
+     "matched_exact": 35,
+     "recall": 0.24,
+     "recall_pitch_class": 0.329,
+     "precision_lower_bound": 0.273
+    },
+    "estimated": 128
+   },
+   "muscriptor-medium": {
+    "tol_80ms": {
+     "matched_exact": 24,
+     "recall": 0.164,
+     "recall_pitch_class": 0.192,
+     "precision_lower_bound": 0.229
+    },
+    "tol_150ms": {
+     "matched_exact": 31,
+     "recall": 0.212,
+     "recall_pitch_class": 0.274,
+     "precision_lower_bound": 0.295
+    },
+    "estimated": 105
+   },
+   "muscriptor-medium-hint": {
+    "tol_80ms": {
+     "matched_exact": 28,
+     "recall": 0.192,
+     "recall_pitch_class": 0.226,
+     "precision_lower_bound": 0.193
+    },
+    "tol_150ms": {
+     "matched_exact": 37,
+     "recall": 0.253,
+     "recall_pitch_class": 0.336,
+     "precision_lower_bound": 0.255
+    },
+    "estimated": 145
+   }
+  }
+ }
+}
