@@ -27,6 +27,7 @@ mod output_level;
 mod percussion_poly;
 mod preset_live;
 mod rotary;
+mod rotary_laws;
 mod rotor_stop;
 mod scanner;
 #[cfg(test)]

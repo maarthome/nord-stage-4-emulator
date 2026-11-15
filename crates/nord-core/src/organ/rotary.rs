@@ -1,13 +1,20 @@
 //! Model 122 rotary speaker: tube drive, 800 Hz crossover, Doppler delays and cabinet reflections.
 //!
 //! Spec: `docs/specs/organ-engine.md` section 4. Crossover and balance steps are VERIFIED
-//! (`types.rs`); rotor speeds, excursions and reflections are ASSUMED.
+//! (`types.rs`); rotor speeds and accelerations are VERIFIED (`rotary_laws.rs`); excursions and
+//! reflections are ASSUMED.
 
+use super::rotary_laws as laws;
 use super::rotor_stop::{clamp_stop_angle, ease_phase, STOP_ANGLE_RAD};
 use super::types::{ROTARY_BUFFER_SIZE, ROTARY_CROSSOVER_HZ};
 use super::{OrganLayer, RotarySpeed};
 use crate::phase_wrap::wrap_pos;
 use std::f32::consts::TAU;
+
+/// Engine speed-up time constants at the Normal acceleration choice (seconds). ASSUMED: the ARM
+/// step sizes fix only the ratios (`rotary_laws`), the update period is not read.
+const HORN_TAU_S: f32 = 0.7;
+const ROTOR_TAU_S: f32 = 4.2;
 
 impl OrganLayer {
     /// Copies the shared Rotary Speaker controls of `src` (speed, drive, mic, angle, stop mode).
@@ -47,21 +54,13 @@ impl OrganLayer {
         const FS_DSP: f64 = 44_444_000.0 / 1024.0;
         const SCALE: f64 = 8_388_607.0 / 11_025.0;
         const HORN_FOLLOW: f64 = 0.5748; // EMPIRICAL, fits 0xB2FA1 at 0.80 and 0.86 Hz
-                                         // (engine slow, engine fast, firmware slow, firmware fast) in Hz
-        const HORN: (f64, f64, f64, f64) = (0.80, 6.85, 0.80, 7.0);
-        const ROTOR: (f64, f64, f64, f64) = (0.67, 5.70, 0.73, 6.4);
-        let arm_hz = |r: f64, (es, ef, fs, ff): (f64, f64, f64, f64)| {
-            if r <= es {
-                r * fs / es
-            } else {
-                fs + (r - es) / (ef - es) * (ff - fs)
-            }
-        };
+                                         // the engine rates are physical Hz: nominal = Hz / ratio
+        let arm_hz = |r: f64| r / f64::from(laws::DSP_RATE_RATIO);
         // the firmware words mean Hz at its own frame rate; at the engine rate they scale
         let k = FS_DSP / f64::from(self.sample_rate);
         let word = |hz: f64| (((hz * SCALE).trunc().max(0.0) as u32) << 8) as f64 * k;
-        let horn = arm_hz(f64::from(self.horn_rate_hz), HORN);
-        let rotor = arm_hz(f64::from(self.drum_rate_hz), ROTOR);
+        let horn = arm_hz(f64::from(self.horn_rate_hz));
+        let rotor = arm_hz(f64::from(self.drum_rate_hz));
         let gain = self.leslie_gain;
         if let Some(l) = self.leslie_fw.as_mut() {
             l.set_speed_words([
@@ -99,18 +98,29 @@ impl OrganLayer {
         } else {
             self.rotary_speed
         };
+        let g = &self.globals;
         let (target_horn, target_drum) = match effective_speed {
             RotarySpeed::Stop => (0.0, 0.0),
-            RotarySpeed::Slow => (0.80, 0.67),
-            RotarySpeed::Fast => (6.85, 5.70),
+            RotarySpeed::Slow => (
+                laws::horn_hz(g.horn_speed_choice, false),
+                laws::rotor_hz(g.rotor_speed_choice, false),
+            ),
+            RotarySpeed::Fast => (
+                laws::horn_hz(g.horn_speed_choice, true),
+                laws::rotor_hz(g.rotor_speed_choice, true),
+            ),
         };
-        // Rotary Horn/Rotor Speed and Acc menu entries (factors are exactly 1.0 by default).
-        let target_horn = target_horn * self.globals.horn_speed_scale;
-        let target_drum = target_drum * self.globals.rotor_speed_scale;
-        self.horn_rate_hz += (target_horn - self.horn_rate_hz)
-            * (inv_fs / (0.7 * self.globals.horn_tau_scale)).min(1.0);
-        self.drum_rate_hz += (target_drum - self.drum_rate_hz)
-            * (inv_fs / (4.2 * self.globals.rotor_tau_scale)).min(1.0);
+        // Time constants: the engine's own base (0.7 s horn, 4.2 s rotor speed-up) scaled by the
+        // VERIFIED firmware step ratios; the rotor brakes faster than it accelerates.
+        let horn_tau = HORN_TAU_S * laws::horn_tau_scale(g.horn_acc_choice);
+        let rotor_tau = ROTOR_TAU_S
+            * if target_drum >= self.drum_rate_hz {
+                laws::rotor_tau_scale_up(g.rotor_acc_choice)
+            } else {
+                laws::rotor_tau_scale_down(g.rotor_acc_choice)
+            };
+        self.horn_rate_hz += (target_horn - self.horn_rate_hz) * (inv_fs / horn_tau).min(1.0);
+        self.drum_rate_hz += (target_drum - self.drum_rate_hz) * (inv_fs / rotor_tau).min(1.0);
 
         if self.leslie_fw.is_some() {
             return self.process_leslie_firmware(scanner_out);
