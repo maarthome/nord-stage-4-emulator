@@ -6,6 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
+| [D93](#d93-grand-pad-leftovers-the-pedal-replay-closes-most-of-the-width-and-tail-gap-the-synth-fx-rack-is-irrelevant-here---synth-sustain-pedal-is-opt-in) | 2026-11-15 | Grand Pad leftovers: pedal replay closes most of the width and tail gap, the synth FX rack is irrelevant here; `--synth-sustain-pedal` opt-in | accepted |
 | [D90](#d90-mod-2-parameter-laws-are-verified-on-a-dense-arm-grid-the-shared-amountrate-words-get-their-joint-law-mod2-stays-opt-in) | 2026-11-15 | Mod 2 parameter laws are verified on a dense ARM grid; the shared amount / rate words get their joint law; `mod2` stays opt-in | accepted |
 | [D1](#d1-rust-core-for-dsp-engines-and-cbin-parsers) | 2026-11-10 | Rust core (`nord-core`) for DSP engines and `CBIN` binary parsers | accepted |
 | [D2](#d2-high-level-dsp-emulation-over-low-level-sharc-instruction-emulation) | 2026-11-10 | High-Level DSP Emulation (HLE) over low-level SHARC instruction emulation | accepted |
@@ -970,3 +971,13 @@ Capture every `kFx2Amt` `kFx2Rate` booted at 44 values (organ, piano, synth unit
 11 sample interpolation off up 3.9 % word's range (FLANG swing) PHAS 0 product law 8x off axes; both fixed harness gives. Defaults flip only comparison (D22); CHOR clip did pass it Mod has clip.
 Closed forms for every PHAS 0, FLANG SPIN simple functions, knots reproduce them within 0.5 %); flip CHOR because its exact delay miss D60 problem); ENS `L4 L7 0x200` ASSUMED register state).
 Opt-in of PHAS 0, CHOR 4 (mix), CHOR 5 (delay) changes; `render_hash` unchanged (`DEFAULT` has no `mod2`). OQ21 gains the ENS register question and the per-kind words follow-up. New data files `fx-mod2-dense.csv`, `fx-mod2-joint.csv`.
+
+### D93. Grand Pad leftovers: the pedal replay closes most of the width and tail gap, the synth FX rack is irrelevant here; `--synth-sustain-pedal` is opt-in
+
+- **Status:** accepted
+- **Decided by:** Claude (agent); no default changes (D22)
+- **Context:** D82 left four Grand Pad (A:43) points open against the Part A clip: synth FX rack (amp, EQ mid -5 dB, reverb 0.37) not decoded, stereo width 0.54 against 0.37, tail 13.4 s against 3.7 s, sustain pedal not replayed ([grand-pad-leftovers](research/grand-pad-leftovers.md)).
+- **Decision:** (1) No engine default changes. (2) New opt-in `--synth-sustain-pedal` (`FirmwareOptions::synth_sustain_pedal`, sets `PedalState::sustped` of the three synth layers so CC 64 defers the synth note release like the organ layers). (3) Clip variants `synth-sustain-pedal`, `synth-eq-neutral`, `synth-reverb-off`, `fx-ports-all` and the combination are added to segment `pianopad_grand`. (4) The tail and width remainder go to OQ21 (reverb per type, synth stereo path); the SUSTPED default of the synth layers goes to the ARM harness.
+- **Why:** With the committed Transkun stream (notes, velocities, pedal) the default reads width 0.46 (was 0.37), tail 6.7 s (was 3.7 s), RMS -1.0 dB, score 1.42: the D82 numbers came from a render without the pedal. The rack is irrelevant here: the program EQ mid sits at about 700 Hz where the 294 Hz pad has no energy (mid 0 dB: at most 0.1 dB per band, score 1.42 to 1.38), amp type 0 drive 0 is already the firmware amp, and both reverbs off move the T60 by under 0.25 s. The synth pedal hold gets the tail to 10.9 s and hold / release closer, but the score rises to 1.68 and the SUSTPED default is not decoded (manual p. 28 only names the button); one clip, not a D22 flip.
+- **Alternatives:** Hold the synth on the pedal by default (rejected: spectral score worse, hardware default unknown); decode the synth unit EQ words first (rejected: cannot change this clip by more than 0.1 dB); change the reverb mapping (rejected: owned by the reverb per type work).
+- **Impact:** `render_opts.rs` (flag, summary, test `synth_sustain_pedal_is_opt_in_and_only_touches_the_synth_layers`), the GUI firmware panel preset copy, `emu_vs_hw_segments.json` (5 variants), [grand-pad-leftovers](research/grand-pad-leftovers.md), [audio-remaining](research/audio-remaining.md) item 8, `midi-and-control.md` (SUSTPED row), OQ21. Default renders and `render_hash` unchanged.

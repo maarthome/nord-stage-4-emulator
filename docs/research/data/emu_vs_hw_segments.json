@@ -150,7 +150,12 @@
        {"label": "legacy-synth-layer", "flags": ["--legacy-synth-layer-law"]},
        {"label": "legacy-synth-layer+p", "flags": ["--legacy-synth-layer-law", "--synth-p", "verified"]},
        {"label": "synth-lvl-1", "edits": {"synth.layer_a.level": 1.0}},
-       {"label": "synth-lvl-0.15", "edits": {"synth.layer_a.level": 0.15}}]},
+       {"label": "synth-lvl-0.15", "edits": {"synth.layer_a.level": 0.15}},
+       {"label": "synth-sustain-pedal", "flags": ["--synth-sustain-pedal"]},
+       {"label": "synth-eq-neutral", "edits": {"synth.fx_a.eq_mid_db": 0.0}},
+       {"label": "synth-reverb-off", "edits": {"synth.fx_a.reverb_enabled": false}},
+       {"label": "fx-ports-all", "flags": ["--firmware-fx"]},
+       {"label": "synth-sustain-pedal+fx-ports-all", "flags": ["--synth-sustain-pedal", "--firmware-fx"]}]},
     {"id": "fx_amp", "entry": "Program/Bank A/Tiny Transistor.ns4p", "engine": "organ Farfisa + Small II amp + reverb", "at_s": 1812, "duration_s": 25,
      "variants": [
        {"label": "default", "flags": []},
