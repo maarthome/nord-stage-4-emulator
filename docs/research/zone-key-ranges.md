@@ -103,7 +103,7 @@ uv run --with unicorn python tools/arm_zone_programs.py $C/bank0_CODE.bin $C/ban
 ## Implications
 
 - Program sweep (`tools/program_sweep.py`, release build after merging main, `--firmware-all --firmware-routing`): 384 of 384 render, panic 0, non-finite 0, **silent 0** (the nine OQ25 programs sound through the loader rule of [engine-routing](engine-routing.md) s7 (ASSUMED when this sweep ran)), any clipped sample 41, clipping >= 0.1 %: 8 (defaults: 34 and 9). The health check is clean; what blocks the default flip is the ASSUMED rule, not the sweep ([program-coverage](program-coverage.md)).
-- The firmware, not a naming guess, now decides which layers play which keys; `--firmware-routing` is VERIFIED on both criteria of D22 (algorithm and mapping) for the key range. The default flip was blocked by OQ25 and happened with D66 once the loader rule of [engine-routing](engine-routing.md) section 7 was run.
+- The firmware, not a naming guess, now decides which layers play which keys; `--firmware-routing` is VERIFIED on both criteria of D22 (algorithm and mapping) for the key range. The default flip was blocked by OQ25 and happened with D68 once the loader rule of [engine-routing](engine-routing.md) section 7 was run.
 - Crossfades at splits are the firmware's sigmoid curves over 12 or 24 keys with a min() of the two bounds, not the linear 6 / 12 key ramp; programs with a width setting 1 or 2 (19 of the 48 split programs) change.
 
 ## Follow-ups

@@ -8,7 +8,8 @@
 //!
 //! Provenance of the numeric choices: the manual names the entries and their choices (`VERIFIED`
 //! text on p.57-58) but never the resulting gains, speeds or ramp times. Those factors are
-//! `ASSUMED`; the dB ranges and defaults are `VERIFIED` against the manual text.
+//! `ASSUMED`; the dB ranges and defaults are `VERIFIED` against the manual text. The four Rotary
+//! speed and acceleration choices are `VERIFIED` against the firmware (`organ::rotor_choices`).
 
 use super::*;
 use crate::organ::OrganGlobals;
@@ -30,22 +31,13 @@ pub enum Level3 {
 }
 
 impl Level3 {
-    /// Rotation speed factor. `ASSUMED`: +-15 %; confirm by measuring the horn rate on hardware.
-    pub fn speed_scale(self) -> f32 {
+    /// Firmware menu choice `0..=2` (Low, Normal, High): the index into the VERIFIED speed and
+    /// acceleration tables of `organ::rotor_choices` (`docs/research/leslie-settings.md`).
+    pub fn choice(self) -> usize {
         match self {
-            Level3::Low => 0.85,
-            Level3::Normal => 1.0,
-            Level3::High => 1.15,
-        }
-    }
-
-    /// Time-constant factor of the speed ramp (`High` accelerates faster, so a shorter constant).
-    /// `ASSUMED`: 1.5x / 1x / 0.67x; confirm by timing a Slow-to-Fast transition on hardware.
-    pub fn tau_scale(self) -> f32 {
-        match self {
-            Level3::Low => 1.5,
-            Level3::Normal => 1.0,
-            Level3::High => 0.67,
+            Level3::Low => 0,
+            Level3::Normal => 1,
+            Level3::High => 2,
         }
     }
 }
@@ -145,10 +137,10 @@ impl GlobalSettings {
             // ASSUMED: High doubles the click excitation (+6 dB).
             click_scale: if self.organ_click_high { 2.0 } else { 1.0 },
             master_tune_cents: self.fine_tune_cents,
-            rotor_speed_scale: self.rotor_speed.speed_scale(),
-            horn_speed_scale: self.horn_speed.speed_scale(),
-            rotor_tau_scale: self.rotor_acc.tau_scale(),
-            horn_tau_scale: self.horn_acc.tau_scale(),
+            rotor_speed_choice: self.rotor_speed.choice(),
+            horn_speed_choice: self.horn_speed.choice(),
+            rotor_acc_choice: self.rotor_acc.choice(),
+            horn_acc_choice: self.horn_acc.choice(),
             // 2 * share keeps 50/50 at exactly 1.0 (the previous, unweighted split).
             bass_gain: 2.0 * bass,
             horn_gain: 2.0 * (1.0 - bass),
@@ -467,8 +459,10 @@ mod tests {
 
     #[test]
     fn rotary_choices_change_speed_and_balance() {
-        assert!(Level3::High.speed_scale() > Level3::Low.speed_scale());
-        assert!(Level3::High.tau_scale() < Level3::Low.tau_scale());
+        assert_eq!(
+            [Level3::Low, Level3::Normal, Level3::High].map(Level3::choice),
+            [0, 1, 2]
+        );
         let mut e = Stage4Engine::new(44_100.0);
         e.set_global_settings(GlobalSettings {
             rotary_bass_percent: 70,
@@ -478,8 +472,8 @@ mod tests {
         });
         let g = e.organ_a.globals;
         assert!((g.bass_gain - 1.4).abs() < 1e-6 && (g.horn_gain - 0.6).abs() < 1e-6);
-        assert_eq!(g.horn_speed_scale, 1.15);
-        assert_eq!(g.rotor_tau_scale, 1.5);
+        assert_eq!(g.horn_speed_choice, 2);
+        assert_eq!(g.rotor_acc_choice, 0);
         assert_eq!(e.rotary_bus.globals, g);
     }
 }
