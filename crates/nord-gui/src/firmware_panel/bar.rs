@@ -195,6 +195,7 @@ fn piano_row(ui: &mut egui::Ui, o: &mut FirmwareOptions) {
                 &LEVELS,
             );
             checkbox(ui, &info::PIANO_BUS, &mut next.piano_bus_scale);
+            checkbox(ui, &info::PIANO_SLEW, &mut next.piano_slew);
             checkbox(ui, &info::PIANO_CHAIN, &mut next.piano_chain_scale);
             checkbox(ui, &info::PIANO_LAYER_LAW, &mut next.piano_layer_law);
         });
@@ -237,7 +238,7 @@ fn fx_row(ui: &mut egui::Ui, o: &mut FirmwareOptions) {
 fn presets_and_status(ui: &mut egui::Ui, o: &mut FirmwareOptions) {
     if ui
         .button("Firmware preset")
-        .on_hover_text("--firmware-all: every verified path on (not measured laws, routing)")
+        .on_hover_text("--firmware-all: every verified path on (not measured laws)")
         .clicked()
     {
         *o = presets::firmware();

@@ -294,6 +294,8 @@ pub struct FirmwareOptions {
     pub piano_firmware_level: bool,
     /// `--firmware-piano-bus`: `PianoLayer::firmware_bus_scale` (opt-in, ASSUMED receiver scale).
     pub piano_bus_scale: bool,
+    /// `--piano-slew-fw`: `PianoLayer::firmware_slew` (SMP voice-gain slew, opt-in; D22).
+    pub piano_slew: bool,
     /// `--firmware-piano-chain`: `PianoLayer::receiver_chain_scale` (verified FX path 0.7464 per
     /// `y / 8192`; opt-in, engine unit = DAC fraction ASSUMED).
     pub piano_chain_scale: bool,
@@ -324,8 +326,10 @@ pub struct FirmwareOptions {
     /// `--sample-pitch fw|equal`: the `SAMPLES` oscillator step follows the ARM exponent tables
     /// (`sinc::pitch_law`, VERIFIED law; root and sample-rate fields ASSUMED). Off by default.
     pub sample_pitch_fw: bool,
-    /// `--firmware-routing`: section / layer enables and per-layer KB zones as the program stores
-    /// them ([`FirmwareRouting`]); stays out of `firmware_all` until the zone codes are verified.
+    /// `--firmware-routing` / `--legacy-routing`: section / layer enables and per-layer KB zones
+    /// as the program stores them ([`FirmwareRouting`]). On by default since D73: the zone key
+    /// ranges (D22 criterion 2, `zone-key-ranges.md`) and the loader's layer enable rule
+    /// (`engine-routing.md` s7) are VERIFIED. `--legacy-routing` and `--legacy-all` turn it off.
     pub firmware_routing: bool,
     /// `--amp-path engine|firmware`: `FirmwareFx::amp` on every chain (`None` = the engine default,
     /// firmware drive stage on; `Some(false)` = engine drive and RBJ cabinet).
@@ -360,6 +364,7 @@ impl Default for FirmwareOptions {
             fx: FirmwareFx::DEFAULT,
             piano_firmware_level: true,
             piano_bus_scale: false,
+            piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
             measured_laws: false,
@@ -370,7 +375,7 @@ impl Default for FirmwareOptions {
             synth_wave_bank: false,
             sample_kernel_key: true,
             sample_pitch_fw: false,
-            firmware_routing: false,
+            firmware_routing: true,
             amp_path: None,
             rotary_drive: RotaryDrive::Engine,
             organ_level: OutputLevel::ModelDefault,
@@ -391,6 +396,7 @@ impl FirmwareOptions {
             synth_knob_laws: false,
             piano_firmware_level: false,
             sample_kernel_key: false,
+            firmware_routing: false,
             ..Self::default()
         }
     }
@@ -408,6 +414,7 @@ impl FirmwareOptions {
             fx: FirmwareFx::ALL,
             piano_firmware_level: true,
             piano_bus_scale: false,
+            piano_slew: false,
             piano_chain_scale: false,
             piano_layer_law: false,
             measured_laws: false,
@@ -418,7 +425,7 @@ impl FirmwareOptions {
             synth_wave_bank: false,
             sample_kernel_key: true,
             sample_pitch_fw: false,
-            firmware_routing: false,
+            firmware_routing: true,
             amp_path: None,
             rotary_drive: RotaryDrive::Engine,
             organ_level: OutputLevel::ModelDefault,
@@ -478,6 +485,7 @@ impl FirmwareOptions {
             o.piano_firmware_level = false;
         }
         o.piano_bus_scale |= has("--firmware-piano-bus");
+        o.piano_slew |= has("--piano-slew-fw");
         o.piano_chain_scale |= has("--firmware-piano-chain");
         o.piano_layer_law |= has("--firmware-piano-layer-law");
         o.measured_laws |= has("--measured-laws");
@@ -559,6 +567,8 @@ impl FirmwareOptions {
         apply_piano_level(engine, self.piano_firmware_level);
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
         engine.piano_b.firmware_bus_scale = self.piano_bus_scale;
+        engine.piano_a.firmware_slew = self.piano_slew;
+        engine.piano_b.firmware_slew = self.piano_slew;
         engine.piano_a.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_b.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
@@ -616,6 +626,8 @@ impl FirmwareOptions {
         engine.piano_b.firmware_velocity_level = self.piano_firmware_level;
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
         engine.piano_b.firmware_bus_scale = self.piano_bus_scale;
+        engine.piano_a.firmware_slew = self.piano_slew;
+        engine.piano_b.firmware_slew = self.piano_slew;
         engine.piano_a.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_b.receiver_chain_scale = self.piano_chain_scale;
         engine.piano_a.firmware_layer_law = self.piano_layer_law;
@@ -763,11 +775,14 @@ impl FirmwareOptions {
         if self.measured_laws {
             parts.push("measured".into());
         }
-        if self.firmware_routing {
-            parts.push("routing".into());
+        if !self.firmware_routing {
+            parts.push("legacy-routing".into());
         }
         if self.piano_bus_scale {
             parts.push("piano-bus".into());
+        }
+        if self.piano_slew {
+            parts.push("piano-slew".into());
         }
         if self.piano_chain_scale {
             parts.push("piano-chain".into());
@@ -1119,16 +1134,30 @@ mod tests {
     }
 
     #[test]
-    fn firmware_routing_flag_parses_and_switches_the_engine() {
+    fn firmware_routing_is_the_default_and_legacy_routing_turns_it_off() {
+        // D73: on by default and in `firmware_all`, off in `legacy_all` and with `--legacy-routing`.
+        assert!(FirmwareOptions::default().firmware_routing);
+        assert!(FirmwareOptions::firmware_all().firmware_routing);
+        assert!(!FirmwareOptions::legacy_all().firmware_routing);
         let o = FirmwareOptions::from_args(&args(&["--firmware-routing"])).unwrap();
-        assert!(o.firmware_routing && !FirmwareOptions::firmware_all().firmware_routing);
-        let off = FirmwareOptions::from_args(&args(&["--firmware-routing", "--legacy-routing"]));
-        assert_eq!(off, Ok(FirmwareOptions::default()));
+        assert_eq!(o, FirmwareOptions::default());
+        let off = FirmwareOptions::from_args(&args(&["--legacy-routing"])).unwrap();
+        assert!(!off.firmware_routing);
+        assert_eq!(
+            FirmwareOptions::from_args(&args(&["--firmware-routing", "--legacy-routing"])),
+            Ok(off)
+        );
         let mut e = Stage4Engine::new(48_000.0);
-        o.apply_to(&mut e);
+        assert_eq!(
+            e.firmware_routing(),
+            FirmwareRouting::Off,
+            "raw engine default"
+        );
+        FirmwareOptions::default().apply_to(&mut e);
         assert_eq!(e.firmware_routing(), FirmwareRouting::On);
-        assert!(o.summary().contains("routing"));
-        FirmwareOptions::default().apply_exact(&mut e);
+        assert_eq!(FirmwareOptions::default().summary(), "defaults");
+        assert!(off.summary().contains("legacy-routing"));
+        off.apply_exact(&mut e);
         assert_eq!(e.firmware_routing(), FirmwareRouting::Off);
     }
 

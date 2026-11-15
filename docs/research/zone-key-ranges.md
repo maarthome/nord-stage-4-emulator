@@ -95,19 +95,19 @@ uv run --with unicorn python tools/arm_zone_programs.py $C/bank0_CODE.bin $C/ban
 | Item | State |
 |---|---|
 | `[store + 0x80]` (the `sel` column) | 0 on all 14 layer stores; code 11 with `sel == 1` is an empty range. Likely the aux keyboard assignment; ASSUMED, no program stores code 11 |
-| Whether the zone test sees the transposed note | the note handler `0xC00D1F48` shifts by the channel profile before the zone test; the engine still gates with the unshifted key. Needs a run with a program transpose |
-| Who calls `0xC011AED4` in the program load | the edit-id dispatch calls it when the range changes (observed); the loader that fills the section table (OQ25) is still not executed |
-| Vox / Farfisa programs without an enabled layer | OQ25, see [engine-routing](engine-routing.md) section 7 (a table-level run shows that no focus value makes the entry `(1, 0, focus)` sound) |
+| Whether the zone test sees the transposed note | **yes** (disassembly, [keydown-zones](keydown-zones.md) s2.4): `0xC00D1F48` stores the key `note + [profile(v) + 8]` in the event record (`0xC0571CAC + 0x10`) that the zone test `0xC00C859C` and the layer key handler read. The profile transposes are written by the MIDI apply routine (`0xC0107944..0xC01079BC`, ARM disassembly; which menu cells feed the sum is not decoded: ASSUMED `Transpose Global` / program Transpose gated by `Edt_Sys_kMIDITransposeAt`). The engine still gates with the unshifted key |
+| Who calls `0xC011AED4` in the program load | the edit-id dispatch calls it when the range changes (observed). The loader that fills the section table is now executed ([engine-routing](engine-routing.md) s7, `tools/arm_program_load.py`); the zone objects of the recalled state were not compared with the model yet |
+| Vox / Farfisa programs without an enabled layer | **closed** (OQ25): the loader reads a mask of 0 as layer A, [engine-routing](engine-routing.md) section 7 |
 | Hardware clip of a 3 / 4-zone program | the clip comparison of [engine-routing](engine-routing.md) section 5 used Mid 65; with the corrected key (60) notes 60..64 move to the upper layer, a re-run needs the local video |
 
 ## Implications
 
-- Program sweep (`tools/program_sweep.py`, release build after merging main, `--firmware-all --firmware-routing`): 384 of 384 render, panic 0, non-finite 0, **silent 0** (the nine OQ25 programs sound through the assumed empty-scene rule), any clipped sample 41, clipping >= 0.1 %: 8 (defaults: 34 and 9). The health check is clean; what blocks the default flip is the ASSUMED rule, not the sweep ([program-coverage](program-coverage.md)).
-- The firmware, not a naming guess, now decides which layers play which keys; `--firmware-routing` is VERIFIED on both criteria of D22 (algorithm and mapping) for the key range. The default flip is still blocked by OQ25 (section 7 of [engine-routing](engine-routing.md): the empty-scene rule that makes nine programs audible is ASSUMED).
+- Program sweep (`tools/program_sweep.py`, release build after merging main, `--firmware-all --firmware-routing`): 384 of 384 render, panic 0, non-finite 0, **silent 0** (the nine OQ25 programs sound through the loader rule of [engine-routing](engine-routing.md) s7 (ASSUMED when this sweep ran)), any clipped sample 41, clipping >= 0.1 %: 8 (defaults: 34 and 9). The health check is clean; what blocks the default flip is the ASSUMED rule, not the sweep ([program-coverage](program-coverage.md)).
+- The firmware, not a naming guess, now decides which layers play which keys; `--firmware-routing` is VERIFIED on both criteria of D22 (algorithm and mapping) for the key range. The default flip was blocked by OQ25 and happened with D73 once the loader rule of [engine-routing](engine-routing.md) section 7 was run.
 - Crossfades at splits are the firmware's sigmoid curves over 12 or 24 keys with a min() of the two bounds, not the linear 6 / 12 key ramp; programs with a width setting 1 or 2 (19 of the 48 split programs) change.
 
 ## Follow-ups
 
-1. OQ25: execute the program load, or find a hardware recording of one of the nine silent-in-scene-I programs.
-2. Check the transposed-note question and the `sel` selector with a key-on through the real note path for a split program.
+1. ~~OQ25: execute the program load~~ done 2026-11-14, [engine-routing](engine-routing.md) s7.
+2. Check the `sel` selector with a key-on through the real note path for a split program (the transposed note is answered above).
 3. Re-run the B3 clip comparison with the corrected Mid key (needs the local video).

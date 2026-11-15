@@ -181,6 +181,7 @@ live in `panel/layout_tweaks.rs`, never in the `ASSUMED` photo tables (one excep
 | `--measured-laws` (Synth: Measured laws) | 16-voice Super Saw, envelope depth, decay, pitch, vibrato (`audible-genius-synth-lessons.md`) | EMPIRICAL |
 | `--synth-shape <0..1>` (Synth: Shape) | Shape word of the firmware SHAPE oscillator (strip chain); off keeps the saw placeholder | ASSUMED |
 | `--firmware-piano-level` / `--legacy-piano-level` (Piano: Level) | Firmware velocity level law for `.npno` (default on); legacy is the touch curve (`piano-engine.md`) | VERIFIED |
+| `--piano-slew-fw` (Piano: SMP gain slew) | `.npno` voices use the firmware slew: hold gain 0.21875 x level with a 2 to 5 s decay, 44 ms release, no extra voice (opt-in; the rate table is EMPIRICAL) | MIXED |
 | `--firmware-piano-chain` (Piano: FX path scale) | Sample path scaled 0.7464, the verified FX receiver path (engine unit = DAC fraction ASSUMED; Velvet Grand clip +10 to +12 dB over) | MIXED |
 | `--firmware-piano-layer-law` (Piano: Layer law) | Piano layer fader follows `(v / 127)^2` | ASSUMED |
 | `--firmware-piano-bus` (Piano: SMP bus scale) | Sample path scaled 0.5 instead of 0.55 (Q31 receiver convention) | ASSUMED |
@@ -195,8 +196,8 @@ live in `panel/layout_tweaks.rs`, never in the `ASSUMED` photo tables (one excep
 | `--firmware-fx-ports mod1` (FX: Mod 1) | A-PAN and TREM firmware routines, free running only | MIXED |
 | `--firmware-fx-ports mod2` (FX: Mod 2) | Firmware CHOR, PHAS, FLANG, ENS and SPIN stages | MIXED |
 | `--firmware-fx-ports eq` (FX: Amp EQ) | Firmware tone stack `0x1243F4` instead of the engine's three biquads, 2 frames latency | MIXED |
-| `--firmware-routing` (Global: Firmware routing) | Section/layer enables and per-layer KB zones as stored (D22); zone codes open | ASSUMED |
-| `--firmware-all` / `--legacy-all` | Presets: verified paths on (not measured laws, routing, Vox/Farfisa/B3) / all defaults | - |
+| `--firmware-routing` (Global: Firmware routing) | Section/layer enables (a mask of 0 reads as layer A, as the loader does) and per-layer KB zones as stored; on by default since D73, `--legacy-routing` turns it off | VERIFIED |
+| `--firmware-all` / `--legacy-all` | Presets: verified paths on (not measured laws, Vox/Farfisa/B3) / all defaults | - |
 
 Defaults are unchanged: with no flag the engine and the `render_hash` stay as before. The same flags
 work for `ns4 render-patch`; both parse them with `FirmwareOptions::from_args`, so a switch added to
