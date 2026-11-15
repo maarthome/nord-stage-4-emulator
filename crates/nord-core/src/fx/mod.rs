@@ -69,6 +69,7 @@ mod fw_rvb_steps;
 mod fw_rvb_words;
 mod fw_rvb_wrap;
 mod fw_rvbm;
+mod fw_rvbm_colors;
 mod fw_rvbm_ops;
 mod fw_rvbm_steps_core;
 mod fw_rvbm_steps_wrap;
@@ -141,9 +142,13 @@ mod tests_fw_rvb_golden;
 #[cfg(test)]
 mod tests_fw_rvb_golden_data;
 #[cfg(test)]
+mod tests_fw_rvbm_color;
+#[cfg(test)]
 mod tests_fw_rvbm_golden;
 #[cfg(test)]
 mod tests_fw_rvbm_golden_data;
+#[cfg(test)]
+mod tests_fw_rvbm_tail;
 #[cfg(test)]
 mod tests_fw_series;
 #[cfg(test)]
