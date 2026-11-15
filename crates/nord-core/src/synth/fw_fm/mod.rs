@@ -11,7 +11,7 @@
 //! scaled by `P[16]`. The structs carry the DM words the stage reads, named by their offsets.
 //! Nothing here is reachable from the default render path (D22): a caller builds [`FmInputs`] and
 //! steps [`FmState`] itself. The wiring to a voice (position word `W`, pitch, the ratio table of
-//! `bank0_CODE@0x2D82A8`, the P words of the wave) is open (OQ22).
+//! `bank0_CODE@0x2D82A8`, the P words of the wave) is open (OQ22); [`voice`] wires the verified part.
 //!
 //! Real-time safe: fixed arrays only, no allocation in [`fm_stage1`] / [`fm_stage2`].
 
@@ -20,10 +20,12 @@ mod golden;
 mod stage1;
 mod stage2;
 pub mod table;
+pub mod voice;
 
 pub use stage1::fm_stage1;
 pub use stage2::fm_stage2;
 pub use table::{fm_table, FmTable, TABLE_WORDS};
+pub use voice::FmVoice;
 
 use super::fw_sine_warps::sine_poly;
 

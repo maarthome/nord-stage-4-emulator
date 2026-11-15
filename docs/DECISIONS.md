@@ -964,6 +964,15 @@ writes synth oscillator P block; `--synth-p verified` opt-in
 - **Alternatives:** Flip on the model (rejected: same reason as D65); poke an invented slot allocator into the harness (rejected: it would only restate the model).
 - **Impact:** New research note, tool and test; OQ22, TD-08 and the ROADMAP item updated; section 14 of [synth-sample-kernel-rule](research/synth-sample-kernel-rule.md) gets a pointer (its "index stays `0x36`" is the DSP reset only).
 
+### D96. FM voice wiring: pitch, P words and ARM words drive the FM stages opt-in; the table depends on strip `+0xA4` / `+0xA8`
+- **Status:** accepted
+- **Decided by:** Claude (agent), on the parent session's task
+- **Context:** D92 ported the FM stages and left the voice words open. An outside review noted that the "type only" claim for the table varied only `a` and `b`. The position word `W`, the pitch term `p0` and the ARM block turned out to be known already: `W` and `p0` are the SYNC pitch words, the ARM block is `P[-257 .. -246]` of the committed P capture.
+- **Decision:** (1) Add `synth/fw_fm/voice.rs` (`FmVoice`: `set_note`, `render4`) wiring `W = semi 2^24`, `p0 = 2 f / F_SY`, the type's P words and ARM words to the two stages with the default table, opt-in. (2) Add `tools/synth_fm_tables.py probe`: of the 38 strip offsets the apply reads, only `+0x00`, `+0xA4` (mode flag) and `+0xA8` (scale, `r = a8 / 2^19`) change the table; the ramp and decay laws are recorded as VERIFIED probes. (3) Correct the "type only" statements in the note and spec 4.5. (4) The default table stays the `+0xA4 = 0`, `+0xA8 = 0x80000` one; no table family is modelled in Rust.
+- **Why:** The words that are known are wired; the table family has no generator formula yet, and a law swept for two types would be a guess for the other three (D22: no default flip without end-to-end evidence; no hardware FM clip exists).
+- **Alternatives:** Model the `a8` scaling of the ramp and decay segments for all types now (rejected: types 49 and 52 only were swept, the other segments are not decoded); wire `FmVoice` into `SynthLayer` (rejected: level and timbre cannot be validated, the wave id to `a8` path is open).
+- **Impact:** New `voice.rs` and tests, a probe subcommand and its test, doc updates. `render_hash` and golden hashes are unchanged. Open (OQ22): writer of `+0xA4` / `+0xA8`, generator of the 361 words, writer of `DM(0xC2716)` and of `x`, level against a hardware clip.
+
 ### D92. The FM stages `0x124269` / `0x12453F` are ported as opt-in equation models; the FM band tables are committed as derived numbers
 - **Status:** accepted
 - **Decided by:** Claude (agent), on the parent session's task

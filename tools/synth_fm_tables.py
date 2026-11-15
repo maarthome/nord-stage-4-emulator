@@ -11,8 +11,10 @@ settled harness):
         target/fw_unpacked/bank0_CODE.bin target/fw_unpacked/bank0_SRAM.bin \
         --cache target/settled.snap --out docs/research/data/synth-fm-tables.csv
 
+Strip fields that change the table (`probe`): see `docs/research/fm-banks-1-2.md` s6.
+
 Output columns: `type,dm,word,value` (types 49..53, all 361 addresses). The pending words `a`,
-`b` (wave variant) do not change one of them (checked by the capture).
+`b` (wave variant) do not change one of them (checked by the capture); strip `+0xA4` and `+0xA8` do.
 """
 
 from __future__ import annotations
@@ -119,6 +121,84 @@ def capture(  # pragma: no cover - needs the booted firmware
     return 0
 
 
+def changed_offsets(
+    base: dict[int, int], runs: dict[tuple[int, int], dict[int, int]]
+) -> dict[int, list[int]]:
+    """Strip offsets whose poke changed the table: `{offset: [poked values]}`.
+
+    `runs` maps `(offset, value)` to the table words of that run; `base` is the unpoked table.
+    """
+    out: dict[int, list[int]] = {}
+    for (off, val), words in sorted(runs.items()):
+        if words != base:
+            out.setdefault(off, []).append(val)
+    return out
+
+
+def probe(  # pragma: no cover - needs the booted firmware
+    code: Path, sram: Path, cache: Path | None, types: tuple[int, ...]
+) -> int:
+    """Poke every strip offset the apply reads (five values) and report which change the table.
+
+    Result (VERIFIED run, types 49 and 52, 38 offsets read): only strip `+0x00` (not the type, the
+    strip object kind), `+0xA4` (a flag) and `+0xA8` (a scale, default `0x80000`) change a word.
+    """
+    import arm_edit_capture as c
+    import arm_emu as ae
+    import arm_steady as ast
+    import synth_p_writer as pw
+    import unicorn
+
+    emu, _blob = c.settled_emulator(code, sram, cache)
+    if not any(lo <= c.SCRATCH <= hi for lo, hi, _ in emu.uc.mem_regions()):
+        emu.uc.mem_map(c.SCRATCH, ae.PAGE)
+    store = next(s for s in c.first_store_per_layer(c.find_stores(emu)) if s.layer == 4)
+    seen: list[int] = []
+    emu.uc.hook_add(
+        unicorn.UC_HOOK_CODE,
+        lambda uc, *_: seen.append(uc.reg_read(unicorn.arm_const.UC_ARM_REG_R0)),
+        begin=pw.SENDER,
+        end=pw.SENDER,
+    )
+    emu.write32(c.value_cell(emu, store.address, 0x127), 3 << 16)
+    c.apply_value(emu, store.address, 0x127, 3 << 16, 2000)
+    strip = seen[-1]
+    blob = ast.snapshot(emu)
+
+    def run(t: int, pokes: list[tuple[int, int]]) -> dict[int, int]:
+        ast.restore(emu, blob)
+        emu.install_dsp_ports()
+        emu.write32(strip + pw.PENDING_TYPE, t)
+        emu.write32(strip + pw.PENDING_A, 0)
+        emu.write32(strip + pw.PENDING_B, 0)
+        for off, val in pokes:
+            emu.write32(strip + off, val)
+        emu.clear_messages()
+        ast.call_preserving(emu, pw.APPLY, strip)
+        return window(emu.messages)
+
+    reads: set[int] = set()
+    hook = emu.uc.hook_add(
+        unicorn.UC_HOOK_MEM_READ,
+        lambda uc, ac, addr, size, val, ud: (
+            reads.add((addr - strip) & ~3) if strip <= addr < strip + 0x400 else None
+        ),
+    )
+    run(types[0], [])  # the reads of one apply are the offsets worth poking
+    emu.uc.hook_del(hook)
+    skip = {pw.PENDING_TYPE, pw.PENDING_A, pw.PENDING_B}
+    for t in types:
+        base = run(t, [])
+        runs = {
+            (off, val): run(t, [(off, val)])
+            for off in sorted(reads - skip)
+            for val in (0, 1, 0x3F800000, 0x40000000, 0x7FFFFFFF)
+        }
+        got = {hex(o): [hex(v) for v in vs] for o, vs in changed_offsets(base, runs).items()}
+        print(f"type {t}: {len(reads)} offsets read, changed by {got}", flush=True)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -127,7 +207,14 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI
     cp.add_argument("sram", type=Path)
     cp.add_argument("--cache", type=Path)
     cp.add_argument("--out", type=Path, required=True)
+    pp = sub.add_parser("probe")
+    pp.add_argument("code", type=Path)
+    pp.add_argument("sram", type=Path)
+    pp.add_argument("--cache", type=Path)
+    pp.add_argument("--types", type=int, nargs="+", default=[49, 52])
     ns = ap.parse_args(argv)
+    if ns.cmd == "probe":
+        return probe(ns.code, ns.sram, ns.cache, tuple(ns.types))
     return capture(ns.code, ns.sram, ns.cache, ns.out)
 
 

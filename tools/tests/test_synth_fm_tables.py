@@ -75,3 +75,9 @@ def test_decay_segments_start_at_the_documented_addresses() -> None:
     tabs = ft.load_csv(DATA)
     assert all(tabs[t][0xE0964 + 2] == 0 and tabs[t][0xE0967] != 0 for t in ft.TYPES)
     assert all(tabs[t][0xE09E7] == 0 and tabs[t][0xE09E8] != 0 for t in ft.TYPES)
+
+
+def test_changed_offsets_lists_only_pokes_that_change_the_table() -> None:
+    base = {0xE0900: 1}
+    runs = {(0x98, 0): dict(base), (0xA8, 1): {0xE0900: 2}, (0xA8, 2): {0xE0900: 3}}
+    assert ft.changed_offsets(base, runs) == {0xA8: [1, 2]}
