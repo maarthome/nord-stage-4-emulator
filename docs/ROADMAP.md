@@ -254,11 +254,12 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] B3 Bass processor state decoded: window increments per key, `G = phi(S)` accumulator and output law, line gain table, oracle chord goldens within 1.45 dB given the ring (`organ/b3_bass_state.rs`, [organ-farfisa-bass](research/organ-farfisa-bass.md) s11; not wired)
 - [x] B3 Bass generator weight rule decoded (`T[note][n]`, `organ/b3_bass_gen.rs`, `tools/organ_bass_gen.py`) and the Bass stage wired opt-in (`--b3-bass-processor on`, `organ/b3_bass_stage.rs`, [organ-farfisa-bass](research/organ-farfisa-bass.md) s12): chord 60 64 67 +1.1 to +2.5 dB per oracle line, default not flipped (D41)
 - [x] Generator `0x121BBE` + processor `0x122296` replayed call after call in Python (`tools/sharc_listing_ext.py`, `tools/organ_replay.py`): 4696 calls of a chord, 1200 calls of three more scripts, 0 differing words ([organ-farfisa-bass](research/organ-farfisa-bass.md) s14)
-- [ ] B3 Bass stage within 1 dB (bit-exact `0x122296`, drawbar and percussion dependent key tables), B3 Bass hardware clip, default decision
+- [x] B3 Bass stage within 1 dB: the decoded generator and processor run in Rust (`organ/b3_bass_fw/`, `tools/organ_bass_fw_gen.py`, bit exact over 48 recorded calls) and the stage reads at most 0.004 dB off the 46 oracle chord lines, replacing the FIR ([organ-farfisa-bass](research/organ-farfisa-bass.md) s15, D71; opt-in, offline, 3.6 s of CPU per second of audio)
+- [ ] B3 Bass: drawbar and percussion dependent key tables, key-up `G` resync, voice record jitter, a real time path, B3 Bass hardware clip, default decision
 - [x] Oracle chords of the Farfisa and B3 Bass processors with the corrected boot log and key-down words (`tools/organ_proc_oracle.py`, `sharc-pass --rec`, [organ-farfisa-bass](research/organ-farfisa-bass.md) s7)
 - [x] Farfisa key stage (`--farfisa-processor on`: key-down weights `1/48` x measured per-sum line gain, chord a peak within 0.2 dB, [organ-farfisa-bass](research/organ-farfisa-bass.md) s9)
 - [x] `--firmware-routing`: an enabled section with no layer on plays layer A (OQ25, the 9 silent programs become audible)
-- [ ] Farfisa processor `0x122B85` bit-exact (lattice, phase) and the B3 / B3 Bass processors `0x121E2B` / `0x122296` (scanner): bit-exact models, then Rust (inputs known, OQ18)
+- [ ] Farfisa processor `0x122B85` bit-exact (lattice, phase; branches and flags in the interpreter, model 2 install) and the B3 processor `0x121E2B` (the Bass processor `0x122296` is done, s15): bit-exact models, then Rust (inputs known, OQ18)
 - [ ] Percussion path (second engine family `0xC00BF890`, `0xC00BE348`), key-up and velocity source
 
 ### 7b.4 Effects
