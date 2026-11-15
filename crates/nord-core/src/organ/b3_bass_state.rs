@@ -28,12 +28,14 @@ pub(super) const W1_WORDS: usize = 56;
 /// Words of weight window 2.
 pub(super) const W2_WORDS: usize = 68;
 /// Ring slot of window 2 word 0.
+#[cfg(test)]
 pub(super) const W2_RING_OFFSET: usize = 12;
 
 /// Slope of the output scale `1 - K G`.
 ///
 /// VERIFIED: sweep of `DM 0xB44C9` from 0 to 0.95 in the oracle (`tools/organ_bass_proc.py`), the
 /// gain ratio is `1 - 0.84 G` to 0.01 at G = 0.2, 0.4, 0.6, 0.8, 0.95 and at three ring slots.
+#[cfg(test)]
 pub(super) const G_SLOPE: f32 = 0.84;
 
 /// Per-key increments and the measured gain table, parsed once at construction.
@@ -177,6 +179,7 @@ impl BassState {
     }
 
     /// Output scale `1 - 0.84 G`.
+    #[cfg(test)]
     pub(super) fn output_scale(&self) -> f32 {
         1.0 - G_SLOPE * self.g()
     }
@@ -203,6 +206,7 @@ impl BassState {
     ///
     /// EMPIRICAL: `tools/organ_bass_proc.py measure` with `G` pinned to 0, 1/6 octave bins, bin
     /// spread 0.0 to 1.5 dB (the gain does not depend on the note, only on the line frequency).
+    #[cfg(test)]
     pub(super) fn window_gain(&self, window: usize, hz: f32) -> f32 {
         let t = &self.tables.gain[window.clamp(1, 2) - 1];
         let (Some(first), Some(last)) = (t.first(), t.last()) else {

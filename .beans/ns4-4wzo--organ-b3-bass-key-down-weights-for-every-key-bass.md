@@ -22,7 +22,8 @@ B3 Bass (model 5) table and wiring (ns4-b511 follow-up, organ-farfisa-bass s9).
 - [x] Opt-in Bass stage wired (`--b3-bass-processor on`, `b3_bass_stage.rs`), chord 60 64 67 within +1.1 to +2.5 dB per line
 - [x] Instruction-level Python reference of `0x122296` (one call, 868 of 868 trace rows and 0 of 16,128 memory words, `tools/sharc_listing_vm.py`, s13)
 - [x] Generator `0x121BBE` in the VM and the multi-call replay of generator + processor bit-exact over whole chord scripts (4696 + 3 x 1200 calls, `tools/sharc_listing_ext.py`, `tools/organ_replay.py`, s14)
-- [ ] Within 1 dB on the full chain (bit-exact `0x122296`, drawbar / percussion dependent key tables)
+- [x] Within 1 dB on the full chain: decoded generator + processor run in Rust (`organ/b3_bass_fw/`, bit exact over 48 recorded calls) and the stage reads at most 0.0036 dB off the 46 oracle chord lines (s15, D71); the FIR is replaced
+- [ ] Drawbar / percussion dependent key tables (capture non-888888888 drawbars and percussion), key-up capture and the `G` resync, a real time path (TD-15)
 - [ ] B3 Bass hardware clip comparison and default decision (the B3 clip plays the B3 model: delta 0.00 dB by construction)
 
 ## Out of Scope
@@ -34,3 +35,5 @@ Weights table, then the state model (`b3_bass_state.rs`, `tools/organ_bass_state
 s13: `tools/sharc_listing_vm.py` + `tools/organ_listing_check.py` run the ADI listing of `0x122296` bit-exact against `sharc-chain` (SIMD pair rule, I1 broadcast loads, 40-bit float). Still open: generator listing for multi-call replay, the Rust recursion (Bass stage unchanged, +1.1 to +2.5 dB), branches for the Farfisa `0x122B85`.
 
 s14: the generator listing runs in the VM and the multi-call replay is bit-exact (4696 calls of 60 64 67, 1200 calls of a 10 key chord and of two drawbar settings). The processor is linear but time varying (scanner delay taps), so the EMPIRICAL FIR stays until the Rust recursion with the scanner phase exists; drawbar / percussion key tables, `G` resync after key-up, `0x122B85` branches, Twin amp types 7 to 9 and the cabinet bank are not done.
+
+s15: `tools/sharc_listing_rust.py` decodes the listings into rows, `organ/b3_bass_fw/` runs them (40 bit float, SIMD pairs, circular buffers), the Bass stage feeds it the key-down state and resamples from the DSP rate. Oracle chord lines within 0.0036 dB (the FIR read +1.1 to +2.5 dB); offline only (3.6 s of CPU per second of audio). Open: drawbar / percussion tables, key-up, speed, Farfisa `0x122B85` (branches, flags, model 2 install).
