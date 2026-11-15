@@ -312,19 +312,46 @@ Reading: (1) the SUPER cutoff factor that the words prefer on `pad_silk` is **0.
 
 Decision: **no flip**. The six unison clips (`pad_silk`, `mega_line`, `sci_fi_80s`, `ag_supersaw_0 / 3 / 10`) get worse by 2.2 score in total at the best setting of each grid (the other nine clips are unchanged from s10, +0.05), so the 15-clip mean is about 3.6 against 3.40 and the D22 bar (mean better than the default) is not met; the words are VERIFIED, the rows around them are not refit. `--synth-p verified` stays opt-in (CLI, GUI Firmware bar dropdown "ARM words (verified)", `FirmwareOptions::default` unchanged, golden hashes unchanged). Not done (the full 15-clip re-run of a level grid 2.0 / 2.4 / 2.8 did not finish in the time box: every run re-extracts the video frames, about 30 min each on a loaded machine; the grids above are the 5-clip and 3-clip runs): a joint refit of the level constant against all rows with cross-validation (fit clips against hold-outs), the kFltFreq law as a replacement of the type factors (needs a hardware cutoff sweep per type, D59), a clip of SUPER 1 / SUPER 2..4 with a filter in range.
 
-## 12. `Leaky Stabs II` (A:46), a white-noise layer (D83, 2026-11-15)
+## 12. Horizon Whl (A:16) and the SUPER / MULTI words as default (D81, 2026-11-15)
 
-Clip `leaky_stabs` (`emu_vs_hw_segments.json` `synth_leaky`, 1275 s + 35 s, holdout): layer A SHAPE saw 0.82, layer B PURE 6 white noise 0.32, both Ladder24 2500 Hz, filter-env decay 1.21 s amount 0.74, amp release 3 ms. Notes: the audio-to-MIDI estimate of `video_ref.py` (552 events, many false) and the Transkun stream of PR 381 (162 events, low recall on synth audio, velocity median 66); both replayed, deltas emulator minus hardware (dB re RMS), `tools/emu_vs_hw.py --only synth_leaky`.
+User report: the factory program `Horizon Whl` sounds far from the hardware; the Part A video shows it from 287 s (OLED `A:16`, still on screen at 330 s). The program has **no hardware clip in the 15-clip set** and moved +15.7 dB at the D59 flip (s6).
 
-| Variant (audio-estimated notes) | sub | low | mid | pres | brill | centroid Hz | score |
-|---|---|---|---|---|---|---|---|
-| default before (noise idle gain 1.0) | -3.0 | -3.5 | -0.4 | +7.0 | +12.1 | +1317 | 5.19 |
-| noise row 0.4 (D83) | -1.9 | -2.2 | +0.1 | +4.3 | +7.5 | +502 | 3.19 |
-| layer A only | -1.6 | -1.8 | +0.3 | +2.2 | +1.5 | +129 | 1.49 |
-| layer B only (idle) | -6.4 | -7.8 | -1.2 | +9.4 | +15.4 | +2405 | 8.05 |
-| B level x 0.5 / 0.25 / 0.12 / 0.06 (idle row) | | | | +4.7 / +3.2 / +2.5 / +2.3 | +8.3 / +4.6 / +2.5 / +1.6 | | 3.47 / 2.32 / 1.75 / 1.53 |
-| noise 0.4 + both layer levels squared | -1.6 | -1.8 | +0.3 | +2.7 | +3.2 | +194 | 1.93 |
+**The program** (decoded with `ns4 convert`): zone split at key 53 (`kb_zone` synth A 4 = lower, B and C 6 = upper). Synth A: SUPER wave 0 (Detune 1.4), **LP24 277 Hz**, -12 semitones, amp attack 0.5 ms, filter envelope amount 0.39 (decay 340 ms), arpeggiator on. Synth B: SUPER wave 0 (Detune 4.3), unison 3, LP24 554 Hz, -12 semitones. Synth C: MULTI (category 5 wave 4), LP12 98 Hz, drive 0.33, +12 semitones, arpeggiator on. Piano A (White Grand) at level 0 with the **mod wheel** raising it (wheel morph 1.0); wheel morphs also move the synth cutoffs (+0.08 A, +0.10 C), the C level and the delay mix of the C effects (delay ping-pong, reverb, EQ bass -15 dB). The video plays low arpeggio notes on keys 28 to 37 (E1 to C#2, which sound at 20 to 35 Hz through the -12 transpose, the hardware spectrum peaks at 21.2 / 27.1 / 43.2 / 54.6 Hz) with right-hand notes above; the mod wheel is up from about 5:30 (piano meters lit).
 
-Transkun notes: score 7.53 before, 5.66 with the noise row (D83), 4.50 with the row and squared levels, layer A alone 4.09 (the low recall drops the bass and the stab chords, so the band shape is less reliable than above). Other variants (`legacy` chain, `--no-synth-knob-laws`, `--synth-p verified`, `--firmware-fx`, `--firmware-routing`) move the score by less than 0.1 except `legacy` (2.09, +9.9 dB RMS: unusable level). The hardware does not decay after key-up (release drop 0 dB, T60 36 s): the performance keeps other notes ringing, the metric is not usable on this clip.
+**Clip** `horizon_whl` (hold-out): `tools/emu_vs_hw.py` segment `synth_horizon`, 290 to 320 s, the video-confirmed notes (`video_ref.py notes`: 891 audio notes, 396 confirmed over 60 s). Cross-check with the Transkun stream of PR 381 (275 notes in the same 30 s, uniform velocity 100): default RMS +5.5, presence -17.5 dB, mid -11.2; legacy RMS -7.8, presence -1.7, so the note source does not change the finding. The arpeggiator is not run by `render-patch`; the transcribed (sounding) notes are replayed instead.
 
-Findings: (1) the saw layer is right (A alone within 2.2 dB in every band); (2) the noise layer is 12 to 20 dB too loud in the 1.5 to 8 kHz bands, of which 8 dB (0.4 / 1.0) is the idle P block: the ARM words give noise the saw gain (VERIFIED, [synth-p-writer](synth-p-writer.md) s3); (3) the rest (about 8 dB, between the 0.25 and 0.12 rows) fits a squared layer level `(v/127)^2` (as the organ and piano handlers), but the synth handler (`0xC0114588`, ids `0xA4..0xA6`: `v` rounded, scaled by a float constant `[this+0xB4]`, stored as 16-bit integer at `[ip+0x48]`) was only read, not run, and the DSP side is not traced: **not applied** (OQ22). Reproduce: `python tools/emu_vs_hw.py --video <Part A> --backup <backup> --only synth_leaky`.
+**Diagnosis** (hardware minus emulator, absolute level per band over the clip): the default was **+12 dB** hot at 20 to 120 Hz, matched at 120 to 500 Hz and **10 to 15 dB low above 500 Hz** (per-second levels, 20 to 120 / 120 to 500 / 500 to 8000 Hz: hardware -30 / -33 / -42 dBFS, default -18 / -34 / -52, legacy -35 / -38 / -50). A table run on the single stage knobs cannot fix it: SUPER cutoff factor 0.45 / 0.9 / 1.4 gives mid -20.1 / -16.3 / -14.3 dB, SUPER gain 0.5 / 1.0 gives mid -13.5 / -15.6 (the filter is not the limit: with the filter open the SUPER stage of layer A still falls 6 dB per octave above its 20 Hz fundamental, 33 dB down at 1 to 2 kHz, where a plain saw falls 3 dB per band octave). The ASSUMED unison constants of the SUPER stage (voice ratios and weights, spread scale 0.1, `p_stage_words.rs`) produce too few partials at deep-bass pitch. With the VERIFIED ARM words (sixteen voices at ratios 0.9576 .. 1.0443, equal weights 0.7071, spread = Osc Ctrl) and the cutoff factor of the row scaled 4.4 for LP24, score 10.23 to 1.57.
+
+**Root cause:** the D22 default read the SUPER and MULTI stages with ASSUMED constants; `pad_silk` (LP12, mid-register notes) hid the error because its fit absorbed it into the gain 2.0 and the cutoff factor 0.45, and no clip had a SUPER LP24 patch at deep-bass pitch. D70 had the words as opt-in because the neighbouring rows were fitted against the placeholder stages.
+
+**Fix (D81):** `PTable::FITTED.words = true`: the MULTI / SUPER 0 / SUPER 1 to 4 stages read the verified words in the default; rows refit jointly on `pad_silk`, `mega_line`, `sci_fi_80s`, `horizon_whl` (CLI grids `--synth-p verified:super=g/0/1/0.5/c;multi=..;super1=..`): SUPER 2.4 / 0.45, MULTI 3.8 / 2.0, SUPER1 1.6 / 2.2 (gain / cutoff factor); SUPER wave 0 on **LP24** takes the type factor 4.4 (`p_type::row_type_cutoff_scale`, total 1.98; grid on the row at LP24 factor 1: 0.45 / 1.0 / 2.0 / 4.0 gives score 3.46 / 3.5 / 1.42 / 3.44).
+
+Result, 30 s clip (emulator minus hardware, bands level-free):
+
+| Variant | score | sub | low | mid | presence | brilliance | RMS | centroid |
+|---|---|---|---|---|---|---|---|---|
+| default before | 10.23 | +0.8 | -8.4 | -20.1 | -16.0 | -5.8 | +9.9 | -97 Hz |
+| legacy | 1.80 | -0.4 | +1.6 | -2.2 | -1.4 | -3.3 | -6.9 | +8 Hz |
+| **default after (D81)** | **1.57** | +0.2 | -1.3 | -2.2 | +0.7 | +3.5 | +1.1 | -22 Hz |
+
+(60 s, whole demo section, default before: score 15.06, RMS +10.5, presence -25.1; `--synth-p verified` alone: 11.07, RMS -2.9, presence -20.6; `--legacy-all` 6.08, `--no-synth-knob-laws` 15.24, `--no-synth-stages` 10.23, `--legacy-routing` 15.48: none of the other switches is the cause. Attack 78 ms on the hardware against 98 ms: the arpeggio retrigger, not modelled.)
+
+16-clip set, default `strip+st+tbl` before to after (score; presence and RMS in dB; `python tools/synth_validate.py run ... --variants strip+st+tbl`, cached video windows):
+
+| Clip | before | after | presence before / after | RMS before / after |
+|---|---|---|---|---|
+| lead_smooth, lead_crunch, filter_bank, phat_3osc, sweep_12db, sine_pluck, ag_blip x2, ag_zap_saw | unchanged | unchanged | | |
+| pad_silk | 2.36 | 1.92 | +2.2 / +1.8 | +0.5 / -1.0 |
+| mega_line | 1.69 | 1.60 | -2.9 / +3.1 | -2.7 / -5.3 |
+| sci_fi_80s | 0.86 | 1.09 | +1.8 / +1.3 | -0.7 / +3.4 |
+| **horizon_whl** (new) | 10.23 | **1.57** | -16.0 / +0.7 | +9.9 / +1.1 |
+| ag_supersaw_0 / 3 / 10 | 4.38 / 6.02 / 4.96 | 6.06 / 5.56 / 4.92 | +1.0 / -1.5 / -0.7 to +2.8 / -0.8 / 0.0 | lesson clips: no RMS bar |
+| **mean (16)** | 3.82 | **3.34** | | |
+
+D22 bar against the previous default: no Part A clip worse by more than 3 dB in presence or RMS (largest: `mega_line` RMS +2.6, `sci_fi_80s` RMS +2.7); the mean of the 16 improves 3.82 to 3.34, 13 of 16 clips beat legacy (mean gain 3.01, hold-outs 10 of 10 with 3.95); the **15 original clips** read 3.40 to 3.46 (`ag_supersaw_0` 4.38 to 6.06 is the cost: the Super Saw lesson clip with Detune 0 reads 11 dB low in RMS, lesson RMS is not a level evidence). Disclosure: `horizon_whl` is both the new clip and one of the four clips the rows were refit on (no independent hold-out for the LP24 SUPER factor; one clip, ASSUMED for other LP24 SUPER programs). Not covered: the mod wheel (played up from about 5:30, the clip starts with the wheel down), the arpeggiator timing (replayed notes, not the arp), the piano layer (level 0 until the wheel), the 20 to 60 Hz region of the recording chain (the emulator is sub-heavy relative to the hardware by 3 dB after the fix).
+`Leaky Stabs II` (A:46), white-noise (D83, `leaky_stabs` (`emu_vs_hw_segments.json` `synth_leaky`, 1275 + holdout): SHAPE 0.82, PURE white noise 0.32, Ladder24 2500 filter-env decay 1.21 0.74, release ms. Notes: audio-to-MIDI estimate `video_ref.py` (552 events, many false) (162 events, recall audio, median 66); replayed, deltas (dB re RMS), `tools/emu_vs_hw.py --only synth_leaky`.
+
+(audio-estimated pres brill |---|---|---|---|---|---|---|---|
+(noise idle 1.0) -3.0 -3.5 +7.0 +12.1 +1317 5.19 noise 0.4 (D83) -1.9 +0.1 +4.3 +7.5 +502 3.19 only -1.6 -1.8 +0.3 +1.5 +129 1.49 only (idle) -6.4 -7.8 -1.2 +9.4 +15.4 +2405 8.05 x 0.25 0.12 0.06 (idle row) +4.7 +3.2 +2.5 +2.3 +8.3 +4.6 +2.5 3.47 2.32 1.75 1.53 noise 0.4 + levels squared -1.6 -1.8 +0.3 +2.7 +3.2 +194 1.93 notes: 7.53 before, 5.66 noise (D83), 4.50 squared alone 4.09 recall drops stab chords, shape less reliable above). Other variants (`legacy` chain, `--no-synth-knob-laws`, verified`, `--firmware-fx`, `--firmware-routing`) less 0.1 except `legacy` (2.09, RMS: unusable level). decay key-up (release drop T60 36 s): performance keeps ringing, metric usable this clip.
+
+Findings: (1) right (A alone within every band); (2) noise 12 loud 1.5 8 kHz bands, 8 (0.4 1.0) idle P block: give noise (VERIFIED, [synth-p-writer](synth-p-writer.md) s3); (3) rest (about 8 between 0.25 0.12 rows) fits squared `(v/127)^2` (as organ handlers), but handler (`0xC0114588`, ids `0xA4..0xA6`: `v` rounded, float constant `[this+0xB4]`, stored 16-bit integer `[ip+0x48]`) only read, run, DSP side traced: **not applied** (OQ22). Reproduce: tools/emu_vs_hw.py --video <Part A> --backup <backup> --only synth_leaky`.

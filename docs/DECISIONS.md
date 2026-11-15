@@ -835,6 +835,15 @@ writes synth oscillator P block; `--synth-p verified` opt-in
 - **Alternatives:** Flip `--piano-slew-fw` or the bus convention (rejected: the absolute level stays ASSUMED, D22); darken the piano with a filter (rejected: the spectrum matches at equal velocity, no evidence for a stage); a velocity-from-click-position control (kept as a follow-up).
 - **Impact:** `crates/nord-gui/src/panel/keybed.rs` constant and test; `emu_vs_hw_segments.json` gains `piano_felt`; OQ20 and the piano spec updated. A single-note hardware recording per velocity is needed to settle level and brightness ([piano-felt-upright-soft](research/piano-felt-upright-soft.md)).
 
+### D81. The MULTI / SUPER stages read the verified ARM words by default; SUPER wave 0 on LP24 has its own cutoff factor
+
+- **Status:** accepted. **Decided by:** the evidence of [synth-validation](research/synth-validation.md) s12 (16 hardware clips, D22 bar).
+- **Context:** The user reports that the factory program `Horizon Whl` (`A:16`, SUPER wave 0 on LP24 277 / 554 Hz at -12 semitones, MULTI LP12, wheel, arpeggiator) sounds very far from the hardware. The Part A video (287 s on) gave the first hardware clip of it: the D22 default was +9.9 dB in RMS (sub bass 12 dB hot, 500 Hz and up 10 to 15 dB low, presence -16 dB, score 10.2 against legacy 1.8). D70 kept the verified words opt-in because the neighbouring rows were fitted on the placeholder stages.
+- **Decision:** `PTable::FITTED.words` (and the built-in `PTableSpec`) is true: the MULTI, SUPER and SUPER 1 to 4 stages read the verified ARM words in the default. Rows refit: SUPER 2.4 / 0.45, MULTI 3.8 / 2.0, SUPER1 1.6 / 2.2 (gain / cutoff factor); SUPER wave 0 on an LP24 filter gets the type factor 4.4 (`row_type_cutoff_scale`, total 1.98). `horizon_whl` joins the validation set (`synth_horizon` segment). `--legacy-all` / `--synth-chain legacy` keep the classic chain.
+- **Why:** Horizon Whl score 10.23 to 1.57 (presence -16.0 to +0.7 dB, RMS +9.9 to +1.1). The 16-clip mean improves 3.82 to 3.34, no Part A clip moves by more than 3 dB in presence or RMS, 13 of 16 clips beat legacy.
+- **Alternatives:** A table-only fix (SUPER gain and cutoff, rejected: the stage with ASSUMED constants stays 6 dB per octave steeper than the hardware whatever the factors, best score 8.0); keep the words opt-in and special-case the program (rejected: the same stage plays in 40 factory programs); lower the sub bass with a high pass (rejected: the hardware shows the 21 Hz fundamental).
+- **Impact:** `synth/p_table.rs` (`words` default, rows), `synth/p_type.rs` (`row_type_cutoff_scale`), `synth/render.rs`, the two clip files; `render_hash` whole is now `b9a1d073...b846` (D59: `63923599...50a16`; all Rust tests pass unchanged); the 15 original clips read 3.40 to 3.46 (`ag_supersaw_0` 4.38 to 6.06); OQ22 and TD-11 updated. Open: the LP24 SUPER factor has one clip, the mod wheel and the arpeggiator are not part of the comparison.
+
 ### D79. Piano comparisons replay transcribed velocities and pedal
 
 - **Status:** proposed (pending the user's listening check of the local piano-compare folder)

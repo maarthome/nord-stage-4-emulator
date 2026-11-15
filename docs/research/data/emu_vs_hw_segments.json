@@ -106,7 +106,11 @@
      "variants": [
        {"label": "default", "flags": []},
        {"label": "legacy", "flags": ["--synth-chain", "legacy"]}]},
-    {"id": "synth_12db", "entry": "Program/Bank A/12dB Sweep.ns4p", "engine": "A:57 Shape Square x2 + Pure Saw LP12", "at_s": 1619, "duration_s": 20,
+    {"id": "synth_horizon", "entry": "Program/Bank A/Horizon Whl.ns4p", "engine": "A:16 SUPER wave 0 x2 LP24 + MULTI LP12, split, arp, piano on the wheel", "at_s": 290, "duration_s": 30,
+     "variants": [
+       {"label": "default", "flags": []},
+       {"label": "legacy", "flags": ["--synth-chain", "legacy"]}]},
+    {"id": "synth_12db","entry": "Program/Bank A/12dB Sweep.ns4p", "engine": "A:57 Shape Square x2 + Pure Saw LP12", "at_s": 1619, "duration_s": 20,
      "variants": [
        {"label": "default", "flags": []},
        {"label": "legacy", "flags": ["--synth-chain", "legacy"]}]},
