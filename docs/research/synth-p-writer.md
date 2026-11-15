@@ -80,6 +80,26 @@ The edit ids `kOscBank / Cat / Wave` store the pending type (`[strip + 0x98]`) a
 
 Opt-in `--synth-p verified` (`synth/p_words.rs`) builds the gain column of the rows a single oscillator describes from the words; scores in [synth-validation](synth-validation.md) s10.
 
+
+## 8. The words applied to the unison stages (D70)
+
+`--synth-p verified` now also makes the MULTI, SUPER 0, SUPER 1 and SUPER 2..4 stages read the words (`synth/p_stage_words.rs`, `synth/fw_stages/words.rs`; the placeholder constants stay for the other table modes). The stage frames read the P words in these units (the Python stage models fed the words reproduce the Rust stage within 3.6e-4 on amplitudes of 0.1 to 0.3, `tools/synth_stage_golden11.py` -> `tests_fw_stage_golden11.rs`, 20 cases: SUPER 0, SUPER 1, three MULTI types, two pitches, two spread words):
+
+| Stage | Increment per voice `j`, lane `i` | Lane x output | Tag |
+|---|---|---|---|
+| SUPER 0 (`0x121D6D`), 8 voices | `(rho u + 1 - u) f`, `rho = P[-32 + 2 j + i]`, `u = 0.35 (t + 2 t^4)` | `P[16] g (P[-16 + 4 j] s_xj + P[-13 + 4 j] s_yj)` summed over `j`: sixteen voices of weight `0.0884 x 0.7071 = 1/16` | VERIFIED words and units (golden) |
+| SUPER 1 (`0x121E9D`), 7 voices | same, band-limited squares | `P[16] = 0.06614`, weights 0.7071: fourteen voices | VERIFIED (golden) |
+| SUPER 2..4 (`0x124985`), 4 voices | `2 f (rho v + 1 - v)`, `v = 0.75 (t + 2 t^4)` | `P[16] = 0.125`, eight voices of weight 0.0884 | words VERIFIED; Rust mix checked by structure tests only (the held FIR path has no golden of its own) |
+| MULTI (`0x121C54`), 3 voices | voice 0 `oct_0 r_0 f`; voices 1, 2 `(r_v s5 + 1 - s5) oct_v r_0 f`, `r_v = P[-32 + 2 v + i]`, `oct` = the record `DM(0xC1596 .. 98)` | `P[16] g_v (P[-16 + 4 v] s_xv + P[-13 + 4 v] s_yv)`, the fade `g_v` of each voice from its own increment | VERIFIED (golden) |
+
+Consequences: MULTI waves 0, 1, 3, 4 (types 16, 17, 19, 20) play **two** voices (weights 1 and 0.85, the third weight is 0), a pair that widens with Osc Ctrl (second voice at `(1.0087 s5 + 1 - s5)` times the record's second word: 1 for wave 0, 2, 1.5, 3 times the pitch for waves 1, 2, 3). Waves 4 and 5 (types 18, 21) have three voices: weights 0.9 and 0.85 on lane x and a third voice of weight 1 that reaches lane x through the **cross** weight (the lane y voice at the record's third word, 1) with the multipliers 2, 4 / 6, 1 and `P[16] = 0.1443`. The octave stacks `1, 2, 0.5` of the placeholder stage do not exist; the record per `(category, wave)` is wave 0 `1 1 0.1`, wave 1 `1 2 0.1`, wave 2 `1 1.5 0.1`, wave 3 `1 3 0.1`, wave 4 `2 4 1`, wave 5 `2 6 1` (the capture lists them by type: 16, 17, 18 = wave 4, 19 = wave 2, 20 = wave 3, 21).
+
+**Spread scale (OQ22 item).** `s5 = clip(w, 0.5) + 0.5` with `w = DM(0xC271A)` ([synth-stage-models-6](synth-stage-models-6.md) s1, poke probe) and the ARM writes `kOscCtrl` as `-0.5 + knob / 127` ([synth-knob-laws](synth-knob-laws.md)), so `s5 = knob / 127`: the spread word of SUPER and MULTI is the Osc Ctrl knob itself, scale **1.0** (`SUPER_SPREAD_MAX = 0.1` was ASSUMED). At full spread the outer SUPER 0 voices sit at `1 + (rho - 1) u`, `u = 1.25`: 0.947 and 1.055 (about +-93 cents); SUPER 2..4 `v = 0.75 (1.06 + 2 x 1.06^4) = 2.5`: +-10 %. The link `DM(0xE02EE)` (the written word) to `DM(0xC271A)` (the persistent source) is not run end to end (ASSUMED; the SHAPE clips fit `shape = ctrl` with the same word, so the chain is consistent).
+
+**Start phases.** The unison voice phases are free-running state words; a coherent start (all at 0) makes the model fall 15 dB from ctrl 0 to 1 while the Super Saw lesson clip keeps its level within 1.2 dB from Detune 0 to 10. The verified mode starts the sixteen voices on a fixed pseudo-random set (ASSUMED, `START_PHASES`).
+
+**Variants `a`, `b` (OQ item 5).** Not mapped: the pending words are written by the unison path of a loaded program, which the harness does not run (section 6); `kOscUnison` and `kOscCtrl` stay open here. `kOscCtrl` itself is resolved above (it feeds `s5`).
+
 ## Implications
 
 - The oscillator program is a firmware table indexed by wave type; no knob changes ratios or weights, and neither the DSP side nor DMA writes the block.
