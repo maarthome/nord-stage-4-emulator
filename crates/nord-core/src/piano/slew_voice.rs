@@ -24,36 +24,19 @@ const Q31: f32 = 2_147_483_648.0;
 /// Below this gain (about -120 dB of full scale) a released voice is done.
 const DONE_GAIN: f32 = 1e-6;
 
-/// Rate word (`F17`) the ARM sends for a velocity and a key.
-/// EMPIRICAL: `1 - d / 2^24` with `d` interpolated bilinearly (velocity, then key) over the Velvet
-/// Grand note-on words of the firmware run (`tools/arm_smp_slew_init.py rates`; velocity 20 / 64 /
-/// 88 / 100 / 127 at notes 36 / 60 / 84, each point an exact ARM word: note 60 gives `d = 374 / 314 /
-/// 226 / 190 / 154`). Between and outside the points the law is interpolated and clamped; Bright
-/// Grand (velocity 20, 64, 100 at notes 36 / 60 / 84) differs from Velvet by at most 15 %, Wurlitzer
-/// 1 and Amber Upright (velocity 90, note 60) by a factor 1.5 to 2 (ASSUMED: one table for every
-/// sound; what would confirm it: the ARM rate writer, `docs/research/smp-slew.md` s6).
-pub(super) fn rate_for(velocity: u8, note: u8) -> f32 {
-    const VEL: [f32; 5] = [20.0, 64.0, 88.0, 100.0, 127.0];
-    const KEY: [f32; 3] = [36.0, 60.0, 84.0];
-    // d[velocity][key]
-    const D: [[f32; 3]; 5] = [
-        [238.0, 374.0, 790.0],
-        [188.0, 314.0, 572.0],
-        [162.0, 226.0, 404.0],
-        [140.0, 190.0, 404.0],
-        [118.0, 154.0, 316.0],
-    ];
-    fn locate(axis: &[f32], x: f32) -> (usize, f32) {
-        let x = x.clamp(axis[0], axis[axis.len() - 1]);
-        let i = axis.windows(2).position(|w| x <= w[1]).unwrap_or(0);
-        (i, (x - axis[i]) / (axis[i + 1] - axis[i]))
-    }
-    let (vi, vt) = locate(&VEL, f32::from(velocity));
-    let (ki, kt) = locate(&KEY, f32::from(note));
-    let lerp = |a: f32, b: f32, t: f32| a + (b - a) * t;
-    let at = |row: usize| lerp(D[row][ki], D[row][ki + 1], kt);
-    let d = lerp(at(vi), at(vi + 1), vt);
-    1.0 - d.round() / 16_777_216.0
+/// Rate word (`F17`) the ARM stores for a note-on: `1 - d / 2^24` with
+/// `d = 2 * round(-decay * 2^(semitones / 12))`, `decay` the big-endian `i16` at stroke record
+/// byte `0x3C` ([`super::npno_level::VoiceLevel::decay`]) and `semitones` the playback pitch above
+/// the stroke root (`note - root + cents / 100`). A non-negative `decay` gives no decay.
+/// VERIFIED: 48 of 48 Felt Upright firmware runs (6 notes x 8 velocities, all on the root pitch)
+/// and 7 of 7 Velvet Grand points (note 57 is 1 semitone above its root: `d = 356 / 306 / 190`
+/// from `decay = -168 / -144 / -90`), `tools/arm_smp_slew_init.py rates`, tests
+/// `rate_law_matches_the_firmware_words`. ASSUMED: nearest rounding and the cents term (what would
+/// confirm it: ARM runs on notes with a tuning offset or 2 to 11 semitones above the root).
+pub(super) fn rate_from_record(decay: i16, semitones: f32) -> f32 {
+    let ratio = 2.0f32.powf(semitones / 12.0);
+    let d = 2.0 * (-f32::from(decay) * ratio).round().max(0.0);
+    1.0 - d / 16_777_216.0
 }
 
 /// VERIFIED (ARM note-off message list, `docs/research/smp-slew.md` s6): the key-up sample record
@@ -221,32 +204,67 @@ mod tests {
         ),
     ];
 
+    /// `(decay field, semitones above the root, firmware rate word)`: Velvet Grand note 60 at
+    /// velocity 20 / 64 / 100 / 127 (the oracle words of `NOTE_ON`), note 57 (1 semitone above
+    /// its root) at 30 / 64 / 100, Felt Upright note 57 at velocity 100 and note 72 at 30
+    /// (`tools/arm_smp_slew_init.py rates`).
     #[test]
-    fn rate_table_hits_the_oracle_words_and_clamps() {
-        for (vel, word) in [
-            (20u8, 0x3F7F_FE8Au32),
-            (64, 0x3F7F_FEC6),
-            (100, 0x3F7F_FF42),
-            (127, 0x3F7F_FF66),
+    fn rate_law_matches_the_firmware_words() {
+        let d_word = |d: u32| 0x3F80_0000u32 - d;
+        for (decay, semi, d) in [
+            (-187i16, 0.0f32, 374u32),
+            (-157, 0.0, 314),
+            (-95, 0.0, 190),
+            (-77, 0.0, 154),
+            (-168, 1.0, 356),
+            (-144, 1.0, 306),
+            (-90, 1.0, 190),
+            (-159, 0.0, 318),
+            (-233, 0.0, 466),
         ] {
-            assert_eq!(rate_for(vel, 60).to_bits(), word, "velocity {vel}");
+            assert_eq!(
+                rate_from_record(decay, semi).to_bits(),
+                d_word(d),
+                "decay {decay} semitones {semi}"
+            );
         }
-        assert_eq!(rate_for(1, 60).to_bits(), rate_for(20, 60).to_bits());
-        assert_eq!(rate_for(100, 0).to_bits(), rate_for(100, 36).to_bits());
-        let mid = rate_for(80, 60);
-        assert!(mid > rate_for(64, 60) && mid < rate_for(100, 60));
+        for (decay, word) in [
+            (-187i16, 0x3F7F_FE8Au32),
+            (-157, 0x3F7F_FEC6),
+            (-95, 0x3F7F_FF42),
+        ] {
+            assert_eq!(rate_from_record(decay, 0.0).to_bits(), word);
+        }
     }
 
-    /// Firmware run (`tools/arm_smp_slew_init.py rates`, Velvet Grand, velocity 88): the rate word
-    /// `d = 1 - word` of notes 36 / 60 / 84 is 162 / 226 / 404, notes between them are interpolated
-    /// (the run gave 190 at note 48 and 298 at note 72: the interpolation lands within 8 %).
     #[test]
-    fn rate_follows_the_key_and_is_faster_for_high_notes() {
-        let d = |v: u8, n: u8| ((1.0 - rate_for(v, n)) * 16_777_216.0).round();
-        assert_eq!((d(88, 36), d(88, 60), d(88, 84)), (162.0, 226.0, 404.0));
-        assert!((d(88, 48) - 190.0).abs() / 190.0 < 0.08, "{}", d(88, 48));
-        assert!((d(88, 72) - 298.0).abs() / 298.0 < 0.08, "{}", d(88, 72));
-        assert!(d(100, 84) > d(100, 60) && d(100, 60) > d(100, 36));
+    fn rate_is_faster_for_higher_pitch_and_zero_without_decay() {
+        assert!(rate_from_record(-100, 12.0) < rate_from_record(-100, 0.0));
+        assert_eq!(rate_from_record(0, 5.0), 1.0);
+        assert_eq!(rate_from_record(40, 0.0), 1.0);
+    }
+
+    /// Oracle (`sharc-ref`, SMP image) replay of the real ARM note-on messages of Felt Upright,
+    /// note 57, velocity 100 (`arm_smp_slew_init.py capture` / `replay`): level word `0x3EF74664`,
+    /// rate word `0x3F7FFEC2` (`d = 318`, record field `-159`), left gain `F0` after updates 1..5 (the first oracle row, 226875779, is the handler's own
+    /// update 0).
+    /// The rate word is the one `rate_from_record` derives from the stroke record.
+    #[test]
+    fn felt_upright_note_on_gains_follow_the_oracle() {
+        let rate = rate_from_record(-159, 0.0);
+        assert_eq!(rate.to_bits(), 0x3F7F_FEC2);
+        let mut r = initial_record(f32::from_bits(0x3EF7_4664), rate);
+        let want = [
+            226_871_467i32,
+            226_867_156,
+            226_862_844,
+            226_858_532,
+            226_854_220,
+        ];
+        for (n, w) in want.into_iter().enumerate() {
+            let got = r.step().left;
+            assert!((got - w).abs() <= 1, "update {}: {got} vs {w}", n + 1);
+        }
     }
 
     #[test]
