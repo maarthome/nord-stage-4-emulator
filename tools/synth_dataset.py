@@ -25,6 +25,7 @@ import argparse
 import hashlib
 import json
 import math
+import random
 import re
 import subprocess
 import sys
@@ -35,12 +36,13 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import synth_augment
 import synth_phrases
 import synth_wav
 
 DEFAULT_NS4 = "target/release/ns4"
-PEAK_LIMIT = 0.95  # ASSUMED: leaves headroom so int16 conversion never clips
-SILENT_RMS = 1e-4  # ASSUMED: a render quieter than -80 dBFS RMS is a silent/broken program
+PEDAL_SHARE = 0.25  # ASSUMED: share of items with a sustain pedal stream
+SILENT_PEAK = 1e-3  # ASSUMED: a render with raw peak under -60 dBFS is a silent/broken program
 LIST_RE = re.compile(r"^(Program/.+\.ns4p) \(")
 Runner = Callable[[list[str]], None]
 
@@ -91,6 +93,12 @@ def extract_programs(
     return programs
 
 
+def _vel_idx(item_seed: int) -> int:
+    """Velocity mode index: 55 % skewed, 15 % uniform, 15 % loud, 15 % ramp (ASSUMED mix)."""
+    r = random.Random(item_seed ^ 0x7E10).random()
+    return 0 if r < 0.55 else 1 if r < 0.70 else 2 if r < 0.85 else 3
+
+
 def plan_items(
     programs: Sequence[dict[str, str]], n_items: int, seed: int, val_percent: int
 ) -> list[dict[str, Any]]:
@@ -107,6 +115,8 @@ def plan_items(
                 "seed": item_seed,
                 "split": split_of(prog["entry"], val_percent),
                 "wide": (i // len(programs)) % 4 == 3,
+                "vel_mode": synth_phrases.VEL_MODES[_vel_idx(item_seed)],
+                "pedal": random.Random(item_seed ^ 0xBEDA1).random() < PEDAL_SHARE,
             }
         )
     return items
@@ -119,47 +129,93 @@ def notes_for_meta(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
-def render_item(
-    item: dict[str, Any], out: Path, ns4: str, duration_s: float, run: Runner = run_cmd
+def pedal_intervals(pedal: list[dict[str, float]]) -> list[dict[str, float]]:
+    """``[{"t", "value"}]`` presses to ``[{"start", "end"}]`` intervals (value >= 64 is down)."""
+    out, down = [], None
+    for ev in pedal:
+        if ev["value"] >= 64 and down is None:
+            down = ev["t"]
+        elif ev["value"] < 64 and down is not None:
+            out.append({"start": down, "end": ev["t"]})
+            down = None
+    return out
+
+
+def render_audio(
+    item: dict[str, Any],
+    events: list,
+    pedal: list,
+    out: Path,
+    ns4: str,
+    run: Runner,
+    run_aug: synth_augment.Runner,
 ) -> dict[str, Any]:
-    kind, events = synth_phrases.make_phrase(item["seed"], duration_s=duration_s, wide=item["wide"])
+    """Renders, resamples, augments and writes one WAV; returns the sidecar facts."""
+    plan = synth_augment.plan_augment(item["seed"], item.get("augment", True))
+    with tempfile.TemporaryDirectory(prefix="ns4ds_") as tmp:
+        ev, raw = Path(tmp) / "ev.json", Path(tmp) / "raw.wav"
+        ev.write_text(json.dumps({"events": events, "pedal": pedal}), encoding="utf-8")
+        prog = out / "programs" / item["program_file"]
+        run(
+            [
+                str(Path(ns4).resolve()),
+                "render-patch",
+                str(prog),
+                "--events",
+                str(ev),
+                "--velocity",
+                "100",
+                "--wav",
+                str(raw),
+            ]
+        )
+        audio, rate = synth_wav.read_wav(raw)
+    mono = synth_wav.resample_fft(audio.mean(axis=1), rate, synth_wav.SAMPLE_RATE)
+    facts = {
+        "raw_rms": synth_wav.rms(mono),
+        "raw_peak": float(np.max(np.abs(mono))) if mono.size else 0.0,
+        "augment": plan,
+    }
+    mono = synth_augment.apply_plan(mono, synth_wav.SAMPLE_RATE, plan, item["seed"], run_aug)
     wav = out / "audio" / f"{item['id']}.wav"
-    if not wav.exists():
-        with tempfile.TemporaryDirectory(prefix="ns4ds_") as tmp:
-            ev, raw = Path(tmp) / "ev.json", Path(tmp) / "raw.wav"
-            ev.write_text(json.dumps({"events": events, "pedal": []}), encoding="utf-8")
-            run(
-                [
-                    str(Path(ns4).resolve()),
-                    "render-patch",
-                    str(out / "programs" / item["program_file"]),
-                    "--events",
-                    str(ev),
-                    "--velocity",
-                    "100",
-                    "--wav",
-                    str(raw),
-                ]
-            )
-            audio, rate = synth_wav.read_wav(raw)
-            mono = synth_wav.resample_fft(audio.mean(axis=1), rate, synth_wav.SAMPLE_RATE)
-            peak = float(np.max(np.abs(mono))) if mono.size else 0.0
-            if peak > PEAK_LIMIT:  # Transkun normalises gain per segment, so this is harmless
-                mono = mono * np.float32(PEAK_LIMIT / peak)
-            wav.parent.mkdir(parents=True, exist_ok=True)
-            synth_wav.write_wav_int16(wav, synth_wav.to_mono_int16(mono))
+    wav.parent.mkdir(parents=True, exist_ok=True)
+    synth_wav.write_wav_int16(wav, synth_wav.to_mono_int16(mono))
+    return facts
+
+
+def render_item(
+    item: dict[str, Any],
+    out: Path,
+    ns4: str,
+    duration_s: float,
+    run: Runner = run_cmd,
+    run_aug: synth_augment.Runner = synth_augment.run_ffmpeg,
+) -> dict[str, Any]:
+    kind, events = synth_phrases.make_phrase(
+        item["seed"], duration_s=duration_s, wide=item["wide"], vel_mode=item["vel_mode"]
+    )
+    pedal = synth_phrases.make_pedal(item["seed"], duration_s) if item["pedal"] else []
+    wav = out / "audio" / f"{item['id']}.wav"
+    side = out / "meta" / f"{item['id']}.json"
+    if not (wav.exists() and side.exists()):
+        facts = render_audio(item, events, pedal, out, ns4, run, run_aug)
+        side.parent.mkdir(parents=True, exist_ok=True)
+        side.write_text(json.dumps(facts), encoding="utf-8")
+    facts = json.loads(side.read_text(encoding="utf-8"))
     mono, _ = synth_wav.read_wav(wav)
-    level = synth_wav.rms(mono)
     return {
         "id": item["id"],
         "program": item["program"],
         "split": item["split"],
         "seed": item["seed"],
         "kind": kind,
+        "vel_mode": item["vel_mode"],
         "audio": f"audio/{wav.name}",
         "duration": round(len(mono) / synth_wav.SAMPLE_RATE, 3),
-        "rms": round(level, 6),
-        "silent": level < SILENT_RMS,
+        "raw_rms": round(facts["raw_rms"], 6),
+        "silent": facts["raw_peak"] < SILENT_PEAK,
+        "augment": facts["augment"],
+        "pedal": pedal_intervals(pedal),
         "notes": notes_for_meta(events),
     }
 
@@ -173,12 +229,16 @@ def render_dataset(
     val_percent: int,
     phrase_s: float,
     run: Runner = run_cmd,
+    run_aug: synth_augment.Runner = synth_augment.run_ffmpeg,
+    augment: bool = True,
 ) -> dict[str, Any]:
     programs = json.loads((out / "programs.json").read_text(encoding="utf-8"))
     n_items = max(1, math.ceil(hours * 3600 / phrase_s))
     items = plan_items(programs, n_items, seed, val_percent)
+    for it in items:
+        it["augment"] = augment
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        entries = list(ex.map(lambda it: render_item(it, out, ns4, phrase_s, run), items))
+        entries = list(ex.map(lambda it: render_item(it, out, ns4, phrase_s, run, run_aug), items))
     doc = {
         "format": "ns4-synth-dataset-1",
         "sample_rate": synth_wav.SAMPLE_RATE,
@@ -216,6 +276,7 @@ def build_parser() -> argparse.ArgumentParser:
     rd.add_argument("--seed", type=int, default=1)
     rd.add_argument("--val-percent", type=int, default=10, help="Share of programs held out.")
     rd.add_argument("--phrase-s", type=float, default=60.0)
+    rd.add_argument("--no-augment", action="store_true", help="Skip tilt, codec and noise.")
     return p
 
 
@@ -227,7 +288,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"extracted {len(programs)} programs to {out / 'programs'}")
     else:
         doc = render_dataset(
-            out, args.ns4, args.hours, args.workers, args.seed, args.val_percent, args.phrase_s
+            out,
+            args.ns4,
+            args.hours,
+            args.workers,
+            args.seed,
+            args.val_percent,
+            args.phrase_s,
+            augment=not args.no_augment,
         )
         print(summarize(doc))
     return 0

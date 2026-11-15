@@ -57,3 +57,24 @@ def test_track_rejects_overlap_and_tiny_notes():
     assert not t.add(60, 1.5, 1.0, 50)  # overlaps the first note
     assert not t.add(61, 9.99, 1.0, 50)  # clipped to under MIN_NOTE_S
     assert t.add(60, 2.1, 0.5, 50)
+
+
+@pytest.mark.parametrize("mode", sp.VEL_MODES)
+def test_velocity_modes_stay_in_range_and_differ(mode):
+    _, notes = sp.make_phrase(11, kind="melody", duration_s=40.0, vel_mode=mode)
+    vels = [n["velocity"] for n in notes]
+    assert 1 <= min(vels) and max(vels) <= 127
+    if mode == "loud":
+        assert min(vels) >= 40
+    if mode == "uniform":
+        assert max(vels) - min(vels) > 80
+    with pytest.raises(ValueError):
+        sp.make_phrase(1, vel_mode="nope")
+
+
+def test_pedal_presses_alternate_and_stay_inside_phrase():
+    ped = sp.make_pedal(4, 60.0)
+    assert [p["value"] for p in ped] == [127, 0] * (len(ped) // 2) and len(ped) >= 4
+    ts = [p["t"] for p in ped]
+    assert ts == sorted(ts) and ts[-1] < 60.0
+    assert sp.make_pedal(4, 60.0) == ped

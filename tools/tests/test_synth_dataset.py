@@ -71,11 +71,11 @@ def test_render_dataset_end_to_end_with_fake_ns4(tmp_path):
         fake_render(cmd)
 
     hours = 60 * 4 / 3600
-    doc = sd.render_dataset(tmp_path, "ns4", hours, 2, 1, 10, 60.0, run=runner)
+    doc = sd.render_dataset(tmp_path, "ns4", hours, 2, 1, 10, 60.0, run=runner, augment=False)
     assert len(doc["entries"]) == 4 and len(calls) == 4
     loud = [e for e in doc["entries"] if "Loud" in e["program"]]
     quiet = [e for e in doc["entries"] if "Quiet" in e["program"]]
-    assert all(not e["silent"] and e["rms"] > 0.05 for e in loud)
+    assert all(not e["silent"] and e["raw_rms"] > 0.05 for e in loud)
     assert all(e["silent"] for e in quiet)
     e = loud[0]
     assert e["duration"] == 2.0 and e["notes"]
@@ -86,7 +86,7 @@ def test_render_dataset_end_to_end_with_fake_ns4(tmp_path):
     assert saved["entries"][0]["id"] == doc["entries"][0]["id"]
     assert "4 items" in sd.summarize(doc)
     # re-run resumes: existing WAVs are not rendered again
-    sd.render_dataset(tmp_path, "ns4", hours, 2, 1, 10, 60.0, run=runner)
+    sd.render_dataset(tmp_path, "ns4", hours, 2, 1, 10, 60.0, run=runner, augment=False)
     assert len(calls) == 4
 
 
@@ -121,14 +121,13 @@ def test_main_extract_prints_count(tmp_path, monkeypatch, capsys):
     assert "extracted 1 programs" in capsys.readouterr().out
 
 
-def test_render_item_scales_down_clipping_renders(tmp_path):
+def test_render_item_sets_final_peak_and_writes_sidecar(tmp_path):
     (tmp_path / "programs").mkdir()
 
     def hot(cmd):
         wav = Path(cmd[cmd.index("--wav") + 1])
-        write_float_wav(
-            wav, np.random.default_rng(1).standard_normal((88200, 2)).astype(np.float32) * 4
-        )
+        noise = np.random.default_rng(1).standard_normal((88200, 2)).astype(np.float32)
+        write_float_wav(wav, noise * 4)  # clips full scale
 
     item = {
         "id": "hot",
@@ -137,8 +136,27 @@ def test_render_item_scales_down_clipping_renders(tmp_path):
         "seed": 5,
         "split": "train",
         "wide": False,
+        "vel_mode": "ramp",
+        "pedal": True,
+        "augment": False,
     }
     meta = sd.render_item(item, tmp_path, "ns4", 20.0, run=hot)
     mono, _ = synth_wav.read_wav(tmp_path / meta["audio"])
-    assert float(np.abs(mono).max()) <= sd.PEAK_LIMIT + 1e-3
-    assert not meta["silent"]
+    assert abs(float(np.abs(mono).max()) - 10 ** (-1.0 / 20)) < 2e-3  # -1 dBFS without augmentation
+    assert (tmp_path / "meta" / "hot.json").exists() and not meta["silent"]
+    assert meta["pedal"] and all(p["end"] > p["start"] for p in meta["pedal"])
+    assert meta["vel_mode"] == "ramp"
+
+
+def test_pedal_intervals_pairs_down_and_up():
+    ped = [{"t": 1.0, "value": 127}, {"t": 2.0, "value": 0}, {"t": 3.0, "value": 100}]
+    assert sd.pedal_intervals(ped) == [{"start": 1.0, "end": 2.0}]
+
+
+def test_plan_items_have_velocity_modes_and_pedal_share():
+    progs = [{"entry": "Program/A/P.ns4p", "file": "p.ns4p"}]
+    items = sd.plan_items(progs, 400, seed=1, val_percent=10)
+    modes = {it["vel_mode"] for it in items}
+    assert modes == set(sd.synth_phrases.VEL_MODES)
+    share = sum(it["pedal"] for it in items) / len(items)
+    assert 0.15 < share < 0.35
