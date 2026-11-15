@@ -135,6 +135,11 @@ impl PTableSpec {
         rows: [None; PWAVE_COUNT],
     };
 
+    /// Selection from explicit rows (`p_words.rs`).
+    pub(super) const fn from_rows(rows: [Option<[i32; 5]>; PWAVE_COUNT]) -> PTableSpec {
+        PTableSpec { rows }
+    }
+
     /// Parses the part after `table` (empty or `:wave=g/w2/r2/shape/cutoff;...`).
     pub fn parse(rest: &str) -> Result<PTableSpec, String> {
         let bad = |what: &str| format!("invalid --synth-p table '{rest}': {what}");

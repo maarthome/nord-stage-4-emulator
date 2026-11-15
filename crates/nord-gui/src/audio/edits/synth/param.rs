@@ -5,6 +5,7 @@
 //! layer(s) receive it; see [`super::SynthEdit`].
 
 use super::pattern::PatternParam;
+use nord_core::synth::arp_rate::{ARP_MAX_BPM, ARP_MIN_BPM};
 use nord_core::synth::{
     ClockDivision, FilterModel, SampleTimbre, SynthLayer, SynthOscMode, VaWaveform,
     PATTERN_PRESET_MAX,
@@ -149,7 +150,7 @@ impl SynthParam {
             P::VibratoDelay(s) => l.vibrato_delay_sec = s.clamp(0.0, 2.0),
             P::ArpMode(m) => l.arp_mode = m,
             P::ArpRange(o) => l.arp_octave_range = o.clamp(1, 4),
-            P::ArpRate(bpm) => l.arp_rate_bpm = bpm.clamp(20.0, 300.0),
+            P::ArpRate(bpm) => l.arp_rate_bpm = bpm.clamp(ARP_MIN_BPM, ARP_MAX_BPM),
             P::GateEnv(g) => l.perf.gate_env = g.clamp(0.0, 1.0),
             P::PatternOn(b) => l.perf.pattern_on = b,
             P::PatternPreset(p) => l.perf.pattern_preset = p.min(PATTERN_PRESET_MAX),
@@ -358,13 +359,18 @@ mod tests {
         assert_eq!(l.vibrato_delay_sec, 0.7);
         SynthParam::ArpMode(ArpMode::Gate).apply(&mut l);
         SynthParam::ArpRange(0).apply(&mut l);
-        SynthParam::ArpRate(1000.0).apply(&mut l);
+        SynthParam::ArpRate(600.0).apply(&mut l);
+        assert_eq!(
+            l.arp_rate_bpm, 600.0,
+            "the firmware dial goes up to 1200 BPM"
+        );
+        SynthParam::ArpRate(5000.0).apply(&mut l);
         SynthParam::GateEnv(0.75).apply(&mut l);
         SynthParam::PatternOn(true).apply(&mut l);
         SynthParam::PatternPreset(99).apply(&mut l);
         assert_eq!(l.arp_mode, ArpMode::Gate);
         assert_eq!(l.arp_octave_range, 1);
-        assert_eq!(l.arp_rate_bpm, 300.0);
+        assert_eq!(l.arp_rate_bpm, 1200.0);
         assert_eq!(l.perf.gate_env, 0.75);
         assert!(l.perf.pattern_on);
         assert_eq!(l.perf.pattern_preset, 28);

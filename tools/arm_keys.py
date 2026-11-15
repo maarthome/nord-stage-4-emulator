@@ -22,6 +22,11 @@ masks it and stores `~word`; a changed word is posted to the event queue (`0x800
 level has to be 1 so that the stored word is 0; with the old all-zero answer every key looked
 pressed). `KeyMatrix` answers idle `0xFF` and clears the bits of held keys.
 
+Correction (`docs/research/firmware-gesture-timings.md` s4): the key object's code paths need the
+opposite polarity (idle stored word `0xFFFFFFFF`, a held key reads 1). With this class a press runs
+the firmware's key-up path, so hold and repeat events never fire; the screens it opens come from the
+release edge.
+
 Evidence and limits: `docs/research/arm-oled-render.md` section 7.
 """
 

@@ -122,9 +122,10 @@ impl SectionPreset {
     /// Encodes against `template` (same kind): header, bank, location and category are kept, and
     /// so is every payload bit the edit did not change (AGENTS.md rule 5).
     ///
-    /// The decoder is lossy for some fields (an unknown raw value collapses to an enum variant:
-    /// 4 Piano and 136 Synth presets of the factory backup do not re-pack to their own bits).
-    /// So the payload is merged at bit level: a bit changes only where the encoding of `self`
+    /// The decoders keep the raw values behind the engine-facing fields (OQ31 resolved, section
+    /// 5.8: all 544 factory presets re-pack to their own bits), but a raw value outside the
+    /// factory set can still collapse (a reserved bit, an unseen enum value). So the payload is
+    /// merged at bit level as a safety net: a bit changes only where the encoding of `self`
     /// differs from the encoding of the preset decoded from `template`. An unedited preset
     /// therefore re-encodes to the identical file; the checksum is refreshed only when a bit
     /// changed.
