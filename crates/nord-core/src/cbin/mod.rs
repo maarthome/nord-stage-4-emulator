@@ -15,6 +15,8 @@ pub mod kb_zone;
 pub mod manifest;
 pub mod organ_preset;
 pub mod piano_preset;
+#[cfg(test)]
+mod piano_preset_layout;
 pub mod piano_sample;
 pub mod presets;
 pub mod program_file;
