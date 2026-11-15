@@ -8,7 +8,7 @@
 use super::*;
 
 const FS: f32 = 48_000.0;
-/// One step at 240 BPM: 60 / (240 * 4) s = 3000 samples at 48 kHz.
+/// One step at 480 BPM: 30 / 480 s = 3000 samples at 48 kHz.
 const STEP: usize = 3000;
 
 fn layer(gates: &[u8], ties: &[bool]) -> SynthLayer {
@@ -16,7 +16,7 @@ fn layer(gates: &[u8], ties: &[bool]) -> SynthLayer {
     s.attack_sec = 0.001;
     s.sustain_level = 1.0;
     s.release_sec = 0.02;
-    s.arp_rate_bpm = 240.0;
+    s.arp_rate_bpm = 480.0;
     s.arp_mode = ArpMode::Up;
     s.perf.pattern_on = true;
     s.perf.pattern_custom = true;

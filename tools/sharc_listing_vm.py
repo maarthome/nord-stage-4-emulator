@@ -262,6 +262,10 @@ class Vm:
             return ((a + b if m[2] == "+" else a - b) & M32) << 8
         return None
 
+    def hook(self, item: str, effects: tuple) -> bool:  # noqa: ANN001
+        """Subclass extension point: handles `item` (appends to the effects) or returns False."""
+        return False
+
     # ---- one instruction ------------------------------------------------------------------
     def step(self, ins: Insn) -> None:
         """Runs one instruction: every item reads the old state, all writes happen at the end."""
@@ -271,6 +275,8 @@ class Vm:
         writes_mem: list[tuple[int, int]] = []
         for item in ins.items:
             if item in ("nop", "rts (db)", "rts"):
+                continue
+            if self.hook(item, (post, post32, post_i, writes_mem)):
                 continue
             m = re.fullmatch(r"(\w+)<->(\w+)", item)
             if m:
@@ -284,7 +290,7 @@ class Vm:
                     post_i.append(upd)
                 reg = m[3]
                 writes_mem.append((a, self.get(reg)))
-                writes_mem.append((a + 1, self.get(twin(reg))))
+                writes_mem.append((a + 1, self.get(twin(reg))))  # VERIFIED: also for I / M
                 continue
             m = re.fullmatch(r"(\w+)=(dm|pm)\((.*?)\)( \(LW\))?", item)
             if m:
@@ -383,7 +389,9 @@ def parse_trace_line(line: str) -> tuple[int, dict[str, list[int]]]:
     return v[0], {"r": v[1:17], "s": v[17:33], "i": v[33:49], "m": v[49:65]}
 
 
-def check(mem: dict[int, int], prog: list[Insn], trace: list[str], base: int) -> int:
+def check(
+    mem: dict[int, int], prog: list[Insn], trace: list[str], base: int, cls: type = Vm
+) -> int:
     """Runs `prog[1:]` from the state after the first trace row and counts register mismatches.
 
     The first listing instruction (`i2 = dm(..)`) is undone by starting from its trace row; later
@@ -391,7 +399,7 @@ def check(mem: dict[int, int], prog: list[Insn], trace: list[str], base: int) ->
     so each wrong rule is reported once.
     """
     _pc, regs = parse_trace_line(trace[0])
-    vm = Vm(dict(mem))
+    vm = cls(dict(mem))
     vm.r, vm.s = [v << 8 for v in regs["r"]], [v << 8 for v in regs["s"]]
     vm.i, vm.m = regs["i"][:], regs["m"][:]
     bad = 0
