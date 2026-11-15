@@ -69,7 +69,13 @@ CROPS = {
         ("effects",),
     ),
 }
-SECTION_CROP = {"master": "organ", "organ": "organ", "piano": "piano", "synth": "synth", "effects": "effects"}
+SECTION_CROP = {
+    "master": "organ",
+    "organ": "organ",
+    "piano": "piano",
+    "synth": "synth",
+    "effects": "effects",
+}
 
 
 def fit_axis(pairs):
@@ -246,7 +252,9 @@ def main(argv=None):
     ap.add_argument("--crops", default=DEFAULT_CROPS)
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--csv", default="", help="photo anchor CSV (default: crates/nord-panel/data)")
-    ap.add_argument("--shots", action="store_true", help="also write the side-by-side with our shot")
+    ap.add_argument(
+        "--shots", action="store_true", help="also write the side-by-side with our shot"
+    )
     args = ap.parse_args(argv)
 
     if not os.path.exists(args.layout):
@@ -268,8 +276,17 @@ def main(argv=None):
     print(png)
     if args.shots:
         subprocess.run(
-            [sys.executable, os.path.join(ROOT, "tools", "gui_shots.py"), "--scale", "4",
-             "--sections", args.section, "--no-build", "--out", os.path.join(args.out, "shots")],
+            [
+                sys.executable,
+                os.path.join(ROOT, "tools", "gui_shots.py"),
+                "--scale",
+                "4",
+                "--sections",
+                args.section,
+                "--no-build",
+                "--out",
+                os.path.join(args.out, "shots"),
+            ],
             check=True,
         )
         shot = Image.open(os.path.join(args.out, "shots", f"{args.section}.png"))

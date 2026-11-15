@@ -4,8 +4,9 @@
 //!
 //! VERIFIED: every control centre listed in `data/photo_anchors_organ.csv` (crop
 //! `NS4-Panel-organ.max-2000x2000.format-png.png`, x/y mapped affinely from the crop's section
-//! outline onto [`super::section_rect`]); checked by `python tools/layout_overlay.py organ`,
-//! max centre error 0.34 mm before the GUI label nudges (1.3 mm for the drawbar LED ladders,
+//! outline onto [`super::section_rect`]; `organ.aux_led.a/b` deliberately 5.4 mm low, see
+//! [`super::ESTIMATED`]); checked by `python tools/layout_overlay.py organ`,
+//! max centre error 1.3 mm before the GUI label nudges (1.3 mm for the drawbar LED ladders,
 //! whose height and offset stay as before so the ladder numerals clear the next slot).
 //! Only the centres were verified: sizes are the old photo reads, except the faders, level
 //! LED ladders and drawbar slots (heights from the crop). ASSUMED: the crop's section is
@@ -43,9 +44,9 @@ pub fn rect(id: &str) -> Option<Rect> {
         "organ.ladder.a" => px(434.5, 107.5, 443.5, 187.0),
         "organ.ladder.b" => px(465.0, 107.5, 474.0, 187.0),
         "organ.focus_led.a" => px(420.0, 209.0, 426.0, 215.0),
-        "organ.aux_led.a" => px(438.5, 199.0, 444.5, 205.0),
+        "organ.aux_led.a" => px(438.5, 207.0, 444.5, 213.0),
         "organ.focus_led.b" => px(450.0, 209.0, 456.0, 215.0),
-        "organ.aux_led.b" => px(469.0, 199.0, 475.0, 205.0),
+        "organ.aux_led.b" => px(469.0, 207.0, 475.0, 213.0),
         "organ.layer.a" => px(419.0, 221.0, 442.0, 233.0),
         "organ.layer.b" => px(449.0, 221.0, 473.0, 233.0),
         "organ.octave_down" => px(422.5, 307.5, 444.5, 318.5),

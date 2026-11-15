@@ -38,7 +38,11 @@ def test_parse_anchors():
 def test_offsets_use_gui_rect_when_present_and_flag_over_threshold():
     m = lo.Mapping(lo.outline_anchors((0, 0, 100, 50), RECT))  # 1 mm per px
     ctl = [
-        {"id": "a.b", "rect": {"x": 10, "y": 20, "w": 2, "h": 2}, "gui": {"x": 20, "y": 20, "w": 2, "h": 2}},
+        {
+            "id": "a.b",
+            "rect": {"x": 10, "y": 20, "w": 2, "h": 2},
+            "gui": {"x": 20, "y": 20, "w": 2, "h": 2},
+        },
         {"id": "a.c", "rect": {"x": 10, "y": 20, "w": 2, "h": 2}},
     ]
     photo = {"a.b": (11.0, 1.0), "a.c": (1.0, 1.0), "zzz": (0, 0)}
