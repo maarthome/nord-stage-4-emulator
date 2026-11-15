@@ -25,8 +25,8 @@ import fx_mod2_laws as ml
 
 DENSE_CSV = ml.DATA / "fx-mod2-dense.csv"
 RUST = ml.ROOT / "crates" / "nord-core" / "src" / "fx" / "fw_mod2_dense.rs"
-#: Types of the law stage (PHAS 0, 1, FLANG 2, 3, SPIN 10, 11).
-STAGE_TYPES = (0, 1, 2, 3, 10, 11)
+#: Types of the law stage (PHAS 0, 1, FLANG 2, 3, ENS 8, 9, SPIN 10, 11).
+STAGE_TYPES = (0, 1, 2, 3, 8, 9, 10, 11)
 
 
 def read_dense() -> dict[tuple[int, str], dict[int, dict[int, int]]]:
@@ -53,11 +53,15 @@ MIN_AGREE = 9
 
 
 def best_match(
-    full: dict[int, dict[int, int]], words: list[int]
+    full: dict[int, dict[int, int]], words: list[int], skip: frozenset[int] = frozenset()
 ) -> tuple[int, dict[int, int]] | None:
-    """The dense series that agrees with at least `MIN_AGREE` of the 11 sample `words`."""
+    """The dense series that agrees with at least `MIN_AGREE` of the 11 sample `words`; the
+    series in `skip` (already taken by another offset) lose ties (ENS `c[2]` and `c[3]` carry
+    the same words)."""
     best, score = None, 0
     for dm, ser in full.items():
+        if dm in skip:
+            continue
         n = sum(ser[v] == w for v, w in zip(ml.SAMPLES, words, strict=True))
         if n > score:
             best, score = (dm, ser), n
@@ -83,8 +87,11 @@ def dense_laws() -> dict[int, dict[str, dict[int, tuple[bool, list[int]]]]]:
             }
             full = {dm: s for dm, s in sorted(series.items()) if set(ks) <= set(s)}
             laws: dict[int, tuple[bool, list[int]]] = {}
+            taken: set[int] = set()
             for off, (flt, words) in fits[t][kind].items():
-                hit = best_match(full, words)
+                hit = best_match(full, words, frozenset(taken)) or best_match(full, words)
+                if hit:
+                    taken.add(hit[0])
                 if hit is None and len(set(words)) == 1:
                     laws[off] = (flt, [words[0]] * len(ks))  # constant: written once
                     continue
