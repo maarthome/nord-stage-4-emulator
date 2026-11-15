@@ -41,6 +41,13 @@ pub(super) fn render_bay_piano(
     }
 }
 
+/// ON/OFF LED of a layer: lit while on, except that the focused layer blinks when several layers
+/// are on (`blink_on` = lit phase). VERIFIED by the demo video, 10 frames of A:14 at 2 fps: layer B
+/// (focused) alternates lit/dark, layer A (on, not focused) stays lit.
+pub(super) fn layer_led_lit(active: bool, focused: bool, several: bool, blink_on: bool) -> bool {
+    active && (!focused || !several || blink_on)
+}
+
 /// Blink phase of the focus LED (2 Hz).
 fn blink(ui: &Ui) -> bool {
     (ui.input(|i| i.time) * 4.0) as i64 % 2 == 0
@@ -182,14 +189,15 @@ fn draw_strip(
             "piano.pstick"
         });
 
-        // Focus LED: steady when it is the only active layer, blinking when both are active.
+        // Layer LED: lit while the layer is on; the focused layer blinks while both are on
+        // (VERIFIED, demo video A:14: the focused layer B blinks, A stays lit).
         let active = if l == 0 {
             state.piano_a_active
         } else {
             state.piano_b_active
         };
         let focused = state.piano_ui.focus == l;
-        let lit = active && focused && (!both || blink(ui));
+        let lit = layer_led_lit(active, focused, both, blink(ui));
         w::mini_led(
             p,
             r(focus).center(),
@@ -299,7 +307,10 @@ fn draw_octave_and_zone(
     );
 
     let zr = r("piano.zone_leds");
-    let lits = kb_zone::lits(state.piano_ui.kb_zone[l]);
+    let lits = kb_zone::shown(
+        kb_zone::lits(state.piano_ui.kb_zone[l]),
+        state.program_ui.split.on,
+    );
     w::led_strip(p, zr, 4, |i| lits[i], (LED_GREEN, LED_GREEN_DIM), false);
     let resp = ui.interact(
         zr.expand(2.0),
@@ -314,6 +325,24 @@ fn draw_octave_and_zone(
 mod tests {
     use super::*;
     use crate::panel::support::shapes_painted;
+
+    #[test]
+    fn layer_led_blinks_on_the_focused_layer_only_while_several_are_on() {
+        // A:14 in the demo video: B focused and blinking, A on and steady.
+        for phase in [true, false] {
+            assert!(
+                layer_led_lit(true, false, true, phase),
+                "unfocused stays lit"
+            );
+            assert_eq!(
+                layer_led_lit(true, true, true, phase),
+                phase,
+                "focused blinks"
+            );
+            assert!(layer_led_lit(true, true, false, phase), "alone: steady");
+            assert!(!layer_led_lit(false, true, true, phase), "off stays dark");
+        }
+    }
 
     #[test]
     fn render_bay_piano_paints_shapes() {

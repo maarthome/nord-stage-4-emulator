@@ -4,7 +4,20 @@
 //! `Stage4PanelState::organ_ui` holds the struct. Per-layer arrays are indexed `0 = A`, `1 = B`.
 
 use crate::panel::ctl::Trackers;
-use nord_core::organ::ScannerMode;
+use nord_core::organ::{OrganModel, ScannerMode};
+
+/// Percussion buttons of one organ layer (`Edt_Org_kPerc*`): ON, VOLUME SOFT, DECAY FAST,
+/// HARMONIC THIRD.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct OrganPerc {
+    pub on: bool,
+    pub soft: bool,
+    pub fast: bool,
+    pub third: bool,
+}
+
+/// All four KB ZONE LEDs: the engine default of every layer.
+pub const ALL_ZONES: u8 = 0b1111;
 
 /// UI state for the Organ area and the Rotary box.
 #[derive(Debug, Clone)]
@@ -17,13 +30,23 @@ pub struct OrganUi {
     pub solo: bool,
     /// Drawbar Live: ladders are unlit, the physical drawbars play (manual p.21).
     pub drawbar_live: bool,
-    /// KB ZONE position per layer (`kb_zone::POSITIONS`, `0` = every zone, the engine default).
+    /// KB ZONE LED set per layer (bit `u` = zone `u + 1`): a program stores any of the 12 firmware
+    /// codes, the buttons step through `kb_zone::POSITIONS`. Default: every zone.
     pub kb_zone: [u8; 2],
     /// Aux KB flag per layer (the LED); the UI value until telemetry reads it back.
     pub aux: [bool; 2],
     /// Physical drawbar positions (the sliders). They follow the stored preset while Preset mode
     /// is on and move alone in Drawbar Live (manual p.21).
     pub live_bars: [u8; 9],
+    /// Stored drawbar preset of layer B (layer A lives in `Stage4PanelState::organ_drawbars`); the
+    /// ladders show the focused layer's.
+    pub drawbars_b: [u8; 9],
+    /// Percussion buttons of layer B (layer A lives in `Stage4PanelState::perc_*`).
+    pub perc_b: OrganPerc,
+    /// Model of layer B (layer A lives in `Stage4PanelState::organ_model`).
+    pub model_b: OrganModel,
+    /// B3 Bass flavour of layer B (layer A: [`Self::b3_bass`]).
+    pub b3_bass_b: bool,
     /// SUSTPED per layer (Shift function of the layer buttons).
     pub sustped: [bool; 2],
     /// PSTICK per layer.
@@ -59,9 +82,14 @@ impl Default for OrganUi {
             restore_layers: 0b01,
             solo: false,
             drawbar_live: false,
-            kb_zone: [0; 2],
+            kb_zone: [ALL_ZONES; 2],
             aux: [false; 2],
-            live_bars: [8, 8, 8, 0, 0, 0, 0, 0, 0],
+            // The physical bars start fully pulled out (value 8), as in the demo video.
+            live_bars: [8; 9],
+            drawbars_b: [8, 8, 8, 0, 0, 0, 0, 0, 0],
+            perc_b: OrganPerc::default(),
+            model_b: OrganModel::B3,
+            b3_bass_b: false,
             sustped: [false; 2],
             pstick: [false; 2],
             perc_poly: false,
@@ -94,7 +122,7 @@ mod tests {
             u.rotary_stop_angle == 0 && !u.stop_angle_open,
             "Free, closed"
         );
-        assert_eq!(u.kb_zone, [0, 0]);
+        assert_eq!(u.kb_zone, [ALL_ZONES; 2]);
         assert_eq!(u.vib_type_b, ScannerMode::C3);
         assert!(u.trackers.is_empty());
     }

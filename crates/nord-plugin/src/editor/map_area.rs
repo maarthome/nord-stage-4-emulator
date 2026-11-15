@@ -98,8 +98,13 @@ pub(super) fn map_organ(e: &OrganEdit, out: &mut Vec<W>) {
             },
         ),
         // SYNC is a momentary trigger (`organz_sync_{n}`) and the zone / aux assignments are
-        // engine-only (`engine:` bindings); none has a writable host value, so they stay dimmed.
-        OrganEdit::SyncPreset | OrganEdit::Zone { .. } | OrganEdit::AuxKb { .. } => {}
+        // engine-only (`engine:` bindings); none has a writable host value, so they stay dimmed. The
+        // per-layer drawbar and percussion edits (layer B, like the layer A commands) have none either.
+        OrganEdit::SyncPreset
+        | OrganEdit::Zone { .. }
+        | OrganEdit::AuxKb { .. }
+        | OrganEdit::Drawbars { .. }
+        | OrganEdit::Percussion { .. } => {}
         OrganEdit::Pstick { layer, on } => {
             out.push(W::layer("ped_pstick", ORGAN_FIRST + layer.min(1), flag(on)))
         }

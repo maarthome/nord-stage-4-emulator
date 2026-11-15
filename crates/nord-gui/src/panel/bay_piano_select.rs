@@ -147,7 +147,7 @@ fn draw_acoustics(
     w::mini_led(
         p,
         pos2(soft.left() - SIDE_LED, soft.center().y),
-        state.piano_ui.soft_release[l],
+        state.piano_ui.soft_release[l] && logic::acoustic_leds(state.piano_cat),
         LED_RED,
         LED_RED_DIM,
         2.2,
@@ -191,7 +191,7 @@ fn draw_acoustics(
     w::mini_led(
         p,
         pos2(sr.left() - SIDE_LED, sr.center().y),
-        state.string_res,
+        state.string_res && logic::acoustic_leds(state.piano_cat),
         LED_RED,
         LED_RED_DIM,
         2.2,
@@ -200,7 +200,7 @@ fn draw_acoustics(
     w::mini_led(
         p,
         pos2(sr.right() + SIDE_LED, sr.center().y),
-        state.pedal_noise,
+        state.pedal_noise && logic::acoustic_leds(state.piano_cat),
         AMBER.0,
         AMBER.1,
         2.2,

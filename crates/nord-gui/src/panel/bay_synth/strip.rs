@@ -156,9 +156,11 @@ pub(super) fn paint_strip(
             10,
         );
         sui.mark(FOCUS_LEDS[i]);
-        // ASSUMED: the focused layer's LED blinks only while several layers are on.
+        // The focused layer's LED blinks only while several layers are on, the others stay lit
+        // (VERIFIED, demo video A:14 organ; the same LED design in every section: ASSUMED).
         let focused = sui.focus == i;
-        let lit = focused && (n_active < 2 || blink_phase);
+        let lit =
+            crate::panel::bay_piano::layer_led_lit(active[i], focused, n_active >= 2, blink_phase);
         dot(
             p,
             rect_or_empty(FOCUS_LEDS[i], o).center(),

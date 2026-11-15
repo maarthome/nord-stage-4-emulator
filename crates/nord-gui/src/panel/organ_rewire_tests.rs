@@ -148,7 +148,7 @@ fn shift_preset_is_sync_and_copies_the_physical_bars_into_the_preset() {
 }
 
 #[test]
-fn preset_mode_drawbars_still_edit_the_preset_and_the_live_bars_follow() {
+fn preset_mode_drawbars_edit_the_preset_of_the_focused_layer() {
     let mut sim = Sim::new();
     let r = rect_or_empty("organ.drawbar.6", sim.origin);
     sim.drag(r.center_top(), r.center_bottom());
@@ -156,7 +156,26 @@ fn preset_mode_drawbars_still_edit_the_preset_and_the_live_bars_follow() {
     assert!(cmds
         .iter()
         .any(|c| matches!(c, AudioCommand::SetDrawbars(d) if d[5] > 0)));
-    assert_eq!(sim.state.organ_ui.live_bars, sim.state.organ_drawbars);
+    // The moved physical bar and the focused layer's preset value agree; the other bars keep
+    // their own preset values (the sliders do not follow the preset).
+    assert_eq!(sim.state.organ_ui.live_bars[5], sim.state.organ_drawbars[5]);
+    assert_eq!(sim.state.organ_drawbars[0..5], [8, 8, 8, 0, 0]);
+}
+
+#[test]
+fn layer_b_drawbars_edit_layer_b_only() {
+    let mut sim = Sim::new();
+    sim.click("organ.layer.b"); // focus B (switches it on)
+    sim.cmds();
+    let r = rect_or_empty("organ.drawbar.6", sim.origin);
+    sim.drag(r.center_top(), r.center_bottom());
+    let cmds = sim.cmds();
+    assert!(cmds.iter().any(|c| matches!(
+        c,
+        AudioCommand::Organ(OrganEdit::Drawbars { layer: 1, bars }) if bars[5] > 0
+    )));
+    assert!(sim.state.organ_ui.drawbars_b[5] > 0);
+    assert_eq!(sim.state.organ_drawbars[5], 0, "layer A is untouched");
 }
 
 #[test]
@@ -175,7 +194,7 @@ fn shifted_octave_buttons_assign_the_focused_layer_to_a_zone() {
             leds: 0b0010
         })
     );
-    assert_eq!(sim.state.organ_ui.kb_zone, [0, 2]);
+    assert_eq!(sim.state.organ_ui.kb_zone, [0b1111, 0b0010]);
     let mut e = Stage4Engine::new(48_000.0);
     for ed in edits {
         ed.apply(&mut e);
