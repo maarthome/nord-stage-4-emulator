@@ -85,7 +85,7 @@ Engine code: `crates/nord-core/src/engine/{program_ops,snapshot,undo,layer_init,
 
 Not implemented: copying a single effect unit (Mod 1, Amp, Delay, ...) instead of the whole chain; writing Live slots into an `.ns4b` backup archive (single `.ns4l` files are written, see `cbin-and-presets.md` section 4.3); Solo (not stored in programs, p.42).
 
-## 6. Firmware layer routing (`FirmwareRouting`, default since D68)
+## 6. Firmware layer routing (`FirmwareRouting`, default since D73)
 
 Panel edit: `Stage4Engine::set_layer_zone_leds(layer, leds)` (`engine/zone_assign.rs`) writes a layer's LED zone set to the legacy router mask and, when the set has a `kKbZone` code, to the routing code, so the KB ZONE buttons act in both modes; defaults (all four zones) are unchanged. In the legacy router a non-empty zone set with no active split spans the whole keyboard (it was zone-1 only before; nothing set masks without bit 0 outside tests).
 
