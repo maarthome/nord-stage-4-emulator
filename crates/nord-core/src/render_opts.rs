@@ -322,7 +322,7 @@ pub struct FirmwareOptions {
     /// (`sinc::pitch_law`, VERIFIED law; root and sample-rate fields ASSUMED). Off by default.
     pub sample_pitch_fw: bool,
     /// `--firmware-routing` / `--legacy-routing`: section / layer enables and per-layer KB zones
-    /// as the program stores them ([`FirmwareRouting`]). On by default since D61: the zone key
+    /// as the program stores them ([`FirmwareRouting`]). On by default since D65: the zone key
     /// ranges (D22 criterion 2, `zone-key-ranges.md`) and the loader's layer enable rule
     /// (`engine-routing.md` s7) are VERIFIED. `--legacy-routing` and `--legacy-all` turn it off.
     pub firmware_routing: bool,
@@ -1087,7 +1087,7 @@ mod tests {
 
     #[test]
     fn firmware_routing_is_the_default_and_legacy_routing_turns_it_off() {
-        // D61: on by default and in `firmware_all`, off in `legacy_all` and with `--legacy-routing`.
+        // D65: on by default and in `firmware_all`, off in `legacy_all` and with `--legacy-routing`.
         assert!(FirmwareOptions::default().firmware_routing);
         assert!(FirmwareOptions::firmware_all().firmware_routing);
         assert!(!FirmwareOptions::legacy_all().firmware_routing);

@@ -24,10 +24,12 @@ impl LayerFxChain {
     }
 
     /// The `kRvbType` the multi-tap routine runs for a model and its variation flag, or `None`
-    /// for a model the port does not cover (Spring has its own routine, type 6 has no captured
-    /// block). ASSUMED mapping: the six models by increasing size onto the pairs `2/3` (Booth),
-    /// `4/5` (Room), `6/7` (Stage), `8/9` (Hall), `10/11` (Cathedral); the size order of the type
-    /// words is VERIFIED (`docs/research/fx-reverb-leslie.md` s3), the UI names are not.
+    /// for a model the port does not cover (Spring has its own routine, type 6 has captured words
+    /// but no oracle golden yet). VERIFIED: the firmware value-name list of `kRvbType` (ARM image
+    /// `0xC02CD2BC`, 12 pointers to `Spring, Spring2, Booth, Booth Predelay, Room, Room Predelay,
+    /// Stage, Stage Chorale, Hall, Hall Chorale, Cathedral, Cathedral Chorale`) is indexed by the
+    /// value, so the model is `type / 2` and the variation flag is `type & 1`
+    /// (`docs/research/fx-reverb-names.md`, `tools/fx_reverb_names.py`).
     pub(super) fn fw_multi_type(model: ReverbModel, variation: bool) -> Option<usize> {
         let base = match model {
             ReverbModel::Booth => 2,

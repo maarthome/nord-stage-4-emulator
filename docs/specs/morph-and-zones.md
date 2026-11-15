@@ -85,11 +85,11 @@ Engine code: `crates/nord-core/src/engine/{program_ops,snapshot,undo,layer_init,
 
 Not implemented: copying a single effect unit (Mod 1, Amp, Delay, ...) instead of the whole chain; writing Live slots into an `.ns4b` backup archive (single `.ns4l` files are written, see `cbin-and-presets.md` section 4.3); Solo (not stored in programs, p.42).
 
-## 6. Firmware layer routing (`FirmwareRouting`, default since D64)
+## 6. Firmware layer routing (`FirmwareRouting`, default since D65)
 
 Panel edit: `Stage4Engine::set_layer_zone_leds(layer, leds)` (`engine/zone_assign.rs`) writes a layer's LED zone set to the legacy router mask and, when the set has a `kKbZone` code, to the routing code, so the KB ZONE buttons act in both modes; defaults (all four zones) are unchanged. In the legacy router a non-empty zone set with no active split spans the whole keyboard (it was zone-1 only before; nothing set masks without bit 0 outside tests).
 
-Engine code: `crates/nord-core/src/engine/routing.rs`, decode `crates/nord-core/src/cbin/kb_zone.rs`; switch `ns4 render-patch --firmware-routing` (`FirmwareOptions::firmware_routing`), default **On** since [D64](../DECISIONS.md#d64-firmwarerouting-is-the-default-the-loader-rule-for-an-empty-layer-mask-is-verified) (`--legacy-routing` / `--legacy-all` turn it off; the raw `Stage4Engine::new` is `Off`) ([D22](../DECISIONS.md#d22-opt-in-firmware-paths-in-nord-core-defaults-change-only-when-verified-end-to-end)); evidence and numbers: [engine-routing](../research/engine-routing.md). An enabled section whose layer enable is 0 plays layer A in `On` mode, also next to sounding sections (OQ25, VERIFIED: the firmware view refresh `0xC00F8A50` stores `mask = scene mask or 1`, [engine-routing](../research/engine-routing.md) s7; `routing::default_layer_a`).
+Engine code: `crates/nord-core/src/engine/routing.rs`, decode `crates/nord-core/src/cbin/kb_zone.rs`; switch `ns4 render-patch --firmware-routing` (`FirmwareOptions::firmware_routing`), default **On** since [D65](../DECISIONS.md#d65-firmwarerouting-is-the-default-the-loader-rule-for-an-empty-layer-mask-is-verified) (`--legacy-routing` / `--legacy-all` turn it off; the raw `Stage4Engine::new` is `Off`) ([D22](../DECISIONS.md#d22-opt-in-firmware-paths-in-nord-core-defaults-change-only-when-verified-end-to-end)); evidence and numbers: [engine-routing](../research/engine-routing.md). An enabled section whose layer enable is 0 plays layer A in `On` mode, also next to sounding sections (OQ25, VERIFIED: the firmware view refresh `0xC00F8A50` stores `mask = scene mask or 1`, [engine-routing](../research/engine-routing.md) s7; `routing::default_layer_a`).
 
 | Rule | Behaviour | Tag |
 |---|---|---|
