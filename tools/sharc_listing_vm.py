@@ -263,7 +263,7 @@ class Vm:
         return None
 
     def hook(self, item: str, effects: tuple) -> bool:  # noqa: ANN001
-        """Subclass extension point: handles `item` (appending to the effect lists) or returns False."""
+        """Subclass extension point: handles `item` (appends to the effects) or returns False."""
         return False
 
     # ---- one instruction ------------------------------------------------------------------

@@ -80,7 +80,9 @@ def trace_rows(a: argparse.Namespace, entry: int, end: int, steps: tuple[str, ..
         extra = ["--calls", "1"]
         for step in steps:
             extra += ["--step", step]
-        olc.chain(a.exe, a.image, a.script, [*extra, "--trace", f"{entry:#x}:{end + 1:#x}", str(tr)])
+        olc.chain(
+            a.exe, a.image, a.script, [*extra, "--trace", f"{entry:#x}:{end + 1:#x}", str(tr)]
+        )
         return tr.read_text().splitlines()
 
 
@@ -94,7 +96,9 @@ def cmd_gentrace(a: argparse.Namespace) -> int:  # pragma: no cover - runs the o
     machine = start_vm(mem, rows[0])
     machine.run(prog[1:])
     bad_mem = diff(memory(a, (a.gen,)), machine.mem)
-    print(f"memory after the generator: {len(bad_mem)} words differ {[hex(k) for k in bad_mem[:8]]}")
+    print(
+        f"memory after the generator: {len(bad_mem)} words differ {[hex(k) for k in bad_mem[:8]]}"
+    )
     return 1 if bad or bad_mem else 0
 
 
@@ -129,7 +133,9 @@ def cmd_replay(a: argparse.Namespace) -> int:  # pragma: no cover - runs the ora
             ks = [k for k, (x, y) in enumerate(zip(got, want[call].tolist())) if x != y]
             print(f"call {call}: {len(ks)} window words differ, first at {ks[:6]}")
     bad_mem = diff(want_mem, machine.mem)
-    print(f"{a.calls} calls: first differing call {first_bad}, memory words differing {len(bad_mem)}")
+    print(
+        f"{a.calls} calls: first differing call {first_bad}, memory words differing {len(bad_mem)}"
+    )
     return 1 if first_bad is not None or bad_mem else 0
 
 
