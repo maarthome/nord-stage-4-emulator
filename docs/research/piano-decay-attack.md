@@ -73,6 +73,29 @@ The firmware hold decay is a gain on top of the sample, not a replacement of its
 
 None to the engine. The evidence does not support a fit: the default decay equals the hardware (median ratio 1.00), the attack differs by about 10 ms, and the firmware parameters that shape decay are already in the opt-in slew path. A damper or release constant fitted to these clips would move the default away from the hardware in the cases where it now agrees (Felt Upright 9.01 / 9.00 s, Pearl Upright 7.20 / 7.66 s). The new `tools/piano_decay.py` and the committed per-octave numbers make the check repeatable (D86, D22).
 
+## 6. Why chain + slew differs from the default (VERIFIED run, Velvet Grand C4, `ns4 render-patch`, velocity 30 / 64 / 100 / 127)
+
+| Variant | peak of the first 300 ms (dB) | dB per velocity unit | vs default |
+|---|---|---|---|
+| default | -27.3 / -18.0 / -8.8 / -4.3 | 0.237 | 0 |
+| `--piano-slew-fw` | -46.7 / -37.4 / -27.8 / -23.6 | 0.238 | -19.4 / -19.4 / -19.0 / -19.3 |
+| `--firmware-piano-chain` | -24.7 / -15.4 / -6.1 / -1.7 | 0.237 | +2.6 |
+| chain + slew | -44.1 / -34.8 / -25.2 / -21.0 | 0.238 | -16.8 |
+
+1. **The slew follows the velocity law.** One note per velocity gives the same 0.238 dB per velocity unit as the default; the slope of about 0 in [piano-transcription](piano-transcription.md) s4 was an artefact of the dense clip (the dense-clip fits mix the paths, item 4).
+2. **The slew is a constant 19.4 dB below the default at every velocity.** The firmware gain is `0.21875 * level` against the default's `level` (-13.2 dB, VERIFIED words); the remaining -6.2 dB is consistent with the muted extra voice (`F-2 = F3 = 0`, VERIFIED) that the default plays on top of the main voice (inference from the numbers, not isolated by a render without the extra voice). The absolute scale of the slew bus word is the open receiver convention (OQ20), so it is not a parameter to fit.
+3. **Single-note attack is identical** (10 to 90 % rise: Felt 16 / 6 / 17 ms, Velvet 12 / 44 / 6 ms at MIDI 48 / 60 / 72, equal for default and slew). The 54 to 70 ms of the dense clips is therefore a mix effect (levels of overlapping notes, onset jitter of the transcriber, a 10 to 90 % window on the loudest note), not the voice envelope; only 2 to 3 notes per clip are isolated enough for a single-note attack, so the 10 ms default-versus-hardware attack difference cannot be resolved better than the method's scatter.
+4. **With the damper pedal down the firmware voice path is bypassed** (`extra_voice.rs`: the damper-down strokes, `kind 1`, have no firmware voice list or SMP record in the decoded data, so the legacy path plays them): the pedal is down at the onset of 32 % (Velvet), 25 % (Felt), 77 % (White) and 62 % (Pearl) of the transcribed notes. A `--piano-slew-fw` clip replay is thus a mix of slew voices (pedal up) and legacy voices (pedal down), which explains why its level on the clips (-1.5 to -6.5 dB against the chain) is far above the -16.8 dB of a single note, and why the per-octave T60 of the slew render is not a clean measurement (section 2). Test: `extra_voice::tests::pedal_down_bypasses_the_slew_voice`.
+5. **Level on isolated notes by pedal state** (median emulator minus hardware peak of the first 300 ms, notes with no onset in the next 0.35 s; Velvet 16 + 7, Felt 16 + 7, White 9 + 20, Pearl 17 + 19 notes pedal up + pedal down):
+
+| Variant | Velvet up / down | Felt up / down | White up / down | Pearl up / down |
+|---|---|---|---|---|
+| default | +0.1 / -2.6 | -3.9 / -6.8 | -0.5 / -4.7 | -2.9 / -5.3 |
+| chain | +2.8 / 0.0 | -1.2 / -4.1 | +2.2 / -2.1 | n/a |
+| chain + slew | -2.3 / -1.8 | -8.9 / -6.9 | -3.6 / -2.7 | -2.5 / -2.8 |
+
+For the default and the chain the pedal-down notes read 2.4 to 4.3 dB lower than the pedal-up notes, relative to the hardware: the emulator's damper-down strokes are quieter than the hardware's under the pedal (chain + slew shows no such step because its pedal-down notes are the legacy voices; EMPIRICAL, tails of earlier notes confound the peak; 7 to 20 notes per cell). No engine parameter is changed on this evidence (D22): the damper-down gain under the firmware path is ASSUMED, and a fit would mix the open bus scale into a per-stroke constant.
+
 ## Implications
 
 - The T60 gap of OQ20 is closed as a measurement artefact; the open items are the slew path's absolute level and its per-sound rate table, and whether the hardware holds the sample tail after the last decoded sample.
@@ -81,5 +104,6 @@ None to the engine. The evidence does not support a fit: the default decay equal
 ## Follow-ups
 
 - A single-note hardware recording (known velocity, pedal up and down, 10 s) would measure the true T60, the release time constant (44 ms) and the sample end behaviour directly (the same request as [piano-felt-upright-soft](piano-felt-upright-soft.md)).
+- Decode the firmware voice list of damper-down strokes (`kind 1`) so that `--piano-slew-fw` and the chain also cover notes struck under the pedal; then re-run the clip comparison, the largest remaining cause of the chain + slew gap.
 - Run the ARM rate writer for Felt Upright, White Grand and Pearl Upright (`tools/arm_smp_slew_init.py rates`) to replace the Velvet-only `rate_for` table.
 - Model the release-sample record (time constant 0.23 s) once the single-note recording exists.
