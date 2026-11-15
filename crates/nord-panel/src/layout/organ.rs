@@ -1,13 +1,13 @@
 //! Organ section (photo crop x 415..709). Drawbar `n` sits at
-//! `x = 486 + 25.2 * (n - 1)` photo px; its LED ladder is the 15 px column
+//! `x = 485 + 25.4 * (n - 1)` photo px; its LED ladder is the 15 px column
 //! just to the right of the slot.
 //!
 //! ASSUMED: read from the 2000 px photo; higher-resolution photo confirms.
 
 use super::{px, Rect};
 
-const DRAWBAR_X0: f32 = 486.0;
-const DRAWBAR_PITCH: f32 = 25.2;
+const DRAWBAR_X0: f32 = 485.0;
+const DRAWBAR_PITCH: f32 = 25.4;
 
 fn drawbar(id: &str) -> Option<Rect> {
     let (n, ladder) = if let Some(n) = id.strip_prefix("organ.drawbar_ladder.") {
@@ -18,9 +18,9 @@ fn drawbar(id: &str) -> Option<Rect> {
     let n: u32 = n.parse().ok().filter(|n| (1..=9).contains(n))?;
     let cx = DRAWBAR_X0 + DRAWBAR_PITCH * (n - 1) as f32;
     Some(if ladder {
-        px(cx + 4.0, 212.0, cx + 19.0, 272.0)
+        px(cx + 4.0, 210.5, cx + 19.0, 270.5)
     } else {
-        px(cx - 4.0, 236.0, cx + 4.0, 313.0)
+        px(cx - 4.0, 236.0, cx + 4.0, 321.0)
     })
 }
 
@@ -29,31 +29,31 @@ pub fn rect(id: &str) -> Option<Rect> {
         return Some(r);
     }
     Some(match id {
-        "organ.on" => px(496.0, 121.0, 519.0, 134.0),
-        "organ.fx_focus_led" => px(467.0, 127.0, 472.0, 132.0),
-        "organ.fader.a" => px(417.0, 137.0, 431.0, 205.0),
-        "organ.fader.b" => px(448.0, 137.0, 462.0, 205.0),
-        "organ.ladder.a" => px(436.0, 140.0, 445.0, 200.0),
-        "organ.ladder.b" => px(466.0, 140.0, 475.0, 200.0),
-        "organ.focus_led.a" => px(419.0, 209.0, 425.0, 215.0),
-        "organ.aux_led.a" => px(435.0, 209.0, 441.0, 215.0),
-        "organ.focus_led.b" => px(449.0, 209.0, 455.0, 215.0),
-        "organ.aux_led.b" => px(465.0, 209.0, 471.0, 215.0),
-        "organ.layer.a" => px(420.0, 226.0, 443.0, 238.0),
-        "organ.layer.b" => px(449.0, 226.0, 473.0, 238.0),
-        "organ.octave_down" => px(424.0, 291.0, 446.0, 302.0),
-        "organ.octave_up" => px(447.0, 291.0, 470.0, 302.0),
-        "organ.zone_leds" => px(436.0, 309.0, 460.0, 315.0),
-        "organ.model" => px(500.0, 178.0, 523.0, 190.0),
-        "organ.model_leds" => px(505.0, 154.0, 518.0, 174.0),
-        "organ.preset" => px(436.0, 263.0, 459.0, 275.0),
-        "organ.vibrato_selector" => px(546.0, 156.0, 570.0, 169.0),
-        "organ.vibrato_on.a" => px(560.0, 181.0, 571.0, 194.0),
-        "organ.vibrato_on.b" => px(571.0, 181.0, 582.0, 194.0),
-        "organ.perc_volume" => px(614.0, 158.0, 637.0, 171.0),
-        "organ.perc_decay" => px(642.0, 158.0, 665.0, 171.0),
-        "organ.perc_third" => px(670.0, 158.0, 693.0, 171.0),
-        "organ.perc_on" => px(670.0, 181.0, 693.0, 194.0),
+        "organ.on" => px(496.0, 85.5, 519.0, 98.5),
+        "organ.fx_focus_led" => px(467.0, 92.0, 472.0, 97.0),
+        "organ.fader.a" => px(416.5, 103.0, 430.5, 195.0),
+        "organ.fader.b" => px(448.0, 103.0, 462.0, 195.0),
+        "organ.ladder.a" => px(434.5, 107.5, 443.5, 187.0),
+        "organ.ladder.b" => px(465.0, 107.5, 474.0, 187.0),
+        "organ.focus_led.a" => px(420.0, 209.0, 426.0, 215.0),
+        "organ.aux_led.a" => px(438.5, 199.0, 444.5, 205.0),
+        "organ.focus_led.b" => px(450.0, 209.0, 456.0, 215.0),
+        "organ.aux_led.b" => px(469.0, 199.0, 475.0, 205.0),
+        "organ.layer.a" => px(419.0, 221.0, 442.0, 233.0),
+        "organ.layer.b" => px(449.0, 221.0, 473.0, 233.0),
+        "organ.octave_down" => px(422.5, 307.5, 444.5, 318.5),
+        "organ.octave_up" => px(445.5, 307.5, 468.5, 318.5),
+        "organ.zone_leds" => px(433.5, 330.0, 457.5, 336.0),
+        "organ.model" => px(499.0, 160.0, 522.0, 172.0),
+        "organ.model_leds" => px(504.5, 127.0, 517.5, 154.0),
+        "organ.preset" => px(434.5, 271.0, 457.5, 283.0),
+        "organ.vibrato_selector" => px(546.5, 130.5, 570.5, 143.5),
+        "organ.vibrato_on.a" => px(560.5, 163.5, 571.5, 176.5),
+        "organ.vibrato_on.b" => px(572.0, 163.5, 583.0, 176.5),
+        "organ.perc_volume" => px(614.5, 134.5, 637.5, 147.5),
+        "organ.perc_decay" => px(642.5, 134.5, 665.5, 147.5),
+        "organ.perc_third" => px(670.5, 134.5, 693.5, 147.5),
+        "organ.perc_on" => px(670.5, 163.5, 693.5, 176.5),
         _ => return None,
     })
 }

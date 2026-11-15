@@ -6,15 +6,15 @@ use super::{px, Rect};
 
 pub fn rect(id: &str) -> Option<Rect> {
     Some(match id {
-        "master.level" => px(383.0, 136.0, 406.0, 159.0),
+        "master.level" => px(383.0, 105.5, 406.0, 128.5),
         "master.pitch_stick" => px(256.0, 150.0, 300.0, 175.0),
         "master.mod_wheel" => px(314.0, 176.0, 341.0, 248.0),
-        "rotary.drive" => px(382.0, 191.0, 404.0, 213.0),
-        "rotary.organ" => px(385.0, 229.0, 407.0, 241.0),
-        "rotary.stop_mode" => px(385.0, 262.0, 407.0, 274.0),
+        "rotary.drive" => px(382.0, 176.5, 404.0, 198.5),
+        "rotary.organ" => px(383.5, 225.5, 405.5, 237.5),
+        "rotary.stop_mode" => px(383.5, 269.5, 405.5, 281.5),
         // Widened from 386..406 so the row also holds the SLOW / FAST names (LED then name).
-        "rotary.speed_leds" => px(379.0, 285.0, 412.0, 291.0),
-        "rotary.speed" => px(385.0, 294.0, 407.0, 306.0),
+        "rotary.speed_leds" => px(375.0, 298.5, 408.0, 304.5),
+        "rotary.speed" => px(383.5, 310.5, 405.5, 322.5),
         _ => return None,
     })
 }
