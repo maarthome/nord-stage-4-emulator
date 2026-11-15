@@ -259,7 +259,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Oracle chords of the Farfisa and B3 Bass processors with the corrected boot log and key-down words (`tools/organ_proc_oracle.py`, `sharc-pass --rec`, [organ-farfisa-bass](research/organ-farfisa-bass.md) s7)
 - [x] Farfisa key stage (`--farfisa-processor on`: key-down weights `1/48` x measured per-sum line gain, chord a peak within 0.2 dB, [organ-farfisa-bass](research/organ-farfisa-bass.md) s9)
 - [x] `--firmware-routing`: an enabled section with no layer on plays layer A (OQ25, the 9 silent programs become audible)
-- [ ] Farfisa processor `0x122B85` bit-exact (lattice, phase; branches and flags in the interpreter, model 2 install) and the B3 processor `0x121E2B` (the Bass processor `0x122296` is done, s15): bit-exact models, then Rust (inputs known, OQ18)
+- [x] Farfisa processor `0x122B85` on the firmware machine (jumps and ALU flags, model 2 install with key-down weights; bit exact over 36 oracle calls, stage within 0.004 dB on 48 chord lines, replaces the FIRs; [organ-farfisa-bass](research/organ-farfisa-bass.md) s16, D74)
+- [ ] Real time firmware organ stages (Bass 3.3 to 3.6, Farfisa about 2 s of CPU per second of audio, s17, TD-15), Farfisa generator `0x122A71` on the machine, and the B3 processor `0x121E2B` (the Bass processor `0x122296` is done, s15): bit-exact models, then Rust (inputs known, OQ18)
 - [ ] Percussion path (second engine family `0xC00BF890`, `0xC00BE348`), key-up and velocity source
 
 ### 7b.4 Effects

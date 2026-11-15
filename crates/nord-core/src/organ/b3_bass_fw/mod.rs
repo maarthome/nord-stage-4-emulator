@@ -12,6 +12,7 @@
 
 mod exec;
 mod f40;
+mod fast;
 mod prog_gen;
 mod prog_proc;
 mod tables;
