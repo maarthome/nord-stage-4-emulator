@@ -80,7 +80,7 @@ pub(super) fn delay(f: &mut Fx, st: &mut Stage4PanelState, slot: usize) {
         let c = &mut st.fx_ui.chains[slot];
 
         let on = f.rect("delay.on");
-        f.led_above(on, c.delay_on, LED_RED, LED_RED_DIM);
+        f.led_left(on, c.delay_on, LED_RED, LED_RED_DIM);
         match f.button(
             "delay.on",
             on,
