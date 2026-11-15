@@ -33,6 +33,7 @@ import numpy as np
 import synth_adapter
 import synth_eval
 import synth_train_data as std
+import synth_train_state as sts
 
 GRAD_WINDOW = 100
 CLIP_QUANTILE = 0.8
@@ -124,13 +125,14 @@ def run_eval(
         **scores,
     }
     log_record(ctx, {**rec, "kind": "full"})
-    synth_adapter.save_adapter(peft_model, ctx["out"] / "last")
-    if snapshot:
-        synth_adapter.save_adapter(peft_model, ctx["out"] / f"step_{step}")
+    new_best = min(best, v)
+    folders = [ctx["out"] / "last"] + ([ctx["out"] / f"step_{step}"] if snapshot else [])
+    for folder in folders:
+        synth_adapter.save_adapter(peft_model, folder)
+        sts.save_state(folder, step=step, best=new_best, **ctx["state_fn"]())
     if v < best:
         synth_adapter.save_adapter(peft_model, ctx["out"] / "best")
-        return v
-    return best
+    return new_best
 
 
 def train(args: argparse.Namespace) -> None:
@@ -160,10 +162,27 @@ def train(args: argparse.Namespace) -> None:
         cycle_momentum=False,
     )
     history: collections.deque = collections.deque(maxlen=GRAD_WINDOW)
-    best, t0 = float("inf"), time.time()
-    logf = (out / "log.csv").open("w", newline="")
+    start, best, elapsed = 0, float("inf"), 0.0
+    if args.resume:
+        src = Path(args.resume)
+        synth_adapter.restore_adapter(peft_model, src)
+        state = sts.load_state(src)
+        start, best, elapsed = sts.apply_state(
+            state,
+            total_steps=args.steps,
+            opt=opt,
+            sched=sched,
+            history=history,
+            sampler_rng=train_s.rng,
+        )
+        print(f"resumed from {src} at step {start}", flush=True)
+    t0 = time.time() - elapsed
+    log_path = out / "log.csv"
+    fresh = not log_path.exists() or log_path.stat().st_size == 0
+    logf = log_path.open("a" if args.resume else "w", newline="")
     log = csv.writer(logf)
-    log.writerow(["step", "loss", "grad_norm", "clip", "lr", "seconds"])
+    if fresh or not args.resume:
+        log.writerow(["step", "loss", "grad_norm", "clip", "lr", "seconds"])
     ctx = {
         "root": root,
         "out": out,
@@ -171,10 +190,19 @@ def train(args: argparse.Namespace) -> None:
         "f1_entries": f1_entries,
         "device": device,
         "t0": t0,
+        "state_fn": lambda: {
+            "total_steps": args.steps,
+            "opt": opt,
+            "sched": sched,
+            "history": history,
+            "elapsed": time.time() - t0,
+            "sampler_rng": train_s.rng,
+        },
     }
-    best = run_eval(0, model, peft_model, ctx, best)  # baseline of the untrained adapter
+    if not args.resume:
+        best = run_eval(0, model, peft_model, ctx, best)  # baseline of the untrained adapter
     model.train()
-    for step in range(1, args.steps + 1):
+    for step in range(start + 1, args.steps + 1):
         audio, notes = train_s.batch(args.bs)
         opt.zero_grad(set_to_none=True)
         with torch.autocast("cuda", dtype=torch.bfloat16, enabled=args.bf16):
@@ -225,6 +253,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--snapshot-every", type=int, default=500, help="Keep step_N adapters.")
     p.add_argument("--eval-items", type=int, default=12, help="Held-out items for F1 per eval.")
     p.add_argument("--val-segments", type=int, default=24, help="Held-out segments for NLL.")
+    p.add_argument("--resume", help="Adapter folder with train_state.pt (last or step_N).")
     p.add_argument("--out", required=True, help="Run folder (outside the repo).")
     return p
 

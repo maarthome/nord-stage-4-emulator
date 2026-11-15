@@ -91,6 +91,18 @@ def save_adapter(peft_model: Any, folder: Path) -> None:
     peft_model.save_pretrained(str(folder))
 
 
+def restore_adapter(peft_model: Any, folder: Path) -> None:
+    """Loads adapter weights from ``folder`` into an already attached ``peft_model`` (resume)."""
+    from peft import set_peft_model_state_dict
+    from safetensors.torch import load_file
+
+    weights = load_file(str(Path(folder) / "adapter_model.safetensors"))
+    result = set_peft_model_state_dict(peft_model, weights)
+    unexpected = getattr(result, "unexpected_keys", None)
+    if unexpected:
+        raise ValueError(f"adapter in {folder} does not match this arm: {unexpected[:3]}")
+
+
 def load_adapter(folder: Path, device: str = "cpu") -> Any:
     """Base model plus the adapter from ``folder``; returns the model to call ``transcribe`` on."""
     from peft import PeftModel

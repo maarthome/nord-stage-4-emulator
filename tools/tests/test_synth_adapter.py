@@ -77,3 +77,20 @@ def test_attach_save_load_round_trip_leaves_base_unchanged(tmp_path):
     name = "backbone.inputConv.base_layer.weight"
     got = dict(again.named_parameters())
     assert name in got and torch.equal(got[name].detach(), ref["backbone.inputConv.weight"])
+
+
+def test_restore_adapter_reproduces_saved_weights(tmp_path):
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("peft")
+    pytest.importorskip("transkun")
+    first = sa.attach(sa.load_base("cpu"), "lokr")
+    with torch.no_grad():
+        for p in first.parameters():
+            if p.requires_grad:
+                p.add_(0.01)
+    sa.save_adapter(first, tmp_path / "ad")
+    second = sa.attach(sa.load_base("cpu"), "lokr")
+    sa.restore_adapter(second, tmp_path / "ad")
+    a, b = dict(first.named_parameters()), dict(second.named_parameters())
+    trained = [k for k, p in a.items() if p.requires_grad]
+    assert trained and all(torch.equal(a[k], b[k]) for k in trained)

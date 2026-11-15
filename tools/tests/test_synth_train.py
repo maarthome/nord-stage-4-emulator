@@ -43,5 +43,8 @@ def test_parser_defaults_follow_the_plan():
     a = st.build_parser().parse_args(["data", "--out", "run"])
     assert (a.arm, a.steps, a.eval_every, a.snapshot_every) == ("lokr", 8000, 500, 500)
     assert (a.bs, a.seg, a.lr, a.bf16) == (4, 16.0, 2e-4, False)
+    assert a.resume is None
+    c = st.build_parser().parse_args(["data", "--out", "run", "--resume", "run/last"])
+    assert c.resume == "run/last"
     b = st.build_parser().parse_args(["data", "--out", "run", "--arm", "lora", "--r", "32"])
     assert b.arm == "lora" and b.r == 32
