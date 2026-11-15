@@ -347,8 +347,8 @@ Firmware strings confirm the dedicated `LeslieHorn` and `Rotary Mic Distance` pa
 1. **Tube Overdrive Preamp:** Asymmetric soft-clipping waveshaper (`tanh(drive * x) + 0.1 * x^2`).
 2. **800 Hz Linkwitz-Riley Crossover (`ROTARY_CROSSOVER_HZ`):** Verified against `ARM0` (`0x0db130` / `0x0e0098`), splits the signal into the **Treble Horn** ($\ge 800\text{ Hz}$) and **Bass Rotor Drum** ($< 800\text{ Hz}$), with `ROTARY_BASS_HORN_BALANCES` (`70/30 .. 30/70` from OS v1.66 `0x2c20d8`).
 3. **Independent Rotational Ballistics:**
-   - **Slow (Chorale):** Horn = $0.80\text{ Hz}$ ($48\text{ RPM}$), Bass Drum = $0.67\text{ Hz}$ ($40\text{ RPM}$).
-   - **Fast (Tremolo):** Horn = $6.85\text{ Hz}$ ($411\text{ RPM}$), Bass Drum = $5.70\text{ Hz}$ ($342\text{ RPM}$).
+   - **Slow (Chorale):** Horn = $0.787\text{ Hz}$, Bass Drum = $0.718\text{ Hz}$ (VERIFIED, ARM state block: nominal 0.80 / 0.73 Hz times the DSP frame ratio 0.98418, [leslie-settings](../research/leslie-settings.md)).
+   - **Fast (Tremolo):** Horn = $6.889\text{ Hz}$, Bass Drum = $6.299\text{ Hz}$ (VERIFIED, nominal 7.0 / 6.4 Hz). The System menu Low / High choices change them (`organ/rotary_laws.rs`).
    - **Acceleration / Deceleration Time Constants:** Horn ramps in $\tau_{\text{horn}} \approx 0.7\text{ s}$; heavy wooden Bass Drum ramps in $\tau_{\text{drum}} \approx 4.2\text{ s}$.
 4. **Doppler Pitch, Mic Placement & Cabinet Reflections:**
    - **Mic Distance (`rotary_close_mic`):** `Close` yields deeper horn Doppler excursion ($\pm 0.55\text{ ms}$) and narrower beaming with subtle baffle reflections (`0.05`); `Normal` uses $\pm 0.35\text{ ms}$ excursion and stronger stereo cabinet early reflections (`0.18` cross-taps at $3.4\text{ ms}$ / $4.6\text{ ms}$).
