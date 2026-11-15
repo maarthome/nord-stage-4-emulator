@@ -43,6 +43,8 @@ Read the full specification suite in [`docs/`](docs/README.md):
 
 ## Download
 
+**Playing the GUI:** `nord-stage4` plays from a MIDI keyboard (first MIDI port, velocity passed through unchanged), the mouse (velocity 88) or the computer keyboard (`A S D F G H J K L ; '` white keys, `W E T Y U O P` black keys, `Z` / `X` octave, `C` / `V` velocity, `Space` sustain; see [GUI testing](docs/gui-testing.md)).
+
 Tagged releases ship `ns4` (CLI), `nord-stage4` (GUI), the standalone plugin host, and the CLAP + VST3 plugin for Windows x86_64, Linux x86_64 and macOS arm64, with SHA256 files. Install paths per OS are in the `README.txt` inside each archive. The plugin has **not** been verified in any DAW yet ([docs/HOST_COMPATIBILITY.md](docs/HOST_COMPATIBILITY.md)); builds are unsigned. Maintainers: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ---

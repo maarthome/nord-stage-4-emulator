@@ -7,6 +7,8 @@
 //! A value is `sign(1) | exponent(8) | fraction(31)` in bits 39..0 plus the implicit leading one,
 //! i.e. a 32 bit significand: `value32 << 8 | extension`.
 
+use super::fast;
+
 pub(super) const M32: u64 = 0xFFFF_FFFF;
 const ALL_ONES: u64 = 0xFF_FFFF_FFFF;
 
@@ -70,8 +72,20 @@ fn round_pack(neg: bool, e2: i32, m: u128, sticky: bool) -> u64 {
     sign | (((exp + 127) as u64) << 31) | (q as u64 & 0x7FFF_FFFF)
 }
 
-/// `Fx + Fy` (`sub` = `Fx - Fy`).
+/// `Fx + Fy` (`sub` = `Fx - Fy`): the 64 bit fast path for normal operands, else the general one.
+#[inline(always)]
 pub(super) fn add(a: u64, b: u64, sub: bool) -> u64 {
+    fast::add(a, b, sub).unwrap_or_else(|| add_general(a, b, sub))
+}
+
+/// `Fx * Fy`: the 64 bit fast path for normal operands, else the general one.
+#[inline(always)]
+pub(super) fn mul(a: u64, b: u64) -> u64 {
+    fast::mul(a, b).unwrap_or_else(|| mul_general(a, b))
+}
+
+/// `Fx + Fy` on any operands (128 bit integers).
+pub(super) fn add_general(a: u64, b: u64, sub: bool) -> u64 {
     let (mut xn, xc, mut xe, mut xm) = unpack(a);
     let (mut yn, yc, mut ye, mut ym) = unpack(b);
     yn ^= sub;
@@ -114,8 +128,8 @@ pub(super) fn add(a: u64, b: u64, sub: bool) -> u64 {
     round_pack(xn, xe - 95, m, sticky)
 }
 
-/// `Fx * Fy`.
-pub(super) fn mul(a: u64, b: u64) -> u64 {
+/// `Fx * Fy` on any operands.
+pub(super) fn mul_general(a: u64, b: u64) -> u64 {
     let (xn, xc, xe, xm) = unpack(a);
     let (yn, yc, ye, ym) = unpack(b);
     let neg = xn ^ yn;

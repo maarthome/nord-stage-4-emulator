@@ -47,6 +47,25 @@
        {"label": "vel-88-piano-chain+slew", "velocity": 88, "flags": ["--firmware-piano-chain", "--piano-slew-fw"]},
        {"label": "piano-chain+law+slew", "flags": ["--firmware-piano-chain", "--firmware-piano-layer-law", "--piano-slew-fw"]},
        {"label": "routing", "flags": ["--firmware-routing"]}]},
+    {"id": "piano_felt_tr", "entry": "Program/Bank A/Felt Upright.ns4p", "engine": "piano Upright (Felt), A:13 (transcribed-notes run, 30 s)", "at_s": 150, "duration_s": 30,
+     "variants": [
+       {"label": "default", "flags": []},
+       {"label": "piano-chain", "flags": ["--firmware-piano-chain"]},
+       {"label": "chain+slew", "flags": ["--firmware-piano-chain", "--piano-slew-fw"]},
+       {"label": "vel-88", "velocity": 88, "flags": []},
+       {"label": "vel-88-chain+slew", "velocity": 88, "flags": ["--firmware-piano-chain", "--piano-slew-fw"]}]},
+    {"id": "piano_white", "entry": "Program/Bank A/White Grand.ns4p", "engine": "piano Grand (White), A:21", "at_s": 430, "duration_s": 30,
+     "variants": [
+       {"label": "default", "flags": []},
+       {"label": "piano-chain", "flags": ["--firmware-piano-chain"]},
+       {"label": "chain+slew", "flags": ["--firmware-piano-chain", "--piano-slew-fw"]},
+       {"label": "vel-88", "velocity": 88, "flags": []},
+       {"label": "vel-88-chain+slew", "velocity": 88, "flags": ["--firmware-piano-chain", "--piano-slew-fw"]}]},
+    {"id": "piano_pearl", "entry": "Program/Bank A/Pearl Upright.ns4p", "engine": "piano Upright (Pearl), A:23", "at_s": 505, "duration_s": 30,
+     "variants": [
+       {"label": "default", "flags": []},
+       {"label": "chain+slew", "flags": ["--firmware-piano-chain", "--piano-slew-fw"]},
+       {"label": "vel-88", "velocity": 88, "flags": []}]},
     {"id": "piano_felt", "entry": "Program/Bank A/Felt Upright.ns4p", "engine": "piano Upright (Felt), no FX", "at_s": 150, "duration_s": 40,
      "variants": [
        {"label": "default", "flags": []},

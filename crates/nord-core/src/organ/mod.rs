@@ -19,11 +19,13 @@ mod b3_weights;
 mod b3_wheels;
 mod drawbar;
 mod drawbar_sum;
+mod farfisa_fw;
 mod farfisa_keys;
+#[cfg(test)]
+mod farfisa_keys_tests;
 mod farfisa_proc_gain;
 mod farfisa_wheels;
 mod firmware_bank;
-mod gain_fir;
 mod globals;
 mod keyclick;
 mod lane_mix;
@@ -125,7 +127,8 @@ pub struct OrganLayer {
     pub model: OrganModel,
     /// When `true` on `OrganModel::B3`, engages Nord's B3 Bass pickup calibration curve.
     pub b3_bass_mode: bool,
-    /// Opt-in Farfisa processor stage (key-down weights and measured line gain, `farfisa_keys.rs`):
+    /// Opt-in Farfisa processor stage (the firmware routine at the DSP rate, `farfisa_keys.rs`; set it
+    /// with `set_farfisa_processor`):
     /// applies to `OrganModel::Farfisa` with `ToneWheelSource::FarfisaWheels` only.
     pub farfisa_processor: bool,
     /// Keyboard octave transposition (`-2..=+2`).
@@ -217,7 +220,7 @@ pub struct OrganLayer {
     b3_tail: bool,
     farfisa_wheels: FarfisaWheels,
     farfisa_synced: (f32, f32),
-    farfisa_keys: farfisa_keys::FarfisaKeys,
+    farfisa_keys: Option<Box<farfisa_keys::FarfisaKeys>>,
     /// Opt-in B3 Bass processor stage (`set_b3_bass_processor`, `b3_bass_stage.rs`).
     b3_bass_processor: bool,
     b3_bass: Option<Box<b3_bass_stage::B3BassStage>>,
@@ -316,7 +319,7 @@ impl OrganLayer {
             b3_tail: true,
             farfisa_wheels: FarfisaWheels::new(),
             farfisa_synced: (0.0, f32::NAN),
-            farfisa_keys: farfisa_keys::FarfisaKeys::new(),
+            farfisa_keys: None,
             farfisa_processor: false,
             b3_bass_processor: false,
             b3_bass: None,
@@ -385,6 +388,7 @@ impl OrganLayer {
             self.note_gains[idx] = gain.clamp(0.0, 1.0);
             self.b3_weights.mark();
             self.b3_bass_key(idx, true);
+            self.farfisa_key(idx, true, gain.clamp(0.0, 1.0));
             let drawbars = *self.active_drawbars();
             self.weight_state.key_down(
                 idx as u8,
@@ -411,6 +415,7 @@ impl OrganLayer {
             self.held_notes[idx] = false;
             self.b3_weights.mark();
             self.b3_bass_key(idx, false);
+            self.farfisa_key(idx, false, 0.0);
             self.weight_state.key_up(idx as u8);
             self.active_key_count = self.active_key_count.saturating_sub(1);
             let click_scale = match self.model {
@@ -447,13 +452,12 @@ impl OrganLayer {
 
         // 1. Advance all 91 spinning tonewheels continuously (two lanes while the detuned
         //    ensemble's stereo blend is active, otherwise one)
-        let idle = self.active_key_count == 0
-            && !(self.firmware_weights() && self.weight_state.active())
-            && !(self.b3_weights_active() && self.b3_weights.active())
-            && !(self.farfisa_keys_active() && self.farfisa_keys.active())
-            && !self.b3_bass_sounding()
-            && self.click_env < 1e-6
-            && self.click_bp_state[0].abs() < 1e-6;
+        let busy = self.active_key_count != 0
+            || (self.firmware_weights() && self.weight_state.active())
+            || (self.b3_weights_active() && self.b3_weights.active())
+            || self.farfisa_keys_sounding()
+            || self.b3_bass_sounding();
+        let idle = !busy && self.click_env < 1e-6 && self.click_bp_state[0].abs() < 1e-6;
         let (tw_buses, lanes) = self.render_tonewheel_lanes_sharing(inv_fs, shared, !idle);
         if idle {
             return [0.0, 0.0];
