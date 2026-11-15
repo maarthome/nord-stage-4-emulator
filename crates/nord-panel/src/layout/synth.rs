@@ -2,71 +2,91 @@
 //! dials, then the Arpeggiator/Gate, Voice, Vibrato, LFO, Oscillators,
 //! Filter, Amp and Unison areas.
 //!
-//! ASSUMED: read from the 2000 px photo; higher-resolution photo confirms.
+//! VERIFIED: every control centre is the real centre listed in `data/photo_anchors_synth.csv`
+//! (crop `NS4-Panel-synth.max-2000x2000.format-png.png`, read by eye, +-3 crop px = +-0.4 mm),
+//! mapped affinely from the crop's panel outline (x 12..1988, y 12..1066) onto
+//! [`super::section_rect`]; checked by the test `centres_match_the_photo_anchors` and by
+//! `python tools/layout_overlay.py synth`. Only the centres were verified: sizes are the old
+//! hero-photo reads, except the faders and level ladders (heights from the crop).
+//! ASSUMED: the crop's section is 1.29x taller in mm than the real one would be at the
+//! horizontal scale (see the spec).
 
-use super::{px, Rect};
+use super::{px, Rect, KEYBED_TOP_PX, ORIGIN_PX};
+
+/// Crop px of the panel outline (left, top, width, height).
+const CROP: (f32, f32, f32, f32) = (12.0, 12.0, 1976.0, 1054.0);
+/// Section frame in hero-photo px (left, width); the height is the control area.
+const SECTION_X: (f32, f32) = (1029.0, 372.0);
+const SECTION_H: f32 = KEYBED_TOP_PX - ORIGIN_PX.1;
+
+/// Rectangle `w` x `h` hero px centred on crop pixel `(cx, cy)`.
+fn c(cx: f32, cy: f32, w: f32, h: f32) -> Rect {
+    let x = SECTION_X.0 + (cx - CROP.0) / CROP.2 * SECTION_X.1;
+    let y = ORIGIN_PX.1 + (cy - CROP.1) / CROP.3 * SECTION_H;
+    px(x - w / 2.0, y - h / 2.0, x + w / 2.0, y + h / 2.0)
+}
 
 pub fn rect(id: &str) -> Option<Rect> {
     Some(match id {
         // Header, layer strip.
-        "synth.on" => px(1141.0, 121.0, 1164.0, 134.0),
-        "synth.fx_focus_led" => px(1113.0, 127.0, 1118.0, 132.0),
-        "synth.fader.a" => px(1033.0, 137.0, 1046.0, 205.0),
-        "synth.fader.b" => px(1063.0, 137.0, 1077.0, 205.0),
-        "synth.fader.c" => px(1093.0, 137.0, 1107.0, 205.0),
-        "synth.ladder.a" => px(1051.0, 140.0, 1060.0, 200.0),
-        "synth.ladder.b" => px(1082.0, 140.0, 1091.0, 200.0),
-        "synth.ladder.c" => px(1111.0, 140.0, 1120.0, 200.0),
-        "synth.focus_led.a" => px(1032.0, 209.0, 1038.0, 215.0),
-        "synth.aux_led.a" => px(1050.0, 209.0, 1056.0, 215.0),
-        "synth.focus_led.b" => px(1063.0, 209.0, 1069.0, 215.0),
-        "synth.aux_led.b" => px(1080.0, 209.0, 1086.0, 215.0),
-        "synth.focus_led.c" => px(1093.0, 209.0, 1099.0, 215.0),
-        "synth.aux_led.c" => px(1111.0, 209.0, 1117.0, 215.0),
-        "synth.layer.a" => px(1034.0, 225.0, 1057.0, 237.0),
-        "synth.layer.b" => px(1065.0, 225.0, 1088.0, 237.0),
-        "synth.layer.c" => px(1094.0, 225.0, 1118.0, 237.0),
-        "synth.octave_down" => px(1038.0, 290.0, 1060.0, 303.0),
-        "synth.octave_up" => px(1062.0, 290.0, 1084.0, 303.0),
-        "synth.zone_leds" => px(1050.0, 309.0, 1073.0, 315.0),
-        "synth.kb_hold" => px(1035.0, 259.0, 1058.0, 272.0),
-        "synth.arp.run" => px(1065.0, 259.0, 1088.0, 272.0),
+        "synth.on" => c(668.0, 55.0, 23.0, 9.0),
+        "synth.fx_focus_led" => c(467.0, 67.0, 5.0, 5.0),
+        "synth.fader.a" => c(66.0, 285.0, 13.0, 91.0),
+        "synth.fader.b" => c(228.0, 285.0, 14.0, 91.0),
+        "synth.fader.c" => c(389.0, 285.0, 14.0, 91.0),
+        "synth.ladder.a" => c(144.0, 280.0, 9.0, 80.0),
+        "synth.ladder.b" => c(305.0, 280.0, 9.0, 80.0),
+        "synth.ladder.c" => c(467.0, 280.0, 9.0, 80.0),
+        "synth.focus_led.a" => c(59.0, 545.0, 6.0, 6.0),
+        "synth.aux_led.a" => c(158.0, 506.0, 6.0, 6.0),
+        "synth.focus_led.b" => c(220.0, 545.0, 6.0, 6.0),
+        "synth.aux_led.b" => c(320.0, 506.0, 6.0, 6.0),
+        "synth.focus_led.c" => c(381.0, 545.0, 6.0, 6.0),
+        "synth.aux_led.c" => c(481.0, 506.0, 6.0, 6.0),
+        "synth.layer.a" => c(100.0, 604.0, 23.0, 12.0),
+        "synth.layer.b" => c(262.0, 604.0, 23.0, 12.0),
+        "synth.layer.c" => c(423.0, 604.0, 24.0, 12.0),
+        "synth.octave_down" => c(120.0, 955.0, 22.0, 13.0),
+        "synth.octave_up" => c(243.0, 955.0, 22.0, 13.0),
+        "synth.zone_leds" => c(182.0, 1037.0, 23.0, 6.0),
+        "synth.kb_hold" => c(100.0, 790.0, 23.0, 13.0),
+        "synth.arp.run" => c(262.0, 790.0, 23.0, 13.0),
         // OLED, dials, mode, waveform.
-        "synth.oled" => px(1143.0, 140.0, 1227.0, 183.0),
-        "synth.dial.left" => px(1134.0, 212.0, 1156.0, 234.0),
-        "synth.dial.middle" => px(1175.0, 212.0, 1197.0, 234.0),
-        "synth.dial.right" => px(1215.0, 212.0, 1237.0, 234.0),
-        "synth.mode" => px(1240.0, 160.0, 1263.0, 173.0),
-        "synth.waveform" => px(1250.0, 200.0, 1264.0, 226.0),
+        "synth.oled" => c(846.0, 240.0, 84.0, 43.0),
+        "synth.dial.left" => c(629.0, 572.0, 22.0, 22.0),
+        "synth.dial.middle" => c(846.0, 572.0, 22.0, 22.0),
+        "synth.dial.right" => c(1064.0, 572.0, 22.0, 22.0),
+        "synth.mode" => c(1197.0, 266.0, 23.0, 13.0),
+        "synth.waveform" => c(1229.0, 497.0, 14.0, 26.0),
         // Arpeggiator / Gate.
-        "synth.arp.rate" => px(1278.0, 148.0, 1300.0, 170.0),
-        "synth.arp.mode" => px(1312.0, 163.0, 1335.0, 176.0),
-        "synth.arp.range" => px(1346.0, 148.0, 1368.0, 170.0),
-        "synth.arp.menu" => px(1378.0, 152.0, 1392.0, 178.0),
+        "synth.arp.rate" => c(1398.0, 232.0, 22.0, 22.0),
+        "synth.arp.mode" => c(1580.0, 285.0, 23.0, 13.0),
+        "synth.arp.range" => c(1763.0, 232.0, 22.0, 22.0),
+        "synth.arp.menu" => c(1913.0, 262.0, 14.0, 26.0),
         // Voice and Vibrato.
-        "synth.voice.mode" => px(1277.0, 216.0, 1300.0, 229.0),
-        "synth.voice.glide" => px(1312.0, 201.0, 1334.0, 223.0),
-        "synth.vibrato.selector" => px(1348.0, 217.0, 1371.0, 230.0),
-        "synth.vibrato.menu" => px(1378.0, 206.0, 1392.0, 232.0),
+        "synth.voice.mode" => c(1397.0, 560.0, 23.0, 13.0),
+        "synth.voice.glide" => c(1583.0, 510.0, 22.0, 22.0),
+        "synth.vibrato.selector" => c(1778.0, 570.0, 23.0, 13.0),
+        "synth.vibrato.menu" => c(1914.0, 548.0, 14.0, 26.0),
         // LFO.
-        "synth.lfo.waveform" => px(1101.0, 254.0, 1124.0, 267.0),
-        "synth.lfo.rate" => px(1104.0, 277.0, 1126.0, 299.0),
-        "synth.lfo.mod_amt" => px(1142.0, 251.0, 1164.0, 273.0),
-        "synth.lfo.dest" => px(1141.0, 300.0, 1164.0, 313.0),
+        "synth.lfo.waveform" => c(452.0, 762.0, 23.0, 13.0),
+        "synth.lfo.rate" => c(470.0, 918.0, 22.0, 22.0),
+        "synth.lfo.mod_amt" => c(672.0, 777.0, 22.0, 22.0),
+        "synth.lfo.dest" => c(672.0, 1010.0, 23.0, 13.0),
         // Oscillators.
-        "synth.osc.pitch_smp" => px(1182.0, 255.0, 1205.0, 268.0),
-        "synth.osc.envelope" => px(1225.0, 255.0, 1248.0, 268.0),
-        "synth.osc.ctrl" => px(1182.0, 283.0, 1206.0, 307.0),
-        "synth.osc.env_amt" => px(1227.0, 284.0, 1247.0, 304.0),
+        "synth.osc.pitch_smp" => c(893.0, 770.0, 23.0, 13.0),
+        "synth.osc.envelope" => c(1118.0, 770.0, 23.0, 13.0),
+        "synth.osc.ctrl" => c(893.0, 945.0, 24.0, 24.0),
+        "synth.osc.env_amt" => c(1119.0, 945.0, 20.0, 20.0),
         // Filter.
-        "synth.filter.type" => px(1265.0, 255.0, 1288.0, 268.0),
-        "synth.filter.envelope" => px(1300.0, 255.0, 1323.0, 268.0),
-        "synth.filter.env_amt" => px(1335.0, 247.0, 1355.0, 269.0),
-        "synth.filter.freq" => px(1270.0, 282.0, 1294.0, 306.0),
-        "synth.filter.res" => px(1314.0, 284.0, 1334.0, 304.0),
+        "synth.filter.type" => c(1331.0, 770.0, 23.0, 13.0),
+        "synth.filter.envelope" => c(1518.0, 770.0, 23.0, 13.0),
+        "synth.filter.env_amt" => c(1706.0, 762.0, 20.0, 22.0),
+        "synth.filter.freq" => c(1363.0, 945.0, 24.0, 24.0),
+        "synth.filter.res" => c(1593.0, 945.0, 20.0, 20.0),
         // Amp and Unison.
-        "synth.amp.envelope" => px(1370.0, 255.0, 1393.0, 268.0),
-        "synth.unison" => px(1369.0, 300.0, 1392.0, 313.0),
+        "synth.amp.envelope" => c(1893.0, 770.0, 23.0, 13.0),
+        "synth.unison" => c(1893.0, 1015.0, 23.0, 13.0),
         _ => return None,
     })
 }
@@ -74,6 +94,8 @@ pub fn rect(id: &str) -> Option<Rect> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::section_rect;
+    use crate::types::Section;
 
     #[test]
     fn three_dials_left_to_right_under_the_oled() {
@@ -92,5 +114,25 @@ mod tests {
         assert!(a.x < c.x);
         assert!(rect("synth.fader.d").is_none());
         assert!(rect("organ.on").is_none());
+    }
+
+    /// Every anchor of `data/photo_anchors_synth.csv` is the rectangle's centre after the
+    /// affine crop -> section map.
+    #[test]
+    fn centres_match_the_photo_anchors() {
+        let csv = include_str!("../../data/photo_anchors_synth.csv");
+        let sec = section_rect(Section::Synth);
+        let mut n = 0;
+        for line in csv.lines().skip(1).filter(|l| !l.trim().is_empty()) {
+            let f: Vec<&str> = line.split(',').collect();
+            let (cx, cy): (f32, f32) = (f[1].parse().unwrap(), f[2].parse().unwrap());
+            let r = rect(f[0]).unwrap_or_else(|| panic!("no rect for {}", f[0]));
+            let mx = sec.x + (cx - CROP.0) / CROP.2 * sec.w;
+            let my = sec.y + (cy - CROP.1) / CROP.3 * sec.h;
+            let (rx, ry) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+            assert!((rx - mx).abs() < 0.05 && (ry - my).abs() < 0.05, "{}", f[0]);
+            n += 1;
+        }
+        assert!(n >= 50, "{n} anchors");
     }
 }

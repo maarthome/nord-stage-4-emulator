@@ -135,7 +135,7 @@ pub const FRAMES: &[FrameDef] = &[
         Synth,
         "VOICE",
         &["synth.voice.mode", "synth.voice.glide"],
-        [6.0, 14.0, 10.5, 8.0],
+        [6.0, 14.0, 6.0, 8.0],
     ),
     boxed(
         "synth.frame.vibrato",
@@ -154,7 +154,7 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.lfo.mod_amt",
             "synth.lfo.dest",
         ],
-        [8.0, 14.0, 9.0, 12.0],
+        [8.0, 14.0, 9.0, 4.0],
     ),
     boxed(
         "synth.frame.osc",
@@ -179,7 +179,7 @@ pub const FRAMES: &[FrameDef] = &[
             "synth.filter.freq",
             "synth.filter.res",
         ],
-        [4.0, 14.0, 10.5, 12.0],
+        [4.0, 14.0, 5.0, 12.0],
     ),
     boxed(
         "synth.frame.amp",
@@ -193,7 +193,7 @@ pub const FRAMES: &[FrameDef] = &[
         Synth,
         "UNISON",
         &["synth.unison"],
-        [4.0, 14.0, 4.0, 8.0],
+        [4.0, 14.0, 4.0, 3.0],
     ),
     // Layer Effects.
     boxed(

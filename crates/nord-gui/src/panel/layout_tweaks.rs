@@ -9,18 +9,8 @@ use egui::{vec2, Vec2};
 
 /// `(control id, dx, dy)`: shift of the control's rectangle in logical px.
 pub const TWEAKS: &[(&str, f32, f32)] = &[
-    // The LFO RATE name collided with the "GROUP" Shift legend of the LFO waveform button above.
-    ("synth.lfo.rate", 0.0, 12.0),
-    ("synth.lfo.rate_mst_clk", 0.0, 12.0),
-    // The FREQ name collided with the "GROUP" Shift legend of the filter TYPE button above.
-    ("synth.filter.freq", 0.0, 8.0),
-    // The two KB ZONE legends under OCTAVE / SHIFT printed into the zone LEDs.
-    ("synth.zone_leds", 0.0, 9.0),
-    // The OSC CTRL name printed into the ENV TO PITCH legend of the PITCH/SMP button above.
-    ("synth.osc.ctrl", 0.0, 5.0),
-    // "ENV AMT" / "RES" touched the VELOCITY legend of the ENVELOPE button above.
-    ("synth.osc.env_amt", 0.0, 4.0),
-    ("synth.filter.res", 0.0, 4.0),
+    // The ON name printed above its button, outside the section (legibility rule K).
+    ("synth.on", 0.0, 2.0),
     // The PROG VIEW name printed into the PANIC legend of the TRANSP button above.
     ("program.prog_view", 0.0, 5.0),
     ("program.preset_name", 0.0, 5.0),
@@ -59,8 +49,6 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
     ("reverb.global", 0.0, 6.0),
     ("delay.on", 0.0, 6.0),
     ("delay.global", 0.0, 6.0),
-    // The ARP/POLY/GATE legend printed into the RATE `8` and RANGE `2` numerals.
-    ("synth.arp.range", 5.0, 0.0),
     // The Rotary DRIVE knob moves up so its name fits between the numerals and the ORGAN legend.
     ("rotary.drive", 0.0, -4.0),
 ];
@@ -70,24 +58,6 @@ pub const TWEAKS: &[(&str, f32, f32)] = &[
 /// (`nord_panel::layout::frames`): the 2000 px photo leaves too little between rows for 7.5 px
 /// legends plus a frame border and its title.
 pub const GROUP_TWEAKS: &[(&str, f32, f32)] = &[
-    // Synth: the Arpeggiator/Gate row moves up (free space under the header), the LFO / Oscillators
-    // / Filter / Amp / Unison row moves down (free space above the section's lower edge).
-    ("synth.arp.rate", 0.0, -12.0),
-    ("synth.arp.mode", 0.0, -12.0),
-    ("synth.arp.range", 0.0, -12.0),
-    ("synth.arp.menu", 4.0, -12.0),
-    ("synth.filter.env_amt", -4.0, 0.0),
-    ("synth.arp.pattern", 0.0, -12.0),
-    ("synth.arp.group", 0.0, -12.0),
-    // The three OLED dials move up so their INFO / LIST names clear the LFO box below.
-    ("synth.dial", 0.0, -10.0),
-    // The Vibrato box moves right so its LEDs clear the Voice box (the glide scale numbers).
-    ("synth.vibrato.", 5.0, 0.0),
-    ("synth.lfo.", 0.0, 16.0),
-    ("synth.osc.", 0.0, 16.0),
-    ("synth.filter.", 0.0, 16.0),
-    ("synth.amp.", 0.0, 16.0),
-    ("synth.unison", 0.0, 16.0),
     // The B3 PERCUSSION box moves right to make room for the six VIB/CHORUS type names.
     ("organ.perc_", 3.0, 0.0),
     // Piano: the PIANO SELECT box (type names, dial) moves under the KB TOUCH / DYN COMP LEDs; the
@@ -164,8 +134,8 @@ mod tests {
 
     #[test]
     fn group_nudges_add_to_the_own_entry_and_match_known_ids() {
-        // synth.lfo.rate: own +12, group +16.
-        assert_eq!(nudge("synth.lfo.rate"), vec2(0.0, 28.0));
+        // comp.on: own +8, group +14.
+        assert_eq!(nudge("comp.on"), vec2(0.0, 22.0));
         assert_eq!(nudge("synth.arp.run"), Vec2::ZERO);
         assert_eq!(nudge("mod2.rate"), vec2(0.0, 12.0));
         for (prefix, _, _) in GROUP_TWEAKS {
