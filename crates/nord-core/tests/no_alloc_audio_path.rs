@@ -200,3 +200,37 @@ fn worst_case_polyphony_with_fx_and_multi_out_never_touches_the_heap() {
         "the block was silent"
     );
 }
+
+/// D95: the firmware Mod 2 stages (`FirmwareFx::mod2`, ENS and SPIN among them) allocate only
+/// when the type changes; rate and amount changes and steady rendering touch no heap.
+#[test]
+fn the_firmware_mod2_stages_never_touch_the_heap_in_steady_state() {
+    use nord_core::fx::{FirmwareFx, LayerFxChain, Mod2Type};
+    for ty in [8u8, 9, 10, 11] {
+        let mut fx = LayerFxChain::new(48_000.0);
+        fx.firmware_fx = FirmwareFx {
+            mod2: true,
+            ..FirmwareFx::OFF
+        };
+        fx.mod2_type = Mod2Type::Chorus;
+        fx.mod2_type_raw = Some(ty);
+        fx.mod2_rate_raw = Some(80);
+        fx.mod2_amount = 0.8;
+        for i in 0..64 {
+            fx.process_frame([(i as f32 * 0.07).sin(), 0.3]);
+        }
+        let mut peak = 0.0f32;
+        let calls = count_allocator_calls(|| {
+            for i in 0..20_000 {
+                if i % 500 == 0 {
+                    fx.mod2_rate_raw = Some((i / 500 % 128) as u8);
+                    fx.mod2_amount = (i % 100) as f32 / 100.0;
+                }
+                let out = fx.process_frame([(i as f32 * 0.07).sin(), 0.3]);
+                peak = peak.max(out[0].abs()).max(out[1].abs());
+            }
+        });
+        assert_eq!(calls, 0, "type {ty} made {calls} allocator calls");
+        assert!(peak.is_finite() && peak > 0.0, "type {ty} silent");
+    }
+}
