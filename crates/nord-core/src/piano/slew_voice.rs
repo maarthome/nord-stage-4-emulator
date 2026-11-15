@@ -56,6 +56,25 @@ pub(super) fn rate_for(velocity: u8, note: u8) -> f32 {
     1.0 - d.round() / 16_777_216.0
 }
 
+/// VERIFIED (ARM note-off message list, `docs/research/smp-slew.md` s6): the key-up sample record
+/// gets the rate word `F17 = 0x3F7FF38E` (time constant 0.24 s at 43,402.34 / 2 updates per
+/// second; the doc's 0.23 s is the same word read at 43.4 kHz) for every velocity and sound.
+const RELEASE_SAMPLE_RATE: u32 = 0x3F7F_F38E;
+/// VERIFIED (same list): the key-up record's level word `F15` is `0x3F7FFFFE` (1.0) at velocities
+/// 20, 64 and 100 and `0x3F6C1CEA` (0.922) at velocity 127.
+const RELEASE_SAMPLE_LEVEL: u32 = 0x3F7F_FFFE;
+const RELEASE_SAMPLE_LEVEL_127: u32 = 0x3F6C_1CEA;
+
+/// Level word of the key-up sample record for a velocity.
+/// ASSUMED between the verified points: 1.0 up to velocity 100, then linear to 0.922 at 127 (what
+/// would confirm it: the ARM note-off lists at velocities 101 to 126).
+pub(super) fn release_sample_level(velocity: u8) -> f32 {
+    let hi = f32::from_bits(RELEASE_SAMPLE_LEVEL);
+    let lo = f32::from_bits(RELEASE_SAMPLE_LEVEL_127);
+    let t = ((f32::from(velocity) - 100.0) / 27.0).clamp(0.0, 1.0);
+    hi + (lo - hi) * t
+}
+
 /// The record the SMP voice-start handler leaves for a main voice (before update 1).
 pub(super) fn initial_record(level: f32, rate: f32) -> SlewRecord {
     SlewRecord {
@@ -86,6 +105,8 @@ pub(super) struct SlewVoice {
     left: f32,
     right: f32,
     released: bool,
+    /// A key-up sample record: it decays by its own rate and ends without a note-off write.
+    finite: bool,
 }
 
 impl SlewVoice {
@@ -100,14 +121,27 @@ impl SlewVoice {
             left: 0.0,
             right: 0.0,
             released: false,
+            finite: false,
         };
         v.advance();
         v
     }
 
+    /// Starts the slew of a key-up sample record (no note-off write follows; it fades by its
+    /// own rate `F17`).
+    pub(super) fn start_release_sample(velocity: u8, sample_rate: f32) -> Self {
+        let mut v = Self::start(
+            release_sample_level(velocity),
+            f32::from_bits(RELEASE_SAMPLE_RATE),
+            sample_rate,
+        );
+        v.finite = true;
+        v
+    }
+
     /// The note-off write of the ARM (applied once; later calls do nothing).
     pub(super) fn release(&mut self) {
-        if self.released {
+        if self.released || self.finite {
             return;
         }
         if let Some(r) = self.rec.as_mut() {
@@ -124,7 +158,7 @@ impl SlewVoice {
     }
 
     pub(super) fn is_done(&self) -> bool {
-        self.released && self.left.max(self.right) < DONE_GAIN
+        (self.released || self.finite) && self.left.max(self.right) < DONE_GAIN
     }
 
     fn advance(&mut self) {
@@ -272,6 +306,36 @@ mod tests {
         let after = v.tick().0;
         assert!(after < 0.5 * hold, "release must decay: {hold} -> {after}");
         assert!(!v.is_done() || after < DONE_GAIN);
+    }
+
+    #[test]
+    fn release_sample_level_words_and_law() {
+        assert_eq!(release_sample_level(20).to_bits(), RELEASE_SAMPLE_LEVEL);
+        assert_eq!(release_sample_level(100).to_bits(), RELEASE_SAMPLE_LEVEL);
+        assert_eq!(
+            release_sample_level(127).to_bits(),
+            RELEASE_SAMPLE_LEVEL_127
+        );
+        let mid = release_sample_level(114);
+        assert!(mid < 1.0 && mid > 0.922);
+    }
+
+    #[test]
+    fn release_sample_slew_decays_by_its_rate_and_ignores_the_release_write() {
+        let mut v = SlewVoice::start_release_sample(64, 48_000.0);
+        let (g0, _) = v.tick();
+        assert!((g0 - 0.21875).abs() < 1e-3, "{g0}");
+        v.release(); // must not switch to the 44 ms note-off decay
+                     // One time constant (0.24 s) later the gain is about 1/e of the start.
+        for _ in 0..(0.243 * 48_000.0) as usize {
+            v.tick();
+        }
+        let g = v.tick().0;
+        assert!((g / g0 - (-1.0f32).exp()).abs() < 0.05, "ratio {}", g / g0);
+        for _ in 0..48_000 * 12 {
+            v.tick();
+        }
+        assert!(v.is_done());
     }
 
     #[test]

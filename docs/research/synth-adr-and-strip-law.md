@@ -78,7 +78,7 @@ The earlier sweep moved word 2 and saw `R` constant at 0.36083 because **R comes
 
 `tools/synth_adr_model.py::cutoff_r` reproduces the 19 oracle pairs to 3.3e-6 (`CUTOFF` in the test); Rust `fw_strip_cutoff_r`. `R` is `tan(pi fc/fs)`: `R = 0.36083` is 0.1103 fs (5.3 kHz at 48 kHz, ASSUMED rate), the flat top `R = 1.0111` is 0.2517 fs.
 
-Open: the ARM value written for a knob position (idle ids are value independent, [synth-voice-control](synth-voice-control.md) s3), the `w5`, `w7`, LFO and glide terms of the sum, and which channel carries the filter for a loaded preset (all eight channels read strip 0 by default). Not attempted: capturing real strip words with `tools/arm_edit_capture.py` (a preset edit needs the key-down/preset harness of [synth-voice-control](synth-voice-control.md) s9).
+**Update (D102):** the ramp is the idle state; with a voice word `R` is exponential in the knob ([synth-cutoff-voice-law](synth-cutoff-voice-law.md)). Open: the ARM value written for a knob position (idle ids are value independent, [synth-voice-control](synth-voice-control.md) s3), the `w5`, `w7`, LFO and glide terms of the sum, and which channel carries the filter for a loaded preset (all eight channels read strip 0 by default). Not attempted: capturing real strip words with `tools/arm_edit_capture.py` (a preset edit needs the key-down/preset harness of [synth-voice-control](synth-voice-control.md) s9).
 
 ## 5. `0x1257B2`: four real poles
 
