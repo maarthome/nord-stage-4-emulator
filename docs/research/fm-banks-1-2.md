@@ -1,33 +1,40 @@
-# FM banks 1 and 2 (stages `0x124269` / `0x12453F`): feasibility, stopped
+# FM banks 1 and 2 (stages `0x124269` / `0x12453F`): the data is readable
 
 - **Checked:** 2026-11-15
-- **Sources (local, never committed):** OS v1.66 `bank0_CODE.bin` / `bank0_SRAM.bin`, the ORG core 2 image (`python tools/ns4_dsp_ldr.py target/DSP/dsp_image_2_ORG.bin --sram DIR`, listing `sharc-disasm DIR/core2_sram.bin 0x2484D2 0x248F6C`), the boot capture `target/bulk/org_core2.script` ([arm-bulk-tables](arm-bulk-tables.md)), `sharc-org` (`--watch`, `--rwatch`), the ARM edit harness (`tools/arm_edit_capture.py`, `tools/synth_wave_probe.py` logic). Builds on [synth-stage-models-13](synth-stage-models-13.md) s1 and [synth-wave-categories](synth-wave-categories.md).
+- **Sources (local, never committed):** OS v1.66 `bank0_CODE.bin` / `bank0_SRAM.bin`, the ORG core 2 image (`python tools/ns4_dsp_ldr.py target/DSP/dsp_image_2_ORG.bin --sram DIR`, listing `sharc-disasm DIR/core2_sram.bin 0x2484D2 0x248F6C`), the boot capture `target/bulk/org_core2.script` ([arm-bulk-tables](arm-bulk-tables.md)), `sharc-org` (`--watch`, `--rwatch`), the ARM harness (`tools/synth_p_writer.py` apply call, `tools/synth_fm_tables.py`). Builds on [synth-stage-models-13](synth-stage-models-13.md) s1 and [synth-wave-categories](synth-wave-categories.md).
 - **Question:** can the data of the FM oscillator banks (operator or wave tables, ratios) be read from the firmware images the harness already uses, without new decryption, so the stages can be ported and checked against the SHARC oracle?
 
 Tags follow `.agents/rules/provenance-in-code.md`.
 
 ## 1. Short answer
 
-**Not feasible this round: the stage code is readable, the table it interpolates is not present in any image or message the harness produces.** No decryption is involved. Nothing was ported; this PR only records the evidence.
+**The data is readable: the ARM generates it.** The earlier reading (zero table, writer not found, first version of this note) came from looking at the wrong paths. The strip apply `0xC01CE7D8(strip)` with a pending type 49..53 sends **361 float words to `DM(0xE0900 .. 0xE0A68)`** of ORG core 2 (also PNO core 2 and ORG core 1: the same chip messages), and nothing else for types 0..48 and 54..73. No decryption, no firmware image or sample is involved.
 
 | Item | Result | Tag |
 |---|---|---|
-| Stage code `0x124269` / `0x12453F` | Readable: 598 listing lines `0x2484D2..0x248F6C` in the ORG core 2 image, both stages share the two-accumulator / polynomial / lerp skeleton (the second starts at `0x248A7E`). The only table read is `R5 = DM(-14, I1)` (`DM(0xC15A8)` = `0xE0926`) as base of 129-word rows (`M5 = 0x81`, row index `FEXT R0 BY 25:7`, so up to 128 rows) | VERIFIED (listing) |
-| Partial ratios | The double table at `bank0_CODE@0x2D82A8` reads `0.5, 1, 2, 3, 4, 5, 6, 7 ...` (`python`, `struct.unpack('<d')`), the FM-H partials | VERIFIED (run) |
-| Row table at `DM(0xE0926..)` in the image | Zero: 40,000 zero words from `0xE0926` (to `0xEA566`) in the flat ORG core 2 image. The pointer word itself (`0xC15A8` = `0xE0926`) is image data; `0xE0926` as a literal occurs in `bank0_CODE` only at `0x4B0A58`, `0x4D553C`, `0x4F9128`, all inside the embedded DSP images | VERIFIED (run) |
-| Written by the ARM boot? | No. `target/bulk/org_core2.script` and the other five scripts hold no store in `0xE0926..0xE49A6`; the boot sends no word in that window | VERIFIED (script grep) |
-| Written by the DSP? | No. `sharc-org ... --watch 0xE0926:0x4080 --rwatch 0xE0926:0x4080 --boot-stores --passes 2` with the full boot script lists no store and no load site; the stage code stores only through `I5` (the strip state block), never into the row table | VERIFIED (run, idle FM) |
-| Sent on a wave edit? | No. `Edt_Syn_kOscWave` dispatched through the real layer client for `kOscBank` 1 and 2, categories 0 and 1, waves 0 and 3 (`kMode` 1) sends 101 messages each, none at DM address `>= 0xE0100`, so no table transfer | VERIFIED (run) |
-| Sine / FM table in `bank0_CODE` | No float or double `sin(2 pi k / N)` run for `N = 64 .. 4096` in `bank0_CODE`. A Q31 or int16 table, or a generated one (computed on the ARM at program load), is not excluded | EMPIRICAL (negative scan) |
+| Stage code `0x124269` / `0x12453F` | Readable: 598 listing lines `0x2484D2..0x248F6C` in the ORG core 2 image; the second stage starts at `0x248A7E` | VERIFIED (listing) |
+| What `DM(0xC15A8) = 0xE0926` is | Not 129-point wave rows. The stage forms `I5 = 0xE0926 + FEXT(R0 BY 25:7)` and reads `DM(I5, 0x81)` three times (stride 129), so the index (a signed 7-bit field, -64..63 around the base) picks one word from each of three **band curves** at `+0`, `+129`, `+258`; they are lerped (`F1 = F1 - F0`, `F1 * F5`) and used as per-oscillator gains / fades. 361 words cover `0xE0900..0xE0A68` | VERIFIED (listing, window of the writes) |
+| Writer | ARM only. Boot, DSP passes and the wave edit path (101 strip messages, as in the first version of this note) send nothing; the strip apply sends them (the earlier edit probes never ran the apply for a type 49..53; `tools/synth_p_writer.py` filtered the P block window and dropped these words). The sender is a table-driven bulk send (`0xC01CF358` loop, `0xC01CF644` port store, 192 stores in the loop plus 3 from `0xC01CF9CC`). The values are computed, not rodata (the first three words of each segment occur nowhere in `bank0_CODE`) | VERIFIED (run) |
+| Dependence | Only on the type: `a`, `b` (pending wave variant words) do not change a word (4 variants x 5 types, `tools/synth_fm_tables.py capture` stops on a difference). Types 50, 51, 52, 53 and 49 give 5 tables; segments: ramp `0xE0900 + k` (70 words, `(70 - k) / n`, n = 240 (49), 30 (50, 51, 53), 51 (52), within 2e-6 relative, a float recurrence), zeros, a decay curve at `0xE0967..` (about `A 2^(-k/6) - c`, ratio 0.8909 per step, clipped at zero; A = 7822 for 49 and 53, 3911 for 50 to 52), zeros, a second decay curve at `0xE09E8..` (A = 62582 for 49 and 53, 4651 / 4544 / 14310 for 50 / 51 / 52) | VERIFIED (capture), formula shapes EMPIRICAL |
+| Committed data | [data/synth-fm-tables.csv](data/synth-fm-tables.csv): 5 types x 361 words (1,805 derived numbers, about 40 KB; D56 sizing, no firmware bytes), fingerprint `13a83db262affa8a` in `tools/tests/test_synth_fm_tables.py` | VERIFIED (test) |
+| Partial ratios | The FM-H partial double table at `bank0_CODE@0x2D82A8` reads `0.5, 1, 2, 3, 4, 5, 6, 7 ...` | VERIFIED (run) |
 
-## 2. Implications
+## 2. Reproduce
 
-- The 128 x 129 row table (about 16.5 k words) is neither firmware rodata the harness can reach nor computed by the DSP in a pass. Its source is an ARM path that the settled harness does not execute: the program-load / strip apply routine (`0xC01CE7D8`, not reached by the harness, [synth-stage-models-13](synth-stage-models-13.md) s1) or a lazy generator. Without that data a port of `0x124269` / `0x12453F` would invent the waveform (ASSUMED shape), which breaks the audio-parity rule.
-- No firmware or table data was committed, no encryption involved or bypassed.
+```bash
+uv run --with unicorn --with capstone python tools/synth_fm_tables.py capture     target/fw_unpacked/bank0_CODE.bin target/fw_unpacked/bank0_SRAM.bin     --cache target/settled.snap --out docs/research/data/synth-fm-tables.csv
+python -m pytest tools/tests/test_synth_fm_tables.py
+```
 
-## 3. Follow-ups
+Disassembly: `python tools/ns4_dsp_ldr.py target/DSP/dsp_image_2_ORG.bin --sram DIR` then `sharc-disasm DIR/core2_sram.bin 0x2484D2 0x248F6C`.
 
-1. Run the real strip apply `0xC01CE7D8` (via `tools/arm_program_load.py`) with a program that has a FM layer (find one in the factory banks with `tools/ns4_inspect.py`), and log every DSP store `>= 0xE0926`.
-2. Static: xref `bank0_CODE` for the writer of the row region from the strip builder `0xC01ACBF4(this, type 49..53, table_id)`: look for a loop of 129 stores per row and `sin` / `pow` calls.
-3. If the fill is a generator, derive the formula from the DSP reads (row index = modulation index?) and check it against `sharc-org` with the table poked; if the table is rodata, extract it as derived numbers only if small (D22 / D56 / D62 sizing).
-4. Then decode `0x124269` / `0x12453F` word for word as in batches 11 to 13, opt-in first (D22 defaults). OQ22 and ROADMAP s7 stay open on this item.
+## 3. Implications
+
+- The "table not reachable" blocker is closed. What remains for a port is the stage maths itself (two SIMD stages of 290 and 300 lines: four phase accumulators per lane, eight sine polynomials of `abs(phase) + c`, the band-curve lerps), the P words of the FM wave types (already in [data/synth-p-words.csv](data/synth-p-words.csv), types 49..53) and the ARM writer of the per-wave ratio (`0x2D82A8` table).
+- Open: the curve index source (which register carries the pitch / note term into `FEXT R0 BY 25:7`), whether the table depends on strip state other than the type (only `a`, `b` were varied), and the analytic generator (values are float recurrences; the CSV is the source).
+
+## 4. Follow-ups
+
+1. Decode `0x124269` word for word (Python model + `sharc-org` oracle with the table poked), then `0x12453F`.
+2. Rust opt-in port under `crates/nord-core/src/synth/`, tables loaded from the CSV derived numbers, defaults unchanged (D22).
+3. Specs, D-entry, OQ22, ROADMAP once a stage is bit exact.
