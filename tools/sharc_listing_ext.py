@@ -72,6 +72,11 @@ MULT = re.compile(r"(?:(MRF|MRB)([+-]))?(r\d+)\*(r\d+) ?\((\w+)\)")
 LW_STORE = re.compile(r"(dm|pm)\((.*)\)=(\w+) \(LW\)")
 MRF_SET = re.compile(r"(MRF|MRB)=(r\d+)\*(r\d+) ?\((\w+)\)")
 COMP = re.compile(r"comp\((r\d+),(r\d+)\)")
+# ALU operations that set AZ / AN (float pass / add / sub / abs, fixed add / sub / clip / and)
+FLOAT_ALU = re.compile(r"pass f\d+|f\d+[+-]f\d+|abs f\d+")
+ALU_FLAGS = re.compile(
+    rf"{FLOAT_ALU.pattern}|r\d+[+-]r\d+|r\d+[+-]\d+|clip r\d+ by r\d+|r\d+ and r\d+"
+)
 
 
 class GenVm(vm.Vm):
@@ -102,6 +107,20 @@ class GenVm(vm.Vm):
         return ((v >> 32) if frac else v) & M32
 
     def alu(self, expr: str, pe: int) -> int | None:
+        v = self.alu_value(expr, pe)
+        if v is not None and ALU_FLAGS.fullmatch(expr.strip()):
+            # the ALU sets AZ / AN from its result (the multiplier and the shifter do not)
+            zero = (v >> 31) & 0xFF == 0 if FLOAT_ALU.fullmatch(expr.strip()) else v >> 8 == 0
+            self._pend.append(("flags", pe, v >> 39 == 1, zero))
+        return v
+
+    def cond_ok(self, cond: str) -> bool:
+        """Program sequencer condition on the PEx flags (`ne`: AZ clear, `eq`: AZ set)."""
+        if cond not in ("ne", "eq"):
+            raise ValueError(f"condition {cond!r}")
+        return self.az[0] == (cond == "eq")
+
+    def alu_value(self, expr: str, pe: int) -> int | None:
         v = super().alu(expr, pe)
         if v is not None:
             return v
@@ -177,8 +196,11 @@ class GenVm(vm.Vm):
             for pe, old in ((0, keep[0]), (1, keep[1])):
                 if not (self.an[pe] and not self.az[pe]):
                     (self.s if pe else self.r)[:] = old
+        ran = [True, True]
+        if keep:
+            ran = [bool(self.an[pe] and not self.az[pe]) for pe in (0, 1)]
         for p in self._pend:
             if p[0] == "mr":
                 self.mr[p[1]] = p[2]
-            else:
+            elif ran[p[1]] or not keep:
                 self.an[p[1]], self.az[p[1]] = p[2], p[3]
