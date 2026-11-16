@@ -128,6 +128,21 @@ Readings:
 - **VERIFIED (re-run):** with `--pre 0xC1DCC=0x0B008000` (note 60) `DM(0xC1F79) = 0x3bc585c6 = 0.0060279`, equal to `261.6256 / 43402.34375` (relative error 7e-7).
 - **Still undecidable:** `F` against `2F` needs the runtime value of the oscillator multiplier `DM(0xC167A)` (1.0 would mean `2F`, 2.0 `F`; the unconfigured image holds 0.07703) and the frames per `DMA14` interrupt (4 for `F`, 2 for `2F`; SPORT clocks are external). Both need a loaded-preset capture, not a pass replay. The unit of the type factors stays open.
 
+## 6. Real SHARC render of 3 s of Believer (request of 2026-11-15): not possible yet, throughput measured
+
+Asked: render 6 s to 9 s of A:81 through the real SHARC path. **Not done; no WAV was produced**, because the chain that would turn the Transkun notes into DSP input does not exist in the harness:
+
+| Needed for a render | Status |
+|---|---|
+| ARM side: program load, voice allocation, note-on, strip words per voice | words captured for single keys only (`tools/arm_keydown.py`, `arm_program_load.py`); no driver that plays a polyphonic note list |
+| Controller trigger protocol and time base of the envelope records | open (OQ22; pass = 2 SY frames is ASSUMED) |
+| Displayed cutoff Hz to strip word | not verified ([synth-knob-laws](synth-knob-laws.md) s6; the tangent reading does not match the display), so a SHARC render would only restate the factor that is fed in (circular for the 4.4 question) |
+| SMP, FX and mixer cores chained to the ORG core 2 output | the cores run one at a time in `sharc-org` / `sharc-fx`; no chained run exists |
+
+What exists is a single-core pass runner. Measured by hand (EMPIRICAL, one run, this machine): `sharc-org core2_sram.bin --passes 2000 --buf 0xB0000:40:f32 --wav ...` with the LP24 stage selected on channel 0 takes **17.0 s wall for 2000 passes (118 passes/s, 4265 steps per pass, about 0.5 M SHARC steps/s)** including the per-pass log, and captures 40 words per pass (80,000 floats). A pass covers 4 samples per filter call (section 5); if the 40 captured words are 20 stereo frames, 3 s (130,206 frames at 43,402 Hz) is about 6,500 passes, **about 55 s of wall time (real-time factor about 18)**; if a pass is 4 frames it is about 32,500 passes, **about 276 s (factor about 92)**. That is for the ORG core 2 pass alone with idle voices, not for the full chain. Which of the two applies is the same open item as the frame count per pass.
+
+Cheapest useful real-SHARC subset, for a follow-up: one sustained SUPER wave 0 voice (`0x121D6D`) through the LP24 stage `0x12566E` on the ORG core 2 image, with the strip words written by the ARM harness for the Believer layer, at factor 4.4 and 1.0 (the words differ only by the cutoff word). It would show the stage's own timbre for those words, but it cannot say which factor is right until the display Hz to word law is verified.
+
 ## Implications
 
 - SUPER LP24 4.4 is EMPIRICAL and **not independently confirmed**: on the only two informative clips (Horizon, Sidechain) 2.0 (total 0.9) is better under both note lists, and the pooled mean over four clips goes 3.17 to 2.44 and 3.95 to 2.58. The value 2.0 is a candidate, not a fit result: the grid has 1.0 / 1.5 / 2.0 / 2.2 / 3.0 and the optimum moves with the note list.
