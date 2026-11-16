@@ -235,6 +235,65 @@ Rationale: T1, T2 ask for a clear step up on programs the adapter never saw (abo
 
 `C:\tmp\ns4-ft-probe\inspect_model.py` (params, layer census), `lora_count.py` (adapter parameter arithmetic), `peft_check.py` (section 4, run with `C:/tmp/ns4-ft-venv\Scripts\python.exe -I`), `bench_step.py` (dummy-batch step: builds `Note` lists with no same-pitch overlap, calls `model.log_prob`, backward, `AdamW.step`, reports `torch.cuda.max_memory_allocated`). Run with `C:\tmp\ns4-transcribe\venv\Scripts\python.exe -I <script>`. Render timing: `ns4 render-patch` as in section 6, workers via `xargs -P`. These are throw-away measurement scripts and are not committed; the numbers above are the record.
 
+## 10. Phase 2 results (VERIFIED runs; stop rule triggered)
+
+Checked 2026-11-15. Runs: LoKr r16 (1,038,200 trainable) and LoRA r16 alpha 32, dropout 0 (1,869,812 trainable; PEFT rejects dropout with `target_parameters`, VERIFIED error), AdamW lr 2e-4, batch 4 x 16 s, seed 1, fp32, 3000 steps each (about 1.7 to 1.9 s/step). Tools: `synth_train.py` (`--resume`, `--schedule wsd`), `synth_eval.py`, `synth_vel_check.py`, `synth_hw_eval.py`, `scale_adapter` in `synth_adapter.py`. Local outputs (not committed): `C:/tmp/ns4-ft-runs/{lokr1,lora1,eval}`.
+
+### 10.1 Held-out emulator split (134 items, 43 programs, step 3000, onset +-50 ms)
+
+| Model | F1 | Precision | Recall | Velocity MAE | Velocity r |
+|---|---|---|---|---|---|
+| base | 0.546 | 0.524 | 0.569 | 26.06 | 0.285 |
+| LoKr | 0.629 | 0.803 | 0.517 | 25.11 | 0.298 |
+| LoRA | 0.748 | 0.841 | 0.673 | 22.84 | 0.463 |
+
+`synth_vel_check.py` splits programs by Spearman rho between note velocity and onset loudness (weak = rho < 0.3: 128 of 379 programs; 39 of 134 val items, 6098 of 21,445 notes). LoRA responsive items: F1 0.813, velocity MAE 20.97, r 0.549; weak items: F1 0.549, MAE 30.2, r 0.100. Velocity MAE <= 13 is out of reach on the weak third because the render carries no velocity information there.
+
+Targets: T1 missed (0.748 < 0.75), T2 missed (recall 0.673 < 0.75, precision passes), T3 missed (MAE 22.84, r 0.463).
+
+### 10.2 Hardware clips (T5; recall at +-150 ms vs video-confirmed notes)
+
+| Model | Horizon Whl | Leaky Stabs II | Grand Pad | Notes output (Horizon) |
+|---|---|---|---|---|
+| base | 0.203 | 0.146 | 0.233 | 257 |
+| LoRA step 3000 | 0.006 | 0.042 | 0.082 | 6 |
+| LoKr step 3000 | 0.012 | 0.035 | 0.062 | 19 |
+
+T5 failed on all three clips and every clip is below base. The collapse is already there at LoRA step 500 (Horizon 0.012), so it is not progressive over-fitting.
+
+Probes that did not explain it:
+
+| Probe | Result |
+|---|---|
+| Input gain -12 to +18 dB | no change |
+| Adapter strength 0.25 / 0.5 / 0.75 (LoRA, Horizon / Leaky / Grand) | 0.110 / 0.073 / 0.226; 0.052 / 0.062 / 0.212; 0.023 / 0.062 / 0.144; monotonic, never above base (s = 0 reproduces base exactly) |
+| LoKr strength 0.25 / 0.5 / 0.75 | 0.157 / 0.111 / 0.233; 0.041 / 0.076 / 0.219; 0.017 / 0.059 / 0.144 |
+| Val items sped up 2x (denser) | LoRA F1 0.748 to 0.620, base flat at 0.566; real but does not explain the collapse |
+| Emulator replay of the clips' notes (`emu_default.wav`) | adapters also output only 3 to 6 notes |
+
+T4 (piano bit-identical with the adapter disabled) was not run: the adapter lives in a separate folder and the base `2.0.pt` is untouched, but no SHA-256 check was recorded. T6 was not run: with 6 to 54 notes per clip the replay score is meaningless.
+
+Stop rule 7.3 step 3 applies: held-out emulator scores up, hardware scores down. Decision: D113.
+
+### 10.3 Dataset defects found after the runs
+
+An independent read (Antigravity `agy`, plan mode, read only) listed defects. Status after my own check:
+
+| # | Defect | Status |
+|---|---|---|
+| 1 | `synth_dataset.py` renders without `--backup`. Grand Pad: no backup = placeholder piano (peak 0.2339, RMS 0.0476, no sound refs printed); with `--backup "Program/Bank A/Grand Pad.ns4p"` = Astoria Grand + White Grand (peak 0.5072, RMS 0.0801). Agy counts 150 programs with piano layers and 113 with synth-sample layers affected, val included. | **CONFIRMED** (render comparison; program counts SUSPECTED) |
+| 2 | Labels are the input phrase; 124 of 384 programs shift octave or pitch, 48 use splits, 39 arp / pattern / hold, 30 are mono, so the sounded notes differ from the labels. LoRA F1 on the Horizon program's own training items is 0.00 to 0.06 (agy). | SUSPECTED |
+| 3 | Phrase generator is single-stream (no overlapping two-handed polyphony); hardware clips run 4.9 to 8.2 confirmed notes/s against 2.6 mean (max 4.4) in the data. | density VERIFIED (section 6.1 stats), polyphony SUSPECTED |
+| 4 | Hardware event streams (`vr/*.json`) carry chromatic clusters from low-frequency FFT resolution; the replay renders heuristic peaks too. The hardware "truth" is partly noisy, base numbers included. | SUSPECTED |
+| 5 | Sustain pedal labels are trained though the default `sustped` leaves CC64 without effect on 234 synth / organ programs. | SUSPECTED |
+| 6 | `SegmentSampler` does not sample boundary-padded segments (upstream begins in [-16, dur]); augmentation is weaker than upstream (no reverb, pitch, EQ). | SUSPECTED |
+
+Checked clean by agy and not by me: note clipping at segment edges, `has_onset` / `has_offset` flags, program-hash split without overlap, `scale_adapter`, resume and optimizer state.
+
+### 10.4 Next step (needs user approval)
+
+A corrected dataset before any new arm: render with `--backup`, labels from the sounded notes (apply octave / split / arp or drop those programs), overlapping polyphony and 5 to 8 notes/s phrases, pedal labels only where the program honours CC64. Then rerun LoRA with the same budget. Not started.
+
 ## Implications
 
 - Adapter training is practical on the existing GPU in hours, with rendering a small share of the budget.
@@ -244,7 +303,9 @@ Rationale: T1, T2 ask for a clear step up on programs the adapter never saw (abo
 ## Follow-ups
 
 - [x] Confirm PEFT LoRA / LoKr on Linear, Conv2d and raw q/k/v (section 4).
-- [ ] Phase 1: `tools/ns4_synth_dataset.py` (extract, phrase generator, render, write dataset) with tests; 20 h.
-- [ ] fp32 vs bf16 loss comparison on one real batch.
-- [ ] Phase 2 (LoKr first) and 3 as above; record a decision (next free D) with the chosen arm and the hardware-clip scores.
+- [x] Phase 1: `tools/synth_dataset.py` (extract, phrase generator, render, write dataset) with tests; 20 h.
+- [ ] fp32 vs bf16 loss comparison on one real batch (not needed until a new run).
+- [x] Phase 2 (LoKr, LoRA) and 3: both arms fail T5; recorded as D113 (section 10).
+- [ ] Corrected dataset (section 10.3 items 1 to 5) and one LoRA rerun; waits for user approval.
+- [ ] T4 SHA-256 check of `2.0.pt` and re-run piano streams with the adapter disabled.
 - [ ] Confirm the checkpoint licence with the upstream author if weights are ever to leave the machine.
