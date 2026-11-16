@@ -479,6 +479,8 @@ impl Core {
     #[inline]
     pub(super) fn invalidate_code_cache(&mut self) {
         self.code_gen = self.code_gen.wrapping_add(1).max(1);
+        self.sram_code_nw_lo = u32::MAX;
+        self.sram_code_nw_hi = 0;
     }
 }
 

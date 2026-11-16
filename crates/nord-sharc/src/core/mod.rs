@@ -266,6 +266,11 @@ pub struct Core {
     decode_cache: Option<Box<decode_cache::DecodeCache>>,
     /// Monotonic generation for O(1) cache invalidation on ISA/code reloads.
     code_gen: u64,
+    /// Bounding normal-word range `[lo, hi]` of all SRAM instructions cached in `decode_cache`
+    /// or compiled into `jit` (`lo > hi` when empty). Inline SRAM stores inside this range fall
+    /// back to `dm_write` so `invalidate_sram_cache` stays exact across all cached blocks.
+    sram_code_nw_lo: u32,
+    sram_code_nw_hi: u32,
     /// Optional Level-2 Cranelift JIT engine (allocated lazily on first `run_jit`).
     #[cfg(feature = "jit")]
     jit: Option<Box<jit::JitEngine>>,
@@ -338,6 +343,8 @@ impl Core {
             periph: None,
             decode_cache: None,
             code_gen: 1,
+            sram_code_nw_lo: u32::MAX,
+            sram_code_nw_hi: 0,
             #[cfg(feature = "jit")]
             jit: None,
         }

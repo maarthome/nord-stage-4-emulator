@@ -549,17 +549,18 @@ fn emit_fast_float_op(
     }
 }
 
-/// Emits an inline linear `SRAM_WORDS` load for `MoveOp::DagMem` (`write: false`, `ureg < 16`,
-/// `ii` not subject to bitrev/broadcast), falling back to `jit_dag_mem` when `L[ii] != 0` or
-/// `addr` is outside `0x9_0000..0x10_0000`.
+/// Emits an inline linear `SRAM_WORDS` load or store for `MoveOp::DagMem` (`ureg < 16`,
+/// `ii` not subject to bitrev/broadcast), falling back to `jit_dag_mem` when `L[ii] != 0`,
+/// `addr` is outside `0x9_0000..0x10_0000`, or a store overlaps `[sram_code_nw_lo, sram_code_nw_hi]`.
 #[allow(clippy::too_many_arguments)]
-fn emit_inline_sram_dag_load(
+fn emit_inline_sram_dag_transfer(
     b: &mut FunctionBuilder,
     core_ptr: cranelift_codegen::ir::Value,
     sram_ptr: cranelift_codegen::ir::Value,
     ii: u8,
     mi: u8,
     ureg: u8,
+    write: bool,
     post_modify: bool,
     insn_pc: u32,
     insn_w: u64,
@@ -592,7 +593,25 @@ fn emit_inline_sram_dag_load(
     let in_sram = b
         .ins()
         .icmp_imm(IntCC::UnsignedLessThan, rel_addr, 0x7_0000);
-    let can_fast = b.ins().band(is_linear, in_sram);
+    let mut can_fast = b.ins().band(is_linear, in_sram);
+    if write {
+        let nw_lo = b.ins().load(
+            types::I32,
+            mem,
+            core_ptr,
+            offset_of!(Core, sram_code_nw_lo) as i32,
+        );
+        let nw_hi = b.ins().load(
+            types::I32,
+            mem,
+            core_ptr,
+            offset_of!(Core, sram_code_nw_hi) as i32,
+        );
+        let below = b.ins().icmp(IntCC::UnsignedLessThan, addr, nw_lo);
+        let above = b.ins().icmp(IntCC::UnsignedGreaterThan, addr, nw_hi);
+        let outside_code = b.ins().bor(below, above);
+        can_fast = b.ins().band(can_fast, outside_code);
+    }
 
     let fast_blk = b.create_block();
     let slow_blk = b.create_block();
@@ -604,12 +623,19 @@ fn emit_inline_sram_dag_load(
     let addr64 = b.ins().uextend(types::I64, addr);
     let byte_off = b.ins().ishl_imm(addr64, 2);
     let ptr = b.ins().iadd(sram_ptr, byte_off);
-    let loaded = b.ins().load(types::I32, mem, ptr, 0);
-    b.ins()
-        .store(mem, loaded, core_ptr, off_r + 4 * i32::from(ureg));
-    let zero8 = b.ins().iconst(types::I8, 0);
-    b.ins()
-        .store(mem, zero8, core_ptr, off_fx_lo + i32::from(ureg));
+    if write {
+        let val = b
+            .ins()
+            .load(types::I32, mem, core_ptr, off_r + 4 * i32::from(ureg));
+        b.ins().store(mem, val, ptr, 0);
+    } else {
+        let loaded = b.ins().load(types::I32, mem, ptr, 0);
+        b.ins()
+            .store(mem, loaded, core_ptr, off_r + 4 * i32::from(ureg));
+        let zero8 = b.ins().iconst(types::I8, 0);
+        b.ins()
+            .store(mem, zero8, core_ptr, off_fx_lo + i32::from(ureg));
+    }
     if post_modify {
         b.ins()
             .store(mem, next_i, core_ptr, off_i + 4 * i32::from(ii));
@@ -630,13 +656,162 @@ fn emit_inline_sram_dag_load(
     b.seal_block(done_blk);
 }
 
+/// Emits an inline linear `SRAM_WORDS` dual load for `DualMoveOp` (`!dm_write && !pm_write`,
+/// no multifunction compute), falling back to `jit_dual_move` if either DAG is circular or out
+/// of `SRAM_WORDS`.
+#[allow(clippy::too_many_arguments)]
+fn emit_inline_dual_sram_load(
+    b: &mut FunctionBuilder,
+    core_ptr: cranelift_codegen::ir::Value,
+    sram_ptr: cranelift_codegen::ir::Value,
+    dm: DualMoveOp,
+    fast_float: bool,
+    insn_pc: u32,
+    insn_w: u64,
+    arg_kind: i64,
+    fn_fmul_ref: cranelift_codegen::ir::FuncRef,
+    fn_av_ref: cranelift_codegen::ir::FuncRef,
+    fn_comp_ref: cranelift_codegen::ir::FuncRef,
+    fn_dual_ref: cranelift_codegen::ir::FuncRef,
+    on_fault_blk: cranelift_codegen::ir::Block,
+) {
+    let mem = MemFlags::trusted();
+    let off_i = offset_of!(Core, i) as i32;
+    let off_m = offset_of!(Core, m) as i32;
+    let off_l = offset_of!(Core, l) as i32;
+    let off_r = offset_of!(Core, r) as i32;
+    let off_fx_lo = (offset_of!(Core, fx) + offset_of!(super::float_ops::ExtFile, lo)) as i32;
+
+    let dmi = i32::from(dm.dmi);
+    let dmm = i32::from(dm.dmm);
+    let pmi = i32::from(dm.pmi);
+    let pmm = i32::from(dm.pmm);
+
+    let dm_i = b.ins().load(types::I32, mem, core_ptr, off_i + 4 * dmi);
+    let dm_m = b.ins().load(types::I32, mem, core_ptr, off_m + 4 * dmm);
+    let dm_l = b.ins().load(types::I32, mem, core_ptr, off_l + 4 * dmi);
+    let pm_i = b.ins().load(types::I32, mem, core_ptr, off_i + 4 * pmi);
+    let pm_m = b.ins().load(types::I32, mem, core_ptr, off_m + 4 * pmm);
+    let pm_l = b.ins().load(types::I32, mem, core_ptr, off_l + 4 * pmi);
+
+    let l_zero_dm = b.ins().icmp_imm(IntCC::Equal, dm_l, 0);
+    let l_zero_pm = b.ins().icmp_imm(IntCC::Equal, pm_l, 0);
+    let dm_rel = b.ins().iadd_imm(dm_i, -(0x9_0000i64));
+    let pm_rel = b.ins().iadd_imm(pm_i, -(0x9_0000i64));
+    let dm_ok = b.ins().icmp_imm(IntCC::UnsignedLessThan, dm_rel, 0x7_0000);
+    let pm_ok = b.ins().icmp_imm(IntCC::UnsignedLessThan, pm_rel, 0x7_0000);
+
+    let c1 = b.ins().band(l_zero_dm, l_zero_pm);
+    let c2 = b.ins().band(dm_ok, pm_ok);
+    let can_fast = b.ins().band(c1, c2);
+
+    let fast_blk = b.create_block();
+    let slow_blk = b.create_block();
+    let done_blk = b.create_block();
+    b.ins().brif(can_fast, fast_blk, &[], slow_blk, &[]);
+
+    b.switch_to_block(fast_blk);
+    b.seal_block(fast_blk);
+    let dm_addr64 = b.ins().uextend(types::I64, dm_i);
+    let pm_addr64 = b.ins().uextend(types::I64, pm_i);
+    let dm_off = b.ins().ishl_imm(dm_addr64, 2);
+    let pm_off = b.ins().ishl_imm(pm_addr64, 2);
+    let dm_ptr = b.ins().iadd(sram_ptr, dm_off);
+    let pm_ptr = b.ins().iadd(sram_ptr, pm_off);
+    let dm_val = b.ins().load(types::I32, mem, dm_ptr, 0);
+    let pm_val = b.ins().load(types::I32, mem, pm_ptr, 0);
+
+    // Execute optional parallel compute BEFORE writing the loaded registers.
+    if let Some(cop) = dm.compute {
+        match cop {
+            ComputeOp::Nop => {}
+            ComputeOp::FixedAlu {
+                op: fop @ (0x01 | 0x02),
+                n,
+                x,
+                y,
+            } => {
+                emit_fixed_add_sub(b, core_ptr, n, x, y, fop == 0x02, fn_av_ref);
+            }
+            ComputeOp::FixedAlu {
+                op: fop @ (0x21 | 0x40 | 0x41 | 0x42),
+                n,
+                x,
+                y,
+            } => {
+                emit_fixed_logic_or_pass(b, core_ptr, fop, n, x, y);
+            }
+            ComputeOp::FloatMul { n, x, y } if fast_float => {
+                emit_fast_float_op(b, core_ptr, FastFloatKind::Mul, n, x, y);
+            }
+            ComputeOp::FloatMul { n, x, y } => {
+                let n_v = b.ins().iconst(types::I32, i64::from(n));
+                let x_v = b.ins().iconst(types::I32, i64::from(x));
+                let y_v = b.ins().iconst(types::I32, i64::from(y));
+                b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
+            }
+            ComputeOp::FloatAlu {
+                op: fop @ (0x81 | 0x82),
+                n,
+                x,
+                y,
+            } if fast_float => {
+                let fk = if fop == 0x81 {
+                    FastFloatKind::Add
+                } else {
+                    FastFloatKind::Sub
+                };
+                emit_fast_float_op(b, core_ptr, fk, n, x, y);
+            }
+            other => {
+                if let Some(raw_c) = compute_op_to_raw(other) {
+                    let c_v = b.ins().iconst(types::I64, raw_c as i64);
+                    b.ins().call(fn_comp_ref, &[core_ptr, c_v]);
+                }
+            }
+        }
+    }
+
+    b.ins()
+        .store(mem, dm_val, core_ptr, off_r + 4 * i32::from(dm.dm_reg));
+    b.ins()
+        .store(mem, pm_val, core_ptr, off_r + 4 * i32::from(dm.pm_reg));
+    let zero8 = b.ins().iconst(types::I8, 0);
+    b.ins()
+        .store(mem, zero8, core_ptr, off_fx_lo + i32::from(dm.dm_reg));
+    b.ins()
+        .store(mem, zero8, core_ptr, off_fx_lo + i32::from(dm.pm_reg));
+
+    let dm_next = b.ins().iadd(dm_i, dm_m);
+    let pm_next = b.ins().iadd(pm_i, pm_m);
+    b.ins().store(mem, dm_next, core_ptr, off_i + 4 * dmi);
+    b.ins().store(mem, pm_next, core_ptr, off_i + 4 * pmi);
+    b.ins().jump(done_blk, &[]);
+
+    b.switch_to_block(slow_blk);
+    b.seal_block(slow_blk);
+    let pc_v = b.ins().iconst(types::I32, i64::from(insn_pc));
+    let w_v = b.ins().iconst(types::I64, insn_w as i64);
+    let k_v = b.ins().iconst(types::I8, arg_kind);
+    let call = b.ins().call(fn_dual_ref, &[core_ptr, pc_v, w_v, k_v]);
+    let status = b.inst_results(call)[0];
+    let ok = b.ins().icmp_imm(IntCC::Equal, status, 0);
+    b.ins().brif(ok, done_blk, &[], on_fault_blk, &[status]);
+
+    b.switch_to_block(done_blk);
+    b.seal_block(done_blk);
+}
+
 impl Core {
     /// Compiles (or looks up) a JIT basic block starting at `start_pc`, stopping at `loop_end`
     /// if inside a counter loop. Returns `None` if the first instruction is not JIT-eligible.
     fn get_or_compile_jit_block(&mut self, start_pc: u32, loop_end: u32) -> Option<JitBlockFn> {
         let simd = self.simd();
         let fast_float = self.fast_float;
-        let sram_fast = self.periph.is_none() && self.watch == u32::MAX && !self.rwatch_on;
+        let sram_fast = self.periph.is_none()
+            && self.watch == u32::MAX
+            && self.watch_len <= 1
+            && !self.rwatch_on;
         if self
             .jit
             .as_ref()
@@ -883,7 +1058,7 @@ impl Core {
                         ii,
                         mi,
                         ureg,
-                        write: false,
+                        write,
                         post_modify,
                         cond: 31,
                         compute: None,
@@ -899,18 +1074,78 @@ impl Core {
                         };
                         let fail_blk = b.create_block();
                         b.append_block_param(fail_blk, types::I32);
-                        emit_inline_sram_dag_load(
+                        emit_inline_sram_dag_transfer(
                             &mut b,
                             core_ptr,
                             sram_ptr,
                             ii,
                             mi,
                             ureg,
+                            write,
                             post_modify,
                             insn_pc,
                             insn_w,
                             arg_kind,
                             fn_dagmem_ref,
+                            fail_blk,
+                        );
+                        let cur = b.current_block().unwrap();
+                        b.switch_to_block(fail_blk);
+                        b.seal_block(fail_blk);
+                        let status = b.block_params(fail_blk)[0];
+                        let is_fault = b.ins().icmp_imm(IntCC::Equal, status, 1);
+                        let base_steps = b.ins().imul_imm(iters_done, len_insns as i64);
+                        let steps_fault = b.ins().iadd_imm(base_steps, idx as i64);
+                        let steps_mod = b.ins().iadd_imm(base_steps, idx as i64 + 1);
+                        let steps_out = b.ins().select(is_fault, steps_fault, steps_mod);
+
+                        let is_last_loop_insn = is_loop && insn_pc == loop_end;
+                        let iters_plus1 = b.ins().iadd_imm(iters_done, 1);
+                        let iters_mod = if is_last_loop_insn {
+                            iters_plus1
+                        } else {
+                            iters_done
+                        };
+                        let iters_out = b.ins().select(is_fault, iters_done, iters_mod);
+
+                        let pc_v = b.ins().iconst(types::I32, i64::from(insn_pc));
+                        let mod_pc = if is_last_loop_insn {
+                            start_pc
+                        } else {
+                            insn_next_pc
+                        };
+                        let mod_pc_v = b.ins().iconst(types::I32, i64::from(mod_pc));
+                        let resume_pc_v = b.ins().select(is_fault, pc_v, mod_pc_v);
+                        b.ins()
+                            .jump(early_exit, &[steps_out, iters_out, resume_pc_v]);
+                        b.switch_to_block(cur);
+                    }
+                    DecodedOp::DualMove(dm)
+                        if sram_fast
+                            && !dm.dm_write
+                            && !dm.pm_write
+                            && dm.dm_reg < 16
+                            && dm.pm_reg < 16
+                            && !matches!(dm.dmi, 0 | 1 | 8 | 9)
+                            && !matches!(dm.pmi, 0 | 1 | 8 | 9)
+                            && (dm.compute_raw >> 22) & 1 == 0 =>
+                    {
+                        let arg_kind = i64::from(insn_kind == Kind::T1a);
+                        let fail_blk = b.create_block();
+                        b.append_block_param(fail_blk, types::I32);
+                        emit_inline_dual_sram_load(
+                            &mut b,
+                            core_ptr,
+                            sram_ptr,
+                            dm,
+                            fast_float,
+                            insn_pc,
+                            insn_w,
+                            arg_kind,
+                            fn_fmul_ref,
+                            fn_av_ref,
+                            fn_comp_ref,
+                            fn_dual_ref,
                             fail_blk,
                         );
                         let cur = b.current_block().unwrap();
@@ -1094,7 +1329,10 @@ impl Core {
             let start_pc = self.pc;
             let simd = self.simd();
             let fast_float = self.fast_float;
-            let sram_fast = self.periph.is_none() && self.watch == u32::MAX && !self.rwatch_on;
+            let sram_fast = self.periph.is_none()
+                && self.watch == u32::MAX
+                && self.watch_len <= 1
+                && !self.rwatch_on;
 
             if let Some(func) = self.get_or_compile_jit_block(start_pc, loop_end) {
                 let (len_insns, is_loop) = {
@@ -1287,6 +1525,52 @@ mod tests {
     }
 
     #[test]
+    fn jit_inline_sram_write_and_dual_load_match_interpreter() {
+        // 1) T3c store: DM(I2, M0) = R1 (0x9421: DMI=2, DMM=0, D=1, R1)
+        // 2) T1a dual load + FADD: F2 = F0 + F4, r0=dm(i6,m3), r4=pm(i10,m10)
+        //    Base 0x2cc0_921b_c004 with compute = 0x08_1204 (F2 = F0 + F4) -> 0x2cc0_9208_1204
+        let program = [
+            0x0d05u16, 0x0000, 0x0004, // DO (+4) UNTIL LCE, LCNTR=R5
+            0x9431, // DM(I2, M0) = R1 (T3c: bit36=1, D=1)
+            0x2cc0, 0x9208, 0x1204, // F2=F0+F4, r0=dm(i6,m3), r4=pm(i10,m10)
+        ];
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        for c in [&mut interp, &mut jit] {
+            c.r[5] = 4;
+            c.r[1] = 0xCAFE_0001;
+            c.r[0] = 1.0f32.to_bits();
+            c.r[4] = 2.0f32.to_bits();
+            (c.i[2], c.m[0], c.l[2]) = (0x9_0200, 1, 0);
+            (c.i[6], c.m[3], c.l[6]) = (0x9_0100, 1, 0);
+            (c.i[10], c.m[10], c.l[10]) = (0x9_0300, 1, 0);
+            for k in 0..4 {
+                c.dm_write(0x9_0100 + k, (1.5f32 + k as f32).to_bits())
+                    .unwrap();
+                c.dm_write(0x9_0300 + k, (0.5f32 + k as f32).to_bits())
+                    .unwrap();
+            }
+        }
+        assert_eq!(interp.run(1 + 4 * 2), None);
+        assert_eq!(jit.run_jit(1 + 4 * 2), None);
+        assert_eq!(
+            (jit.r[0], jit.r[2], jit.r[4]),
+            (interp.r[0], interp.r[2], interp.r[4])
+        );
+        assert_eq!(
+            (jit.i[2], jit.i[6], jit.i[10]),
+            (interp.i[2], interp.i[6], interp.i[10])
+        );
+        for k in 0..4 {
+            assert_eq!(
+                jit.dm_read(0x9_0200 + k).unwrap(),
+                interp.dm_read(0x9_0200 + k).unwrap()
+            );
+        }
+        assert!(jit.loops.is_empty());
+    }
+
+    #[test]
     #[ignore = "micro-benchmark: run with cargo test --release -p nord-sharc --features jit --lib bench_jit_dagmem_loop -- --ignored --nocapture"]
     fn bench_jit_dagmem_loop() {
         // DO (+4) UNTIL LCE, LCNTR=R5; R0 = DM(I2, M0) (T3c: 0x9410); R1 = R1 + R0
@@ -1396,5 +1680,60 @@ mod tests {
             "bench_jit_throughput: {} steps in {:?} ({:.2} Msteps/s)",
             c.steps, dt, msteps
         );
+    }
+
+    #[test]
+    fn jit_inline_sram_write_invalidates_other_cached_block() {
+        // Block A at 0x12_0000 (nw 0x9_0000): R0 = 1 (0x0F80, 0x0001)
+        // Block B at 0x12_0020 (nw 0x9_0010): DM(I2, M0) = R1 (0x9431)
+        let mut program = vec![0u16; 0x22];
+        program[0] = 0x0F80;
+        program[1] = 0x0001;
+        program[0x20] = 0x9431;
+
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        for c in [&mut interp, &mut jit] {
+            c.i[2] = 0x9_0000;
+            c.m[0] = 0;
+            c.r[1] = 0x0002_0F80; // R0 = 2
+        }
+
+        // Execute Block A first so it is cached in both decode_cache and jit.blocks.
+        assert_eq!(interp.run(1), None);
+        assert_eq!(jit.run_jit(1), None);
+        assert_eq!((interp.r[0], jit.r[0]), (1, 1));
+
+        // Execute Block B, overwriting Block A in SRAM.
+        interp.pc = 0x12_0020;
+        jit.pc = 0x12_0020;
+        assert_eq!(interp.run(1), None);
+        assert_eq!(jit.run_jit(1), None);
+
+        // Re-execute Block A: must observe the updated instruction (R0 = 2).
+        interp.pc = 0x12_0000;
+        jit.pc = 0x12_0000;
+        assert_eq!(interp.run(1), None);
+        assert_eq!(jit.run_jit(1), None);
+        assert_eq!(jit.r[0], 2);
+        assert_eq!(jit.r[0], interp.r[0]);
+    }
+
+    #[test]
+    fn jit_sram_write_with_watch_records_watch_addrs() {
+        let program = [0x9431u16]; // DM(I2, M0) = R1
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        for c in [&mut interp, &mut jit] {
+            c.i[2] = 0x9_0100;
+            c.r[1] = 0xDEAD_BEEF;
+            c.watch = 0x9_0100;
+            c.watch_len = 4;
+        }
+        assert_eq!(interp.run(1), None);
+        assert_eq!(jit.run_jit(1), None);
+        assert_eq!(jit.watch_addrs, vec![0x9_0100]);
+        assert_eq!(jit.watch_addrs, interp.watch_addrs);
+        assert_eq!(jit.watch_hits.len(), interp.watch_hits.len());
     }
 }
