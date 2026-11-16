@@ -321,9 +321,9 @@ mod tests {
 
     #[cfg(feature = "jit")]
     #[test]
-    #[ignore = "real ORG pass differential check (no --lenient, idle/1-note/8-voice): set NORD_SHARC_ORG_IMAGE=path/to/core2_sram.bin"]
+    #[ignore = "real ORG pass differential check (no --lenient, idle/1-voice/8-voice): set NORD_SHARC_ORG_IMAGE=path/to/core2_sram.bin"]
     fn diff_real_org_passes_from_env() {
-        use crate::runner::msg::{self, STRIP_BASE};
+        use crate::runner::msg;
 
         let path = std::env::var("NORD_SHARC_ORG_IMAGE")
             .expect("set NORD_SHARC_ORG_IMAGE to core2_sram.bin");
@@ -334,15 +334,16 @@ mod tests {
             max_steps: 400_000,
             irq: None,
         };
-        let one_note = [msg::parse_msg("0:0=0x8012082f").unwrap()];
+        let one_voice = [msg::parse_msg("0:0xc10b8=0x1215fb").unwrap()];
         let eight_voices: Vec<_> = (0..8)
-            .map(|k| msg::parse_msg(&format!("0:{}=0x8012082f", k * 62)).unwrap())
+            .map(|k| msg::parse_msg(&format!("0:0x{:x}=0x1215fb", 0xc10b8 + k * 0x18)).unwrap())
             .collect();
 
-        for (label, msgs) in [
-            ("idle", &[][..]),
-            ("1-note", &one_note[..]),
-            ("8-voices", &eight_voices[..]),
+        let mut pass0_steps = Vec::new();
+        for (label, expect_osc, msgs) in [
+            ("idle", false, &[][..]),
+            ("1-voice", true, &one_voice[..]),
+            ("8-voices", true, &eight_voices[..]),
         ] {
             let mut interp = Core::new(&image);
             let mut jit = Core::new(&image);
@@ -355,13 +356,17 @@ mod tests {
                 .unwrap_or_else(|e| panic!("{label} boot diff failed: {e}"));
 
             let mut left_idle = false;
+            let mut hit_osc = false;
             for p in 0..8u32 {
                 for m in msgs.iter().filter(|m| m.pass == p) {
-                    msg::deliver(&mut interp, STRIP_BASE, m).unwrap();
-                    msg::deliver(&mut jit, STRIP_BASE, m).unwrap();
+                    msg::deliver(&mut interp, 0, m).unwrap();
+                    msg::deliver(&mut jit, 0, m).unwrap();
                 }
                 let rep = diff_pass(&mut interp, &mut jit, &cfg, 1_000, true)
                     .unwrap_or_else(|e| panic!("{label} pass {p} diff failed: {e}"));
+                if p == 0 {
+                    pass0_steps.push(rep.steps);
+                }
                 assert_eq!(rep.final_pc, 0x12_5DDF, "{label} pass {p} final_pc");
                 if rep
                     .coverage
@@ -370,8 +375,20 @@ mod tests {
                 {
                     left_idle = true;
                 }
+                if rep
+                    .coverage
+                    .iter()
+                    .any(|&(s, e)| (s..=e).contains(&0x12_15FB))
+                {
+                    hit_osc = true;
+                }
             }
             assert!(left_idle, "{label}: never left idle poll loop");
+            assert_eq!(hit_osc, expect_osc, "{label}: 0x1215fb coverage mismatch");
         }
+        assert!(
+            pass0_steps[0] < pass0_steps[1] && pass0_steps[1] < pass0_steps[2],
+            "expected idle < 1-voice < 8-voices steps, got {pass0_steps:?}"
+        );
     }
 }
