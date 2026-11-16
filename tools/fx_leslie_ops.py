@@ -243,7 +243,7 @@ def ops(m: Machine):
         ),
         lambda k, j: (m.ir[f"i{k}"] + m.ir[f"m{j}"]) & M32,
         # pre-modify `Ii + Mm`: no write back and no circular wrap (PRM fig 6-5; the oracle's
-        # `moves.rs`; D113: ENS writes and reads its second ring at `+0x202` this way)
+        # `moves.rs`; D114: ENS writes and reads its second ring at `+0x202` this way)
         m.x, m.y, m.ir, m.mem,
     )  # fmt: skip
 

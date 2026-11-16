@@ -180,7 +180,7 @@ pub(super) struct FwLawStage {
 impl FwLawStage {
     /// Stage for `kFx2Type` `ty` (0 to 3, 8 to 11), `kFx2Rate` and `kFx2Amt` in `0..=127`, at
     /// `fs`; `None` for the other types. ENS (8, 9) runs with `L4 = L7 = 0` like every routine
-    /// (D113: its two rings sit `0x202` words apart and are read and written by pre-modify,
+    /// (D114: its two rings sit `0x202` words apart and are read and written by pre-modify,
     /// no tap register is needed). `kFx2Amt` writes `c[-3]`, `c[2]`, `c[3]`, `c[4]` and `kFx2Rate` the phase increment `c[-6]` (44 knots, D100).
     pub(super) fn new(ty: u8, rate: u32, amount: u32, fs: f32) -> Option<Self> {
         Self::build(ty, rate, amount, fs)
@@ -472,9 +472,9 @@ mod tests {
 
     #[test]
     fn the_ensemble_left_voice_runs_with_linear_tap_registers() {
-        // Boot row, `L4 = L7 = 0` (the registers no code of the image writes, D113): the left
+        // Boot row, `L4 = L7 = 0` (the registers no code of the image writes, D114): the left
         // output runs because the left voice lives in a second ring `0x202` words after the
-        // first and is reached by a pre-modify, which does not wrap. (Before D113 the model
+        // first and is reached by a pre-modify, which does not wrap. (Before D114 the model
         // wrapped the pre-modify, left stayed exactly 0 and circular taps were assumed.)
         let mut st = FwLawStage::new(8, 64, 100, 48_000.0).unwrap();
         let mut p = [0.0f32; 2];

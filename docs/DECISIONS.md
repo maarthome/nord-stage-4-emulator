@@ -85,7 +85,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 | [D81](#d81-the-multi--super-stages-read-the-verified-arm-words-by-default-super-wave-0-on-lp24-has-its-own-cutoff-factor) | 2026-11-15 | The MULTI / SUPER stages read the verified ARM words by default; SUPER wave 0 on LP24 has its own cutoff factor | accepted |
 | [D84](#d84-the-mouse-velocity-of-the-on-screen-keybed-follows-the-hit-position-along-the-key) | 2026-11-15 | The mouse velocity of the on-screen keybed follows the hit position along the key | proposed |
 | [D85](#d85-organ-level-k--28-stays-empirical-the-image-audit-finds-no-1--021875-lane-word-the-d72-lead-is-pinned-by-a-test) | 2026-11-15 | Organ level `K = 2.8` stays EMPIRICAL: the image audit finds no `1 / 0.21875` lane word; the D72 lead is pinned by a test | accepted |
-| [D113](#d113-ens-needs-no-tap-registers-the-model-wrapped-a-pre-modify-circular-taps-are-removed) | 2026-11-15 | ENS needs no tap registers: the model wrapped a pre-modify; the circular taps are removed | accepted |
+| [D114](#d114-ens-needs-no-tap-registers-the-model-wrapped-a-pre-modify-circular-taps-are-removed) | 2026-11-15 | ENS needs no tap registers: the model wrapped a pre-modify; the circular taps are removed | accepted |
 | [D112](#d112-the-real-packed-sample-stream-decodes-in-the-sy-unpacker-and-carries-no-pitch-entry-the-handler-sweep-finds-no-writer---sample-pitch-fw-stays-opt-in) | 2026-11-15 | The real packed sample stream decodes in the SY unpacker and carries no pitch entry; the handler sweep finds no writer | accepted |
 | [D111](#d111-the-sy-initialisation-script-is-replayed-and-the-ring-refill-modelled-still-no-writer-of-the-pitch-entry---sample-pitch-fw-stays-opt-in) | 2026-11-15 | The SY initialisation script is replayed and the ring refill modelled; still no writer of the pitch entry | accepted |
 | [D106](#d106-organ-k-per-engine-measured-on-the-transkun-streams-no-arm-or-sharc-gain-word-found-k--28-stays-empirical) | 2026-11-15 | Organ `K` per engine measured on the Transkun streams; no ARM or SHARC gain word found, `K = 2.8` stays EMPIRICAL | accepted | Claude (agent) |
@@ -1091,7 +1091,7 @@ Add `tanh` preamp or gain before exists, be fitted flip `--leslie firmware` D22)
 - **Alternatives:** Realign only the Touch bits (rejected: the neighbouring fields read the same shifted bits and would collide); flip `firmware_touch` now (rejected, see Why).
 - **Impact:** A loaded program now carries its Touch, string resonance, soft release and pedal noise from the real bits (`PianoLayer::touch`, `string_resonance_enabled`, `soft_release`, `pedal_noise_enabled`); with the switch off only the sounds without a level model feel the Touch (ASSUMED powers). `render_hash` and the goldens use synthetic setups and do not change.
 
-### D113. ENS needs no tap registers: the model wrapped a pre-modify; the circular taps are removed
+### D114. ENS needs no tap registers: the model wrapped a pre-modify; the circular taps are removed
 
 - **Status:** accepted 2026-11-15
 - **Decided by:** Claude (agent), on the parent session's task (audio item 6, OQ21a); evidence [fx-ens-tap-registers](research/fx-ens-tap-registers.md)

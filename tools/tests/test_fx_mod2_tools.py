@@ -115,7 +115,7 @@ def test_the_golden_vectors_are_deterministic_and_complete():
 
 
 def test_the_pre_modify_address_does_not_wrap_in_a_circular_buffer():
-    """D113: `dm(m6, i6)` is `I6 + M6` (PRM fig 6-5, the oracle's `moves.rs`). ENS stores its second
+    """D114: `dm(m6, i6)` is `I6 + M6` (PRM fig 6-5, the oracle's `moves.rs`). ENS stores its second
     ring at `I6 + 0x202` with `L6 = 0x200`; wrapping folded that write into the first ring."""
     import fx_leslie_ops as lo
 

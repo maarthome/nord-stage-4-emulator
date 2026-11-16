@@ -27,7 +27,7 @@ D95 said the ARM writes no ENS amount or rate word: wrong, the generator did not
 
 ## 3. ENS tap registers (`B4 / L4 / B7 / L7`)
 
-> **Closed by D113 ([fx-ens-tap-registers](fx-ens-tap-registers.md)):** no code writes `L4` / `B4` in either core and none has to; the left voice is a second ring reached by a non-wrapping pre-modify, so the bullets below describe a model bug (a wrapped pre-modify), not a missing register state.
+> **Closed by D114 ([fx-ens-tap-registers](fx-ens-tap-registers.md)):** no code writes `L4` / `B4` in either core and none has to; the left voice is a second ring reached by a non-wrapping pre-modify, so the bullets below describe a model bug (a wrapped pre-modify), not a missing register state.
 
 * The routine (`0x123A7B`) sets `L6 = 0x200`, `M6 = 0x202`, `B6 = c[-0x20]`, and reads its taps with `I4 = MODIFY(I6, M3)` followed by `DM(M6, I4)`: the wrap of the tap pointer comes from `I6`, the pre-modify by `0x202` is linear unless `L4` is non-zero.
 * No instruction of the FX core 2 listing writes `L4` or `B4` (67,235 lines, `0x120000..0x150000`); `L6`, `L7`, `B6`, `B7` are written only by other routines and by the init (`0x120528`: zero in both register sets).
@@ -50,7 +50,7 @@ D95 said the ARM writes no ENS amount or rate word: wrong, the generator did not
 
 ## Follow-ups
 
-1. ~~The hardware reset value of `L4` / `B4`~~ not needed (D113); an ENS hardware clip remains open.
+1. ~~The hardware reset value of `L4` / `B4`~~ not needed (D114); an ENS hardware clip remains open.
 2. Per-layer-kind words (D90).
 3. The ENS delay words `c[6]`, `c[7]`, `c[10]` (-167.0 frames) are not rescaled to the engine rate.
 
