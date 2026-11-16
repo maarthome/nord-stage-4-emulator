@@ -132,7 +132,7 @@ impl Core {
 
     /// Fetches and decodes the instruction at `pc` into a [`CachedInsn`] on cache miss.
     #[inline(never)]
-    fn fetch_and_cache(&mut self, pc: u32, isa: bool) -> CachedInsn {
+    pub(super) fn fetch_and_cache(&mut self, pc: u32, isa: bool) -> CachedInsn {
         let d = self.fetch(pc);
         let next_pc = d.pc.wrapping_add(if isa { 1 } else { d.insn.len as u32 });
         let op = DecodedOp::from_insn(&d.insn, d.w);

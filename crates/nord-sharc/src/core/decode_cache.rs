@@ -230,6 +230,10 @@ impl Core {
         if let Some(cache) = self.decode_cache.as_deref_mut() {
             cache.invalidate_sram_range(first_short, count);
         }
+        #[cfg(feature = "jit")]
+        if let Some(jit) = self.jit.as_deref_mut() {
+            jit.invalidate_range(first_short, count);
+        }
     }
 
     /// Invalidates the entire decode cache in O(1) by advancing the code generation.

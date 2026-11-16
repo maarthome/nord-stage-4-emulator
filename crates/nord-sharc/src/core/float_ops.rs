@@ -15,7 +15,7 @@ use super::Core;
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub struct ExtFile {
     tag: [u32; 16],
-    lo: [u8; 16],
+    pub(super) lo: [u8; 16],
 }
 
 impl ExtFile {
