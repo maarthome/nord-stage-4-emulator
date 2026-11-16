@@ -6,6 +6,7 @@
 //! hands control back to [`Core::step`], preserving 100% oracle fidelity.
 use super::decode_cache::{ComputeOp, DecodedOp, DualMoveOp, MoveOp};
 use super::exec::Decoded;
+use super::float::{MODE1_RND32, MODE1_TRUNC};
 use super::{Core, Fault, Flags};
 use crate::visa::{Insn, Kind};
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
@@ -587,6 +588,204 @@ fn emit_fast_float_op(
     }
 }
 
+/// Exact guarded native `f64` fast path for `FloatMul`, `FADD`, and `FSUB` when `fast_float` is
+/// disabled. Executes inline only when `(mode1 & (MODE1_TRUNC | MODE1_RND32)) == 0`, both inputs
+/// are normal `f32` values with zero 8-bit extension (`fx.lo == 0 || fx.tag != r`), exponent
+/// difference `<= 28` for `Add`/`Sub`, and the `f64` result is a normal 40-bit value with zero
+/// 21-bit rounding tail; otherwise falls back to `jit_float_mul` / `jit_exec_compute` for 1:1
+/// hardware fidelity.
+#[allow(clippy::too_many_arguments)]
+fn emit_exact_float_op(
+    b: &mut FunctionBuilder,
+    core_ptr: cranelift_codegen::ir::Value,
+    kind: FastFloatKind,
+    n: u8,
+    x: u8,
+    y: u8,
+    raw_c: u64,
+    fn_fmul_ref: cranelift_codegen::ir::FuncRef,
+    fn_comp_ref: cranelift_codegen::ir::FuncRef,
+) {
+    let mem = MemFlags::trusted();
+    let off_r = offset_of!(Core, r) as i32;
+    let off_fx_tag = (offset_of!(Core, fx) + offset_of!(super::float_ops::ExtFile, tag)) as i32;
+    let off_fx_lo = (offset_of!(Core, fx) + offset_of!(super::float_ops::ExtFile, lo)) as i32;
+    let off_flags = offset_of!(Core, flags) as i32;
+    let off_astat0 =
+        (offset_of!(Core, sys) + offset_of!(super::sysregs::SysState, astat_extra)) as i32;
+    let off_mode1 = offset_of!(Core, mode1) as i32;
+
+    let mode1 = b.ins().load(types::I32, mem, core_ptr, off_mode1);
+    let mode_mask = i64::from(MODE1_TRUNC | MODE1_RND32);
+    let mode_masked = b.ins().band_imm(mode1, mode_mask);
+    let mode_ok = b.ins().icmp_imm(IntCC::Equal, mode_masked, 0);
+
+    let rx = b
+        .ins()
+        .load(types::I32, mem, core_ptr, off_r + 4 * i32::from(x));
+    let ry = b
+        .ins()
+        .load(types::I32, mem, core_ptr, off_r + 4 * i32::from(y));
+    let tag_x = b
+        .ins()
+        .load(types::I32, mem, core_ptr, off_fx_tag + 4 * i32::from(x));
+    let tag_y = b
+        .ins()
+        .load(types::I32, mem, core_ptr, off_fx_tag + 4 * i32::from(y));
+    let lo_x = b
+        .ins()
+        .load(types::I8, mem, core_ptr, off_fx_lo + i32::from(x));
+    let lo_y = b
+        .ins()
+        .load(types::I8, mem, core_ptr, off_fx_lo + i32::from(y));
+
+    let tag_x_eq = b.ins().icmp(IntCC::Equal, tag_x, rx);
+    let lo_x_nz = b.ins().icmp_imm(IntCC::NotEqual, lo_x, 0);
+    let has_ext_x = b.ins().band(tag_x_eq, lo_x_nz);
+    let tag_y_eq = b.ins().icmp(IntCC::Equal, tag_y, ry);
+    let lo_y_nz = b.ins().icmp_imm(IntCC::NotEqual, lo_y, 0);
+    let has_ext_y = b.ins().band(tag_y_eq, lo_y_nz);
+    let no_ext = b.ins().bor(has_ext_x, has_ext_y);
+    let ext_ok = b.ins().icmp_imm(IntCC::Equal, no_ext, 0);
+
+    let rx_sh = b.ins().ushr_imm(rx, 23);
+    let exp_x = b.ins().band_imm(rx_sh, 0xFF);
+    let ry_sh = b.ins().ushr_imm(ry, 23);
+    let exp_y = b.ins().band_imm(ry_sh, 0xFF);
+    let exp_xm1 = b.ins().iadd_imm(exp_x, -1);
+    let norm_x = b.ins().icmp_imm(IntCC::UnsignedLessThan, exp_xm1, 254);
+    let exp_ym1 = b.ins().iadd_imm(exp_y, -1);
+    let norm_y = b.ins().icmp_imm(IntCC::UnsignedLessThan, exp_ym1, 254);
+    let norm_xy = b.ins().band(norm_x, norm_y);
+    let mut pre_ok = b.ins().band(mode_ok, ext_ok);
+    pre_ok = b.ins().band(pre_ok, norm_xy);
+    if !matches!(kind, FastFloatKind::Mul) {
+        let diff = b.ins().isub(exp_x, exp_y);
+        let diff_off = b.ins().iadd_imm(diff, 28);
+        let diff_ok = b.ins().icmp_imm(IntCC::UnsignedLessThan, diff_off, 57);
+        pre_ok = b.ins().band(pre_ok, diff_ok);
+    }
+
+    let check_blk = b.create_block();
+    let slow_blk = b.create_block();
+    let done_blk = b.create_block();
+    b.ins().brif(pre_ok, check_blk, &[], slow_blk, &[]);
+
+    b.switch_to_block(check_blk);
+    b.seal_block(check_blk);
+    let fx32 = b.ins().bitcast(types::F32, MemFlags::new(), rx);
+    let fy32 = b.ins().bitcast(types::F32, MemFlags::new(), ry);
+    let fx64 = b.ins().fpromote(types::F64, fx32);
+    let fy64 = b.ins().fpromote(types::F64, fy32);
+    let res64 = match kind {
+        FastFloatKind::Mul => b.ins().fmul(fx64, fy64),
+        FastFloatKind::Add => b.ins().fadd(fx64, fy64),
+        FastFloatKind::Sub => b.ins().fsub(fx64, fy64),
+    };
+    let res_bits = b.ins().bitcast(types::I64, MemFlags::new(), res64);
+    let tail = b.ins().band_imm(res_bits, 0x1F_FFFF);
+    let tail_zero = b.ins().icmp_imm(IntCC::Equal, tail, 0);
+    let exp64_sh = b.ins().ushr_imm(res_bits, 52);
+    let exp64 = b.ins().band_imm(exp64_sh, 0x7FF);
+    let exp32_64 = b.ins().iadd_imm(exp64, -896);
+    let exp32_m1 = b.ins().iadd_imm(exp32_64, -1);
+    let res_norm = b.ins().icmp_imm(IntCC::UnsignedLessThan, exp32_m1, 254);
+    let post_ok = b.ins().band(tail_zero, res_norm);
+
+    let fast_blk = b.create_block();
+    b.ins().brif(post_ok, fast_blk, &[], slow_blk, &[]);
+
+    b.switch_to_block(fast_blk);
+    b.seal_block(fast_blk);
+    let res_hi32 = b.ins().ushr_imm(res_bits, 32);
+    let sign32 = b.ins().band_imm(res_hi32, 0x8000_0000u32 as i64);
+    let exp32_sh = b.ins().ishl_imm(exp32_64, 23);
+    let mant23_sh = b.ins().ushr_imm(res_bits, 29);
+    let mant23 = b.ins().band_imm(mant23_sh, 0x7F_FFFF);
+    let em = b.ins().bor(exp32_sh, mant23);
+    let r_full64 = b.ins().bor(sign32, em);
+    let r_res = b.ins().ireduce(types::I32, r_full64);
+    let lo_sh = b.ins().ushr_imm(res_bits, 21);
+    let lo_res = b.ins().ireduce(types::I8, lo_sh);
+
+    b.ins()
+        .store(mem, r_res, core_ptr, off_r + 4 * i32::from(n));
+    b.ins()
+        .store(mem, r_res, core_ptr, off_fx_tag + 4 * i32::from(n));
+    b.ins()
+        .store(mem, lo_res, core_ptr, off_fx_lo + i32::from(n));
+
+    let an = b.ins().icmp_imm(IntCC::SignedLessThan, r_res, 0);
+    match kind {
+        FastFloatKind::Mul => {
+            let mn32 = b.ins().uextend(types::I32, an);
+            let mn_sh = b.ins().ishl_imm(mn32, 6);
+            let extra = b.ins().load(types::I32, mem, core_ptr, off_astat0);
+            let cleared = b.ins().band_imm(extra, !(0xFi64 << 6));
+            let updated = b.ins().bor(cleared, mn_sh);
+            b.ins().store(mem, updated, core_ptr, off_astat0);
+        }
+        FastFloatKind::Add | FastFloatKind::Sub => {
+            let zero8 = b.ins().iconst(types::I8, 0);
+            b.ins().store(
+                mem,
+                zero8,
+                core_ptr,
+                off_flags + offset_of!(Flags, az) as i32,
+            );
+            b.ins()
+                .store(mem, an, core_ptr, off_flags + offset_of!(Flags, an) as i32);
+            b.ins().store(
+                mem,
+                zero8,
+                core_ptr,
+                off_flags + offset_of!(Flags, av) as i32,
+            );
+            b.ins().store(
+                mem,
+                zero8,
+                core_ptr,
+                off_flags + offset_of!(Flags, ac) as i32,
+            );
+            b.ins().store(
+                mem,
+                zero8,
+                core_ptr,
+                off_flags + offset_of!(Flags, ai) as i32,
+            );
+            b.ins().store(
+                mem,
+                zero8,
+                core_ptr,
+                off_flags + offset_of!(Flags, as_) as i32,
+            );
+            let extra = b.ins().load(types::I32, mem, core_ptr, off_astat0);
+            let set_af = b.ins().bor_imm(extra, 1i64 << 10);
+            b.ins().store(mem, set_af, core_ptr, off_astat0);
+        }
+    }
+    b.ins().jump(done_blk, &[]);
+
+    b.switch_to_block(slow_blk);
+    b.seal_block(slow_blk);
+    match kind {
+        FastFloatKind::Mul => {
+            let n_v = b.ins().iconst(types::I32, i64::from(n));
+            let x_v = b.ins().iconst(types::I32, i64::from(x));
+            let y_v = b.ins().iconst(types::I32, i64::from(y));
+            b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
+        }
+        FastFloatKind::Add | FastFloatKind::Sub => {
+            let c_v = b.ins().iconst(types::I64, raw_c as i64);
+            b.ins().call(fn_comp_ref, &[core_ptr, c_v]);
+        }
+    }
+    b.ins().jump(done_blk, &[]);
+
+    b.switch_to_block(done_blk);
+    b.seal_block(done_blk);
+}
+
 /// Lowers non-rounding `ComputeOp::FixedMult` (`cls` 1..=3, `!round`) to Cranelift IR with
 /// 1:1 80-bit `mr[reg]` arithmetic, `MN`/`MV`/`MU` flags, and a cold `jit_note_mult_overflow`
 /// call when `MV` is set.
@@ -780,10 +979,17 @@ fn emit_jit_compute_op(
             emit_fast_float_op(b, core_ptr, FastFloatKind::Mul, n, x, y);
         }
         ComputeOp::FloatMul { n, x, y } => {
-            let n_v = b.ins().iconst(types::I32, i64::from(n));
-            let x_v = b.ins().iconst(types::I32, i64::from(x));
-            let y_v = b.ins().iconst(types::I32, i64::from(y));
-            b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
+            emit_exact_float_op(
+                b,
+                core_ptr,
+                FastFloatKind::Mul,
+                n,
+                x,
+                y,
+                0,
+                fn_fmul_ref,
+                fn_comp_ref,
+            );
         }
         ComputeOp::FixedMult { op: mop, n, x, y }
             if (mop >> 6) != 0 && !((mop & 1 == 1) && ((mop >> 3) & 1 == 1)) =>
@@ -802,13 +1008,17 @@ fn emit_jit_compute_op(
             n,
             x,
             y,
-        } if fast_float => {
+        } => {
             let fk = if fop == 0x81 {
                 FastFloatKind::Add
             } else {
                 FastFloatKind::Sub
             };
-            emit_fast_float_op(b, core_ptr, fk, n, x, y);
+            if fast_float {
+                emit_fast_float_op(b, core_ptr, fk, n, x, y);
+            } else if let Some(raw_c) = compute_op_to_raw(cop) {
+                emit_exact_float_op(b, core_ptr, fk, n, x, y, raw_c, fn_fmul_ref, fn_comp_ref);
+            }
         }
         other => {
             if let Some(raw_c) = compute_op_to_raw(other) {
@@ -2154,6 +2364,62 @@ mod tests {
             assert_eq!(jit.r, interp.r);
             assert_eq!(jit.astat(0), interp.astat(0));
             assert_eq!(jit.sys.stky[0], interp.sys.stky[0]);
+        }
+    }
+
+    #[test]
+    fn jit_exact_float_matches_interp_including_edge_cases() {
+        // F2 = F0 * F1; F3 = F0 + F1; F4 = F0 - F1
+        let prog = [
+            0x013eu16, 0x0013, 0x0201, 0x013e, 0x0008, 0x1301, 0x013e, 0x0008, 0x2401,
+        ];
+        let cases = [
+            (0.5f32.to_bits(), 0.25f32.to_bits(), 0),   // exact normal
+            (0.1f32.to_bits(), 0.2f32.to_bits(), 0),    // 40-bit rounding tail -> fallback
+            (1e15f32.to_bits(), 1.0f32.to_bits(), 0),   // exp diff > 28 -> fallback
+            (0.0f32.to_bits(), (-0.0f32).to_bits(), 0), // zeros
+            (1u32, 2.0f32.to_bits(), 0),                // denormal
+            (f32::INFINITY.to_bits(), 0.0f32.to_bits(), 0), // Inf * 0 -> MI
+            (f32::NAN.to_bits(), 1.0f32.to_bits(), 0),  // NaN
+            (1e38f32.to_bits(), 1e38f32.to_bits(), 0),  // overflow -> MV/AV
+            (1e-30f32.to_bits(), 1e-30f32.to_bits(), 0), // underflow -> MU/AU
+            (
+                0.5f32.to_bits(),
+                0.25f32.to_bits(),
+                super::super::float::MODE1_RND32,
+            ),
+            (
+                0.1f32.to_bits(),
+                0.2f32.to_bits(),
+                super::super::float::MODE1_TRUNC,
+            ),
+        ];
+        for (x, y, mode1) in cases {
+            let mut interp = core_with(&prog);
+            let mut jit = core_with(&prog);
+            for c in [&mut interp, &mut jit] {
+                c.mode1 = mode1;
+                (c.r[0], c.r[1]) = (x, y);
+            }
+            assert_eq!(interp.run(3), None);
+            assert_eq!(jit.run_jit(3), None);
+            assert_eq!(
+                jit.r, interp.r,
+                "r mismatch for x=0x{x:08x} y=0x{y:08x} m1=0x{mode1:x}"
+            );
+            assert_eq!(
+                jit.flags, interp.flags,
+                "flags mismatch for x=0x{x:08x} y=0x{y:08x} m1=0x{mode1:x}"
+            );
+            assert_eq!(
+                jit.astat(0),
+                interp.astat(0),
+                "astat mismatch for x=0x{x:08x} y=0x{y:08x} m1=0x{mode1:x}"
+            );
+            assert_eq!(
+                jit.sys.stky[0], interp.sys.stky[0],
+                "stky mismatch for x=0x{x:08x} y=0x{y:08x} m1=0x{mode1:x}"
+            );
         }
     }
 }
