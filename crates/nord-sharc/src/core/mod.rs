@@ -448,6 +448,19 @@ impl Core {
         }
         None
     }
+
+    /// Runs using the Level-2 Cranelift JIT when the `jit` feature is enabled, otherwise falls
+    /// back to [`Core::run`].
+    pub fn run_auto(&mut self, max_steps: u64) -> Option<Fault> {
+        #[cfg(feature = "jit")]
+        {
+            self.run_jit(max_steps)
+        }
+        #[cfg(not(feature = "jit"))]
+        {
+            self.run(max_steps)
+        }
+    }
 }
 
 #[cfg(test)]
