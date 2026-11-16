@@ -32,7 +32,7 @@ pub fn type_cutoff_scale(model: FilterModel) -> f32 {
 /// D116 (`docs/research/synth-super-lp24-clips.md`): three more Part A clips do not confirm it. Horizon
 /// itself now prefers 2.0 to 3.0 (gap score 0.85 / 0.80 against 1.89 at 4.4, video-detected notes;
 /// 1.47 / 1.58 against 3.53, Transkun notes), A:25 Sidechain Whl II 1.0 to 2.2 (2.87 to 2.94 against
-/// 4.32), A:76 and A:81 are insensitive. Four-clip mean 3.17 / 3.95 at 4.4, 2.44 / 2.58 at 2.0
+/// 4.32; no PUMP, brightness only), A:76 is dominated by its LP12 layer B and A:81 is insensitive. Four-clip mean 3.17 / 3.95 at 4.4, 2.44 / 2.58 at 2.0
 /// (`--synth-super-lp24 2.0`, opt-in). The note lists are unverified, so the default stays (D22).
 pub const SUPER_LP24_TYPE_SCALE: f32 = 4.4;
 
