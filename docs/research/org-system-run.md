@@ -15,7 +15,7 @@ Tags follow `.agents/rules/provenance-in-code.md`: **VERIFIED** = reproduced by 
 | Does the voice routine run? | **No.** `0x1215FB` runs in 0 of 316 passes (proxy: 316 of 316). The stage-A slots stay `0x120BF7` (null) with `0x120300` in slots 2 and 3. The extra 2,112 steps are a new block `0x12566E..0x1257B1` (136 new pcs, 4,200 distinct pcs per pass against 4,068 idle). | VERIFIED |
 | Does the real stream run without help? | **No.** Pass 15 reads `DM(0x3E021)` (external-port DMA register block) as the loop count of `DO (PC, 3) UNTIL LCE, LCNTR = R0` at `0x12717F`; the oracle reads 0 and faults. Pre-setting the word to 1 lets 316 passes run. | VERIFIED (fault), ASSUMED (value 1) |
 | Audio and DSP state | Pass buffers `0xB0000..0xB2FFF`: **0 words change in every run** (real, proxy, `sharc-org`): ORG Core2 produces no audio in any state tried. Module state differs: 520 / 537 / 656 words against proxy idle / 1 voice / 8 voices. | VERIFIED |
-| Real-time | One pass is **46.08 us** of audio. SHARC alone needs **10.7x** (best run) to 11.3x (median) the interpreter speed; the ARM harness runs at **17.7 ms per 1 ms tick (17.7x slower than real time)**. Together **28x**, before DMA, interrupts and the other cores. | EMPIRICAL |
+| Real-time | One pass is **46.08 us** of audio. SHARC alone needs **10.8x** (best run) to 13.4x (median) the interpreter speed; the ARM harness runs at **17.7 ms per 1 ms tick (17.7x slower than real time)**. Together **28x** (ORG Core2) and **32x** (PNO core 1, section 6), before DMA, interrupts and the other cores. | EMPIRICAL |
 
 ## 2. Real message streams
 
@@ -67,10 +67,10 @@ Poke-proxy reference points reproduce ([sharc-jit-real-org-diff](sharc-jit-real-
 | proxy idle | 4,265 | 331.0 / 512.4 | 0.03 | 0.29 | 331.3 / 512.9 | 1,893.6 | 7.2x |
 | proxy 1 voice | 4,476 | 470.9 / 589.1 | 0.05 | 0.53 | 471.5 / 589.9 | 2,629.4 | 10.2x |
 | proxy 8 voices | 5,953 | 500.9 / 590.8 | 0.06 | 0.49 | 501.5 / 591.6 | 2,873.7 | 10.9x |
-| **real load / idle / 1 key / 8 keys** | 6,377 | 492.0 / 521.6 | 0.63 | 0.29 | 492.9 / 522.6 | 2,717.8 | **10.7x** |
+| **real load / idle / 1 key / 8 keys** | 6,377 | 496.7 / 618.5 | 0.03 | 0.43 | 497.2 / 619.0 | 2,463.2 | **10.8x** |
 
-- Interpreter speed 12.9 Msteps/s (best run, real: 6,377 / 492.9 us; proxy idle 4,265 / 331.3 us). The real stream needs **6,377 / 46.08 us = 138.4 Msteps/s** on one core.
-- Message delivery: the measured window holds no messages for the flat run (the 0.63 us is the per-pass scan of the 912-entry script). With natural pass numbers (17,500 passes, 13 bursts of up to 143 words) the delivery mean is 0.68 us and the worst pass 21.3 us, about 0.15 us per delivered word. The ARM to DSP link itself (SPI frame, 3 words per message, [dsp-rx-protocol](dsp-rx-protocol.md)) is **not timed**.
+- Interpreter speed 12.8 Msteps/s (best run, real: 6,377 / 497.2 us; proxy idle 4,265 / 331.3 us). The real row was re-measured after `run_system` replaced its per-pass scan of the message list by a cursor (the first run showed 0.63 us of pure scan in `msg`). The real stream needs **6,377 / 46.08 us = 138.4 Msteps/s** on one core.
+- Message delivery: the measured window holds no messages for the flat run. With natural pass numbers (17,500 passes, 13 bursts of up to 143 words) the delivery mean is 0.68 us and the worst pass 21.3 us, about 0.15 us per delivered word. The ARM to DSP link itself (SPI frame, 3 words per message, [dsp-rx-protocol](dsp-rx-protocol.md)) is **not timed**.
 - DMA / stub: 0.3 to 0.5 us per pass for rewriting 32 input words. This is a cost placeholder; real audio DMA is not modelled.
 - Worst passes (2 to 3 ms) are host scheduling spikes (the same script run 7 times gives worst passes from 1.0 to 2.7 ms); they do not come from the DSP work (step counts are constant).
 
@@ -103,17 +103,45 @@ One pass is 2 audio frames at `F = 43,402.34375 Hz` (44,444,000 / 1024) = **46.0
 | Other cores | ORG Core1, PNO, FX, SY, SMP are not run; PNO core 1 receives the key messages and would carry the organ voice |
 | Timing | wall clock of an interpreter on a loaded host, no cycle model; the SHARC cycle count of a pass is not measured |
 
+## 6. PNO core 1 with the same ARM stream
+
+Same capture (second run, `docs/research/data/org-system-arm-stream-2.json`; the ORG core 2 stream is identical to the first, 912 messages, same sorted words), now replayed into the **PNO core 1** image (`dsp_image_1_PNO.bin`, `sharc-sys --pno`: entry `0x121007`, poll loop `0x121091`, mailbox `0xB00E1`, board gates, FLAG1 high, P4I status 1 starts every pass, ping-pong `DM(0xB0158)` toggled, the setup of `sharc-pass`). PNO core 1 receives **7,340 load messages**, 126 for 1 key down (59 up) and 907 for 8 keys down (789 up); scripts `org-system-{load,key1,key8}-pno1.script`. Load messages go before pass 0; the key scripts are added at pass 16 (`--script-at 16:FILE`), 1,000 passes after 16 warm-up (key messages span 868 passes).
+
+| Run | Steps per pass | sharc best / median mean (us) | total best / median mean (us) | worst pass (us) | total best / 46.08 us |
+|---|---:|---:|---:|---:|---:|
+| PNO bare image (no script) | 1,205 to 1,215 | 69.8 (one run) | 70.2 | 409.0 | 1.5x |
+| PNO after load (7,340 msgs) | 7,881 to 7,891 (first 7,880) | 653.0 / 676.4 | 653.4 / 676.8 | 1,783.9 | **14.2x** |
+| + 1 key down | 7,881 to 7,891 | 812.0 / 854.9 | 812.6 / 855.5 | 2,098.6 | 17.6x |
+| + 8 keys down | 7,881 to 7,891 | 779.2 / 793.6 | 779.7 / 794.2 | 5,656.0 | 16.9x |
+
+- **The step count does not depend on the keys** (identical range in all three runs; `sharc-pass` gives the same 7,880 / 7,881 / 7,891 for the load run). The PNO pass is a fixed structure (8 slot calls, 18-module chain, output stage). The 1.2x to 1.25x higher key-run times are host noise (same steps): the best of all runs is 14.2x (**171.2 Msteps/s needed**, 7,891 / 46.08 us; interpreter 12.1 Msteps/s at best).
+- **Call targets after the load** (`sharc-pass --calls`): `0x1200B7 0x121B33 0x121BBE 0x121E2B 0x122A71 0x122B85 0x12637B`. Slot table `DM(0xC01D6..)`: generators `0x122A71` (Farfisa) and `0x121BBE`, `0x121B33` (idle) x2, B3 generators `0x121E2B` x2 and processors `0x122B85` x2. The load installs the program's organ modules.
+- **Keys change state, not output.** Against the load run, 1 key changes 302 SRAM words (98 module state, 204 elsewhere) and 8 keys 512 (98 module state, 414 elsewhere); pass buffers `0xB0000..0xB2FFF` 0 and strips 0. The output lanes (`sharc-pass --lane 2:0`, 2,032 frames) are **silent**: peak 0.000000 for load, 1 key and 8 keys; only lane set 0 holds a residue of at most 2.3e-4 (the start-up residue of [pno-full-pass](pno-full-pass.md)). So no audio comparison with a hardware clip is possible for this stream either; the open questions are whether the B3 key weights need a model-install burst this capture does not replay, or more passes ([pno-full-pass](pno-full-pass.md) sections 5 and 6).
+- **ARM** (second capture, the host was slower): idle 23.9 ms per tick (mean; first capture 17.7 ms), 1 key 22.7 ms, 8 keys 23.4 ms, load 16.5 ms. Per pass interval 1.10 / 1.05 / 1.08 ms. Sequential ARM + SHARC for the PNO load: 1.10 + 0.65 = 1.75 ms, **38x** the pass period (first-capture ARM: 0.82 + 0.65 = 1.47 ms, 32x).
+- **Message delivery:** 7,340 words delivered before pass 0 (outside the measured window); bursts inside the window cost at most 107.7 us (126 words in one pass) and 30.6 us (8 keys), 0.04 to 0.07 us per pass otherwise.
+- **Real-time budget of the two images together** (interpreter, same host): ORG Core2 0.50 ms + PNO core 1 0.65 ms = 1.15 ms of SHARC time per 46.08 us pass, 25x, before ORG Core1, PNO core 2, FX, SY and SMP.
+
+Commands:
+
+```bash
+python tools/ns4_dsp_ldr.py DSP/dsp_image_1_PNO.bin --sram PNO
+target/release/sharc-sys PNO/core1_sram.bin --pno --passes 1000 --warmup 16   --script-flat docs/research/data/org-system-load-pno1.script   --script-at 16:docs/research/data/org-system-key8-pno1.script --state-cmp load.state
+awk '{ $1=0; print }' docs/research/data/org-system-load-pno1.script > flat.script
+target/release/sharc-pass PNO/core1_sram.bin --script flat.script --script docs/research/data/org-system-key8-pno1.script@16   --passes 1016 --quiet --lane 2:0 --wav k8.wav --calls
+```
+
 ## Implications
 
 - A key press does not change the ORG Core2 pass in this firmware, so "1 key" and "8 keys" cost the same as idle for this core; the poke proxy overstated it for voices and understated it for the program load (4,265 to 5,953 against 6,377 steps).
-- Single-core real time needs 138.4 Msteps/s for the real ORG load (against 92.6 / 97.1 / 129.2 for the proxy states in [sharc-jit-org-profile](sharc-jit-org-profile.md)); the interpreter is 10.7x short, the ARM harness 17.7x short, and neither the DMA nor the other four cores are in the figure.
+- Single-core real time needs 138.4 Msteps/s for the real ORG load (against 92.6 / 97.1 / 129.2 for the proxy states in [sharc-jit-org-profile](sharc-jit-org-profile.md)); the interpreter is 10.8x short, the ARM harness 17.7x short, and neither the DMA nor the other four cores are in the figure.
 - The ARM side, not the SHARC, is the larger share of the interval (0.82 ms against 0.49 ms) in this harness.
+- PNO core 1 is 7,891 steps per pass (171 Msteps/s) with the same stream and does not grow with keys; a real-time estimate needs the PNO pass next to ORG Core2, not the ORG proxy states.
 - Any JIT/AOT comparison on ORG Core2 should use the real-load state (6,377 steps, block `0x12566E..0x1257B1`) in addition to the proxy states.
 
 ## Follow-ups
 
 1. Find out what the `0x12566E..0x1257B1` block and the pass 15 window compute (controller words `DM(0xC1DCC + i)`, [org-stage-map](org-stage-map.md)), and the real value of `DM(0x3E021)`; model the external-port DMA registers.
-2. Run PNO core 1 with the same ARM stream (that is where the keys land) and measure it; then ORG Core1 and the other images for a multi-core budget (out of scope here).
+2. Find why the PNO lane `2:0` stays silent with the key messages (section 6); run ORG Core1 and the other images for a multi-core budget (out of scope here).
 3. Time the real ARM message delivery (SPI frame) and the P4I interrupt latency against the pass.
 4. Repeat the timing on an idle host or pin the process; the 1.6x spread between runs hides differences below 40 %.
 5. Check 2 frames per ORG Core2 pass from a real audio-producing state.

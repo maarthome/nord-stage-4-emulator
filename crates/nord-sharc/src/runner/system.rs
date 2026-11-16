@@ -11,7 +11,7 @@
 //!
 //! The pass period in audio time is `2 / frame_rate` seconds (ASSUMED, `docs/research/org-system-run.md`).
 use super::msg::{deliver, Msg};
-use super::pass::PassConfig;
+use super::pass::{PassConfig, SEC_CSID};
 use crate::core::Core;
 use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
@@ -85,10 +85,32 @@ pub fn refresh_inputs(core: &mut Core) {
     }
 }
 
+/// PNO core 1 ping-pong pointer `(word, ping, pong)`: the P0I ISR toggles it before every pass
+/// (`docs/research/pno-full-pass.md`, VERIFIED by `sharc-pass`, which does the same).
+pub const PNO_PING_PONG: (u32, u32, u32) = (0xB_0158, 0x28AC_01E0, 0x28AC_0000);
+
+/// Toggles the ping-pong pointer for pass `p` (even passes ping).
+pub fn set_ping_pong(core: &mut Core, pp: (u32, u32, u32), p: u32) {
+    let _ = core.dm_write(pp.0, if p & 1 == 0 { pp.1 } else { pp.2 });
+}
+
+/// Starts a pass: the receive interrupt (Core1 sections) or the mailbox write.
+fn start(core: &mut Core, cfg: &PassConfig) {
+    match cfg.irq {
+        Some((vector, status)) => {
+            core.preset_device(SEC_CSID, status);
+            core.raise_interrupt(vector);
+        }
+        None => {
+            let _ = core.dm_write(cfg.trigger, 1);
+        }
+    }
+}
+
 /// Trigger write and interpreter steps to the poll loop; no snapshot, no coverage bookkeeping.
 /// Returns `(steps, reached the idle loop)`; a fault ends the pass as not idle.
 pub fn lean_pass(core: &mut Core, cfg: &PassConfig) -> (u64, bool) {
-    let _ = core.dm_write(cfg.trigger, 1);
+    start(core, cfg);
     let start = core.steps;
     while core.steps - start < cfg.max_steps {
         if core.step().is_err() {
@@ -103,7 +125,7 @@ pub fn lean_pass(core: &mut Core, cfg: &PassConfig) -> (u64, bool) {
 
 /// [`lean_pass`] that also records every executed program counter (untimed coverage runs).
 pub fn probe_pass(core: &mut Core, cfg: &PassConfig) -> (u64, bool, BTreeSet<u32>) {
-    let _ = core.dm_write(cfg.trigger, 1);
+    start(core, cfg);
     let (start, mut visited) = (core.steps, BTreeSet::new());
     while core.steps - start < cfg.max_steps {
         visited.insert(core.pc);
@@ -125,14 +147,23 @@ pub fn run_system(
     msgs: &[Msg],
     msg_base: u32,
     total_passes: u32,
+    ping_pong: Option<(u32, u32, u32)>,
 ) -> Result<Vec<PassTiming>, String> {
     let mut rows = Vec::with_capacity(total_passes as usize);
+    // messages in pass order (stable: file order inside a pass); a cursor replaces a per-pass scan
+    let mut due: Vec<&Msg> = msgs.iter().collect();
+    due.sort_by_key(|m| m.pass);
+    let mut next = 0;
     for p in 0..total_passes {
         let t0 = Instant::now();
+        if let Some(pp) = ping_pong {
+            set_ping_pong(core, pp, p);
+        }
         let mut n = 0;
-        for m in msgs.iter().filter(|m| m.pass == p) {
-            deliver(core, msg_base, m)?;
-            n += 1;
+        while next < due.len() && due[next].pass <= p {
+            deliver(core, msg_base, due[next])?;
+            next += 1;
+            n += u32::from(due[next - 1].pass == p);
         }
         let t1 = Instant::now();
         refresh_inputs(core);
@@ -209,6 +240,22 @@ mod tests {
     }
 
     #[test]
+    fn irq_start_leaves_the_mailbox_alone_and_ping_pong_alternates() {
+        let mut c = clearing_core();
+        let irq = PassConfig {
+            irq: Some((15, 0x41)),
+            ..cfg()
+        };
+        let (_, idle) = lean_pass(&mut c, &irq);
+        assert!(idle);
+        assert_eq!(c.dm_read(SEC_CSID), Ok(0x41));
+        set_ping_pong(&mut c, PNO_PING_PONG, 0);
+        assert_eq!(c.dm_read(0xB_0158), Ok(0x28AC_01E0));
+        set_ping_pong(&mut c, PNO_PING_PONG, 1);
+        assert_eq!(c.dm_read(0xB_0158), Ok(0x28AC_0000));
+    }
+
+    #[test]
     fn probe_pass_records_the_executed_pcs() {
         let mut c = clearing_core();
         let (steps, idle, visited) = probe_pass(&mut c, &cfg());
@@ -224,7 +271,7 @@ mod tests {
             word1: 0x10,
             word2: 7,
         }];
-        let rows = run_system(&mut c, &cfg(), &m, 0xB_0000, 3).unwrap();
+        let rows = run_system(&mut c, &cfg(), &m, 0xB_0000, 3, None).unwrap();
         // the tiny core idles once (its code is a single store); pass 1 hits the step limit and
         // ends the run
         assert_eq!(rows.len(), 2);
@@ -243,7 +290,7 @@ mod tests {
     fn a_pass_that_never_idles_stops_the_run() {
         let mut c = clearing_core();
         c.pc = 0x12_0001; // skips the clearing store: the mailbox stays 1
-        let rows = run_system(&mut c, &cfg(), &[], 0, 5).unwrap();
+        let rows = run_system(&mut c, &cfg(), &[], 0, 5, None).unwrap();
         assert_eq!(rows.len(), 1);
         assert!(!rows[0].idle);
     }

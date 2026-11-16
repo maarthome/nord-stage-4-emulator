@@ -44,6 +44,8 @@ LOAD_TICKS, IDLE_TICKS, KEY_TICKS = 800, 300, 40
 # Eight white keys C4..C5 (MIDI 60, 62, 64, 65, 67, 69, 71, 72).
 KEYS8 = (60, 62, 64, 65, 67, 69, 71, 72)
 CHIP, CORE = "ORG", 2
+# Script targets written per phase: (file prefix, chip, core). PNO core 1 is where the notes land.
+TARGETS = (("org-sys", "ORG", 2), ("pno-sys", "PNO", 1))
 
 
 def pass_period_s(frame_rate: float = FRAME_RATE) -> float:
@@ -154,7 +156,9 @@ def write_outputs(phases, out: Path, program: str) -> None:  # pragma: no cover 
     out.mkdir(parents=True, exist_ok=True)
     summary: dict[str, object] = {"program": program, "frame_rate": FRAME_RATE, "phases": {}}
     for name, (rows, seconds) in phases.items():
-        (out / f"org-sys-{name}-core2.script").write_text(script_text(select(rows)), "utf-8")
+        for prefix, chip, core in TARGETS:
+            text = script_text(select(rows, chip, core))
+            (out / f"{prefix}-{name}-core{core}.script").write_text(text, "utf-8")
         entry = {
             "ticks": len(seconds),
             "messages": count_by_target(rows),

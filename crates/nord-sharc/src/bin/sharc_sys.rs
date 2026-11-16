@@ -5,6 +5,8 @@
 //! ```text
 //! --passes N / --warmup W   measured passes (default 300) after W warm-up passes (default 16)
 //! --boot N                  boot instructions (default 100000)      --entry PC (0x125C88)
+//! --pno                    PNO core 1 preset: entry 0x121007, poll loop 0x121091, mailbox 0xB00E1,
+//!                           board gates, FLAG1 high, P4I:1 start, ping-pong toggle, boot 3000000
 //! --trigger ADDR / --idle-pc PC   mailbox and poll loop (defaults 0xB00E2 / 0x125DDF)
 //! --set In=V                address register preset (n = 0..15), for tiny test images
 //! --msg [PASS:]W1=W2        message before PASS, W1 = DM word (--msg-base default 0)
@@ -24,7 +26,8 @@ use nord_sharc::core::Core;
 use nord_sharc::runner::msg::{deliver, parse_msg, parse_script, Msg};
 use nord_sharc::runner::pass::{fault_text, pc_ranges, run_steps, PassConfig, SRAM_WORDS};
 use nord_sharc::runner::system::{
-    pass_period_s, probe_pass, region_hash, run_system, series, stats, PassTiming, FRAME_RATE,
+    pass_period_s, probe_pass, region_hash, run_system, series, set_ping_pong, stats, PassTiming,
+    FRAME_RATE, PNO_PING_PONG,
 };
 use nord_sharc::runner::{parse_number, parse_value};
 use std::collections::BTreeSet;
@@ -61,6 +64,9 @@ struct Options {
     frame_rate: f64,
     dumps: Vec<(u32, u32)>,
     pre: Vec<(u32, u32)>,
+    irq: Option<(u8, u32)>,
+    flag1: bool,
+    ping_pong: Option<(u32, u32, u32)>,
 }
 
 fn parse_args(args: &[String]) -> Result<Options, String> {
@@ -84,6 +90,21 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
             "--warmup" => o.warmup = num(val()?)?,
             "--boot" => o.boot = u64::from(num(val()?)?),
             "--entry" => o.entry = num(val()?)?,
+            "--pno" => {
+                o.entry = 0x12_1007;
+                o.idle_pc = 0x12_1091;
+                o.trigger = 0xB_00E1;
+                o.boot = 3_000_000;
+                o.irq = Some((15, 1));
+                o.flag1 = true;
+                o.ping_pong = Some(PNO_PING_PONG);
+                o.devs = vec![
+                    (0x28ac_0380, 1),
+                    (0x3108_d008, 5),
+                    (0x3108_c06c, 0x400),
+                    (0x3108_c00c, 4),
+                ];
+            }
             "--trigger" => o.trigger = num(val()?)?,
             "--idle-pc" => o.idle_pc = num(val()?)?,
             "--set" => {
@@ -186,6 +207,9 @@ fn probe_passes(o: &Options, cfg: &PassConfig, data: &[u8]) -> Result<String, St
     let total = o.warmup + o.passes;
     let (mut hit, mut last) = (0, BTreeSet::new());
     for p in 0..total {
+        if let Some(pp) = o.ping_pong {
+            set_ping_pong(&mut core, pp, p);
+        }
         for m in o.msgs.iter().filter(|m| m.pass == p) {
             deliver(&mut core, 0, m)?;
         }
@@ -210,6 +234,9 @@ executed pcs (last pass, {} distinct): {}
 fn boot(o: &Options, data: &[u8]) -> Result<Core, String> {
     let mut core = Core::new(data);
     core.pc = o.entry;
+    if o.flag1 {
+        core.set_flag_input(1, true);
+    }
     for &(n, v) in &o.iregs {
         core.i[n] = v;
     }
@@ -258,7 +285,7 @@ fn run(args: &[String]) -> Result<String, String> {
         trigger: o.trigger,
         idle_pc: o.idle_pc,
         max_steps: 200_000,
-        irq: None,
+        irq: o.irq,
     };
     let mut core = boot(&o, &data)?;
     let total = o.warmup + o.passes;
@@ -270,7 +297,7 @@ fn run(args: &[String]) -> Result<String, String> {
                 .collect()
         })
         .collect();
-    let rows = run_system(&mut core, &cfg, &o.msgs, 0, total)?;
+    let rows = run_system(&mut core, &cfg, &o.msgs, 0, total, o.ping_pong)?;
     let w = o.warmup as usize;
     let mut out = String::new();
     let steps: Vec<u64> = rows.iter().skip(w).map(|r| r.steps).collect();
@@ -449,6 +476,18 @@ mod tests {
         assert!(text.contains("executed in 1 of 1 passes"), "{text}");
         std::fs::remove_file(img).ok();
         std::fs::remove_file(state).ok();
+    }
+
+    #[test]
+    fn pno_preset_sets_entry_irq_gates_and_ping_pong() {
+        let o = parse_args(&args(&["img", "--pno"])).unwrap();
+        assert_eq!(
+            (o.entry, o.idle_pc, o.trigger),
+            (0x12_1007, 0x12_1091, 0xB_00E1)
+        );
+        assert_eq!((o.irq, o.flag1, o.boot), (Some((15, 1)), true, 3_000_000));
+        assert_eq!(o.ping_pong, Some(PNO_PING_PONG));
+        assert_eq!(o.devs.len(), 4);
     }
 
     #[test]
