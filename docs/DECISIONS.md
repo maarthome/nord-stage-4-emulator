@@ -1092,7 +1092,6 @@ Add `tanh` preamp or gain before exists, be fitted flip `--leslie firmware` D22)
 - **Alternatives:** Realign only the Touch bits (rejected: the neighbouring fields read the same shifted bits and would collide); flip `firmware_touch` now (rejected, see Why).
 - **Impact:** A loaded program now carries its Touch, string resonance, soft release and pedal noise from the real bits (`PianoLayer::touch`, `string_resonance_enabled`, `soft_release`, `pedal_noise_enabled`); with the switch off only the sounds without a level model feel the Touch (ASSUMED powers). `render_hash` and the goldens use synthetic setups and do not change.
 
-<<<<<<< HEAD
 ### D116. SUPER LP24 factor 4.4 is not confirmed by three independent clips; 2.0 is added as an opt-in value; the default stays
 
 - **Status:** accepted 2026-11-15 (findings, one opt-in switch, tool; no default changes, D22 not met)
@@ -1102,7 +1101,6 @@ Add `tanh` preamp or gain before exists, be fitted flip `--leslie firmware` D22)
 - **Why:** D22 needs a value verified end to end. The evidence is two informative clips, an unread mod wheel, unverified note lists and a fit clip whose own optimum moved since D81 (D102 changed the voice cutoff law afterwards); that argues against 4.4, but it does not make 2.0 a derived value. **A flip to 2.0 would need:** a trusted note list per clip (hardware pitch track or a second transcriber, section 3 of the note), the player's wheel position, at least one clip outside the four (a hold-out, the other seven factory SUPER / LP24 programs have none), `render_hash` and the goldens regenerated in the same change, or the stage-level derivation of D108 section 4.
 - **Alternatives:** Flip to 2.0 now (rejected: see Why); drop the factor and use `--synth-filter-law` (rejected: mean 2.88 / 3.52, behind 2.0); fit a per-clip factor (rejected: it would hide the entanglement with the row factor).
 - **Impact:** `p_type.rs` (`row_type_cutoff_scale_with`, doc update, test), `synth/mod.rs`, `render.rs`, `render_opts.rs` (`--synth-super-lp24`, tests), `tools/note_list_check.py` (+ test), segments, note, [synth-engine](specs/synth-engine.md) s4.6, OQ22, audio-remaining row 12, ROADMAP. Default render, `render_hash` and goldens unchanged (the override is `None` by default).
-=======
 ### D115. The Transkun synth adapters are not adopted; the base model stays; the dataset has defects and the cause of the hardware gap is open
 
 - **Status:** accepted 2026-11-15
@@ -1122,7 +1120,6 @@ Add `tanh` preamp or gain before exists, be fitted flip `--leslie firmware` D22)
 - **Why:** The only evidence that the left voice needs circular taps was a model that wrapped a pre-modify against the PRM and the oracle. With the PRM semantics the routine is oracle-exact at the reset registers, uses the second ring it clears, and needs `L4 = 0` for its guard-word copy. An ASSUMED register state is replaced by none.
 - **Alternatives:** Keep the circular taps as ASSUMED (rejected: contradicts the PRM and the routine's own buffer layout); run the ARM module install first (not needed: the ARM writes only the pc and data words).
 - **Impact:** `fw_pe_ops.rs`, `fw_mod2_run.rs`, `fw_mod2_law_stage.rs`, `tests_mod2_golden.rs` (ENS, SPIN), `tools/fx_leslie_ops.py` and a test; supersedes the circular-tap parts of D95 and D109; [fx-mod2-validation](research/fx-mod2-validation.md) s5, [fx-mod2-types](research/fx-mod2-types.md) s8.3, [fx-mod1-validation](research/fx-mod1-validation.md) s3, OQ21a, [audio-remaining](research/audio-remaining.md) row 6, ROADMAP. The `mod2` output of ENS (left voice now runs) and SPIN changes; defaults and `render_hash` unchanged.
->>>>>>> origin/main
 
 ### D112. The real packed sample stream decodes in the SY unpacker and carries no pitch entry; the handler sweep finds no writer; `--sample-pitch fw` stays opt-in
 
