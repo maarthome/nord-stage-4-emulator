@@ -154,11 +154,11 @@ impl Core {
     /// End-of-step bookkeeping: loop back-edge of the innermost `DO` loop, then the countdown of
     /// a delayed branch. Returns the pc of the next instruction.
     #[inline]
-    pub(super) fn finish_step(&mut self, d: &Decoded, mut next: u32) -> u32 {
+    pub(super) fn finish_step(&mut self, pc: u32, kind: Kind, mut next: u32) -> u32 {
         if self.loops.last().is_some_and(|f| f.term.is_some()) {
-            next = self.arith_loop_step(d.pc, next);
+            next = self.arith_loop_step(pc, next);
         } else if let Some(frame) = self.loops.last_mut() {
-            if d.pc == frame.end && d.kind() != Kind::T12a {
+            if pc == frame.end && kind != Kind::T12a {
                 if frame.remaining > 1 {
                     frame.remaining -= 1;
                     next = frame.start;

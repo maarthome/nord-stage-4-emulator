@@ -29,6 +29,7 @@ mod census_regress;
 mod compute_adi;
 mod dag;
 mod dag_modes;
+mod decode_cache;
 mod dualmove;
 mod exec;
 #[cfg(test)]
@@ -254,6 +255,10 @@ pub struct Core {
     isa_code: Vec<u16>,
     /// Optional peripheral models ([`periph`]); `None` keeps the plain device store.
     periph: Option<Box<periph::Periph>>,
+    /// Direct-mapped Level-1 decode cache (allocated lazily on first `step`).
+    decode_cache: Option<Box<decode_cache::DecodeCache>>,
+    /// Monotonic generation for O(1) cache invalidation on ISA/code reloads.
+    code_gen: u64,
 }
 
 #[inline]
@@ -320,6 +325,8 @@ impl Core {
             cb_wrap: std::cell::Cell::new(0),
             isa_code: Vec::new(),
             periph: None,
+            decode_cache: None,
+            code_gen: 1,
         }
     }
 
@@ -361,7 +368,11 @@ impl Core {
     }
 
     /// Whether condition code `c` holds for PEx (`y` = false) or PEy.
+    #[inline]
     fn cond_for(&self, y: bool, c: u64) -> bool {
+        if c == 31 {
+            return true;
+        }
         let f = if y { self.flags_y } else { self.flags };
         let af = self.sys.astat_extra[usize::from(y)] >> 10 & 1 == 1;
         let sat = self.mode1 & float::MODE1_ALUSAT != 0;
