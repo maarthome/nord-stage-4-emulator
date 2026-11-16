@@ -19,10 +19,18 @@
 //! 1, 2, 10, 33, 64, 90, 100, 120 and 127): 27 of 27 (`tools/arm_touch_curves.py arm-check`,
 //! `docs/research/piano-touch-curves.md`). The table fingerprint is a unit test.
 //!
+//! VERIFIED: the program file bits equal the edit value: file bit `1991..1992` (layer A, layer B
+//! `+96`) set to 0 / 1 / 2 reaches the Touch handler `0xC011AA2C` with the same index in 6 of 6
+//! program recalls (`tools/arm_program_load.py`, D99, `docs/research/piano-touch-curves.md` s4);
+//! the factory set reads 156 / 208 / 20 for 0 / 1 / 2 (`piano_touch_census`, no value 3).
+//!
 //! EMPIRICAL: the name of each edit value follows the monotone order of the curves (value 0 needs
-//! the most force: `T` is largest) and the `ns4decode` map (`0 heavy, 1 med, 2 light`). ASSUMED:
-//! the program file bits equal the edit value (the decoder bits are not verified, OQ in the
-//! research note).
+//! the most force: `T` is largest) and the `ns4decode` map (`0 heavy, 1 med, 2 light`).
+//!
+//! ASSUMED (not covered by the run above): the response of sounds without a `.npno` level model
+//! ([`TouchCurve::gain_vs_medium`] only scales the Medium response by the curve difference), the
+//! System-menu MIDI velocity curves, and the hardware level of the Heavy and Light curves (the
+//! reference clips are Medium).
 
 use super::velocity_curve::{x_from_position, T_BY_VELOCITY};
 use crate::piano::VelocityTouch;
