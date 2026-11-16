@@ -4,7 +4,7 @@
 //! Enabled via the optional `jit` Cargo feature (`Core::run_jit`). Any instruction or dynamic
 //! condition not yet lowered to Cranelift IR either calls an `extern "C"` helper on `Core` or
 //! hands control back to [`Core::step`], preserving 100% oracle fidelity.
-use super::decode_cache::{ComputeOp, DecodedOp};
+use super::decode_cache::{ComputeOp, DecodedOp, MoveOp};
 use super::{Core, Fault, Flags};
 use cranelift_codegen::ir::condcodes::IntCC;
 use cranelift_codegen::ir::{types, AbiParam, InstBuilder, MemFlags, UserFuncName};
@@ -40,6 +40,8 @@ pub(super) struct JitEngine {
     fn_float_mul: FuncId,
     fn_fixed_av: FuncId,
     fn_exec_compute: FuncId,
+    fn_write_ureg: FuncId,
+    fn_reg_move: FuncId,
     next_id: u64,
 }
 
@@ -63,6 +65,19 @@ unsafe extern "C" fn jit_exec_compute(core: *mut Core, raw_c: u64) -> u32 {
     u32::from(!c.compute(raw_c))
 }
 
+/// Writes an immediate value to universal register `ureg` in SISD mode.
+unsafe extern "C" fn jit_write_ureg(core: *mut Core, ureg: u8, value: u32) {
+    let c = unsafe { &mut *core };
+    c.write_ureg(ureg, value);
+}
+
+/// Executes an unconditional `RegMove` (`dst = src`) in SISD mode.
+unsafe extern "C" fn jit_reg_move(core: *mut Core, src: u8, dst: u8) {
+    let c = unsafe { &mut *core };
+    let cap = c.capture_move(src);
+    c.apply_move_if(dst, src, &cap, true, false);
+}
+
 impl JitEngine {
     fn new(code_gen: u64) -> Box<Self> {
         let mut flag_builder = settings::builder();
@@ -78,6 +93,8 @@ impl JitEngine {
         builder.symbol("jit_float_mul", jit_float_mul as *const u8);
         builder.symbol("jit_handle_fixed_av", jit_handle_fixed_av as *const u8);
         builder.symbol("jit_exec_compute", jit_exec_compute as *const u8);
+        builder.symbol("jit_write_ureg", jit_write_ureg as *const u8);
+        builder.symbol("jit_reg_move", jit_reg_move as *const u8);
 
         let mut module = JITModule::new(builder);
         let ptr_ty = module.target_config().pointer_type();
@@ -109,6 +126,22 @@ impl JitEngine {
             .declare_function("jit_exec_compute", Linkage::Import, &sig_comp)
             .expect("declare jit_exec_compute");
 
+        let mut sig_wureg = module.make_signature();
+        sig_wureg.params.push(AbiParam::new(ptr_ty));
+        sig_wureg.params.push(AbiParam::new(types::I8));
+        sig_wureg.params.push(AbiParam::new(types::I32));
+        let fn_write_ureg = module
+            .declare_function("jit_write_ureg", Linkage::Import, &sig_wureg)
+            .expect("declare jit_write_ureg");
+
+        let mut sig_rmove = module.make_signature();
+        sig_rmove.params.push(AbiParam::new(ptr_ty));
+        sig_rmove.params.push(AbiParam::new(types::I8));
+        sig_rmove.params.push(AbiParam::new(types::I8));
+        let fn_reg_move = module
+            .declare_function("jit_reg_move", Linkage::Import, &sig_rmove)
+            .expect("declare jit_reg_move");
+
         Box::new(Self {
             module,
             fn_ctx: FunctionBuilderContext::new(),
@@ -117,6 +150,8 @@ impl JitEngine {
             fn_float_mul,
             fn_fixed_av,
             fn_exec_compute,
+            fn_write_ureg,
+            fn_reg_move,
             next_id: 0,
         })
     }
@@ -140,6 +175,12 @@ fn can_jit_op(op: DecodedOp, simd: bool) -> bool {
             op,
             ComputeOp::Invalid | ComputeOp::Multifunction { .. } | ComputeOp::DualAddSub { .. }
         ),
+        DecodedOp::Move(MoveOp::LoadImm { .. }) => true,
+        DecodedOp::Move(MoveOp::RegMove {
+            cond: 31,
+            compute: None,
+            ..
+        }) => true,
         _ => false,
     }
 }
@@ -436,6 +477,8 @@ impl Core {
             let fn_fmul_ref = jit.module.declare_func_in_func(jit.fn_float_mul, b.func);
             let fn_av_ref = jit.module.declare_func_in_func(jit.fn_fixed_av, b.func);
             let fn_comp_ref = jit.module.declare_func_in_func(jit.fn_exec_compute, b.func);
+            let fn_wureg_ref = jit.module.declare_func_in_func(jit.fn_write_ureg, b.func);
+            let fn_rmove_ref = jit.module.declare_func_in_func(jit.fn_reg_move, b.func);
 
             let loop_hdr = b.create_block();
             b.append_block_param(loop_hdr, types::I64); // iters_done
@@ -488,6 +531,16 @@ impl Core {
                                 }
                             }
                         }
+                    }
+                    DecodedOp::Move(MoveOp::LoadImm { ureg, value }) => {
+                        let u_v = b.ins().iconst(types::I8, i64::from(ureg));
+                        let val_v = b.ins().iconst(types::I32, i64::from(value));
+                        b.ins().call(fn_wureg_ref, &[core_ptr, u_v, val_v]);
+                    }
+                    DecodedOp::Move(MoveOp::RegMove { src, dst, .. }) => {
+                        let s_v = b.ins().iconst(types::I8, i64::from(src));
+                        let d_v = b.ins().iconst(types::I8, i64::from(dst));
+                        b.ins().call(fn_rmove_ref, &[core_ptr, s_v, d_v]);
                     }
                     _ => {}
                 }
@@ -648,6 +701,20 @@ mod tests {
             assert_eq!(jit.flags, interp.flags);
             assert_eq!(jit.astat(0), interp.astat(0));
         }
+    }
+
+    #[test]
+    fn jit_matches_interpreter_on_load_imm_and_add_block() {
+        // R1 = 7 (17b); R2 = 5 (17b); R3 = R1 + R2 (2a)
+        let program = [0x0F81u16, 0x0007, 0x0F82, 0x0005, 0x013e, 0x0000, 0x1312];
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        assert_eq!(interp.run(3), None);
+        assert_eq!(jit.run_jit(3), None);
+        assert_eq!((jit.r[1], jit.r[2], jit.r[3]), (7, 5, 12));
+        assert_eq!(jit.r, interp.r);
+        assert_eq!(jit.flags, interp.flags);
+        assert_eq!(jit.pc, interp.pc);
     }
 
     #[test]
