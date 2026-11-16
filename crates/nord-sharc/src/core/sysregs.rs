@@ -117,7 +117,7 @@ impl Core {
         }
     }
 
-    pub(super) fn astat(&self, y: usize) -> u32 {
+    pub fn astat(&self, y: usize) -> u32 {
         let f = if y == 0 { self.flags } else { self.flags_y };
         astat_pack(f, self.sys.astat_extra[y], extra_mask(self.sharc_plus, y))
     }
