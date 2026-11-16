@@ -120,6 +120,14 @@ Readings:
 4. **Believer is blind**: res 0.0, 1000 Hz, the score spread over the factor grid is 0.12 / 0.07.
 5. **Oo Pad is not usable** (section 3b): layer B carries the sound; the best of every variant is 4.3 to 3.5.
 
+## 5. Firmware capture attempt: stage rate (F or 2F), `agy` plus hand check
+
+`agy` was asked (own worktree, read-only on tracked files, notes under `C:	mpgy-fw`) for D108 section 4 item 1. Two results re-run by hand with `sharc-org` on the ORG core 2 image (`ns4_dsp_ldr.py` of the unpacked ORG DSP image):
+
+- **VERIFIED (re-run):** each filter stage runs **once per ORG core 2 pass** and works on **4 unrolled samples** per call. `sharc-org core2_sram.bin --dev 0x282c0380=1 --dev 0x3108d008=5 --passes 1 --msg-base 0 --msg 0:0xc0b8c=0x12566e --msg 0:0xc10b8=0x125b79 --watch 0xC2938:12` gives 24 store PCs (`0x1256d1 .. 0x1257ac`, two sections times four samples), 2 stores each (one SIMD instruction), skipped ops 0. The four filtered samples are written 1:1 to `0xB0000..` (no 2:1 downsampling).
+- **VERIFIED (re-run):** with `--pre 0xC1DCC=0x0B008000` (note 60) `DM(0xC1F79) = 0x3bc585c6 = 0.0060279`, equal to `261.6256 / 43402.34375` (relative error 7e-7).
+- **Still undecidable:** `F` against `2F` needs the runtime value of the oscillator multiplier `DM(0xC167A)` (1.0 would mean `2F`, 2.0 `F`; the unconfigured image holds 0.07703) and the frames per `DMA14` interrupt (4 for `F`, 2 for `2F`; SPORT clocks are external). Both need a loaded-preset capture, not a pass replay. The unit of the type factors stays open.
+
 ## Implications
 
 - SUPER LP24 4.4 is EMPIRICAL and **not independently confirmed**: on the only two informative clips (Horizon, Sidechain) 2.0 (total 0.9) is better under both note lists, and the pooled mean over four clips goes 3.17 to 2.44 and 3.95 to 2.58. The value 2.0 is a candidate, not a fit result: the grid has 1.0 / 1.5 / 2.0 / 2.2 / 3.0 and the optimum moves with the note list.
