@@ -223,6 +223,8 @@ The default render is unchanged (D22).
 ### 4.6 Derived filter laws (`synth/fw_filter_law.rs`, opt-in `--synth-filter-law`, `--synth-fw-resonance`)
 
 Every stage of the family (`0x1253BD`, `0x12566E`, `0x125913`, `0x125A50`) takes the frame word `R` and has the nominal cutoff `atan(R) / pi` cycles per sample, whatever the type (VERIFIED, [synth-filter-type-corners](../research/synth-filter-type-corners.md), table [synth-filter-type-corners.csv](../research/data/synth-filter-type-corners.csv)). The ARM `kFltRes` word `knob / 127 - 0.5` reaches the stage as the position `idx = 64 + 33.25 w`, 47.38 to 80.62 (VERIFIED run, idle LFO scale ASSUMED neutral). `SynthLayer::fw_resonance` applies that position; `SynthLayer::fw_filter_law = Some(u)` also replaces the row and type cutoff factors by `u` on the display Hz (`u = 2 / 1.971` or `1 / 1.971`, the stage rate `2 F` or `F` is open). Both default off: the fitted factors of `p_type.rs` score better on 12 clips (D108).
+
+Opt-in `--synth-super-lp24 <factor>` (`SynthLayer::super_lp24_scale`, `synth/p_type.rs::row_type_cutoff_scale_with`) replaces only the SUPER wave 0 / LP24 type factor (default 4.4, EMPIRICAL); every other row and type is unchanged, and `--synth-filter-law` still overrides all factors. D116 ([synth-super-lp24-clips](../research/synth-super-lp24-clips.md)): 4.4 is not confirmed on three more Part A clips; 2.0 scores a four-clip mean of 2.44 / 2.58 against 3.17 / 3.95 under two unverified note lists, so the default stays.
 
 ## 5. Envelopes, LFO & Arpeggiator
 

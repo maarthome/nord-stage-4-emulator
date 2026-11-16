@@ -521,10 +521,12 @@ impl SynthLayer {
                                 * if let Some(u) = self.fw_filter_law {
                                     u
                                 } else if self.p_table.is_some() {
-                                    row_type_cutoff_scale(
+                                    row_type_cutoff_scale_with(
                                         self.p_wave,
                                         p_block.map_or(1.0, |p| p.cutoff_scale),
                                         self.filter_model,
+                                        self.super_lp24_scale
+                                            .unwrap_or(super::p_type::SUPER_LP24_TYPE_SCALE),
                                     )
                                 } else {
                                     p_block.map_or(1.0, |p| p.cutoff_scale)

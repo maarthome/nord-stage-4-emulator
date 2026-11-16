@@ -53,7 +53,7 @@ The derived uniform factor does not reproduce the clips under either unit readin
 | 2 | LFO scale and strip words 10 / 20 in `W28` of a sounding voice | the position range 47..81 is the idle one; modulation and the filter envelope amount widen it |
 | 3 | `kFltType` to stage link (`[strip + 0x74]` to `[strip + 0x7C]`) | which stage a layer runs is ASSUMED (`FwFilterType::from_model`) |
 | 4 | Ladder24 `0x12549D`: the ARM word to `DM(-30)` (its own log-frequency position) | the ladder takes no `R`; `LadderCoefs::from_r` is ASSUMED, so its 0.8 cannot be derived here |
-| 5 | SUPER wave 0 on LP24 (4.4): the P words of the unison stage plus items 1 to 4 | one clip, entangled with the row factor 0.45 |
+| 5 | SUPER wave 0 on LP24 (4.4): the P words of the unison stage plus items 1 to 4 | one clip, entangled with the row factor 0.45; three more clips checked in [synth-super-lp24-clips](synth-super-lp24-clips.md) (D116): 4.4 does not hold, 2.0 fits better, default unchanged |
 
 ## Implications
 
