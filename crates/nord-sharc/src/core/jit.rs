@@ -4,8 +4,10 @@
 //! Enabled via the optional `jit` Cargo feature (`Core::run_jit`). Any instruction or dynamic
 //! condition not yet lowered to Cranelift IR either calls an `extern "C"` helper on `Core` or
 //! hands control back to [`Core::step`], preserving 100% oracle fidelity.
-use super::decode_cache::{ComputeOp, DecodedOp, MoveOp};
+use super::decode_cache::{ComputeOp, DecodedOp, DualMoveOp, MoveOp};
+use super::exec::Decoded;
 use super::{Core, Fault, Flags};
+use crate::visa::{Insn, Kind};
 use cranelift_codegen::ir::condcodes::IntCC;
 use cranelift_codegen::ir::{types, AbiParam, InstBuilder, MemFlags, UserFuncName};
 use cranelift_codegen::settings::{self, Configurable};
@@ -26,7 +28,6 @@ type JitBlockFn = unsafe extern "C" fn(*mut Core, u64, *mut u32) -> u64;
 struct CompiledBlock {
     func: JitBlockFn,
     end_pc: u32,
-    next_pc: u32,
     len_insns: u64,
     is_loop: bool,
 }
@@ -36,12 +37,15 @@ pub(super) struct JitEngine {
     module: JITModule,
     fn_ctx: FunctionBuilderContext,
     code_gen: u64,
+    code_modified: bool,
     blocks: HashMap<(u32, u32, bool), CompiledBlock>,
     fn_float_mul: FuncId,
     fn_fixed_av: FuncId,
     fn_exec_compute: FuncId,
     fn_write_ureg: FuncId,
     fn_reg_move: FuncId,
+    fn_dag_mem: FuncId,
+    fn_dual_move: FuncId,
     next_id: u64,
 }
 
@@ -78,6 +82,63 @@ unsafe extern "C" fn jit_reg_move(core: *mut Core, src: u8, dst: u8) {
     c.apply_move_if(dst, src, &cap, true, false);
 }
 
+/// Executes an unconditional `MoveOp::DagMem` in SISD mode.
+/// Returns `0` on ok, `1` on fault, `2` if a write invalidated compiled JIT code.
+unsafe extern "C" fn jit_dag_mem(core: *mut Core, pc: u32, w: u64, kind_u8: u8) -> u32 {
+    let c = unsafe { &mut *core };
+    let kind = match kind_u8 {
+        0 => Kind::T3a,
+        1 => Kind::T3b,
+        _ => Kind::T3c,
+    };
+    let insn = Insn {
+        kind,
+        parcels: [0; 3],
+        len: if kind == Kind::T3c { 1 } else { 3 },
+    };
+    let d = Decoded {
+        pc,
+        insn,
+        w,
+        cond_ok: true,
+        cond_y: false,
+    };
+    let mv = MoveOp::decode(&insn, w);
+    if c.exec_move_op(&d, mv).is_err() {
+        return 1;
+    }
+    if c.jit.as_ref().is_some_and(|j| j.code_modified) {
+        return 2;
+    }
+    0
+}
+
+/// Executes a `DualMoveOp` (`T1a` / `T1b`) in SISD mode.
+/// Returns `0` on ok, `1` on fault, `2` if a write invalidated compiled JIT code.
+unsafe extern "C" fn jit_dual_move(core: *mut Core, pc: u32, w: u64, is_t1a: u8) -> u32 {
+    let c = unsafe { &mut *core };
+    let kind = if is_t1a != 0 { Kind::T1a } else { Kind::T1b };
+    let d = Decoded {
+        pc,
+        insn: Insn {
+            kind,
+            parcels: [0; 3],
+            len: 3,
+        },
+        w,
+        cond_ok: true,
+        cond_y: false,
+    };
+    let dm = DualMoveOp::decode(kind, w);
+    if c.exec_dual_move_op(&d, dm).is_err() {
+        return 1;
+    }
+    if c.jit.as_ref().is_some_and(|j| j.code_modified) {
+        return 2;
+    }
+    0
+}
+
 impl JitEngine {
     fn new(code_gen: u64) -> Box<Self> {
         let mut flag_builder = settings::builder();
@@ -95,6 +156,8 @@ impl JitEngine {
         builder.symbol("jit_exec_compute", jit_exec_compute as *const u8);
         builder.symbol("jit_write_ureg", jit_write_ureg as *const u8);
         builder.symbol("jit_reg_move", jit_reg_move as *const u8);
+        builder.symbol("jit_dag_mem", jit_dag_mem as *const u8);
+        builder.symbol("jit_dual_move", jit_dual_move as *const u8);
 
         let mut module = JITModule::new(builder);
         let ptr_ty = module.target_config().pointer_type();
@@ -142,25 +205,45 @@ impl JitEngine {
             .declare_function("jit_reg_move", Linkage::Import, &sig_rmove)
             .expect("declare jit_reg_move");
 
+        let mut sig_mem = module.make_signature();
+        sig_mem.params.push(AbiParam::new(ptr_ty));
+        sig_mem.params.push(AbiParam::new(types::I32));
+        sig_mem.params.push(AbiParam::new(types::I64));
+        sig_mem.params.push(AbiParam::new(types::I8));
+        sig_mem.returns.push(AbiParam::new(types::I32));
+        let fn_dag_mem = module
+            .declare_function("jit_dag_mem", Linkage::Import, &sig_mem)
+            .expect("declare jit_dag_mem");
+        let fn_dual_move = module
+            .declare_function("jit_dual_move", Linkage::Import, &sig_mem)
+            .expect("declare jit_dual_move");
+
         Box::new(Self {
             module,
             fn_ctx: FunctionBuilderContext::new(),
             code_gen,
+            code_modified: false,
             blocks: HashMap::new(),
             fn_float_mul,
             fn_fixed_av,
             fn_exec_compute,
             fn_write_ureg,
             fn_reg_move,
+            fn_dag_mem,
+            fn_dual_move,
             next_id: 0,
         })
     }
 
     pub(super) fn invalidate_range(&mut self, first_short: u32, count: u32) {
+        let before = self.blocks.len();
         let write_end = first_short.saturating_add(count);
         self.blocks.retain(|&(start_pc, _, _), blk| {
             blk.end_pc + 3 <= first_short || start_pc >= write_end
         });
+        if self.blocks.len() != before {
+            self.code_modified = true;
+        }
     }
 }
 
@@ -181,6 +264,8 @@ fn can_jit_op(op: DecodedOp, simd: bool) -> bool {
             compute: None,
             ..
         }) => true,
+        DecodedOp::Move(MoveOp::DagMem { cond: 31, .. }) => true,
+        DecodedOp::DualMove(_) => true,
         _ => false,
     }
 }
@@ -425,7 +510,13 @@ impl Core {
             }
             end_pc = cached.pc;
             let next_pc = cached.next_pc;
-            insns.push(cached.op);
+            insns.push((
+                cached.pc,
+                cached.next_pc,
+                cached.insn.kind,
+                cached.w,
+                cached.op,
+            ));
             if pc == loop_end {
                 break;
             }
@@ -441,6 +532,7 @@ impl Core {
         let jit = self
             .jit
             .get_or_insert_with(|| JitEngine::new(self.code_gen));
+        jit.code_modified = false;
         if let Some(blk) = jit.blocks.get(&key) {
             return Some(blk.func);
         }
@@ -479,6 +571,13 @@ impl Core {
             let fn_comp_ref = jit.module.declare_func_in_func(jit.fn_exec_compute, b.func);
             let fn_wureg_ref = jit.module.declare_func_in_func(jit.fn_write_ureg, b.func);
             let fn_rmove_ref = jit.module.declare_func_in_func(jit.fn_reg_move, b.func);
+            let fn_dagmem_ref = jit.module.declare_func_in_func(jit.fn_dag_mem, b.func);
+            let fn_dual_ref = jit.module.declare_func_in_func(jit.fn_dual_move, b.func);
+
+            let early_exit = b.create_block();
+            b.append_block_param(early_exit, types::I64); // steps_done
+            b.append_block_param(early_exit, types::I64); // iters_dec
+            b.append_block_param(early_exit, types::I32); // resume_pc
 
             let loop_hdr = b.create_block();
             b.append_block_param(loop_hdr, types::I64); // iters_done
@@ -488,8 +587,8 @@ impl Core {
             b.switch_to_block(loop_hdr);
             let iters_done = b.block_params(loop_hdr)[0];
 
-            for op in &insns {
-                match *op {
+            for (idx, &(insn_pc, insn_next_pc, insn_kind, insn_w, op)) in insns.iter().enumerate() {
+                match op {
                     DecodedOp::Nop => {}
                     DecodedOp::ComputeCond { cond: 31, op } | DecodedOp::ComputeBoth { op } => {
                         match op {
@@ -542,11 +641,68 @@ impl Core {
                         let d_v = b.ins().iconst(types::I8, i64::from(dst));
                         b.ins().call(fn_rmove_ref, &[core_ptr, s_v, d_v]);
                     }
+                    DecodedOp::Move(MoveOp::DagMem { .. }) | DecodedOp::DualMove(_) => {
+                        let is_dual = matches!(op, DecodedOp::DualMove(_));
+                        let arg_kind = if is_dual {
+                            i64::from(insn_kind == Kind::T1a)
+                        } else {
+                            match insn_kind {
+                                Kind::T3a => 0,
+                                Kind::T3b => 1,
+                                _ => 2,
+                            }
+                        };
+                        let pc_v = b.ins().iconst(types::I32, i64::from(insn_pc));
+                        let w_v = b.ins().iconst(types::I64, insn_w as i64);
+                        let k_v = b.ins().iconst(types::I8, arg_kind);
+                        let call = if is_dual {
+                            b.ins().call(fn_dual_ref, &[core_ptr, pc_v, w_v, k_v])
+                        } else {
+                            b.ins().call(fn_dagmem_ref, &[core_ptr, pc_v, w_v, k_v])
+                        };
+                        let status = b.inst_results(call)[0];
+                        let ok = b.ins().icmp_imm(IntCC::Equal, status, 0);
+                        let ok_blk = b.create_block();
+                        let fail_blk = b.create_block();
+                        b.ins().brif(ok, ok_blk, &[], fail_blk, &[]);
+
+                        b.switch_to_block(fail_blk);
+                        b.seal_block(fail_blk);
+                        let is_fault = b.ins().icmp_imm(IntCC::Equal, status, 1);
+                        let base_steps = b.ins().imul_imm(iters_done, len_insns as i64);
+                        let steps_fault = b.ins().iadd_imm(base_steps, idx as i64);
+                        let steps_mod = b.ins().iadd_imm(base_steps, idx as i64 + 1);
+                        let steps_out = b.ins().select(is_fault, steps_fault, steps_mod);
+
+                        let is_last_loop_insn = is_loop && insn_pc == loop_end;
+                        let iters_plus1 = b.ins().iadd_imm(iters_done, 1);
+                        let iters_mod = if is_last_loop_insn {
+                            iters_plus1
+                        } else {
+                            iters_done
+                        };
+                        let iters_out = b.ins().select(is_fault, iters_done, iters_mod);
+
+                        let mod_pc = if is_last_loop_insn {
+                            start_pc
+                        } else {
+                            insn_next_pc
+                        };
+                        let mod_pc_v = b.ins().iconst(types::I32, i64::from(mod_pc));
+                        let resume_pc_v = b.ins().select(is_fault, pc_v, mod_pc_v);
+                        b.ins()
+                            .jump(early_exit, &[steps_out, iters_out, resume_pc_v]);
+
+                        b.switch_to_block(ok_blk);
+                        b.seal_block(ok_blk);
+                    }
                     _ => {}
                 }
             }
 
             let next_iters = b.ins().iadd_imm(iters_done, 1);
+            let mem = MemFlags::trusted();
+            let off_pc = offset_of!(Core, pc) as i32;
             if is_loop {
                 let cont = b.ins().icmp(IntCC::UnsignedLessThan, next_iters, max_iters);
                 let exit_blk = b.create_block();
@@ -555,20 +711,36 @@ impl Core {
                 b.switch_to_block(exit_blk);
                 b.seal_block(exit_blk);
 
-                // Update *remaining_ptr -= next_iters as u32.
-                let mem = MemFlags::trusted();
                 let rem_old = b.ins().load(types::I32, mem, rem_ptr, 0);
                 let dec32 = b.ins().ireduce(types::I32, next_iters);
                 let rem_new = b.ins().isub(rem_old, dec32);
                 b.ins().store(mem, rem_new, rem_ptr, 0);
+                let start_pc_v = b.ins().iconst(types::I32, i64::from(start_pc));
+                b.ins().store(mem, start_pc_v, core_ptr, off_pc);
 
                 let steps = b.ins().imul_imm(next_iters, len_insns as i64);
                 b.ins().return_(&[steps]);
             } else {
                 b.seal_block(loop_hdr);
+                let next_pc_v = b.ins().iconst(types::I32, i64::from(pc));
+                b.ins().store(mem, next_pc_v, core_ptr, off_pc);
                 let steps = b.ins().iconst(types::I64, len_insns as i64);
                 b.ins().return_(&[steps]);
             }
+
+            b.switch_to_block(early_exit);
+            b.seal_block(early_exit);
+            let e_steps = b.block_params(early_exit)[0];
+            let e_iters = b.block_params(early_exit)[1];
+            let e_pc = b.block_params(early_exit)[2];
+            if is_loop {
+                let rem_old = b.ins().load(types::I32, mem, rem_ptr, 0);
+                let dec32 = b.ins().ireduce(types::I32, e_iters);
+                let rem_new = b.ins().isub(rem_old, dec32);
+                b.ins().store(mem, rem_new, rem_ptr, 0);
+            }
+            b.ins().store(mem, e_pc, core_ptr, off_pc);
+            b.ins().return_(&[e_steps]);
             b.finalize();
         }
 
@@ -587,7 +759,6 @@ impl Core {
             CompiledBlock {
                 func,
                 end_pc,
-                next_pc: pc,
                 len_insns,
                 is_loop,
             },
@@ -621,9 +792,9 @@ impl Core {
             let simd = self.simd();
 
             if let Some(func) = self.get_or_compile_jit_block(start_pc, loop_end) {
-                let (len_insns, is_loop, next_pc) = {
+                let (len_insns, is_loop) = {
                     let blk = &self.jit.as_ref().unwrap().blocks[&(start_pc, loop_end, simd)];
-                    (blk.len_insns, blk.is_loop, blk.next_pc)
+                    (blk.len_insns, blk.is_loop)
                 };
                 let max_iters_by_steps = safe_steps / len_insns;
                 if is_loop && start_pc == loop_start && loop_rem > 1 && max_iters_by_steps > 0 {
@@ -631,12 +802,10 @@ impl Core {
                     let rem_ptr = std::ptr::addr_of_mut!(self.loops.last_mut().unwrap().remaining);
                     let executed = unsafe { func(self as *mut Core, max_iters, rem_ptr) };
                     self.steps += executed;
-                    self.pc = start_pc;
                     continue;
                 } else if !is_loop && max_iters_by_steps >= 1 {
                     let executed = unsafe { func(self as *mut Core, 1, std::ptr::null_mut()) };
                     self.steps += executed;
-                    self.pc = next_pc;
                     continue;
                 }
             }
@@ -715,6 +884,64 @@ mod tests {
         assert_eq!(jit.r, interp.r);
         assert_eq!(jit.flags, interp.flags);
         assert_eq!(jit.pc, interp.pc);
+    }
+
+    #[test]
+    fn jit_matches_interpreter_on_dual_move_dot_product_loop() {
+        // DO (+3) UNTIL LCE, LCNTR=R5; MRF=MRF+r0*r4(ssf), r0=dm(i6,m3), r4=pm(i10,m10)
+        let program = [0x0d05u16, 0x0000, 0x0003, 0x2cc0, 0x921b, 0xc004];
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        for c in [&mut interp, &mut jit] {
+            c.r[5] = 8;
+            (c.i[6], c.m[3], c.l[6], c.b[6]) = (0x9_0100, 1, 4, 0x9_0100);
+            (c.i[10], c.m[10], c.l[10], c.b[10]) = (0x9_0300, 1, 4, 0x9_0300);
+            for k in 0..4 {
+                c.dm_write(0x9_0100 + k, 0x2000_0000).unwrap();
+                c.dm_write(0x9_0300 + k, 0x2000_0000).unwrap();
+            }
+        }
+        assert_eq!(interp.run(1 + 8), None);
+        assert_eq!(jit.run_jit(1 + 8), None);
+        assert_eq!(jit.mr, interp.mr);
+        assert_eq!((jit.r[0], jit.r[4]), (interp.r[0], interp.r[4]));
+        assert_eq!((jit.i[6], jit.i[10]), (interp.i[6], interp.i[10]));
+        assert_eq!((jit.pc, jit.steps), (interp.pc, interp.steps));
+        assert!(jit.loops.is_empty());
+    }
+
+    #[test]
+    #[ignore = "micro-benchmark: run with cargo test --release -p nord-sharc --features jit --lib bench_jit_dsp_loop -- --ignored --nocapture"]
+    fn bench_jit_dsp_loop() {
+        // Real DSP dot-product loop: DO (+3) UNTIL LCE, LCNTR=R5; MRF=MRF+r0*r4(ssf), r0=dm(i6,m3), r4=pm(i10,m10)
+        let program = [0x0d05u16, 0x0000, 0x0003, 0x2cc0, 0x921b, 0xc004];
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        for c in [&mut interp, &mut jit] {
+            c.r[5] = 2_000_000;
+            (c.i[6], c.m[3], c.l[6], c.b[6]) = (0x9_0100, 1, 64, 0x9_0100);
+            (c.i[10], c.m[10], c.l[10], c.b[10]) = (0x9_0300, 1, 64, 0x9_0300);
+            for k in 0..64 {
+                c.dm_write(0x9_0100 + k, 0x2000_0000).unwrap();
+                c.dm_write(0x9_0300 + k, 0x2000_0000).unwrap();
+            }
+        }
+        let t0 = std::time::Instant::now();
+        assert_eq!(interp.run(1 + 2_000_000), None);
+        let dt_interp = t0.elapsed();
+
+        assert_eq!(jit.run_jit(2), None);
+        let t1 = std::time::Instant::now();
+        assert_eq!(jit.run_jit(2_000_000 - 1), None);
+        let dt_jit = t1.elapsed();
+        assert_eq!(jit.mr, interp.mr);
+        eprintln!(
+            "bench_jit_dsp_loop: interp {:?} ({:.2} Msteps/s) vs jit {:?} ({:.2} Msteps/s)",
+            dt_interp,
+            interp.steps as f64 / 1e6 / dt_interp.as_secs_f64(),
+            dt_jit,
+            (2_000_000 - 1) as f64 / 1e6 / dt_jit.as_secs_f64()
+        );
     }
 
     #[test]
