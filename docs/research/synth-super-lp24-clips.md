@@ -160,6 +160,27 @@ Caveat: this fixes the oscillator and the filter on the same samples (4 consecut
 
 **On the type factors, on paper only (no default moves, D22).** With the stage rate `2F` the derived uniform factor of D108 is `1.015` on the display Hz (display / nominal = 1.971, `2 / 1.971`): the display Hz is the stage cutoff within 1.5 %. Against that anchor the fitted totals read: SUPER LP24 `0.45 x 4.4 = 1.98` is **1.95 times** the derived value, and the best totals of the grid here (`0.45 x 2.0 = 0.90`, `0.45 x 2.2 = 0.99`) are **0.89 and 0.98 times** it: the clip optimum for the SUPER LP24 row sits at the derived `2F` law, and the old 4.4 had absorbed a factor of about 2 (an `F` reading). LP12 / BP 1.4 would be 1.38 times, LP24 / HP 1.0 would be 0.99 times, Ladder24 0.8 would be 0.79 times the derived law. The uniform `--synth-filter-law 1.015` itself still scores worse over 12 clips (D108 section 3: 3.88 against 2.18) because it also drops the row factors and moves the resonance; so this agrees with the SUPER LP24 grid and leaves LP12 / BP (1.38) and Ladder24 (0.79) unexplained.
 
+## 8. ARM harness sweep of filter type, cutoff, modulation, resonance (request of 2026-11-16)
+
+Method: `tools/arm_edit_capture.py` dispatch on the settled snapshot (layer A store), 16 runs, 34 s wall, local only (`C:/tmp/arm-sweep/edit_sweep.py`; scratch). A second route, booting a full program image (about 54 s per boot, 886 DSP messages after a note-on), was tried first: it loads the program's section table but sends **no** strip or common words for the synth layers (only PNO core 1 words), so it cannot read strip words. Checks: `kFltType` 0..5, then `kFltFreq` 52 and 80 each with `kFltEnvAmt` and `kLFOAmt` at 0 and 127, then `kFltRes` 0 and 107.
+
+| Item | Result | Tag |
+|---|---|---|
+| Strip word 1 (stage id) for `kFltType` 0..5 | `0x0612566E` for **every** type (LP24 stage). The selector `[strip+0x74]` moves, the sender index `[strip+0x7C]` does not, same as [synth-filter-type-map](synth-filter-type-map.md) s1 | VERIFIED (run) |
+| Strip words 3, 5, 7, 10, 20, `DM(-30)` | **never sent by any `Edt_Syn*` id**: the ARM writes only strip 0 words 1 and 19 and common words 1, 2, 3, 7, 8, 13 for these ids. Words 3, 5, 7, 10, 20 and `DM(-30)` are produced inside the DSP pass from the common words | VERIFIED (run: all words the 16 runs emit) |
+| Cutoff word (common 0 word 1) | knob 52 -> `0x00000000` (index 0), knob 80 -> `0x1C000000` (index 28 = knob - 52), identical for every type and for `kFltEnvAmt` 0 / 127 and `kLFOAmt` 0 / 127 | VERIFIED (run) |
+| Envelope amount | only common word 13: 0 at knob 0, `0x3F800000` (1.0) at knob 127; strip 0 word 19 constant 1.0 | VERIFIED (run) |
+| LFO amount | common words 2, 3, 8 stay 0 at both ends (no ARM word carries `kLFOAmt` while the LFO destination is off in this snapshot) | VERIFIED (run), destination effect not tested |
+| Resonance word at knob 107 | common word 7 = `0x3EAF5EBE` = 0.3425 = `107/127 - 0.5`; table position by the D108 law `64 + 33.25 w` = **75.39** (not 75.5) | VERIFIED word; law VERIFIED ([synth-filter-type-corners](synth-filter-type-corners.md)) |
+
+What this explains on paper:
+
+1. **Stage per type.** The edit path cannot show which stage a type reaches: word 1 stays the LP24 id, so `from_model` (LP12 `0x1253BD`, BP `0x125913`, HP `0x125A50`, others LP24 `0x12566E`) stays the identity reading of [synth-filter-type-map](synth-filter-type-map.md), unchanged. The link selector `+0x74` to index `+0x7C` is probably made at program commit, which the 54 s boot route did not reach.
+2. **1.38 (LP12/BP) and 0.79 (Ladder24) are not in the ARM cutoff word.** The word is type independent, so the type factors must come from the DSP stages (their own coefficient prologues) or from a type-dependent strip word the DSP derives. The ARM sweep therefore rules out an ARM-side type factor; it does not explain the numbers. The oracle probe of each stage at the same cutoff word is the next step.
+3. **Resonance.** At knob 107 the stage position is about 75.4 plus the LFO / envelope term of `W28 = FIX((w10 + C271C) lfo)`; the idle-LFO reading (0.5) cannot be confirmed here because the LFO words stay 0. The Oo Pad LP12 resonance error is therefore still open: P and cin were not read, since `W28` is DSP side.
+
+Not done: strip words 3, 5, 7, 10, 20 and `DM(-30)` of a sounding voice (needs a program commit reaching the strips or the real SHARC image with a voice word), Ladder24 `DM(-30)`.
+
 ## Implications
 
 - SUPER LP24 4.4 is EMPIRICAL and **not independently confirmed**: on the only two informative clips (Horizon, Sidechain) 2.0 (total 0.9) is better under both note lists, and the pooled mean over four clips goes 3.17 to 2.44 and 3.95 to 2.58. The value 2.0 is a candidate, not a fit result: the grid has 1.0 / 1.5 / 2.0 / 2.2 / 3.0 and the optimum moves with the note list.
