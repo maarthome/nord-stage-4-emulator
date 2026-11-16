@@ -1,6 +1,6 @@
 # SHARC ADSP-214xx core model (Track B oracle)
 
-Specification for a test-oracle core that executes single routines of the real DSP images. It is **not** a full-system emulator and it does not replace the high-level engine ([D2](../DECISIONS.md)). Scope and counts come from `tools/sharc_census.py` (`docs/research/dsp-image-hunt.md` 5.19).
+Specification for a test-oracle core that executes single routines of the real DSP images. It is **not** a full-system emulator and it does not replace the high-level engine ([D2](../DECISIONS.md)); the one opt-in exception is the minimal system run of section 7 ([D119](../DECISIONS.md#d119-the-sharc-oracle-becomes-the-dsp-half-of-a-minimal-system-run-opt-in-org-core2-only-no-default-change), proposed). Scope and counts come from `tools/sharc_census.py` (`docs/research/dsp-image-hunt.md` 5.19).
 
 ## 1. Goal
 
@@ -54,3 +54,17 @@ Instruction decoding for all used forms is a prerequisite. `tools/sharc_visa.py`
 - ISA mode: with an ISA image loaded, a `pc` below `0x100000` is an ISA word address, above it VISA short words; interrupt vectors come from the ISA table at `0x8C000 + 4 * vector`; the data window `0x100000..0x1FFFFF` is 16-bit short words of the same memory.
 - External memory: delay and reverb lines live in the SDRAM window whose address mapping is still open (`dsp-image-hunt.md` 5.18).
 - Provenance: the oracle is only as good as the decoding; every newly decoded field needs a test that fails without it.
+
+## 7. Minimal system run (D119, proposed, opt-in)
+
+The oracle can act as the DSP half of a small system run: the ARM firmware runs in the Unicorn harness (`tools/arm_org_stream.py`), its ORG Core2 messages are replayed between interpreter passes by `sharc-sys` (`crates/nord-sharc/src/runner/system.rs`), and every component of a pass interval is timed. Scope: ORG Core2, interpreter, one core.
+
+| Part | State |
+|---|---|
+| ARM to DSP messages | modelled by effect: `DM(word) = value` before the named pass (`--msg-script`, `--script-flat`); link latency and the 3-word SPI frame are not timed |
+| Pass trigger | mailbox `DM(0xB00E2)` write, as in `sharc-org` |
+| Audio-input DMA | stub only: the pass-input words `DM(0xB0078..)` and `DM(0xB00C8..)` are re-stored (cost, no data) |
+| External-port DMA | not modelled; `DM(0x3E021)` is read as a loop count from pass 15 of the real load stream, so the run pre-sets it (`--pre 0x3E021=1`, ASSUMED) |
+| Interrupts, other cores, SPI/SPORT | not modelled |
+
+Evidence, timing table and limits: [org-system-run](../research/org-system-run.md).
