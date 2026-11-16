@@ -1053,6 +1053,82 @@ fn emit_dag_next_ir(
     fb.ins().select(l_zero, next, circ_res)
 }
 
+/// Loop-invariant DAG configuration values (`MODE1.CBUFEN` and `M`/`L`/`B` registers)
+/// loaded once in the loop preheader when the loop body cannot mutate them.
+struct HoistedDagCfg {
+    has_cbuf: cranelift_codegen::ir::Value,
+    m: [Option<cranelift_codegen::ir::Value>; 16],
+    l: [Option<cranelift_codegen::ir::Value>; 16],
+    b: [Option<cranelift_codegen::ir::Value>; 16],
+}
+
+fn is_dag_cfg_invariant(insns: &[(u32, u32, Kind, u64, DecodedOp)]) -> bool {
+    insns.iter().all(|&(_, _, _, _, op)| match op {
+        DecodedOp::Nop => true,
+        DecodedOp::ComputeCond { cond: 31, .. } | DecodedOp::ComputeBoth { .. } => true,
+        DecodedOp::Move(MoveOp::LoadImm { ureg, .. }) => ureg < 16,
+        DecodedOp::Move(MoveOp::RegMove { dst, .. }) => dst < 16,
+        DecodedOp::Move(MoveOp::DagMem { ureg, .. }) => ureg < 16,
+        DecodedOp::DualMove(dm) => dm.dm_reg < 16 && dm.pm_reg < 16,
+        _ => false,
+    })
+}
+
+fn preload_dag_cfg(
+    b: &mut FunctionBuilder,
+    core_ptr: cranelift_codegen::ir::Value,
+    insns: &[(u32, u32, Kind, u64, DecodedOp)],
+) -> HoistedDagCfg {
+    let mem = MemFlags::trusted();
+    let off_m = offset_of!(Core, m) as i32;
+    let off_l = offset_of!(Core, l) as i32;
+    let off_b = offset_of!(Core, b) as i32;
+    let mode1 = b
+        .ins()
+        .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
+    let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
+    let has_cbuf = b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0);
+    let mut cfg = HoistedDagCfg {
+        has_cbuf,
+        m: [None; 16],
+        l: [None; 16],
+        b: [None; 16],
+    };
+    let mut load_one = |ii: u8, mi: u8| {
+        let midx = usize::from(mi);
+        if cfg.m[midx].is_none() {
+            cfg.m[midx] = Some(
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_m + 4 * i32::from(mi)),
+            );
+        }
+        let iidx = usize::from(ii);
+        if cfg.l[iidx].is_none() {
+            cfg.l[iidx] = Some(
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_l + 4 * i32::from(ii)),
+            );
+        }
+        if cfg.b[iidx].is_none() {
+            cfg.b[iidx] = Some(
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_b + 4 * i32::from(ii)),
+            );
+        }
+    };
+    for &(_, _, _, _, op) in insns {
+        match op {
+            DecodedOp::Move(MoveOp::DagMem { ii, mi, .. }) => load_one(ii, mi),
+            DecodedOp::DualMove(dm) => {
+                load_one(dm.dmi, dm.dmm);
+                load_one(dm.pmi, dm.pmm);
+            }
+            _ => {}
+        }
+    }
+    cfg
+}
+
 /// Emits an inline `SRAM_WORDS` load or store for `MoveOp::DagMem` (`ureg < 16`, `ii` not subject
 /// to bitrev/broadcast), handling linear and circular post-modify in Cranelift IR and falling
 /// back to `jit_dag_mem` when `addr` is outside `0x9_0000..0x10_0000` or a store overlaps
@@ -1067,6 +1143,7 @@ fn emit_inline_sram_dag_transfer(
     ureg: u8,
     write: bool,
     post_modify: bool,
+    hoisted: Option<&HoistedDagCfg>,
     insn_pc: u32,
     insn_w: u64,
     arg_kind: i64,
@@ -1084,9 +1161,12 @@ fn emit_inline_sram_dag_transfer(
     let i_val = b
         .ins()
         .load(types::I32, mem, core_ptr, off_i + 4 * i32::from(ii));
-    let m_val = b
-        .ins()
-        .load(types::I32, mem, core_ptr, off_m + 4 * i32::from(mi));
+    let m_val = hoisted
+        .and_then(|h| h.m[usize::from(mi)])
+        .unwrap_or_else(|| {
+            b.ins()
+                .load(types::I32, mem, core_ptr, off_m + 4 * i32::from(mi))
+        });
 
     let raw_next = b.ins().iadd(i_val, m_val);
     let addr = if post_modify { i_val } else { raw_next };
@@ -1097,9 +1177,12 @@ fn emit_inline_sram_dag_transfer(
         .icmp_imm(IntCC::UnsignedLessThan, rel_addr, 0x7_0000);
     let mut can_fast = in_sram;
     let l_val = if post_modify {
-        let l = b
-            .ins()
-            .load(types::I32, mem, core_ptr, off_l + 4 * i32::from(ii));
+        let l = hoisted
+            .and_then(|h| h.l[usize::from(ii)])
+            .unwrap_or_else(|| {
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_l + 4 * i32::from(ii))
+            });
         if matches!(ii, 7 | 15) {
             let l_zero = b.ins().icmp_imm(IntCC::Equal, l, 0);
             can_fast = b.ins().band(can_fast, l_zero);
@@ -1151,14 +1234,21 @@ fn emit_inline_sram_dag_transfer(
             .store(mem, zero8, core_ptr, off_fx_lo + i32::from(ureg));
     }
     if let Some(l_val) = l_val {
-        let b_val = b
-            .ins()
-            .load(types::I32, mem, core_ptr, off_b + 4 * i32::from(ii));
-        let mode1 = b
-            .ins()
-            .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
-        let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
-        let has_cbuf = b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0);
+        let b_val = hoisted
+            .and_then(|h| h.b[usize::from(ii)])
+            .unwrap_or_else(|| {
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_b + 4 * i32::from(ii))
+            });
+        let has_cbuf = if let Some(h) = hoisted {
+            h.has_cbuf
+        } else {
+            let mode1 = b
+                .ins()
+                .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
+            let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
+            b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0)
+        };
         let zero32 = b.ins().iconst(types::I32, 0);
         let eff_l = b.ins().select(has_cbuf, l_val, zero32);
         let next_i = emit_dag_next_ir(b, i_val, m_val, eff_l, b_val);
@@ -1191,6 +1281,7 @@ fn emit_inline_dual_sram_load(
     sram_ptr: cranelift_codegen::ir::Value,
     dm: DualMoveOp,
     fast_float: bool,
+    hoisted: Option<&HoistedDagCfg>,
     insn_pc: u32,
     insn_w: u64,
     arg_kind: i64,
@@ -1216,13 +1307,25 @@ fn emit_inline_dual_sram_load(
     let pmm = i32::from(dm.pmm);
 
     let dm_i = b.ins().load(types::I32, mem, core_ptr, off_i + 4 * dmi);
-    let dm_m = b.ins().load(types::I32, mem, core_ptr, off_m + 4 * dmm);
-    let dm_l = b.ins().load(types::I32, mem, core_ptr, off_l + 4 * dmi);
-    let dm_b = b.ins().load(types::I32, mem, core_ptr, off_b + 4 * dmi);
+    let dm_m = hoisted
+        .and_then(|h| h.m[dmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_m + 4 * dmm));
+    let dm_l = hoisted
+        .and_then(|h| h.l[dmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_l + 4 * dmi));
+    let dm_b = hoisted
+        .and_then(|h| h.b[dmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_b + 4 * dmi));
     let pm_i = b.ins().load(types::I32, mem, core_ptr, off_i + 4 * pmi);
-    let pm_m = b.ins().load(types::I32, mem, core_ptr, off_m + 4 * pmm);
-    let pm_l = b.ins().load(types::I32, mem, core_ptr, off_l + 4 * pmi);
-    let pm_b = b.ins().load(types::I32, mem, core_ptr, off_b + 4 * pmi);
+    let pm_m = hoisted
+        .and_then(|h| h.m[pmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_m + 4 * pmm));
+    let pm_l = hoisted
+        .and_then(|h| h.l[pmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_l + 4 * pmi));
+    let pm_b = hoisted
+        .and_then(|h| h.b[pmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_b + 4 * pmi));
 
     let dm_rel = b.ins().iadd_imm(dm_i, -(0x9_0000i64));
     let pm_rel = b.ins().iadd_imm(pm_i, -(0x9_0000i64));
@@ -1279,11 +1382,15 @@ fn emit_inline_dual_sram_load(
     b.ins()
         .store(mem, zero8, core_ptr, off_fx_lo + i32::from(dm.pm_reg));
 
-    let mode1 = b
-        .ins()
-        .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
-    let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
-    let has_cbuf = b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0);
+    let has_cbuf = if let Some(h) = hoisted {
+        h.has_cbuf
+    } else {
+        let mode1 = b
+            .ins()
+            .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
+        let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
+        b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0)
+    };
     let zero32 = b.ins().iconst(types::I32, 0);
     let eff_dm_l = b.ins().select(has_cbuf, dm_l, zero32);
     let eff_pm_l = b.ins().select(has_cbuf, pm_l, zero32);
@@ -1419,6 +1526,9 @@ impl Core {
             b.append_block_param(early_exit, types::I64); // iters_dec
             b.append_block_param(early_exit, types::I32); // resume_pc
 
+            let hoisted = (is_loop && is_dag_cfg_invariant(&insns))
+                .then(|| preload_dag_cfg(&mut b, core_ptr, &insns));
+
             let loop_hdr = b.create_block();
             b.append_block_param(loop_hdr, types::I64); // iters_done
             let zero64 = b.ins().iconst(types::I64, 0);
@@ -1546,6 +1656,7 @@ impl Core {
                             ureg,
                             write,
                             post_modify,
+                            hoisted.as_ref(),
                             insn_pc,
                             insn_w,
                             arg_kind,
@@ -1602,6 +1713,7 @@ impl Core {
                             sram_ptr,
                             dm,
                             fast_float,
+                            hoisted.as_ref(),
                             insn_pc,
                             insn_w,
                             arg_kind,
@@ -2421,5 +2533,238 @@ mod tests {
                 "stky mismatch for x=0x{x:08x} y=0x{y:08x} m1=0x{mode1:x}"
             );
         }
+    }
+
+    #[test]
+    fn jit_loop_hoist_positive_and_mutating_mlb_or_mode1() {
+        use super::{is_dag_cfg_invariant, DecodedOp, MoveOp};
+        use crate::visa::Kind;
+
+        // 1) Positive hoist case: R0 = DM(I2, M0); R1 = R1 + R0 (is_dag_cfg_invariant == true)
+        assert!(is_dag_cfg_invariant(&[
+            (
+                0,
+                1,
+                Kind::T3c,
+                0,
+                DecodedOp::Move(MoveOp::DagMem {
+                    ii: 2,
+                    mi: 0,
+                    ureg: 0,
+                    write: false,
+                    post_modify: true,
+                    cond: 31,
+                    compute: None,
+                }),
+            ),
+            (
+                1,
+                4,
+                Kind::T2a,
+                0,
+                DecodedOp::ComputeCond {
+                    cond: 31,
+                    op: super::super::decode_cache::ComputeOp::FixedAlu {
+                        op: 0x01,
+                        n: 1,
+                        x: 1,
+                        y: 0,
+                    },
+                },
+            ),
+        ]));
+        let pos_prog = [0x0d05u16, 0x0000, 0x0004, 0x9410, 0x013e, 0x0000, 0x1110];
+        let mut p_interp = core_with(&pos_prog);
+        let mut p_jit = core_with(&pos_prog);
+        for c in [&mut p_interp, &mut p_jit] {
+            c.mode1 = crate::core::dag::MODE1_CBUFEN;
+            c.r[5] = 6;
+            (c.i[2], c.m[0], c.l[2], c.b[2]) = (0x9_0100, 1, 4, 0x9_0100);
+            for k in 0..4u32 {
+                c.dm_write(0x9_0100 + k, k + 10).unwrap();
+            }
+        }
+        assert_eq!(p_interp.run(1 + 6 * 2), None);
+        assert_eq!(p_jit.run_jit(1 + 6 * 2), None);
+        assert_eq!(
+            (p_jit.r[0], p_jit.r[1], p_jit.i[2]),
+            (p_interp.r[0], p_interp.r[1], p_interp.i[2])
+        );
+
+        // 2) Loop mutating M0 and L2 inside body: must NOT hoist M/L
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            2,
+            Kind::T17b,
+            0,
+            DecodedOp::Move(MoveOp::LoadImm {
+                ureg: 0x20,
+                value: 3,
+            }),
+        )]));
+        // DO (+5) UNTIL LCE, LCNTR=R5; R0 = DM(I2, M0); M0 = 3; L2 = 4
+        let ml_prog = [
+            0x0d05u16, 0x0000, 0x0005, 0x9410, 0x0FA0, 0x0003, 0x0FB2, 0x0004,
+        ];
+        let mut ml_interp = core_with(&ml_prog);
+        let mut ml_jit = core_with(&ml_prog);
+        for c in [&mut ml_interp, &mut ml_jit] {
+            c.mode1 = crate::core::dag::MODE1_CBUFEN;
+            c.r[5] = 5;
+            (c.i[2], c.m[0], c.l[2], c.b[2]) = (0x9_0100, 1, 0, 0x9_0100);
+            for k in 0..8u32 {
+                c.dm_write(0x9_0100 + k, 100 + k).unwrap();
+            }
+        }
+        assert_eq!(ml_interp.run(1 + 5 * 3), None);
+        assert_eq!(ml_jit.run_jit(1 + 5 * 3), None);
+        assert_eq!(
+            (ml_jit.r[0], ml_jit.i[2], ml_jit.m[0], ml_jit.l[2]),
+            (
+                ml_interp.r[0],
+                ml_interp.i[2],
+                ml_interp.m[0],
+                ml_interp.l[2]
+            )
+        );
+
+        // 3) Loop toggling MODE1 (clears CBUFEN after first iteration): must NOT hoist MODE1
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            2,
+            Kind::T17b,
+            0,
+            DecodedOp::Move(MoveOp::LoadImm {
+                ureg: 0x72,
+                value: 0,
+            }),
+        )]));
+        // DO (+3) UNTIL LCE, LCNTR=R5; R0 = DM(I2, M0); MODE1 = 0
+        let m1_prog = [0x0d05u16, 0x0000, 0x0003, 0x9410, 0x0FF2, 0x0000];
+        let mut m1_interp = core_with(&m1_prog);
+        let mut m1_jit = core_with(&m1_prog);
+        for c in [&mut m1_interp, &mut m1_jit] {
+            c.mode1 = crate::core::dag::MODE1_CBUFEN;
+            c.r[5] = 4;
+            (c.i[2], c.m[0], c.l[2], c.b[2]) = (0x9_0102, 2, 4, 0x9_0100);
+            for k in 0..8u32 {
+                c.dm_write(0x9_0100 + k, 200 + k).unwrap();
+            }
+        }
+        assert_eq!(m1_interp.run(1 + 4 * 2), None);
+        assert_eq!(m1_jit.run_jit(1 + 4 * 2), None);
+        assert_eq!(
+            (m1_jit.r[0], m1_jit.i[2], m1_jit.mode1),
+            (m1_interp.r[0], m1_interp.i[2], m1_interp.mode1)
+        );
+    }
+
+    #[test]
+    fn jit_loop_hoist_rejects_call_jump_and_indirect_dag_writes() {
+        use super::super::decode_cache::FlowOp;
+        use super::{is_dag_cfg_invariant, DecodedOp, MoveOp};
+        use crate::visa::Kind;
+
+        // 1) Invariance analysis rejects CALL, JUMP out, RegMove to UREG (>=16), DagMem to UREG, and DirectMem.
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            3,
+            Kind::T8a,
+            0,
+            DecodedOp::Flow(FlowOp::JumpDirect {
+                cond: 31,
+                target: 0x12_0020,
+                call: true,
+                delayed: false,
+            }),
+        )]));
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            3,
+            Kind::T8a,
+            0,
+            DecodedOp::Flow(FlowOp::JumpDirect {
+                cond: 31,
+                target: 0x12_0020,
+                call: false,
+                delayed: false,
+            }),
+        )]));
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            2,
+            Kind::T5b,
+            0,
+            DecodedOp::Move(MoveOp::RegMove {
+                src: 1,
+                dst: 0x20, // M0
+                cond: 31,
+                compute: None,
+            }),
+        )]));
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            3,
+            Kind::T3a,
+            0,
+            DecodedOp::Move(MoveOp::DagMem {
+                ii: 2,
+                mi: 0,
+                ureg: 0x20, // M0 = DM(I2, M0)
+                write: false,
+                post_modify: true,
+                cond: 31,
+                compute: None,
+            }),
+        )]));
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            3,
+            Kind::T14a,
+            0,
+            DecodedOp::Move(MoveOp::DirectMem {
+                addr: 0x9_0100,
+                ureg: 0x32, // L2 = DM(...)
+                write: false,
+            }),
+        )]));
+
+        // 2) End-to-end loop updating M0 indirectly via DM: DO (+3) UNTIL LCE; M0 = DM(I2, M0)
+        // T3a M0 = DM(I2, M0): 0x543e, 0x1000, 0x0000
+        let dm_m_prog = [0x0d05u16, 0x0000, 0x0003, 0x543e, 0x1000, 0x0000];
+        let mut dm_interp = core_with(&dm_m_prog);
+        let mut dm_jit = core_with(&dm_m_prog);
+        for c in [&mut dm_interp, &mut dm_jit] {
+            c.r[5] = 3;
+            (c.i[2], c.m[0]) = (0x9_0100, 2);
+            c.dm_write(0x9_0100, 3).unwrap();
+            c.dm_write(0x9_0102, 4).unwrap();
+            c.dm_write(0x9_0105, 5).unwrap();
+        }
+        assert_eq!(dm_interp.run(4), None);
+        assert_eq!(dm_jit.run_jit(4), None);
+        assert_eq!((dm_jit.i[2], dm_jit.m[0]), (dm_interp.i[2], dm_interp.m[0]));
+
+        // 3) End-to-end loop with JUMP out: DO (+6) UNTIL LCE; R0 = DM(I2, M0); JUMP (+5) -> M0 = 9
+        let jmp_prog = [
+            0x0d05u16, 0x0000, 0x0006, // DO (+6) UNTIL LCE
+            0x9410, // R0 = DM(I2, M0)
+            0x073e, 0x0000, 0x0005, // JUMP (+5) -> index 9
+            0x0001, 0x0001, // skipped padding
+            0x0FA0, 0x0009, // M0 = 9
+        ];
+        let mut j_interp = core_with(&jmp_prog);
+        let mut j_jit = core_with(&jmp_prog);
+        for c in [&mut j_interp, &mut j_jit] {
+            c.r[5] = 4;
+            (c.i[2], c.m[0]) = (0x9_0100, 1);
+            c.dm_write(0x9_0100, 77).unwrap();
+        }
+        assert_eq!(j_interp.run(4), None);
+        assert_eq!(j_jit.run_jit(4), None);
+        assert_eq!(
+            (j_jit.r[0], j_jit.i[2], j_jit.m[0], j_jit.pc),
+            (j_interp.r[0], j_interp.i[2], j_interp.m[0], j_interp.pc)
+        );
     }
 }
