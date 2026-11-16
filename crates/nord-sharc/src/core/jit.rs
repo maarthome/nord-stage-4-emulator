@@ -632,14 +632,78 @@ impl Core {
                         }
                     }
                     DecodedOp::Move(MoveOp::LoadImm { ureg, value }) => {
-                        let u_v = b.ins().iconst(types::I8, i64::from(ureg));
+                        let mem = MemFlags::trusted();
                         let val_v = b.ins().iconst(types::I32, i64::from(value));
-                        b.ins().call(fn_wureg_ref, &[core_ptr, u_v, val_v]);
+                        let idx = i32::from(ureg & 15);
+                        match ureg >> 4 {
+                            0 => {
+                                b.ins().store(
+                                    mem,
+                                    val_v,
+                                    core_ptr,
+                                    offset_of!(Core, r) as i32 + 4 * idx,
+                                );
+                                let zero8 = b.ins().iconst(types::I8, 0);
+                                let off_fx_lo = (offset_of!(Core, fx)
+                                    + offset_of!(super::float_ops::ExtFile, lo))
+                                    as i32;
+                                b.ins().store(mem, zero8, core_ptr, off_fx_lo + idx);
+                            }
+                            1 => {
+                                b.ins().store(
+                                    mem,
+                                    val_v,
+                                    core_ptr,
+                                    offset_of!(Core, i) as i32 + 4 * idx,
+                                );
+                            }
+                            2 => {
+                                b.ins().store(
+                                    mem,
+                                    val_v,
+                                    core_ptr,
+                                    offset_of!(Core, m) as i32 + 4 * idx,
+                                );
+                            }
+                            3 => {
+                                b.ins().store(
+                                    mem,
+                                    val_v,
+                                    core_ptr,
+                                    offset_of!(Core, l) as i32 + 4 * idx,
+                                );
+                            }
+                            _ => {
+                                let u_v = b.ins().iconst(types::I8, i64::from(ureg));
+                                b.ins().call(fn_wureg_ref, &[core_ptr, u_v, val_v]);
+                            }
+                        }
                     }
                     DecodedOp::Move(MoveOp::RegMove { src, dst, .. }) => {
-                        let s_v = b.ins().iconst(types::I8, i64::from(src));
-                        let d_v = b.ins().iconst(types::I8, i64::from(dst));
-                        b.ins().call(fn_rmove_ref, &[core_ptr, s_v, d_v]);
+                        if src < 16 && dst < 16 {
+                            let mem = MemFlags::trusted();
+                            let off_r = offset_of!(Core, r) as i32;
+                            let off_fx_tag = (offset_of!(Core, fx)
+                                + offset_of!(super::float_ops::ExtFile, tag))
+                                as i32;
+                            let off_fx_lo = (offset_of!(Core, fx)
+                                + offset_of!(super::float_ops::ExtFile, lo))
+                                as i32;
+                            let s_idx = i32::from(src);
+                            let d_idx = i32::from(dst);
+                            let v = b.ins().load(types::I32, mem, core_ptr, off_r + 4 * s_idx);
+                            b.ins().store(mem, v, core_ptr, off_r + 4 * d_idx);
+                            let tag =
+                                b.ins()
+                                    .load(types::I32, mem, core_ptr, off_fx_tag + 4 * s_idx);
+                            b.ins().store(mem, tag, core_ptr, off_fx_tag + 4 * d_idx);
+                            let lo = b.ins().load(types::I8, mem, core_ptr, off_fx_lo + s_idx);
+                            b.ins().store(mem, lo, core_ptr, off_fx_lo + d_idx);
+                        } else {
+                            let s_v = b.ins().iconst(types::I8, i64::from(src));
+                            let d_v = b.ins().iconst(types::I8, i64::from(dst));
+                            b.ins().call(fn_rmove_ref, &[core_ptr, s_v, d_v]);
+                        }
                     }
                     DecodedOp::Move(MoveOp::DagMem { .. }) | DecodedOp::DualMove(_) => {
                         let is_dual = matches!(op, DecodedOp::DualMove(_));
@@ -908,6 +972,26 @@ mod tests {
         assert_eq!((jit.i[6], jit.i[10]), (interp.i[6], interp.i[10]));
         assert_eq!((jit.pc, jit.steps), (interp.pc, interp.steps));
         assert!(jit.loops.is_empty());
+    }
+
+    #[test]
+    fn jit_inline_load_imm_iml_and_reg_move_preserve_state() {
+        // R1 = 7 (17b); I2 = 0x1234 (17b); R3 = R1 (5b: 0x10be 0x0180 0x0000 -> let's use R1=7, I2=0x1234, M3=2, L4=8)
+        let program = [
+            0x0F81u16, 0x0007, // R1 = 7
+            0x0F92, 0x1234, // I2 = 0x1234
+            0x0FA3, 0x0002, // M3 = 2
+            0x0FB4, 0x0008, // L4 = 8
+        ];
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        assert_eq!(interp.run(4), None);
+        assert_eq!(jit.run_auto(4), None);
+        assert_eq!((jit.r[1], jit.i[2], jit.m[3], jit.l[4]), (7, 0x1234, 2, 8));
+        assert_eq!(jit.r, interp.r);
+        assert_eq!(jit.i, interp.i);
+        assert_eq!(jit.m, interp.m);
+        assert_eq!(jit.l, interp.l);
     }
 
     #[test]
