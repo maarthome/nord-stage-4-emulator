@@ -17,8 +17,31 @@ use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module};
 use std::collections::HashMap;
 use std::mem::offset_of;
+use std::time::Instant;
 
 const MAX_BLOCK_INSNS: usize = 64;
+
+/// Measurement-only counters and timings collected by [`Core::run_jit_profiled`].
+#[derive(Debug, Default, Clone)]
+pub struct JitProfile {
+    pub run_jit_calls: u64,
+    pub block_lookups: u64,
+    pub cache_hits: u64,
+    pub cache_misses_compiled: u64,
+    pub ineligible_first_op: u64,
+    pub ineligible_simd: u64,
+    pub skipped_short_chunk: u64,
+    pub guard_fallbacks: u64,
+    pub jit_steps: u64,
+    pub fallback_steps: u64,
+    pub invalidate_calls: u64,
+    pub blocks_evicted: u64,
+    pub code_gen_resets: u64,
+    pub scan_ns: u64,
+    pub compile_ns: u64,
+    pub jit_exec_ns: u64,
+    pub fallback_step_ns: u64,
+}
 
 /// Compiled native function for a SHARC basic block or self-looping `DO ... UNTIL LCE` body.
 ///
@@ -50,6 +73,8 @@ pub(super) struct JitEngine {
     fn_dag_mem: FuncId,
     fn_dual_move: FuncId,
     next_id: u64,
+    pub(super) invalidate_calls: u64,
+    pub(super) blocks_evicted: u64,
 }
 
 /// Executes `FloatMul { n, x, y }` directly from JIT-compiled code.
@@ -271,16 +296,21 @@ impl JitEngine {
             fn_dag_mem,
             fn_dual_move,
             next_id: 0,
+            invalidate_calls: 0,
+            blocks_evicted: 0,
         })
     }
 
     pub(super) fn invalidate_range(&mut self, first_short: u32, count: u32) {
+        self.invalidate_calls += 1;
         let before = self.blocks.len();
         let write_end = first_short.saturating_add(count);
         self.blocks.retain(|&(start_pc, _, _, _, _), blk| {
             blk.end_pc + 3 <= first_short || start_pc >= write_end
         });
-        if self.blocks.len() != before {
+        let evicted = before - self.blocks.len();
+        if evicted > 0 {
+            self.blocks_evicted += evicted as u64;
             self.code_modified = true;
         }
     }
@@ -1418,6 +1448,15 @@ impl Core {
     /// Compiles (or looks up) a JIT basic block starting at `start_pc`, stopping at `loop_end`
     /// if inside a counter loop. Returns `None` if the first instruction is not JIT-eligible.
     fn get_or_compile_jit_block(&mut self, start_pc: u32, loop_end: u32) -> Option<JitBlockFn> {
+        self.compile_or_lookup_jit_block(start_pc, loop_end, None)
+    }
+
+    fn compile_or_lookup_jit_block(
+        &mut self,
+        start_pc: u32,
+        loop_end: u32,
+        mut prof: Option<&mut JitProfile>,
+    ) -> Option<JitBlockFn> {
         let simd = self.simd();
         let fast_float = self.fast_float;
         let sram_fast = self.periph.is_none()
@@ -1429,10 +1468,17 @@ impl Core {
             .as_ref()
             .is_some_and(|j| j.code_gen != self.code_gen)
         {
+            if let Some(p) = prof.as_deref_mut() {
+                p.code_gen_resets += 1;
+            }
             self.jit = None;
+        }
+        if let Some(p) = prof.as_deref_mut() {
+            p.block_lookups += 1;
         }
 
         // Collect the basic block instructions first using DecodeCache.
+        let t_scan = prof.as_ref().map(|_| Instant::now());
         let mut insns = Vec::with_capacity(16);
         let mut pc = start_pc;
         let mut end_pc = start_pc;
@@ -1465,7 +1511,16 @@ impl Core {
             }
             pc = next_pc;
         }
+        if let (Some(t0), Some(p)) = (t_scan, prof.as_deref_mut()) {
+            p.scan_ns += t0.elapsed().as_nanos() as u64;
+        }
         if insns.is_empty() {
+            if let Some(p) = prof.as_deref_mut() {
+                p.ineligible_first_op += 1;
+                if simd {
+                    p.ineligible_simd += 1;
+                }
+            }
             return None;
         }
         let is_loop = loop_end != u32::MAX && end_pc == loop_end;
@@ -1477,8 +1532,12 @@ impl Core {
             .get_or_insert_with(|| JitEngine::new(self.code_gen));
         jit.code_modified = false;
         if let Some(blk) = jit.blocks.get(&key) {
+            if let Some(p) = prof.as_deref_mut() {
+                p.cache_hits += 1;
+            }
             return Some(blk.func);
         }
+        let t_compile = prof.as_ref().map(|_| Instant::now());
 
         let ptr_ty = jit.module.target_config().pointer_type();
         let mut sig = jit.module.make_signature();
@@ -1878,6 +1937,10 @@ impl Core {
                 is_loop,
             },
         );
+        if let (Some(t0), Some(p)) = (t_compile, prof) {
+            p.compile_ns += t0.elapsed().as_nanos() as u64;
+            p.cache_misses_compiled += 1;
+        }
         Some(func)
     }
 
@@ -1938,6 +2001,93 @@ impl Core {
             }
         }
         None
+    }
+
+    /// Measurement-only variant of [`Core::run_jit`] that populates `prof`.
+    pub fn run_jit_profiled(&mut self, max_steps: u64, prof: &mut JitProfile) -> Option<Fault> {
+        prof.run_jit_calls += 1;
+        let inv_before = self.jit.as_ref().map_or(0, |j| j.invalidate_calls);
+        let ev_before = self.jit.as_ref().map_or(0, |j| j.blocks_evicted);
+        let limit = self.steps + max_steps;
+        let mut res = None;
+        while self.steps < limit {
+            let safe_steps = (limit - self.steps).min(self.irq.due.saturating_sub(self.steps));
+            if safe_steps == 0
+                || self.trace.is_some()
+                || self.pending.is_some()
+                || self.irq.window_len != 0
+                || self.loops.last().is_some_and(|l| l.term.is_some())
+            {
+                prof.guard_fallbacks += 1;
+                let t0 = Instant::now();
+                if let Err(f) = self.step() {
+                    prof.fallback_step_ns += t0.elapsed().as_nanos() as u64;
+                    prof.fallback_steps += 1;
+                    res = Some(f);
+                    break;
+                }
+                prof.fallback_step_ns += t0.elapsed().as_nanos() as u64;
+                prof.fallback_steps += 1;
+                continue;
+            }
+
+            let (loop_start, loop_end, loop_rem) = match self.loops.last() {
+                Some(l) => (l.start, l.end, l.remaining),
+                None => (u32::MAX, u32::MAX, 0),
+            };
+            let start_pc = self.pc;
+            let simd = self.simd();
+            let fast_float = self.fast_float;
+            let sram_fast = self.periph.is_none()
+                && self.watch == u32::MAX
+                && self.watch_len <= 1
+                && !self.rwatch_on;
+
+            if let Some(func) = self.compile_or_lookup_jit_block(start_pc, loop_end, Some(prof)) {
+                let (len_insns, is_loop) = {
+                    let blk = &self.jit.as_ref().unwrap().blocks
+                        [&(start_pc, loop_end, simd, fast_float, sram_fast)];
+                    (blk.len_insns, blk.is_loop)
+                };
+                let max_iters_by_steps = safe_steps / len_insns;
+                let sram_ptr = self.sram.as_mut_ptr();
+                if is_loop && start_pc == loop_start && loop_rem > 1 && max_iters_by_steps > 0 {
+                    let max_iters = max_iters_by_steps.min(u64::from(loop_rem - 1));
+                    let rem_ptr = std::ptr::addr_of_mut!(self.loops.last_mut().unwrap().remaining);
+                    let t0 = Instant::now();
+                    let executed = unsafe { func(self as *mut Core, max_iters, rem_ptr, sram_ptr) };
+                    prof.jit_exec_ns += t0.elapsed().as_nanos() as u64;
+                    prof.jit_steps += executed;
+                    self.steps += executed;
+                    continue;
+                } else if !is_loop && max_iters_by_steps >= 1 {
+                    let t0 = Instant::now();
+                    let executed =
+                        unsafe { func(self as *mut Core, 1, std::ptr::null_mut(), sram_ptr) };
+                    prof.jit_exec_ns += t0.elapsed().as_nanos() as u64;
+                    prof.jit_steps += executed;
+                    self.steps += executed;
+                    continue;
+                } else {
+                    prof.skipped_short_chunk += 1;
+                }
+            }
+
+            let t0 = Instant::now();
+            if let Err(f) = self.step() {
+                prof.fallback_step_ns += t0.elapsed().as_nanos() as u64;
+                prof.fallback_steps += 1;
+                res = Some(f);
+                break;
+            }
+            prof.fallback_step_ns += t0.elapsed().as_nanos() as u64;
+            prof.fallback_steps += 1;
+        }
+        let inv_after = self.jit.as_ref().map_or(0, |j| j.invalidate_calls);
+        let ev_after = self.jit.as_ref().map_or(0, |j| j.blocks_evicted);
+        prof.invalidate_calls += inv_after.saturating_sub(inv_before);
+        prof.blocks_evicted += ev_after.saturating_sub(ev_before);
+        res
     }
 }
 

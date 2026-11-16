@@ -54,6 +54,8 @@ mod irq_scenarios;
 mod isa;
 #[cfg(feature = "jit")]
 mod jit;
+#[cfg(feature = "jit")]
+pub use jit::JitProfile;
 #[cfg(all(test, feature = "jit"))]
 mod jit_diff;
 mod longword;
