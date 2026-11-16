@@ -107,6 +107,7 @@ fn run(args: &[String]) -> Result<String, String> {
     let mut lenient = false;
     let mut isa = false;
     let mut use_jit = false;
+    let mut fast_float = false;
     let mut enters: Vec<(u64, u32)> = Vec::new();
     let mut sc57x: Option<usize> = None;
     let mut l2_files: Vec<(u32, String)> = Vec::new();
@@ -228,6 +229,7 @@ fn run(args: &[String]) -> Result<String, String> {
                     as usize;
             }
             "--jit" => use_jit = true,
+            "--fast-float" => fast_float = true,
             _ => positional.push(a.clone()),
         }
     }
@@ -272,6 +274,7 @@ fn run(args: &[String]) -> Result<String, String> {
         core.enable_spi_boot(words.iter().map(|w| u32::from_le_bytes(*w)).collect());
     }
     core.lenient = lenient;
+    core.fast_float = fast_float;
     core.watch = watch;
     core.pc = entry;
     for (code, value) in registers {
