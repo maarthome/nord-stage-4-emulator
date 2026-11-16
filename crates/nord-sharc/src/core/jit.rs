@@ -40,6 +40,7 @@ pub(super) struct JitEngine {
     code_modified: bool,
     blocks: HashMap<(u32, u32, bool, bool, bool), CompiledBlock>,
     fn_float_mul: FuncId,
+    fn_fixed_mult: FuncId,
     fn_fixed_av: FuncId,
     fn_exec_compute: FuncId,
     fn_write_ureg: FuncId,
@@ -53,6 +54,12 @@ pub(super) struct JitEngine {
 unsafe extern "C" fn jit_float_mul(core: *mut Core, n: u32, x: u32, y: u32) {
     let c = unsafe { &mut *core };
     c.float_mul(n as usize, x as usize, y as usize);
+}
+
+/// Executes `FixedMult { op, n, x, y }` directly from JIT-compiled code.
+unsafe extern "C" fn jit_fixed_mult(core: *mut Core, op: u32, n: u32, x: u32, y: u32) {
+    let c = unsafe { &mut *core };
+    c.fixed_mult(u64::from(op), n as usize, x as usize, y as usize);
 }
 
 /// Handles `FixedAlu` overflow (`AV`) or `ALUSAT` saturation from JIT-compiled `ADD`/`SUB`.
@@ -152,6 +159,7 @@ impl JitEngine {
 
         let mut builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
         builder.symbol("jit_float_mul", jit_float_mul as *const u8);
+        builder.symbol("jit_fixed_mult", jit_fixed_mult as *const u8);
         builder.symbol("jit_handle_fixed_av", jit_handle_fixed_av as *const u8);
         builder.symbol("jit_exec_compute", jit_exec_compute as *const u8);
         builder.symbol("jit_write_ureg", jit_write_ureg as *const u8);
@@ -170,6 +178,16 @@ impl JitEngine {
         let fn_float_mul = module
             .declare_function("jit_float_mul", Linkage::Import, &sig_fmul)
             .expect("declare jit_float_mul");
+
+        let mut sig_fmult = module.make_signature();
+        sig_fmult.params.push(AbiParam::new(ptr_ty));
+        sig_fmult.params.push(AbiParam::new(types::I32));
+        sig_fmult.params.push(AbiParam::new(types::I32));
+        sig_fmult.params.push(AbiParam::new(types::I32));
+        sig_fmult.params.push(AbiParam::new(types::I32));
+        let fn_fixed_mult = module
+            .declare_function("jit_fixed_mult", Linkage::Import, &sig_fmult)
+            .expect("declare jit_fixed_mult");
 
         let mut sig_av = module.make_signature();
         sig_av.params.push(AbiParam::new(ptr_ty));
@@ -225,6 +243,7 @@ impl JitEngine {
             code_modified: false,
             blocks: HashMap::new(),
             fn_float_mul,
+            fn_fixed_mult,
             fn_fixed_av,
             fn_exec_compute,
             fn_write_ureg,
@@ -549,9 +568,34 @@ fn emit_fast_float_op(
     }
 }
 
-/// Emits an inline linear `SRAM_WORDS` load or store for `MoveOp::DagMem` (`ureg < 16`,
-/// `ii` not subject to bitrev/broadcast), falling back to `jit_dag_mem` when `L[ii] != 0`,
-/// `addr` is outside `0x9_0000..0x10_0000`, or a store overlaps `[sram_code_nw_lo, sram_code_nw_hi]`.
+/// Computes `Core::dag_next(i, m, l, b)` branchlessly in Cranelift IR.
+fn emit_dag_next_ir(
+    fb: &mut FunctionBuilder,
+    i_val: cranelift_codegen::ir::Value,
+    m_val: cranelift_codegen::ir::Value,
+    l_val: cranelift_codegen::ir::Value,
+    b_val: cranelift_codegen::ir::Value,
+) -> cranelift_codegen::ir::Value {
+    let next = fb.ins().iadd(i_val, m_val);
+    let l_zero = fb.ins().icmp_imm(IntCC::Equal, l_val, 0);
+    let m_nonneg = fb.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, m_val, 0);
+    let b_plus_l = fb.ins().iadd(b_val, l_val);
+    let wrap_pos = fb
+        .ins()
+        .icmp(IntCC::UnsignedGreaterThanOrEqual, next, b_plus_l);
+    let next_minus_l = fb.ins().isub(next, l_val);
+    let pos_res = fb.ins().select(wrap_pos, next_minus_l, next);
+    let wrap_neg = fb.ins().icmp(IntCC::UnsignedLessThan, next, b_val);
+    let next_plus_l = fb.ins().iadd(next, l_val);
+    let neg_res = fb.ins().select(wrap_neg, next_plus_l, next);
+    let circ_res = fb.ins().select(m_nonneg, pos_res, neg_res);
+    fb.ins().select(l_zero, next, circ_res)
+}
+
+/// Emits an inline `SRAM_WORDS` load or store for `MoveOp::DagMem` (`ureg < 16`, `ii` not subject
+/// to bitrev/broadcast), handling linear and circular post-modify in Cranelift IR and falling
+/// back to `jit_dag_mem` when `addr` is outside `0x9_0000..0x10_0000` or a store overlaps
+/// `[sram_code_nw_lo, sram_code_nw_hi]`.
 #[allow(clippy::too_many_arguments)]
 fn emit_inline_sram_dag_transfer(
     b: &mut FunctionBuilder,
@@ -572,6 +616,7 @@ fn emit_inline_sram_dag_transfer(
     let off_i = offset_of!(Core, i) as i32;
     let off_m = offset_of!(Core, m) as i32;
     let off_l = offset_of!(Core, l) as i32;
+    let off_b = offset_of!(Core, b) as i32;
     let off_r = offset_of!(Core, r) as i32;
     let off_fx_lo = (offset_of!(Core, fx) + offset_of!(super::float_ops::ExtFile, lo)) as i32;
 
@@ -581,19 +626,27 @@ fn emit_inline_sram_dag_transfer(
     let m_val = b
         .ins()
         .load(types::I32, mem, core_ptr, off_m + 4 * i32::from(mi));
-    let l_val = b
-        .ins()
-        .load(types::I32, mem, core_ptr, off_l + 4 * i32::from(ii));
 
-    let next_i = b.ins().iadd(i_val, m_val);
-    let addr = if post_modify { i_val } else { next_i };
+    let raw_next = b.ins().iadd(i_val, m_val);
+    let addr = if post_modify { i_val } else { raw_next };
 
-    let is_linear = b.ins().icmp_imm(IntCC::Equal, l_val, 0);
     let rel_addr = b.ins().iadd_imm(addr, -(0x9_0000i64));
     let in_sram = b
         .ins()
         .icmp_imm(IntCC::UnsignedLessThan, rel_addr, 0x7_0000);
-    let mut can_fast = b.ins().band(is_linear, in_sram);
+    let mut can_fast = in_sram;
+    let l_val = if post_modify {
+        let l = b
+            .ins()
+            .load(types::I32, mem, core_ptr, off_l + 4 * i32::from(ii));
+        if matches!(ii, 7 | 15) {
+            let l_zero = b.ins().icmp_imm(IntCC::Equal, l, 0);
+            can_fast = b.ins().band(can_fast, l_zero);
+        }
+        Some(l)
+    } else {
+        None
+    };
     if write {
         let nw_lo = b.ins().load(
             types::I32,
@@ -636,7 +689,18 @@ fn emit_inline_sram_dag_transfer(
         b.ins()
             .store(mem, zero8, core_ptr, off_fx_lo + i32::from(ureg));
     }
-    if post_modify {
+    if let Some(l_val) = l_val {
+        let b_val = b
+            .ins()
+            .load(types::I32, mem, core_ptr, off_b + 4 * i32::from(ii));
+        let mode1 = b
+            .ins()
+            .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
+        let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
+        let has_cbuf = b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0);
+        let zero32 = b.ins().iconst(types::I32, 0);
+        let eff_l = b.ins().select(has_cbuf, l_val, zero32);
+        let next_i = emit_dag_next_ir(b, i_val, m_val, eff_l, b_val);
         b.ins()
             .store(mem, next_i, core_ptr, off_i + 4 * i32::from(ii));
     }
@@ -656,9 +720,9 @@ fn emit_inline_sram_dag_transfer(
     b.seal_block(done_blk);
 }
 
-/// Emits an inline linear `SRAM_WORDS` dual load for `DualMoveOp` (`!dm_write && !pm_write`,
-/// no multifunction compute), falling back to `jit_dual_move` if either DAG is circular or out
-/// of `SRAM_WORDS`.
+/// Emits an inline `SRAM_WORDS` dual load for `DualMoveOp` (`!dm_write && !pm_write`,
+/// no multifunction compute), handling linear and circular DAG post-modify in Cranelift IR
+/// and falling back to `jit_dual_move` if either address is outside `SRAM_WORDS`.
 #[allow(clippy::too_many_arguments)]
 fn emit_inline_dual_sram_load(
     b: &mut FunctionBuilder,
@@ -670,6 +734,7 @@ fn emit_inline_dual_sram_load(
     insn_w: u64,
     arg_kind: i64,
     fn_fmul_ref: cranelift_codegen::ir::FuncRef,
+    fn_fmult_ref: cranelift_codegen::ir::FuncRef,
     fn_av_ref: cranelift_codegen::ir::FuncRef,
     fn_comp_ref: cranelift_codegen::ir::FuncRef,
     fn_dual_ref: cranelift_codegen::ir::FuncRef,
@@ -679,6 +744,7 @@ fn emit_inline_dual_sram_load(
     let off_i = offset_of!(Core, i) as i32;
     let off_m = offset_of!(Core, m) as i32;
     let off_l = offset_of!(Core, l) as i32;
+    let off_b = offset_of!(Core, b) as i32;
     let off_r = offset_of!(Core, r) as i32;
     let off_fx_lo = (offset_of!(Core, fx) + offset_of!(super::float_ops::ExtFile, lo)) as i32;
 
@@ -690,20 +756,25 @@ fn emit_inline_dual_sram_load(
     let dm_i = b.ins().load(types::I32, mem, core_ptr, off_i + 4 * dmi);
     let dm_m = b.ins().load(types::I32, mem, core_ptr, off_m + 4 * dmm);
     let dm_l = b.ins().load(types::I32, mem, core_ptr, off_l + 4 * dmi);
+    let dm_b = b.ins().load(types::I32, mem, core_ptr, off_b + 4 * dmi);
     let pm_i = b.ins().load(types::I32, mem, core_ptr, off_i + 4 * pmi);
     let pm_m = b.ins().load(types::I32, mem, core_ptr, off_m + 4 * pmm);
     let pm_l = b.ins().load(types::I32, mem, core_ptr, off_l + 4 * pmi);
+    let pm_b = b.ins().load(types::I32, mem, core_ptr, off_b + 4 * pmi);
 
-    let l_zero_dm = b.ins().icmp_imm(IntCC::Equal, dm_l, 0);
-    let l_zero_pm = b.ins().icmp_imm(IntCC::Equal, pm_l, 0);
     let dm_rel = b.ins().iadd_imm(dm_i, -(0x9_0000i64));
     let pm_rel = b.ins().iadd_imm(pm_i, -(0x9_0000i64));
     let dm_ok = b.ins().icmp_imm(IntCC::UnsignedLessThan, dm_rel, 0x7_0000);
     let pm_ok = b.ins().icmp_imm(IntCC::UnsignedLessThan, pm_rel, 0x7_0000);
-
-    let c1 = b.ins().band(l_zero_dm, l_zero_pm);
-    let c2 = b.ins().band(dm_ok, pm_ok);
-    let can_fast = b.ins().band(c1, c2);
+    let mut can_fast = b.ins().band(dm_ok, pm_ok);
+    if matches!(dm.dmi, 7 | 15) {
+        let z = b.ins().icmp_imm(IntCC::Equal, dm_l, 0);
+        can_fast = b.ins().band(can_fast, z);
+    }
+    if matches!(dm.pmi, 7 | 15) {
+        let z = b.ins().icmp_imm(IntCC::Equal, pm_l, 0);
+        can_fast = b.ins().band(can_fast, z);
+    }
 
     let fast_blk = b.create_block();
     let slow_blk = b.create_block();
@@ -750,6 +821,13 @@ fn emit_inline_dual_sram_load(
                 let y_v = b.ins().iconst(types::I32, i64::from(y));
                 b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
             }
+            ComputeOp::FixedMult { op: mop, n, x, y } => {
+                let op_v = b.ins().iconst(types::I32, i64::from(mop));
+                let n_v = b.ins().iconst(types::I32, i64::from(n));
+                let x_v = b.ins().iconst(types::I32, i64::from(x));
+                let y_v = b.ins().iconst(types::I32, i64::from(y));
+                b.ins().call(fn_fmult_ref, &[core_ptr, op_v, n_v, x_v, y_v]);
+            }
             ComputeOp::FloatAlu {
                 op: fop @ (0x81 | 0x82),
                 n,
@@ -782,8 +860,16 @@ fn emit_inline_dual_sram_load(
     b.ins()
         .store(mem, zero8, core_ptr, off_fx_lo + i32::from(dm.pm_reg));
 
-    let dm_next = b.ins().iadd(dm_i, dm_m);
-    let pm_next = b.ins().iadd(pm_i, pm_m);
+    let mode1 = b
+        .ins()
+        .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
+    let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
+    let has_cbuf = b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0);
+    let zero32 = b.ins().iconst(types::I32, 0);
+    let eff_dm_l = b.ins().select(has_cbuf, dm_l, zero32);
+    let eff_pm_l = b.ins().select(has_cbuf, pm_l, zero32);
+    let dm_next = emit_dag_next_ir(b, dm_i, dm_m, eff_dm_l, dm_b);
+    let pm_next = emit_dag_next_ir(b, pm_i, pm_m, eff_pm_l, pm_b);
     b.ins().store(mem, dm_next, core_ptr, off_i + 4 * dmi);
     b.ins().store(mem, pm_next, core_ptr, off_i + 4 * pmi);
     b.ins().jump(done_blk, &[]);
@@ -900,6 +986,7 @@ impl Core {
             let sram_ptr = b.block_params(entry)[3];
 
             let fn_fmul_ref = jit.module.declare_func_in_func(jit.fn_float_mul, b.func);
+            let fn_fmult_ref = jit.module.declare_func_in_func(jit.fn_fixed_mult, b.func);
             let fn_av_ref = jit.module.declare_func_in_func(jit.fn_fixed_av, b.func);
             let fn_comp_ref = jit.module.declare_func_in_func(jit.fn_exec_compute, b.func);
             let fn_wureg_ref = jit.module.declare_func_in_func(jit.fn_write_ureg, b.func);
@@ -958,6 +1045,13 @@ impl Core {
                                 let x_v = b.ins().iconst(types::I32, i64::from(x));
                                 let y_v = b.ins().iconst(types::I32, i64::from(y));
                                 b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
+                            }
+                            ComputeOp::FixedMult { op: mop, n, x, y } => {
+                                let op_v = b.ins().iconst(types::I32, i64::from(mop));
+                                let n_v = b.ins().iconst(types::I32, i64::from(n));
+                                let x_v = b.ins().iconst(types::I32, i64::from(x));
+                                let y_v = b.ins().iconst(types::I32, i64::from(y));
+                                b.ins().call(fn_fmult_ref, &[core_ptr, op_v, n_v, x_v, y_v]);
                             }
                             ComputeOp::FloatAlu {
                                 op: fop @ (0x81 | 0x82),
@@ -1143,6 +1237,7 @@ impl Core {
                             insn_w,
                             arg_kind,
                             fn_fmul_ref,
+                            fn_fmult_ref,
                             fn_av_ref,
                             fn_comp_ref,
                             fn_dual_ref,
@@ -1735,5 +1830,53 @@ mod tests {
         assert_eq!(jit.watch_addrs, vec![0x9_0100]);
         assert_eq!(jit.watch_addrs, interp.watch_addrs);
         assert_eq!(jit.watch_hits.len(), interp.watch_hits.len());
+    }
+
+    #[test]
+    fn jit_circular_dag_pos_and_neg_modify_matches_interp() {
+        // Loop 10 times: R0 = DM(I2, M0) (0x9410, post-modify) + R1 = DM(I3, M1) (0x9531? wait: let's use 0x9511)
+        // 0x9410: T3c load R0 = DM(I2, M0)
+        // 0x9511: T3c load R1 = DM(I3, M1)
+        // Also test DualMove with circular L != 0 and FixedMult:
+        // DO (+3) UNTIL LCE, LCNTR=R5; MRF=MRF+r0*r4(ssf), r0=dm(i6,m3), r4=pm(i10,m10)
+        let prog = [0x0d05u16, 0x0000, 0x0003, 0x2cc0, 0x921b, 0xc004];
+        let mut interp = core_with(&prog);
+        let mut jit = core_with(&prog);
+        for c in [&mut interp, &mut jit] {
+            c.mode1 = crate::core::dag::MODE1_CBUFEN;
+            c.r[5] = 20;
+            // Positive modify (m = +3) on i6 (l = 8), negative modify (m = -3) on i10 (l = 8)
+            (c.i[6], c.m[3], c.l[6], c.b[6]) = (0x9_0100, 3, 8, 0x9_0100);
+            (c.i[10], c.m[10], c.l[10], c.b[10]) = (0x9_0306, (-3i32) as u32, 8, 0x9_0300);
+            for k in 0..8u32 {
+                c.dm_write(0x9_0100 + k, (k + 1) * 0x0800_0000).unwrap();
+                c.dm_write(0x9_0300 + k, (8 - k) * 0x0400_0000).unwrap();
+            }
+        }
+        assert_eq!(interp.run(21), None);
+        assert_eq!(jit.run_jit(21), None);
+        assert_eq!(jit.mr, interp.mr);
+        assert_eq!(jit.i[6], interp.i[6]);
+        assert_eq!(jit.i[10], interp.i[10]);
+        assert_eq!(jit.r[0], interp.r[0]);
+        assert_eq!(jit.r[4], interp.r[4]);
+
+        // Also test single DagMem post-modify circular wrap (m > 0 and m < 0) via T3c
+        // 0x9410 = R0 = DM(I2, M0) (u=0, i=2, m=0, bit36=1 -> 0x8000 | 0x1000 | 0x0400 | 0x0010 | 0x0000)
+        let prog2 = [0x0d05u16, 0x0000, 0x0001, 0x9410];
+        let mut interp2 = core_with(&prog2);
+        let mut jit2 = core_with(&prog2);
+        for c in [&mut interp2, &mut jit2] {
+            c.mode1 = crate::core::dag::MODE1_CBUFEN;
+            c.r[5] = 12;
+            (c.i[2], c.m[0], c.l[2], c.b[2]) = (0x9_0204, (-2i32) as u32, 5, 0x9_0200);
+            for k in 0..5u32 {
+                c.dm_write(0x9_0200 + k, 0x1234_0000 + k).unwrap();
+            }
+        }
+        assert_eq!(interp2.run(13), None);
+        assert_eq!(jit2.run_jit(13), None);
+        assert_eq!(jit2.r[0], interp2.r[0]);
+        assert_eq!(jit2.i[2], interp2.i[2]);
     }
 }

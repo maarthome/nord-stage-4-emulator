@@ -9,7 +9,7 @@ const MODE1_BR8: u32 = 1;
 /// MODE1 bit 1: bit-reversed addressing for `I0`.
 const MODE1_BR0: u32 = 1 << 1;
 /// MODE1 bit 24: circular buffer addressing enable.
-const MODE1_CBUFEN: u32 = 1 << 24;
+pub(super) const MODE1_CBUFEN: u32 = 1 << 24;
 
 impl Core {
     /// Register offset of a DAG selector bit: DAG1 uses `I0..I7`/`M0..M7`, DAG2 uses `I8..I15`.
