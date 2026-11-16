@@ -4,6 +4,10 @@
 //! image, delivers ARM messages (`--msg` / `--msg-script`, base `0xE0000`), runs `N` audio passes,
 //! optionally reports `--coverage` PC ranges, and `--bench` measures mean/worst pass latency and
 //! Msteps/s for both interpreter and JIT.
+//!
+//! `--aot-hot START:LAST` swaps the JIT for the hot-block AOT prototype (`Core::run_aot`, built
+//! with `NORD_SHARC_AOT_HOT`, see `docs/research/sharc-aot-hot-block.md`): the same lockstep
+//! diff (strict state, every pass) and, with `--bench`, interpreter-vs-AOT timings.
 
 use nord_sharc::core::Core;
 #[cfg(feature = "jit")]
@@ -35,6 +39,7 @@ struct Opts {
     profile_jit: bool,
     lenient: bool,
     fast_float: bool,
+    aot_hot: Option<(u32, u32)>,
 }
 
 fn parse_kv(s: &str) -> Result<(u32, u32), String> {
@@ -42,6 +47,14 @@ fn parse_kv(s: &str) -> Result<(u32, u32), String> {
     Ok((
         parse_number(a.trim()).ok_or("bad address")?,
         parse_value(v.trim()).ok_or("bad value")?,
+    ))
+}
+
+fn parse_range(s: &str) -> Result<(u32, u32), String> {
+    let (a, b) = s.split_once(':').ok_or("--aot-hot needs START:LAST")?;
+    Ok((
+        parse_number(a).ok_or("bad --aot-hot START")?,
+        parse_number(b).ok_or("bad --aot-hot LAST")?,
     ))
 }
 
@@ -65,6 +78,7 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
         profile_jit: false,
         lenient: false,
         fast_float: false,
+        aot_hot: None,
     };
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -95,6 +109,7 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--profile-jit" => o.profile_jit = true,
             "--lenient" => o.lenient = true,
             "--fast-float" => o.fast_float = true,
+            "--aot-hot" => o.aot_hot = Some(parse_range(&val("START:LAST")?)?),
             _ if a.starts_with('-') => return Err(format!("unknown option {a}")),
             _ => o.image = a.clone(),
         }
@@ -425,6 +440,58 @@ fn run_diff(_o: &Opts, _image: &[u8]) -> ExitCode {
     ExitCode::FAILURE
 }
 
+/// `--aot-hot`: strict lockstep diff of interpreter vs hot-block AOT, then the benchmark.
+fn run_aot(o: &Opts, image: &[u8], (start, last): (u32, u32)) -> ExitCode {
+    use nord_sharc::runner::aot_hot::{bench, diff, AotRun};
+    use nord_sharc::runner::pass::PassConfig;
+
+    let r = AotRun {
+        image,
+        pc: o.pc,
+        devs: &o.devs,
+        msgs: &o.msgs,
+        msg_base: o.msg_base,
+        boot: o.boot,
+        passes: o.passes,
+        warmup: o.warmup,
+        chunk: o.chunk,
+        cfg: PassConfig {
+            trigger: o.trigger,
+            idle_pc: o.idle_pc,
+            max_steps: o.max_pass_steps,
+            irq: None,
+        },
+        start,
+        last,
+        lenient: o.lenient,
+    };
+    match diff(&r) {
+        Ok(rep) => println!(
+            "AOT DIFF OK: boot {} steps + {} passes ({} steps) matched 1:1 (strict state + SRAM every {} steps); block calls={} steps={} misses={}",
+            rep.boot_steps, rep.passes, rep.pass_steps, o.chunk, rep.aot.calls, rep.aot.steps, rep.aot.misses
+        ),
+        Err(e) => {
+            eprintln!("AOT MISMATCH: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
+    if o.bench {
+        match bench(&r) {
+            Ok(b) => println!(
+                "bench ({} warmup, {} passes) {}",
+                o.warmup,
+                o.passes,
+                b.report("aot-hot")
+            ),
+            Err(e) => {
+                eprintln!("AOT bench failed: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+    ExitCode::SUCCESS
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let opts = match parse_args(&args) {
@@ -441,6 +508,9 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    if let Some(range) = opts.aot_hot {
+        return run_aot(&opts, &image, range);
+    }
     run_diff(&opts, &image)
 }
 
@@ -466,6 +536,8 @@ mod tests {
             "0:0=0x8012082f",
             "--coverage",
             "--bench",
+            "--aot-hot",
+            "0x125021:0x1250aa",
         ]
         .into_iter()
         .map(String::from)
@@ -480,6 +552,8 @@ mod tests {
         assert_eq!(o.msgs.len(), 1);
         assert!(o.coverage);
         assert!(o.bench);
+        assert_eq!(o.aot_hot, Some((0x12_5021, 0x12_50AA)));
+        assert!(parse_range("0x1").is_err());
         assert!(parse_args(&[]).is_err());
     }
 }
