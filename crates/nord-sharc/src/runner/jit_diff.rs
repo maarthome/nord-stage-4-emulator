@@ -3,7 +3,11 @@
 //! first divergence.
 
 use super::pass::SRAM_WORDS;
+#[cfg(feature = "jit")]
+use super::pass::{pc_ranges, PassConfig, SEC_CSID};
 use crate::core::Core;
+#[cfg(feature = "jit")]
+use std::collections::BTreeSet;
 use std::fmt;
 
 /// First mismatch observed between interpreter and JIT execution.
@@ -131,6 +135,95 @@ pub fn diff_run(
     Ok(())
 }
 
+/// Summary of one lockstep differential audio pass.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PassDiffReport {
+    pub steps: u64,
+    pub final_pc: u32,
+    pub coverage: Vec<(u32, u32)>,
+}
+
+/// Starts one pass on both `interp` and `jit` (writing `cfg.trigger = 1` or raising `cfg.irq`),
+/// then advances both in lockstep `chunk`-step increments until `cfg.idle_pc` is reached with
+/// `cfg.trigger == 0` (or `cfg.max_steps` is hit), comparing full state + SRAM after every chunk
+/// and stopping at the first divergence.
+#[cfg(feature = "jit")]
+pub fn diff_pass(
+    interp: &mut Core,
+    jit: &mut Core,
+    cfg: &PassConfig,
+    chunk: u64,
+    track_coverage: bool,
+) -> Result<PassDiffReport, DiffMismatch> {
+    for c in [&mut *interp, &mut *jit] {
+        match cfg.irq {
+            Some((vector, status)) => {
+                c.preset_device(SEC_CSID, status);
+                c.raise_interrupt(vector);
+            }
+            None => {
+                if let Err(addr) = c.dm_write(cfg.trigger, 1) {
+                    return Err(DiffMismatch {
+                        step: c.steps,
+                        pc: c.pc,
+                        detail: format!("bad trigger address 0x{addr:x}"),
+                    });
+                }
+            }
+        }
+    }
+
+    let chunk = chunk.max(1);
+    let mut visited = BTreeSet::new();
+    let start_steps = interp.steps;
+    let mut left_idle = false;
+
+    while interp.steps - start_steps < cfg.max_steps {
+        let mut chunk_steps = 0u64;
+        while chunk_steps < chunk && interp.steps - start_steps < cfg.max_steps {
+            if track_coverage {
+                visited.insert(interp.pc);
+            }
+            if let Err(f) = interp.step() {
+                return Err(DiffMismatch {
+                    step: interp.steps,
+                    pc: interp.pc,
+                    detail: format!("interp faulted: {f:?}"),
+                });
+            }
+            chunk_steps += 1;
+            if interp.pc != cfg.idle_pc {
+                left_idle = true;
+            }
+            if left_idle
+                && interp.pc == cfg.idle_pc
+                && interp.dm_read(cfg.trigger).unwrap_or(1) == 0
+            {
+                break;
+            }
+        }
+        if let Some(f) = jit.run_jit(chunk_steps) {
+            return Err(DiffMismatch {
+                step: jit.steps,
+                pc: jit.pc,
+                detail: format!("jit faulted: {f:?}"),
+            });
+        }
+        if let Some(m) = compare_full_state(interp, jit) {
+            return Err(m);
+        }
+        if left_idle && interp.pc == cfg.idle_pc && interp.dm_read(cfg.trigger).unwrap_or(1) == 0 {
+            break;
+        }
+    }
+
+    Ok(PassDiffReport {
+        steps: interp.steps - start_steps,
+        final_pc: interp.pc,
+        coverage: pc_ranges(&visited),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,6 +286,27 @@ mod tests {
 
     #[cfg(feature = "jit")]
     #[test]
+    fn diff_pass_tracks_coverage_and_matches_idle_loop() {
+        let prog = [0x0001u16, 0x0001, 0x073e, 0x00ff, 0xfffe];
+        let mut interp = Core::new(&[]);
+        let mut jit = Core::new(&[]);
+        for c in [&mut interp, &mut jit] {
+            load_program(c, &prog);
+        }
+        let cfg = PassConfig {
+            trigger: 0xB_00E2,
+            idle_pc: 0x12_0000,
+            max_steps: 9,
+            irq: None,
+        };
+        let rep = diff_pass(&mut interp, &mut jit, &cfg, 4, true).unwrap();
+        assert_eq!(rep.steps, 9);
+        assert_eq!(rep.final_pc, 0x12_0000);
+        assert!(!rep.coverage.is_empty());
+    }
+
+    #[cfg(feature = "jit")]
+    #[test]
     #[ignore = "real ORG/firmware differential check: set NORD_SHARC_ORG_IMAGE=path/to/image.bin"]
     fn diff_real_org_image_from_env() {
         let path = std::env::var("NORD_SHARC_ORG_IMAGE")
@@ -203,5 +317,61 @@ mod tests {
         interp.lenient = true;
         jit.lenient = true;
         assert_eq!(diff_run(&mut interp, &mut jit, 200_000, 1_000), Ok(()));
+    }
+
+    #[cfg(feature = "jit")]
+    #[test]
+    #[ignore = "real ORG pass differential check (no --lenient, idle/1-note/8-voice): set NORD_SHARC_ORG_IMAGE=path/to/core2_sram.bin"]
+    fn diff_real_org_passes_from_env() {
+        use crate::runner::msg::{self, STRIP_BASE};
+
+        let path = std::env::var("NORD_SHARC_ORG_IMAGE")
+            .expect("set NORD_SHARC_ORG_IMAGE to core2_sram.bin");
+        let image = std::fs::read(&path).expect("read NORD_SHARC_ORG_IMAGE");
+        let cfg = PassConfig {
+            trigger: 0xB_00E2,
+            idle_pc: 0x12_5DDF,
+            max_steps: 400_000,
+            irq: None,
+        };
+        let one_note = [msg::parse_msg("0:0=0x8012082f").unwrap()];
+        let eight_voices: Vec<_> = (0..8)
+            .map(|k| msg::parse_msg(&format!("0:{}=0x8012082f", k * 62)).unwrap())
+            .collect();
+
+        for (label, msgs) in [
+            ("idle", &[][..]),
+            ("1-note", &one_note[..]),
+            ("8-voices", &eight_voices[..]),
+        ] {
+            let mut interp = Core::new(&image);
+            let mut jit = Core::new(&image);
+            for c in [&mut interp, &mut jit] {
+                c.pc = 0x12_5C88;
+                c.preset_device(0x282c_0380, 1);
+                c.preset_device(0x3108_d008, 5);
+            }
+            diff_run(&mut interp, &mut jit, 100_000, 1_000)
+                .unwrap_or_else(|e| panic!("{label} boot diff failed: {e}"));
+
+            let mut left_idle = false;
+            for p in 0..8u32 {
+                for m in msgs.iter().filter(|m| m.pass == p) {
+                    msg::deliver(&mut interp, STRIP_BASE, m).unwrap();
+                    msg::deliver(&mut jit, STRIP_BASE, m).unwrap();
+                }
+                let rep = diff_pass(&mut interp, &mut jit, &cfg, 1_000, true)
+                    .unwrap_or_else(|e| panic!("{label} pass {p} diff failed: {e}"));
+                assert_eq!(rep.final_pc, 0x12_5DDF, "{label} pass {p} final_pc");
+                if rep
+                    .coverage
+                    .iter()
+                    .any(|&(s, e)| s < 0x12_5DDF || e > 0x12_5DE3)
+                {
+                    left_idle = true;
+                }
+            }
+            assert!(left_idle, "{label}: never left idle poll loop");
+        }
     }
 }
