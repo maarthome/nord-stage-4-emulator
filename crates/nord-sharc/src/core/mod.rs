@@ -54,6 +54,8 @@ mod irq_scenarios;
 mod isa;
 #[cfg(feature = "jit")]
 mod jit;
+#[cfg(all(test, feature = "jit"))]
+mod jit_diff;
 mod longword;
 #[cfg(test)]
 mod loops_measured;
