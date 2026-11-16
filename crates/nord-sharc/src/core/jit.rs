@@ -8,7 +8,7 @@ use super::decode_cache::{ComputeOp, DecodedOp, DualMoveOp, MoveOp};
 use super::exec::Decoded;
 use super::{Core, Fault, Flags};
 use crate::visa::{Insn, Kind};
-use cranelift_codegen::ir::condcodes::IntCC;
+use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::{types, AbiParam, InstBuilder, MemFlags, UserFuncName};
 use cranelift_codegen::settings::{self, Configurable};
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
@@ -38,7 +38,7 @@ pub(super) struct JitEngine {
     fn_ctx: FunctionBuilderContext,
     code_gen: u64,
     code_modified: bool,
-    blocks: HashMap<(u32, u32, bool), CompiledBlock>,
+    blocks: HashMap<(u32, u32, bool, bool), CompiledBlock>,
     fn_float_mul: FuncId,
     fn_fixed_av: FuncId,
     fn_exec_compute: FuncId,
@@ -238,7 +238,7 @@ impl JitEngine {
     pub(super) fn invalidate_range(&mut self, first_short: u32, count: u32) {
         let before = self.blocks.len();
         let write_end = first_short.saturating_add(count);
-        self.blocks.retain(|&(start_pc, _, _), blk| {
+        self.blocks.retain(|&(start_pc, _, _, _), blk| {
             blk.end_pc + 3 <= first_short || start_pc >= write_end
         });
         if self.blocks.len() != before {
@@ -476,11 +476,85 @@ fn emit_fixed_logic_or_pass(
     b.ins().store(mem, astat_cleared, core_ptr, off_astat0);
 }
 
+#[derive(Clone, Copy)]
+enum FastFloatKind {
+    Mul,
+    Add,
+    Sub,
+}
+
+/// Emits native IEEE-754 `f32` arithmetic in Cranelift IR when `Core::fast_float` is enabled.
+fn emit_fast_float_op(
+    b: &mut FunctionBuilder,
+    core_ptr: cranelift_codegen::ir::Value,
+    kind: FastFloatKind,
+    n: u8,
+    x: u8,
+    y: u8,
+) {
+    let mem = MemFlags::trusted();
+    let off_r = offset_of!(Core, r) as i32;
+    let off_fx_lo = (offset_of!(Core, fx) + offset_of!(super::float_ops::ExtFile, lo)) as i32;
+    let off_flags = offset_of!(Core, flags) as i32;
+    let off_astat0 =
+        (offset_of!(Core, sys) + offset_of!(super::sysregs::SysState, astat_extra)) as i32;
+
+    let fx = b
+        .ins()
+        .load(types::F32, mem, core_ptr, off_r + 4 * i32::from(x));
+    let fy = b
+        .ins()
+        .load(types::F32, mem, core_ptr, off_r + 4 * i32::from(y));
+    let res = match kind {
+        FastFloatKind::Mul => b.ins().fmul(fx, fy),
+        FastFloatKind::Add => b.ins().fadd(fx, fy),
+        FastFloatKind::Sub => b.ins().fsub(fx, fy),
+    };
+    b.ins().store(mem, res, core_ptr, off_r + 4 * i32::from(n));
+    let zero8 = b.ins().iconst(types::I8, 0);
+    b.ins()
+        .store(mem, zero8, core_ptr, off_fx_lo + i32::from(n));
+
+    let zero_f = b.ins().f32const(0.0);
+    let az = b.ins().fcmp(FloatCC::Equal, res, zero_f);
+    let res_i = b.ins().bitcast(types::I32, MemFlags::new(), res);
+    let an = b.ins().icmp_imm(IntCC::SignedLessThan, res_i, 0);
+    b.ins()
+        .store(mem, az, core_ptr, off_flags + offset_of!(Flags, az) as i32);
+    b.ins()
+        .store(mem, an, core_ptr, off_flags + offset_of!(Flags, an) as i32);
+    b.ins().store(
+        mem,
+        zero8,
+        core_ptr,
+        off_flags + offset_of!(Flags, av) as i32,
+    );
+    b.ins().store(
+        mem,
+        zero8,
+        core_ptr,
+        off_flags + offset_of!(Flags, ai) as i32,
+    );
+    b.ins().store(
+        mem,
+        zero8,
+        core_ptr,
+        off_flags + offset_of!(Flags, as_) as i32,
+    );
+
+    if !matches!(kind, FastFloatKind::Mul) {
+        let astat0 = b.ins().load(types::I32, mem, core_ptr, off_astat0);
+        let astat_set = b.ins().bor_imm(astat0, 1i64 << 10);
+        b.ins().store(mem, astat_set, core_ptr, off_astat0);
+    }
+}
+
 impl Core {
     /// Compiles (or looks up) a JIT basic block starting at `start_pc`, stopping at `loop_end`
     /// if inside a counter loop. Returns `None` if the first instruction is not JIT-eligible.
     fn get_or_compile_jit_block(&mut self, start_pc: u32, loop_end: u32) -> Option<JitBlockFn> {
         let simd = self.simd();
+        let fast_float = self.fast_float;
         if self
             .jit
             .as_ref()
@@ -527,7 +601,7 @@ impl Core {
         }
         let is_loop = loop_end != u32::MAX && end_pc == loop_end;
         let len_insns = insns.len() as u64;
-        let key = (start_pc, loop_end, simd);
+        let key = (start_pc, loop_end, simd, fast_float);
 
         let jit = self
             .jit
@@ -617,11 +691,27 @@ impl Core {
                             } => {
                                 emit_fixed_logic_or_pass(&mut b, core_ptr, fop, n, x, y);
                             }
+                            ComputeOp::FloatMul { n, x, y } if fast_float => {
+                                emit_fast_float_op(&mut b, core_ptr, FastFloatKind::Mul, n, x, y);
+                            }
                             ComputeOp::FloatMul { n, x, y } => {
                                 let n_v = b.ins().iconst(types::I32, i64::from(n));
                                 let x_v = b.ins().iconst(types::I32, i64::from(x));
                                 let y_v = b.ins().iconst(types::I32, i64::from(y));
                                 b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
+                            }
+                            ComputeOp::FloatAlu {
+                                op: fop @ (0x81 | 0x82),
+                                n,
+                                x,
+                                y,
+                            } if fast_float => {
+                                let fk = if fop == 0x81 {
+                                    FastFloatKind::Add
+                                } else {
+                                    FastFloatKind::Sub
+                                };
+                                emit_fast_float_op(&mut b, core_ptr, fk, n, x, y);
                             }
                             other => {
                                 if let Some(raw_c) = compute_op_to_raw(other) {
@@ -854,10 +944,12 @@ impl Core {
             };
             let start_pc = self.pc;
             let simd = self.simd();
+            let fast_float = self.fast_float;
 
             if let Some(func) = self.get_or_compile_jit_block(start_pc, loop_end) {
                 let (len_insns, is_loop) = {
-                    let blk = &self.jit.as_ref().unwrap().blocks[&(start_pc, loop_end, simd)];
+                    let blk =
+                        &self.jit.as_ref().unwrap().blocks[&(start_pc, loop_end, simd, fast_float)];
                     (blk.len_insns, blk.is_loop)
                 };
                 let max_iters_by_steps = safe_steps / len_insns;
@@ -992,6 +1084,52 @@ mod tests {
         assert_eq!(jit.i, interp.i);
         assert_eq!(jit.m, interp.m);
         assert_eq!(jit.l, interp.l);
+    }
+
+    #[test]
+    fn jit_fast_float_matches_interpreter_on_normal_f32_ops() {
+        let mut program = vec![0x0d00u16, 0x0000, 3 + 3 + 3];
+        program.extend_from_slice(&[0x013e, 0x0000, 0x1312]); // R3 = R1 + R2
+        program.extend_from_slice(&[0x013e, 0x0013, 0x0312]); // F3 = F1 * F2
+        program.extend_from_slice(&[0x0001]); // NOP
+
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        jit.fast_float = true;
+        for c in [&mut interp, &mut jit] {
+            c.r[0] = 10;
+            c.r[1] = 1.5f32.to_bits();
+            c.r[2] = 2.5f32.to_bits();
+        }
+        assert_eq!(interp.run(1 + 10 * 3), None);
+        assert_eq!(jit.run_jit(1 + 10 * 3), None);
+        assert_eq!(f32::from_bits(jit.r[3]), f32::from_bits(interp.r[3]));
+        assert_eq!(jit.flags.az, interp.flags.az);
+        assert_eq!(jit.flags.an, interp.flags.an);
+    }
+
+    #[test]
+    #[ignore = "micro-benchmark: run with cargo test --release -p nord-sharc --features jit --lib bench_jit_fast_float_throughput -- --ignored --nocapture"]
+    fn bench_jit_fast_float_throughput() {
+        let mut program = vec![0x0d00u16, 0x0000, 3 + 3 + 3];
+        program.extend_from_slice(&[0x013e, 0x0000, 0x1312]); // R3 = R1 + R2
+        program.extend_from_slice(&[0x013e, 0x0013, 0x0312]); // F3 = F1 * F2
+        program.extend_from_slice(&[0x0001]); // NOP
+
+        let mut c = core_with(&program);
+        c.fast_float = true;
+        c.r[0] = 2_000_000;
+        c.r[1] = 1.5f32.to_bits();
+        c.r[2] = 2.0f32.to_bits();
+        assert_eq!(c.run_jit(4), None);
+        let t0 = std::time::Instant::now();
+        assert_eq!(c.run_jit(2_000_000 * 3 - 3), None);
+        let dt = t0.elapsed();
+        let msteps = (2_000_000 * 3 - 3) as f64 / 1e6 / dt.as_secs_f64();
+        eprintln!(
+            "bench_jit_fast_float_throughput: {} steps in {:?} ({:.2} Msteps/s)",
+            c.steps, dt, msteps
+        );
     }
 
     #[test]

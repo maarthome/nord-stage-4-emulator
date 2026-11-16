@@ -192,6 +192,9 @@ pub struct Core {
     pub mr: [i128; 2],
     /// When set, compute operations that are not modelled are skipped and counted instead of faulting.
     pub lenient: bool,
+    /// When set, the Level-2 JIT lowers `FloatMul` and `FADD`/`FSUB` to native IEEE-754 `f32`
+    /// instead of calling 40-bit software helpers.
+    pub fast_float: bool,
     /// SHARC+ core (ADSP-2157x): the system-register write masks differ from the ADSP-2148x
     /// (`sysregs.rs`). Set by `enable_sc57x` and by a `plus` line in census cases.
     pub sharc_plus: bool,
@@ -291,6 +294,7 @@ impl Core {
             ustat: [0; 4],
             mr: [0; 2],
             lenient: false,
+            fast_float: false,
             sharc_plus: false,
             skipped: 0,
             first_skipped: None,
