@@ -51,6 +51,8 @@ mod interrupts;
 #[cfg(test)]
 mod irq_scenarios;
 mod isa;
+#[cfg(feature = "jit")]
+mod jit;
 mod longword;
 #[cfg(test)]
 mod loops_measured;
@@ -143,12 +145,12 @@ pub struct Flags {
 
 /// Loop stack entry of `DO ... UNTIL cond` (`arith_loop`) and `DO ... UNTIL LCE`.
 #[derive(Debug, Clone, Copy, Default)]
-struct LoopFrame {
-    start: u32,
-    end: u32,
-    remaining: u32,
+pub(super) struct LoopFrame {
+    pub(super) start: u32,
+    pub(super) end: u32,
+    pub(super) remaining: u32,
     /// Termination condition code of an arithmetic loop (Type 13a); `None` for a counter loop.
-    term: Option<u8>,
+    pub(super) term: Option<u8>,
     /// Address whose execution evaluates the termination condition (`arith_loop`); `u32::MAX` =
     /// never.
     check: u32,
@@ -227,7 +229,7 @@ pub struct Core {
     pub flags_y: Flags,
     pub mr_y: [i128; 2],
     /// Low 8 bits of the 40-bit float registers of PEx and PEy (see `float_ops`).
-    fx: float_ops::ExtFile,
+    pub(super) fx: float_ops::ExtFile,
     fx_y: float_ops::ExtFile,
     /// Number of instructions executed.
     pub steps: u64,
@@ -241,11 +243,11 @@ pub struct Core {
     pub device_reads: u64,
     pub device_writes: u64,
     call_stack: Vec<u32>,
-    loops: Vec<LoopFrame>,
+    pub(super) loops: Vec<LoopFrame>,
     pending: Option<Pending>,
     irq: interrupts::IrqState,
     timer: timer::TimerState,
-    sys: sysregs::SysState,
+    pub(in crate::core) sys: sysregs::SysState,
     banks: banks::Banks,
     /// Circular buffer wraps of `I7` (bit 0) and `I15` (bit 1) since the last instruction ended
     /// (set while an address is computed, see `dag_modes`).
@@ -259,6 +261,9 @@ pub struct Core {
     decode_cache: Option<Box<decode_cache::DecodeCache>>,
     /// Monotonic generation for O(1) cache invalidation on ISA/code reloads.
     code_gen: u64,
+    /// Optional Level-2 Cranelift JIT engine (allocated lazily on first `run_jit`).
+    #[cfg(feature = "jit")]
+    jit: Option<Box<jit::JitEngine>>,
 }
 
 #[inline]
@@ -327,6 +332,8 @@ impl Core {
             periph: None,
             decode_cache: None,
             code_gen: 1,
+            #[cfg(feature = "jit")]
+            jit: None,
         }
     }
 
