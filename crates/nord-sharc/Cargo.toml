@@ -42,6 +42,10 @@ path = "src/bin/sharc_ref.rs"
 name = "sharc-fx"
 path = "src/bin/sharc_fx.rs"
 
+[[bin]]
+name = "sharc-aot"
+path = "src/bin/sharc_aot.rs"
+
 [features]
 jit = [
     "dep:cranelift-codegen",
