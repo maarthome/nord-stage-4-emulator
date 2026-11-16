@@ -120,7 +120,11 @@ pub struct AotBench {
 }
 
 /// One pass with the same loop for both variants; `use_aot` only adds the block hook.
-fn run_pass(c: &mut Core, cfg: &PassConfig, use_aot: bool) -> Result<(u64, f64), String> {
+pub(super) fn run_pass(
+    c: &mut Core,
+    cfg: &PassConfig,
+    use_aot: bool,
+) -> Result<(u64, f64), String> {
     c.dm_write(cfg.trigger, 1)
         .map_err(|a| format!("bad trigger 0x{a:x}"))?;
     let (start, limit) = (c.steps, c.steps + cfg.max_steps);
@@ -180,7 +184,8 @@ fn run_pass_block_timed(
 
 /// Warmed-up benchmark: whole-pass timings of interpreter and AOT (interleaved pass by pass),
 /// then a block-timing sweep over the same number of passes.
-pub fn bench(r: &AotRun) -> Result<AotBench, String> {
+/// `exact` = the final state of both cores must match (false for the approximate tier).
+pub fn bench(r: &AotRun, exact: bool) -> Result<AotBench, String> {
     let (mut interp, mut aot) = (r.core(false)?, r.core(true)?);
     let block = (r.start, aot.aot_hot_range().ok_or("no block")?.2);
     interp.run(r.boot);
@@ -210,7 +215,7 @@ pub fn bench(r: &AotRun) -> Result<AotBench, String> {
         run_pass_block_timed(&mut interp, &r.cfg, block, false, &mut bi)?;
         run_pass_block_timed(&mut aot, &r.cfg, block, true, &mut ba)?;
     }
-    if let Some(m) = interp.state_mismatch(&aot) {
+    if let Some(m) = interp.state_mismatch(&aot).filter(|_| exact) {
         return Err(format!("state diverged during bench: {m}"));
     }
     Ok(AotBench {
@@ -280,7 +285,7 @@ mod tests {
             lenient: false,
         };
         assert!(diff(&r).unwrap_err().contains("generated AOT block"));
-        assert!(bench(&r).is_err());
+        assert!(bench(&r, true).is_err());
     }
 
     #[test]

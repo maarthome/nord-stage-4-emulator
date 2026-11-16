@@ -24,6 +24,12 @@ pub enum AotTier {
     Fast,
     /// Register-resident per-element state and native kernels (`aot_pe.rs`).
     Pe,
+    /// [`AotTier::Pe`] with host `f64` float kernels where the result is provably exact
+    /// (`aot_native.rs`); still bit-exact.
+    Guarded,
+    /// [`AotTier::Pe`] with host `f32` kernels: NOT bit-exact (extension dropped, denormals
+    /// flushed); only for the audio-metric comparison, never a replacement for the exact path.
+    Approx,
 }
 
 /// One instruction of an AOT block, acting on a single processing element.
@@ -193,8 +199,8 @@ fn emit_op(out: &mut String, op: LoweredOp, native: bool) {
 /// Prints the Rust source of the generated block module: the constants and `run` function that
 /// `aot_hot.rs` includes at build time (`NORD_SHARC_AOT_HOT=<file>`).
 pub(super) fn emit_block_rust(b: &Lowered, tier: AotTier) -> Result<String, String> {
-    if tier == AotTier::Pe {
-        return emit_pe_block_rust(b);
+    if matches!(tier, AotTier::Pe | AotTier::Guarded | AotTier::Approx) {
+        return emit_pe_block_rust(b, tier);
     }
     let native = tier == AotTier::Fast;
     let mut out = String::new();
@@ -275,13 +281,14 @@ fn emit_tail(out: &mut String, b: &Lowered) {
 
 /// [`AotTier::Pe`]: each element is loaded into a [`Pe`](super::aot_pe::Pe), the block runs on
 /// it and it is stored back; there is no swap of the whole register file.
-fn emit_pe_block_rust(b: &Lowered) -> Result<String, String> {
+fn emit_pe_block_rust(b: &Lowered, tier: AotTier) -> Result<String, String> {
     let mut out = String::new();
     emit_head(
         &mut out,
         b,
         &[
             "crate::core::aot_hot::AotBlock",
+            "crate::core::aot_native::Kern",
             "crate::core::aot_pe::Pe",
             "crate::core::decode_cache::ComputeOp",
             "crate::core::Core",
@@ -328,7 +335,15 @@ fn emit_pe_block_rust(b: &Lowered) -> Result<String, String> {
     let _ = writeln!(out, "}}");
     let _ = writeln!(out, "fn run(core: &mut Core) {{");
     for y in ["false", "true"] {
-        let _ = writeln!(out, "    let mut pe = Pe::load(core, {y});");
+        let kern = match tier {
+            AotTier::Guarded => "Guarded",
+            AotTier::Approx => "Approx",
+            _ => "Exact",
+        };
+        let _ = writeln!(
+            out,
+            "    let mut pe = Pe::load(core, {y}).with_kern(Kern::{kern});"
+        );
         let _ = writeln!(out, "    one_pe(&mut pe);");
         let _ = writeln!(out, "    pe.store(core);");
     }
@@ -397,6 +412,11 @@ mod tests {
             "{pe}"
         );
         assert_eq!(pe.matches("Pe::load(core,").count(), 2, "{pe}");
+        assert!(pe.contains("with_kern(Kern::Exact)"), "{pe}");
+        let guarded = emit_block_rust(&b, AotTier::Guarded).unwrap();
+        assert!(guarded.contains("with_kern(Kern::Guarded)"), "{guarded}");
+        let approx = emit_block_rust(&b, AotTier::Approx).unwrap();
+        assert!(approx.contains("with_kern(Kern::Approx)"), "{approx}");
         assert!(native.contains("core.aot_op_native(ComputeOp::FloatMul { n: 4, x: 14, y: 14 });"));
         assert!(src.contains("core.write_ureg(14, 0x3f800000);"), "{src}");
         assert!(

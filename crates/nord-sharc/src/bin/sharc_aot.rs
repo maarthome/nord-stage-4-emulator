@@ -2,7 +2,7 @@
 //! transpiles a SHARC VISA routine from a flat SRAM image into standalone Rust source (Level-3 AOT).
 //!
 //! `sharc-aot IMAGE START LAST --ops` lists the decoded ops of the instructions starting in
-//! `START..=LAST`; `sharc-aot IMAGE START LAST --hot [--tier interp|fast|pe] --out FILE` writes (tiers: see
+//! `START..=LAST`; `sharc-aot IMAGE START LAST --hot [--tier interp|fast|pe|guarded|approx] --out FILE` writes (tiers: see
 //! `AotTier`) the hot-block module that
 //! `NORD_SHARC_AOT_HOT=FILE cargo build` compiles into `nord-sharc` (see
 //! `docs/research/sharc-aot-hot-block.md`).
@@ -34,7 +34,9 @@ fn run_cli(args: &[String]) -> Result<Option<String>, String> {
                     Some("interp") => AotTier::Interp,
                     Some("fast") => AotTier::Fast,
                     Some("pe") => AotTier::Pe,
-                    _ => return Err("--tier needs interp, fast or pe".to_string()),
+                    Some("guarded") => AotTier::Guarded,
+                    Some("approx") => AotTier::Approx,
+                    _ => return Err("--tier needs interp, fast, pe, guarded or approx".to_string()),
                 };
             }
             "--fn" => {

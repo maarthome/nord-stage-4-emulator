@@ -40,6 +40,8 @@ struct Opts {
     lenient: bool,
     fast_float: bool,
     aot_hot: Option<(u32, u32)>,
+    aot_audio: bool,
+    bufs: Vec<String>,
 }
 
 fn parse_kv(s: &str) -> Result<(u32, u32), String> {
@@ -79,6 +81,8 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
         lenient: false,
         fast_float: false,
         aot_hot: None,
+        aot_audio: false,
+        bufs: Vec::new(),
     };
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -109,6 +113,8 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--profile-jit" => o.profile_jit = true,
             "--lenient" => o.lenient = true,
             "--fast-float" => o.fast_float = true,
+            "--aot-audio" => o.aot_audio = true,
+            "--buf" => o.bufs.push(val("SPEC")?),
             "--aot-hot" => o.aot_hot = Some(parse_range(&val("START:LAST")?)?),
             _ if a.starts_with('-') => return Err(format!("unknown option {a}")),
             _ => o.image = a.clone(),
@@ -442,7 +448,7 @@ fn run_diff(_o: &Opts, _image: &[u8]) -> ExitCode {
 
 /// `--aot-hot`: strict lockstep diff of interpreter vs hot-block AOT, then the benchmark.
 fn run_aot(o: &Opts, image: &[u8], (start, last): (u32, u32)) -> ExitCode {
-    use nord_sharc::runner::aot_hot::{bench, diff, AotRun};
+    use nord_sharc::runner::aot_hot::{diff, AotRun};
     use nord_sharc::runner::pass::PassConfig;
 
     let r = AotRun {
@@ -465,6 +471,13 @@ fn run_aot(o: &Opts, image: &[u8], (start, last): (u32, u32)) -> ExitCode {
         last,
         lenient: o.lenient,
     };
+    if o.aot_audio {
+        let code = run_audio(o, &r);
+        if o.bench && code == ExitCode::SUCCESS {
+            return run_bench(o, &r, false);
+        }
+        return code;
+    }
     match diff(&r) {
         Ok(rep) => println!(
             "AOT DIFF OK: boot {} steps + {} passes ({} steps) matched 1:1 (strict state + SRAM every {} steps); block calls={} steps={} misses={}",
@@ -476,20 +489,58 @@ fn run_aot(o: &Opts, image: &[u8], (start, last): (u32, u32)) -> ExitCode {
         }
     }
     if o.bench {
-        match bench(&r) {
-            Ok(b) => println!(
+        return run_bench(o, &r, true);
+    }
+    ExitCode::SUCCESS
+}
+
+/// `--bench` of the AOT modes; `exact` = the state must still match at the end.
+fn run_bench(o: &Opts, r: &nord_sharc::runner::aot_hot::AotRun, exact: bool) -> ExitCode {
+    match nord_sharc::runner::aot_hot::bench(r, exact) {
+        Ok(b) => {
+            println!(
                 "bench ({} warmup, {} passes) {}",
                 o.warmup,
                 o.passes,
                 b.report("aot-hot")
-            ),
-            Err(e) => {
-                eprintln!("AOT bench failed: {e}");
-                return ExitCode::FAILURE;
-            }
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("AOT bench failed: {e}");
+            ExitCode::FAILURE
         }
     }
-    ExitCode::SUCCESS
+}
+
+/// `--aot-audio`: pass-buffer comparison of the approximate tier against the exact interpreter.
+fn run_audio(o: &Opts, r: &nord_sharc::runner::aot_hot::AotRun) -> ExitCode {
+    use nord_sharc::runner::audio::parse_spec;
+    let specs: Vec<String> = if o.bufs.is_empty() {
+        (0..5)
+            .map(|k| format!("@0xB2EF{:x}:8:f32", 4 + k))
+            .collect()
+    } else {
+        o.bufs.clone()
+    };
+    let bufs: Result<Vec<_>, _> = specs.iter().map(|s| parse_spec(s)).collect();
+    let bufs = match bufs {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("{e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match nord_sharc::runner::aot_audio::audio_compare(r, &bufs) {
+        Ok(rep) => {
+            println!("{}", rep.report("aot-audio"));
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("AOT audio comparison failed: {e}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 fn main() -> ExitCode {
@@ -538,6 +589,9 @@ mod tests {
             "--bench",
             "--aot-hot",
             "0x125021:0x1250aa",
+            "--aot-audio",
+            "--buf",
+            "@0xB2EF4:8:f32",
         ]
         .into_iter()
         .map(String::from)
@@ -553,6 +607,8 @@ mod tests {
         assert!(o.coverage);
         assert!(o.bench);
         assert_eq!(o.aot_hot, Some((0x12_5021, 0x12_50AA)));
+        assert!(o.aot_audio);
+        assert_eq!(o.bufs, vec!["@0xB2EF4:8:f32".to_string()]);
         assert!(parse_range("0x1").is_err());
         assert!(parse_args(&[]).is_err());
     }
