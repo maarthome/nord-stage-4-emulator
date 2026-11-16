@@ -41,6 +41,7 @@ pub(super) struct JitEngine {
     blocks: HashMap<(u32, u32, bool, bool, bool), CompiledBlock>,
     fn_float_mul: FuncId,
     fn_fixed_mult: FuncId,
+    fn_mult_ov: FuncId,
     fn_fixed_av: FuncId,
     fn_exec_compute: FuncId,
     fn_write_ureg: FuncId,
@@ -60,6 +61,13 @@ unsafe extern "C" fn jit_float_mul(core: *mut Core, n: u32, x: u32, y: u32) {
 unsafe extern "C" fn jit_fixed_mult(core: *mut Core, op: u32, n: u32, x: u32, y: u32) {
     let c = unsafe { &mut *core };
     c.fixed_mult(u64::from(op), n as usize, x as usize, y as usize);
+}
+
+/// Records multiplier overflow (`STKY_MOS`) from JIT-compiled `FixedMult`.
+#[cold]
+unsafe extern "C" fn jit_note_mult_overflow(core: *mut Core) {
+    let c = unsafe { &mut *core };
+    c.note_arith_exception(false, 1 << 6);
 }
 
 /// Handles `FixedAlu` overflow (`AV`) or `ALUSAT` saturation from JIT-compiled `ADD`/`SUB`.
@@ -160,6 +168,10 @@ impl JitEngine {
         let mut builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
         builder.symbol("jit_float_mul", jit_float_mul as *const u8);
         builder.symbol("jit_fixed_mult", jit_fixed_mult as *const u8);
+        builder.symbol(
+            "jit_note_mult_overflow",
+            jit_note_mult_overflow as *const u8,
+        );
         builder.symbol("jit_handle_fixed_av", jit_handle_fixed_av as *const u8);
         builder.symbol("jit_exec_compute", jit_exec_compute as *const u8);
         builder.symbol("jit_write_ureg", jit_write_ureg as *const u8);
@@ -188,6 +200,12 @@ impl JitEngine {
         let fn_fixed_mult = module
             .declare_function("jit_fixed_mult", Linkage::Import, &sig_fmult)
             .expect("declare jit_fixed_mult");
+
+        let mut sig_mov = module.make_signature();
+        sig_mov.params.push(AbiParam::new(ptr_ty));
+        let fn_mult_ov = module
+            .declare_function("jit_note_mult_overflow", Linkage::Import, &sig_mov)
+            .expect("declare jit_note_mult_overflow");
 
         let mut sig_av = module.make_signature();
         sig_av.params.push(AbiParam::new(ptr_ty));
@@ -244,6 +262,7 @@ impl JitEngine {
             blocks: HashMap::new(),
             fn_float_mul,
             fn_fixed_mult,
+            fn_mult_ov,
             fn_fixed_av,
             fn_exec_compute,
             fn_write_ureg,
@@ -568,6 +587,238 @@ fn emit_fast_float_op(
     }
 }
 
+/// Lowers non-rounding `ComputeOp::FixedMult` (`cls` 1..=3, `!round`) to Cranelift IR with
+/// 1:1 80-bit `mr[reg]` arithmetic, `MN`/`MV`/`MU` flags, and a cold `jit_note_mult_overflow`
+/// call when `MV` is set.
+#[allow(clippy::too_many_arguments)]
+fn emit_fixed_mult(
+    b: &mut FunctionBuilder,
+    core_ptr: cranelift_codegen::ir::Value,
+    op: u8,
+    n: u8,
+    x: u8,
+    y: u8,
+    fn_mov_ref: cranelift_codegen::ir::FuncRef,
+) {
+    const _: () = assert!(std::mem::size_of::<i128>() == 16);
+    const _: () = assert!(cfg!(target_endian = "little"));
+
+    let cls = op >> 6;
+    let (sy, sx) = ((op >> 5) & 1 == 1, (op >> 4) & 1 == 1);
+    let (frac, sel) = ((op >> 3) & 1 == 1, (op >> 1) & 3);
+    let unsigned = !sx && !sy;
+    let reg = i32::from(sel == 1 || sel == 3);
+
+    let mem = MemFlags::trusted();
+    let off_r = offset_of!(Core, r) as i32;
+    let off_mr = offset_of!(Core, mr) as i32 + 16 * reg;
+    let off_fx_lo = (offset_of!(Core, fx) + offset_of!(super::float_ops::ExtFile, lo)) as i32;
+    let off_astat0 =
+        (offset_of!(Core, sys) + offset_of!(super::sysregs::SysState, astat_extra)) as i32;
+
+    let rx = b
+        .ins()
+        .load(types::I32, mem, core_ptr, off_r + 4 * i32::from(x));
+    let ry = b
+        .ins()
+        .load(types::I32, mem, core_ptr, off_r + 4 * i32::from(y));
+    let rx64 = if sx {
+        b.ins().sextend(types::I64, rx)
+    } else {
+        b.ins().uextend(types::I64, rx)
+    };
+    let ry64 = if sy {
+        b.ins().sextend(types::I64, ry)
+    } else {
+        b.ins().uextend(types::I64, ry)
+    };
+    let raw_p = b.ins().imul(rx64, ry64);
+    let (p_lo, p_hi) = if frac && sx && sy {
+        (b.ins().ishl_imm(raw_p, 1), b.ins().sshr_imm(raw_p, 63))
+    } else if sx || sy {
+        (raw_p, b.ins().sshr_imm(raw_p, 63))
+    } else {
+        (raw_p, b.ins().iconst(types::I64, 0))
+    };
+
+    let (v_lo, v_hi_raw) = match cls {
+        1 => (p_lo, p_hi),
+        2 => {
+            let mr_lo = b.ins().load(types::I64, mem, core_ptr, off_mr);
+            let mr_hi = b.ins().load(types::I64, mem, core_ptr, off_mr + 8);
+            let sum_lo = b.ins().iadd(mr_lo, p_lo);
+            let carry = b.ins().icmp(IntCC::UnsignedLessThan, sum_lo, mr_lo);
+            let carry64 = b.ins().uextend(types::I64, carry);
+            let sum_hi = b.ins().iadd(mr_hi, p_hi);
+            (sum_lo, b.ins().iadd(sum_hi, carry64))
+        }
+        _ => {
+            let mr_lo = b.ins().load(types::I64, mem, core_ptr, off_mr);
+            let mr_hi = b.ins().load(types::I64, mem, core_ptr, off_mr + 8);
+            let borrow = b.ins().icmp(IntCC::UnsignedLessThan, mr_lo, p_lo);
+            let borrow64 = b.ins().uextend(types::I64, borrow);
+            let diff_lo = b.ins().isub(mr_lo, p_lo);
+            let diff_hi = b.ins().isub(mr_hi, p_hi);
+            (diff_lo, b.ins().isub(diff_hi, borrow64))
+        }
+    };
+
+    // Wrap to 80 bits (sign-extend bit 79 into bits 80..127).
+    let v_hi16 = b.ins().ireduce(types::I16, v_hi_raw);
+    let v_hi = b.ins().sextend(types::I64, v_hi16);
+
+    let mn = b.ins().icmp_imm(IntCC::SignedLessThan, v_hi, 0);
+    let mv = match (frac, unsigned) {
+        (true, false) => {
+            let sign_lo = b.ins().sshr_imm(v_lo, 63);
+            b.ins().icmp(IntCC::NotEqual, v_hi, sign_lo)
+        }
+        (true, true) => b.ins().icmp_imm(IntCC::NotEqual, v_hi, 0),
+        (false, false) => {
+            let lo32 = b.ins().ireduce(types::I32, v_lo);
+            let sext64 = b.ins().sextend(types::I64, lo32);
+            let sign_lo = b.ins().sshr_imm(sext64, 63);
+            let b1 = b.ins().icmp(IntCC::NotEqual, v_lo, sext64);
+            let b2 = b.ins().icmp(IntCC::NotEqual, v_hi, sign_lo);
+            b.ins().bor(b1, b2)
+        }
+        (false, true) => {
+            let hi32 = b.ins().ushr_imm(v_lo, 32);
+            let b1 = b.ins().icmp_imm(IntCC::NotEqual, v_hi, 0);
+            let b2 = b.ins().icmp_imm(IntCC::NotEqual, hi32, 0);
+            b.ins().bor(b1, b2)
+        }
+    };
+    let mu = if frac {
+        let hi32_lo = b.ins().sshr_imm(v_lo, 32);
+        let is_zero_hi = b.ins().icmp_imm(IntCC::Equal, v_hi, 0);
+        let is_neg1_hi = b.ins().icmp_imm(IntCC::Equal, v_hi, -1);
+        let hi_sign = b.ins().bor(is_zero_hi, is_neg1_hi);
+        let mid_ok = b.ins().icmp(IntCC::Equal, hi32_lo, v_hi);
+        let lo32 = b.ins().ireduce(types::I32, v_lo);
+        let lo_nz = b.ins().icmp_imm(IntCC::NotEqual, lo32, 0);
+        let c1 = b.ins().band(hi_sign, mid_ok);
+        b.ins().band(c1, lo_nz)
+    } else {
+        b.ins().iconst(types::I8, 0)
+    };
+
+    let mn32 = b.ins().uextend(types::I32, mn);
+    let mv32 = b.ins().uextend(types::I32, mv);
+    let mu32 = b.ins().uextend(types::I32, mu);
+    let mv_sh = b.ins().ishl_imm(mv32, 1);
+    let mu_sh = b.ins().ishl_imm(mu32, 2);
+    let n1 = b.ins().bor(mn32, mv_sh);
+    let nibble = b.ins().bor(n1, mu_sh);
+    let nibble_sh = b.ins().ishl_imm(nibble, 6);
+
+    let extra = b.ins().load(types::I32, mem, core_ptr, off_astat0);
+    let masked = b.ins().band_imm(extra, !(0xFi64 << 6));
+    let new_extra = b.ins().bor(masked, nibble_sh);
+    b.ins().store(mem, new_extra, core_ptr, off_astat0);
+
+    let ov_blk = b.create_block();
+    let cont_blk = b.create_block();
+    b.ins().brif(mv, ov_blk, &[], cont_blk, &[]);
+    b.switch_to_block(ov_blk);
+    b.seal_block(ov_blk);
+    b.ins().call(fn_mov_ref, &[core_ptr]);
+    b.ins().jump(cont_blk, &[]);
+    b.switch_to_block(cont_blk);
+    b.seal_block(cont_blk);
+
+    if sel < 2 {
+        let shifted = if frac {
+            b.ins().ushr_imm(v_lo, 32)
+        } else {
+            v_lo
+        };
+        let res32 = b.ins().ireduce(types::I32, shifted);
+        b.ins()
+            .store(mem, res32, core_ptr, off_r + 4 * i32::from(n));
+        let zero8 = b.ins().iconst(types::I8, 0);
+        b.ins()
+            .store(mem, zero8, core_ptr, off_fx_lo + i32::from(n));
+    } else {
+        b.ins().store(mem, v_lo, core_ptr, off_mr);
+        b.ins().store(mem, v_hi, core_ptr, off_mr + 8);
+    }
+}
+
+/// Lowers a [`ComputeOp`] for both standalone compute instructions and `DualMove` parallel compute.
+#[allow(clippy::too_many_arguments)]
+fn emit_jit_compute_op(
+    b: &mut FunctionBuilder,
+    core_ptr: cranelift_codegen::ir::Value,
+    cop: ComputeOp,
+    fast_float: bool,
+    fn_fmul_ref: cranelift_codegen::ir::FuncRef,
+    fn_fmult_ref: cranelift_codegen::ir::FuncRef,
+    fn_mov_ref: cranelift_codegen::ir::FuncRef,
+    fn_av_ref: cranelift_codegen::ir::FuncRef,
+    fn_comp_ref: cranelift_codegen::ir::FuncRef,
+) {
+    match cop {
+        ComputeOp::Nop => {}
+        ComputeOp::FixedAlu {
+            op: fop @ (0x01 | 0x02),
+            n,
+            x,
+            y,
+        } => {
+            emit_fixed_add_sub(b, core_ptr, n, x, y, fop == 0x02, fn_av_ref);
+        }
+        ComputeOp::FixedAlu {
+            op: fop @ (0x21 | 0x40 | 0x41 | 0x42),
+            n,
+            x,
+            y,
+        } => {
+            emit_fixed_logic_or_pass(b, core_ptr, fop, n, x, y);
+        }
+        ComputeOp::FloatMul { n, x, y } if fast_float => {
+            emit_fast_float_op(b, core_ptr, FastFloatKind::Mul, n, x, y);
+        }
+        ComputeOp::FloatMul { n, x, y } => {
+            let n_v = b.ins().iconst(types::I32, i64::from(n));
+            let x_v = b.ins().iconst(types::I32, i64::from(x));
+            let y_v = b.ins().iconst(types::I32, i64::from(y));
+            b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
+        }
+        ComputeOp::FixedMult { op: mop, n, x, y }
+            if (mop >> 6) != 0 && !((mop & 1 == 1) && ((mop >> 3) & 1 == 1)) =>
+        {
+            emit_fixed_mult(b, core_ptr, mop, n, x, y, fn_mov_ref);
+        }
+        ComputeOp::FixedMult { op: mop, n, x, y } => {
+            let op_v = b.ins().iconst(types::I32, i64::from(mop));
+            let n_v = b.ins().iconst(types::I32, i64::from(n));
+            let x_v = b.ins().iconst(types::I32, i64::from(x));
+            let y_v = b.ins().iconst(types::I32, i64::from(y));
+            b.ins().call(fn_fmult_ref, &[core_ptr, op_v, n_v, x_v, y_v]);
+        }
+        ComputeOp::FloatAlu {
+            op: fop @ (0x81 | 0x82),
+            n,
+            x,
+            y,
+        } if fast_float => {
+            let fk = if fop == 0x81 {
+                FastFloatKind::Add
+            } else {
+                FastFloatKind::Sub
+            };
+            emit_fast_float_op(b, core_ptr, fk, n, x, y);
+        }
+        other => {
+            if let Some(raw_c) = compute_op_to_raw(other) {
+                let c_v = b.ins().iconst(types::I64, raw_c as i64);
+                b.ins().call(fn_comp_ref, &[core_ptr, c_v]);
+            }
+        }
+    }
+}
+
 /// Computes `Core::dag_next(i, m, l, b)` branchlessly in Cranelift IR.
 fn emit_dag_next_ir(
     fb: &mut FunctionBuilder,
@@ -735,6 +986,7 @@ fn emit_inline_dual_sram_load(
     arg_kind: i64,
     fn_fmul_ref: cranelift_codegen::ir::FuncRef,
     fn_fmult_ref: cranelift_codegen::ir::FuncRef,
+    fn_mov_ref: cranelift_codegen::ir::FuncRef,
     fn_av_ref: cranelift_codegen::ir::FuncRef,
     fn_comp_ref: cranelift_codegen::ir::FuncRef,
     fn_dual_ref: cranelift_codegen::ir::FuncRef,
@@ -794,60 +1046,17 @@ fn emit_inline_dual_sram_load(
 
     // Execute optional parallel compute BEFORE writing the loaded registers.
     if let Some(cop) = dm.compute {
-        match cop {
-            ComputeOp::Nop => {}
-            ComputeOp::FixedAlu {
-                op: fop @ (0x01 | 0x02),
-                n,
-                x,
-                y,
-            } => {
-                emit_fixed_add_sub(b, core_ptr, n, x, y, fop == 0x02, fn_av_ref);
-            }
-            ComputeOp::FixedAlu {
-                op: fop @ (0x21 | 0x40 | 0x41 | 0x42),
-                n,
-                x,
-                y,
-            } => {
-                emit_fixed_logic_or_pass(b, core_ptr, fop, n, x, y);
-            }
-            ComputeOp::FloatMul { n, x, y } if fast_float => {
-                emit_fast_float_op(b, core_ptr, FastFloatKind::Mul, n, x, y);
-            }
-            ComputeOp::FloatMul { n, x, y } => {
-                let n_v = b.ins().iconst(types::I32, i64::from(n));
-                let x_v = b.ins().iconst(types::I32, i64::from(x));
-                let y_v = b.ins().iconst(types::I32, i64::from(y));
-                b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
-            }
-            ComputeOp::FixedMult { op: mop, n, x, y } => {
-                let op_v = b.ins().iconst(types::I32, i64::from(mop));
-                let n_v = b.ins().iconst(types::I32, i64::from(n));
-                let x_v = b.ins().iconst(types::I32, i64::from(x));
-                let y_v = b.ins().iconst(types::I32, i64::from(y));
-                b.ins().call(fn_fmult_ref, &[core_ptr, op_v, n_v, x_v, y_v]);
-            }
-            ComputeOp::FloatAlu {
-                op: fop @ (0x81 | 0x82),
-                n,
-                x,
-                y,
-            } if fast_float => {
-                let fk = if fop == 0x81 {
-                    FastFloatKind::Add
-                } else {
-                    FastFloatKind::Sub
-                };
-                emit_fast_float_op(b, core_ptr, fk, n, x, y);
-            }
-            other => {
-                if let Some(raw_c) = compute_op_to_raw(other) {
-                    let c_v = b.ins().iconst(types::I64, raw_c as i64);
-                    b.ins().call(fn_comp_ref, &[core_ptr, c_v]);
-                }
-            }
-        }
+        emit_jit_compute_op(
+            b,
+            core_ptr,
+            cop,
+            fast_float,
+            fn_fmul_ref,
+            fn_fmult_ref,
+            fn_mov_ref,
+            fn_av_ref,
+            fn_comp_ref,
+        );
     }
 
     b.ins()
@@ -987,6 +1196,7 @@ impl Core {
 
             let fn_fmul_ref = jit.module.declare_func_in_func(jit.fn_float_mul, b.func);
             let fn_fmult_ref = jit.module.declare_func_in_func(jit.fn_fixed_mult, b.func);
+            let fn_mov_ref = jit.module.declare_func_in_func(jit.fn_mult_ov, b.func);
             let fn_av_ref = jit.module.declare_func_in_func(jit.fn_fixed_av, b.func);
             let fn_comp_ref = jit.module.declare_func_in_func(jit.fn_exec_compute, b.func);
             let fn_wureg_ref = jit.module.declare_func_in_func(jit.fn_write_ureg, b.func);
@@ -1011,68 +1221,17 @@ impl Core {
                 match op {
                     DecodedOp::Nop => {}
                     DecodedOp::ComputeCond { cond: 31, op } | DecodedOp::ComputeBoth { op } => {
-                        match op {
-                            ComputeOp::Nop => {}
-                            ComputeOp::FixedAlu {
-                                op: fop @ (0x01 | 0x02),
-                                n,
-                                x,
-                                y,
-                            } => {
-                                emit_fixed_add_sub(
-                                    &mut b,
-                                    core_ptr,
-                                    n,
-                                    x,
-                                    y,
-                                    fop == 0x02,
-                                    fn_av_ref,
-                                );
-                            }
-                            ComputeOp::FixedAlu {
-                                op: fop @ (0x21 | 0x40 | 0x41 | 0x42),
-                                n,
-                                x,
-                                y,
-                            } => {
-                                emit_fixed_logic_or_pass(&mut b, core_ptr, fop, n, x, y);
-                            }
-                            ComputeOp::FloatMul { n, x, y } if fast_float => {
-                                emit_fast_float_op(&mut b, core_ptr, FastFloatKind::Mul, n, x, y);
-                            }
-                            ComputeOp::FloatMul { n, x, y } => {
-                                let n_v = b.ins().iconst(types::I32, i64::from(n));
-                                let x_v = b.ins().iconst(types::I32, i64::from(x));
-                                let y_v = b.ins().iconst(types::I32, i64::from(y));
-                                b.ins().call(fn_fmul_ref, &[core_ptr, n_v, x_v, y_v]);
-                            }
-                            ComputeOp::FixedMult { op: mop, n, x, y } => {
-                                let op_v = b.ins().iconst(types::I32, i64::from(mop));
-                                let n_v = b.ins().iconst(types::I32, i64::from(n));
-                                let x_v = b.ins().iconst(types::I32, i64::from(x));
-                                let y_v = b.ins().iconst(types::I32, i64::from(y));
-                                b.ins().call(fn_fmult_ref, &[core_ptr, op_v, n_v, x_v, y_v]);
-                            }
-                            ComputeOp::FloatAlu {
-                                op: fop @ (0x81 | 0x82),
-                                n,
-                                x,
-                                y,
-                            } if fast_float => {
-                                let fk = if fop == 0x81 {
-                                    FastFloatKind::Add
-                                } else {
-                                    FastFloatKind::Sub
-                                };
-                                emit_fast_float_op(&mut b, core_ptr, fk, n, x, y);
-                            }
-                            other => {
-                                if let Some(raw_c) = compute_op_to_raw(other) {
-                                    let c_v = b.ins().iconst(types::I64, raw_c as i64);
-                                    b.ins().call(fn_comp_ref, &[core_ptr, c_v]);
-                                }
-                            }
-                        }
+                        emit_jit_compute_op(
+                            &mut b,
+                            core_ptr,
+                            op,
+                            fast_float,
+                            fn_fmul_ref,
+                            fn_fmult_ref,
+                            fn_mov_ref,
+                            fn_av_ref,
+                            fn_comp_ref,
+                        );
                     }
                     DecodedOp::Move(MoveOp::LoadImm { ureg, value }) => {
                         let mem = MemFlags::trusted();
@@ -1238,6 +1397,7 @@ impl Core {
                             arg_kind,
                             fn_fmul_ref,
                             fn_fmult_ref,
+                            fn_mov_ref,
                             fn_av_ref,
                             fn_comp_ref,
                             fn_dual_ref,
@@ -1959,5 +2119,41 @@ mod tests {
         assert_eq!(jit2.run_jit(1), None);
         assert_eq!(jit2.r[0], 2);
         assert_eq!(jit2.r[0], interp2.r[0]);
+    }
+
+    #[test]
+    fn jit_inline_fixed_mult_matches_interp_including_mv_and_mu() {
+        // 1) MRF = MRF + r0 * r4 (ssf) -> 0x013e, 0x001b, 0xc004
+        // 2) MRF = MRF - r0 * r4 (ssf) -> 0x013e, 0x001f, 0xc004
+        // 3) R3 = r1 * r2 (ssf)        -> 0x013e, 0x0017, 0x8312
+        // 4) R3 = r1 * r2 (ssi)        -> 0x013e, 0x0017, 0x0312
+        let prog = [
+            0x013eu16, 0x001b, 0xc004, 0x013e, 0x001f, 0xc004, 0x013e, 0x0017, 0x8312, 0x013e,
+            0x0017, 0x0312,
+        ];
+        // Case A: normal + underflow (MU) + overflow (MV + STKY_MOS)
+        for (r0, r4, r1, r2) in [
+            (
+                0x2000_0000u32,
+                0x2000_0000u32,
+                0x4000_0000u32,
+                0x4000_0000u32,
+            ),
+            (0x0000_0001, 0x0000_0001, 0x8000_0000, 0x8000_0000), // MU on r0*r4, MV on 0x8000_0000*0x8000_0000
+            (0x8000_0000, 0x8000_0000, 0x0001_0000, 0x0002_0000), // MV on ssi
+        ] {
+            let mut interp = core_with(&prog);
+            let mut jit = core_with(&prog);
+            for c in [&mut interp, &mut jit] {
+                (c.r[0], c.r[4], c.r[1], c.r[2]) = (r0, r4, r1, r2);
+                c.mr[0] = 0x7FFF_FFFF_0000_0000i128;
+            }
+            assert_eq!(interp.run(4), None);
+            assert_eq!(jit.run_jit(4), None);
+            assert_eq!(jit.mr, interp.mr);
+            assert_eq!(jit.r, interp.r);
+            assert_eq!(jit.astat(0), interp.astat(0));
+            assert_eq!(jit.sys.stky[0], interp.sys.stky[0]);
+        }
     }
 }
