@@ -1053,6 +1053,82 @@ fn emit_dag_next_ir(
     fb.ins().select(l_zero, next, circ_res)
 }
 
+/// Loop-invariant DAG configuration values (`MODE1.CBUFEN` and `M`/`L`/`B` registers)
+/// loaded once in the loop preheader when the loop body cannot mutate them.
+struct HoistedDagCfg {
+    has_cbuf: cranelift_codegen::ir::Value,
+    m: [Option<cranelift_codegen::ir::Value>; 16],
+    l: [Option<cranelift_codegen::ir::Value>; 16],
+    b: [Option<cranelift_codegen::ir::Value>; 16],
+}
+
+fn is_dag_cfg_invariant(insns: &[(u32, u32, Kind, u64, DecodedOp)]) -> bool {
+    insns.iter().all(|&(_, _, _, _, op)| match op {
+        DecodedOp::Nop => true,
+        DecodedOp::ComputeCond { cond: 31, .. } | DecodedOp::ComputeBoth { .. } => true,
+        DecodedOp::Move(MoveOp::LoadImm { ureg, .. }) => ureg < 16,
+        DecodedOp::Move(MoveOp::RegMove { dst, .. }) => dst < 16,
+        DecodedOp::Move(MoveOp::DagMem { ureg, .. }) => ureg < 16,
+        DecodedOp::DualMove(dm) => dm.dm_reg < 16 && dm.pm_reg < 16,
+        _ => false,
+    })
+}
+
+fn preload_dag_cfg(
+    b: &mut FunctionBuilder,
+    core_ptr: cranelift_codegen::ir::Value,
+    insns: &[(u32, u32, Kind, u64, DecodedOp)],
+) -> HoistedDagCfg {
+    let mem = MemFlags::trusted();
+    let off_m = offset_of!(Core, m) as i32;
+    let off_l = offset_of!(Core, l) as i32;
+    let off_b = offset_of!(Core, b) as i32;
+    let mode1 = b
+        .ins()
+        .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
+    let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
+    let has_cbuf = b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0);
+    let mut cfg = HoistedDagCfg {
+        has_cbuf,
+        m: [None; 16],
+        l: [None; 16],
+        b: [None; 16],
+    };
+    let mut load_one = |ii: u8, mi: u8| {
+        let midx = usize::from(mi);
+        if cfg.m[midx].is_none() {
+            cfg.m[midx] = Some(
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_m + 4 * i32::from(mi)),
+            );
+        }
+        let iidx = usize::from(ii);
+        if cfg.l[iidx].is_none() {
+            cfg.l[iidx] = Some(
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_l + 4 * i32::from(ii)),
+            );
+        }
+        if cfg.b[iidx].is_none() {
+            cfg.b[iidx] = Some(
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_b + 4 * i32::from(ii)),
+            );
+        }
+    };
+    for &(_, _, _, _, op) in insns {
+        match op {
+            DecodedOp::Move(MoveOp::DagMem { ii, mi, .. }) => load_one(ii, mi),
+            DecodedOp::DualMove(dm) => {
+                load_one(dm.dmi, dm.dmm);
+                load_one(dm.pmi, dm.pmm);
+            }
+            _ => {}
+        }
+    }
+    cfg
+}
+
 /// Emits an inline `SRAM_WORDS` load or store for `MoveOp::DagMem` (`ureg < 16`, `ii` not subject
 /// to bitrev/broadcast), handling linear and circular post-modify in Cranelift IR and falling
 /// back to `jit_dag_mem` when `addr` is outside `0x9_0000..0x10_0000` or a store overlaps
@@ -1067,6 +1143,7 @@ fn emit_inline_sram_dag_transfer(
     ureg: u8,
     write: bool,
     post_modify: bool,
+    hoisted: Option<&HoistedDagCfg>,
     insn_pc: u32,
     insn_w: u64,
     arg_kind: i64,
@@ -1084,9 +1161,12 @@ fn emit_inline_sram_dag_transfer(
     let i_val = b
         .ins()
         .load(types::I32, mem, core_ptr, off_i + 4 * i32::from(ii));
-    let m_val = b
-        .ins()
-        .load(types::I32, mem, core_ptr, off_m + 4 * i32::from(mi));
+    let m_val = hoisted
+        .and_then(|h| h.m[usize::from(mi)])
+        .unwrap_or_else(|| {
+            b.ins()
+                .load(types::I32, mem, core_ptr, off_m + 4 * i32::from(mi))
+        });
 
     let raw_next = b.ins().iadd(i_val, m_val);
     let addr = if post_modify { i_val } else { raw_next };
@@ -1097,9 +1177,12 @@ fn emit_inline_sram_dag_transfer(
         .icmp_imm(IntCC::UnsignedLessThan, rel_addr, 0x7_0000);
     let mut can_fast = in_sram;
     let l_val = if post_modify {
-        let l = b
-            .ins()
-            .load(types::I32, mem, core_ptr, off_l + 4 * i32::from(ii));
+        let l = hoisted
+            .and_then(|h| h.l[usize::from(ii)])
+            .unwrap_or_else(|| {
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_l + 4 * i32::from(ii))
+            });
         if matches!(ii, 7 | 15) {
             let l_zero = b.ins().icmp_imm(IntCC::Equal, l, 0);
             can_fast = b.ins().band(can_fast, l_zero);
@@ -1151,14 +1234,21 @@ fn emit_inline_sram_dag_transfer(
             .store(mem, zero8, core_ptr, off_fx_lo + i32::from(ureg));
     }
     if let Some(l_val) = l_val {
-        let b_val = b
-            .ins()
-            .load(types::I32, mem, core_ptr, off_b + 4 * i32::from(ii));
-        let mode1 = b
-            .ins()
-            .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
-        let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
-        let has_cbuf = b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0);
+        let b_val = hoisted
+            .and_then(|h| h.b[usize::from(ii)])
+            .unwrap_or_else(|| {
+                b.ins()
+                    .load(types::I32, mem, core_ptr, off_b + 4 * i32::from(ii))
+            });
+        let has_cbuf = if let Some(h) = hoisted {
+            h.has_cbuf
+        } else {
+            let mode1 = b
+                .ins()
+                .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
+            let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
+            b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0)
+        };
         let zero32 = b.ins().iconst(types::I32, 0);
         let eff_l = b.ins().select(has_cbuf, l_val, zero32);
         let next_i = emit_dag_next_ir(b, i_val, m_val, eff_l, b_val);
@@ -1191,6 +1281,7 @@ fn emit_inline_dual_sram_load(
     sram_ptr: cranelift_codegen::ir::Value,
     dm: DualMoveOp,
     fast_float: bool,
+    hoisted: Option<&HoistedDagCfg>,
     insn_pc: u32,
     insn_w: u64,
     arg_kind: i64,
@@ -1216,13 +1307,25 @@ fn emit_inline_dual_sram_load(
     let pmm = i32::from(dm.pmm);
 
     let dm_i = b.ins().load(types::I32, mem, core_ptr, off_i + 4 * dmi);
-    let dm_m = b.ins().load(types::I32, mem, core_ptr, off_m + 4 * dmm);
-    let dm_l = b.ins().load(types::I32, mem, core_ptr, off_l + 4 * dmi);
-    let dm_b = b.ins().load(types::I32, mem, core_ptr, off_b + 4 * dmi);
+    let dm_m = hoisted
+        .and_then(|h| h.m[dmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_m + 4 * dmm));
+    let dm_l = hoisted
+        .and_then(|h| h.l[dmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_l + 4 * dmi));
+    let dm_b = hoisted
+        .and_then(|h| h.b[dmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_b + 4 * dmi));
     let pm_i = b.ins().load(types::I32, mem, core_ptr, off_i + 4 * pmi);
-    let pm_m = b.ins().load(types::I32, mem, core_ptr, off_m + 4 * pmm);
-    let pm_l = b.ins().load(types::I32, mem, core_ptr, off_l + 4 * pmi);
-    let pm_b = b.ins().load(types::I32, mem, core_ptr, off_b + 4 * pmi);
+    let pm_m = hoisted
+        .and_then(|h| h.m[pmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_m + 4 * pmm));
+    let pm_l = hoisted
+        .and_then(|h| h.l[pmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_l + 4 * pmi));
+    let pm_b = hoisted
+        .and_then(|h| h.b[pmi as usize])
+        .unwrap_or_else(|| b.ins().load(types::I32, mem, core_ptr, off_b + 4 * pmi));
 
     let dm_rel = b.ins().iadd_imm(dm_i, -(0x9_0000i64));
     let pm_rel = b.ins().iadd_imm(pm_i, -(0x9_0000i64));
@@ -1279,11 +1382,15 @@ fn emit_inline_dual_sram_load(
     b.ins()
         .store(mem, zero8, core_ptr, off_fx_lo + i32::from(dm.pm_reg));
 
-    let mode1 = b
-        .ins()
-        .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
-    let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
-    let has_cbuf = b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0);
+    let has_cbuf = if let Some(h) = hoisted {
+        h.has_cbuf
+    } else {
+        let mode1 = b
+            .ins()
+            .load(types::I32, mem, core_ptr, offset_of!(Core, mode1) as i32);
+        let cbufen = b.ins().band_imm(mode1, i64::from(super::dag::MODE1_CBUFEN));
+        b.ins().icmp_imm(IntCC::NotEqual, cbufen, 0)
+    };
     let zero32 = b.ins().iconst(types::I32, 0);
     let eff_dm_l = b.ins().select(has_cbuf, dm_l, zero32);
     let eff_pm_l = b.ins().select(has_cbuf, pm_l, zero32);
@@ -1419,6 +1526,9 @@ impl Core {
             b.append_block_param(early_exit, types::I64); // iters_dec
             b.append_block_param(early_exit, types::I32); // resume_pc
 
+            let hoisted = (is_loop && is_dag_cfg_invariant(&insns))
+                .then(|| preload_dag_cfg(&mut b, core_ptr, &insns));
+
             let loop_hdr = b.create_block();
             b.append_block_param(loop_hdr, types::I64); // iters_done
             let zero64 = b.ins().iconst(types::I64, 0);
@@ -1546,6 +1656,7 @@ impl Core {
                             ureg,
                             write,
                             post_modify,
+                            hoisted.as_ref(),
                             insn_pc,
                             insn_w,
                             arg_kind,
@@ -1602,6 +1713,7 @@ impl Core {
                             sram_ptr,
                             dm,
                             fast_float,
+                            hoisted.as_ref(),
                             insn_pc,
                             insn_w,
                             arg_kind,
