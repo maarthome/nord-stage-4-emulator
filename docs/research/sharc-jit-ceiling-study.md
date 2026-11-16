@@ -80,6 +80,10 @@ Projected 8-voice pass with SIMD JIT (`2,578` JIT steps + `3,375` fallback steps
 
 Gap drivers: (1) whether SIMD DAG/compute ops inline cleanly (`15.6 ns/step`) vs `extern "C"` helpers (`36.4 ns/step`), and (2) dispatch overhead across ~1,971 fragmented blocks.
 
+Additional baselines requested in review:
+- **Accelerating the interpreter itself** (currently `98.3 ns/step`, `10.18 Msteps/s`): even a 2×–3× faster interpreter (`33–50 ns/step`, `20–30 Msteps/s`) on `5,953` steps/pass takes `0.196–0.298 ms/pass`, still **4.3×–6.5× over** the `46.08 µs` real-time budget.
+- **Core1 and Core2 in separate host threads**: running Core1 and Core2 on separate threads keeps each core's budget at `46.08 µs/pass` (`~129.2 Msteps/s` on Core2) rather than sharing one host thread (`~23 µs/pass` per core), which is necessary for multi-core real time, though each core still requires Whole-Pass AOT to clear `46.08 µs/pass`.
+
 ## 3. Overhead removal (scan + `Vec` alloc + 64-step chunking)
 
 Measured in `task-1626` (`--profile-jit`): `scan = 0.641 ms/pass` (`0.478 ms` in `task-1578`), `other = 0.549 ms/pass`, `run_jit_calls = 93`, `short_chunk = 4.2`.

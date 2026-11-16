@@ -2264,14 +2264,14 @@ impl Core {
         flush_blk(&mut cur_blk, &mut block_counts);
 
         let mut other_reasons: Vec<_> = reasons.into_iter().collect();
-        other_reasons.sort_by(|a, b| b.1.cmp(&a.1));
+        other_reasons.sort_by_key(|x| std::cmp::Reverse(x.1));
 
         let distinct_pcs = pc_counts.len();
         let mut top_pcs: Vec<_> = pc_counts
             .into_iter()
             .map(|((pc, simd, cls), cnt)| (pc, cnt, simd, cls))
             .collect();
-        top_pcs.sort_by(|a, b| b.1.cmp(&a.1));
+        top_pcs.sort_by_key(|x| std::cmp::Reverse(x.1));
         top_pcs.truncate(20);
 
         let distinct_blocks = block_counts.len();
@@ -2279,7 +2279,7 @@ impl Core {
             .into_iter()
             .map(|((s, e, len, simd, cls), (calls, steps))| (s, e, len, simd, cls, calls, steps))
             .collect();
-        blocks_sorted.sort_by(|a, b| b.6.cmp(&a.6));
+        blocks_sorted.sort_by_key(|x| std::cmp::Reverse(x.6));
 
         let mut acc = 0u64;
         let mut blocks_for_90pct = 0usize;
