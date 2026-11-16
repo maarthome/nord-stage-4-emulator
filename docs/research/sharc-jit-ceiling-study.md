@@ -7,7 +7,7 @@ Real-time budget (from `docs/research/sharc-jit-org-profile.md`): **46.08 µs/pa
 
 ## 1. SIMD coverage & instruction/block classification (VERIFIED)
 
-Reproducible command:
+Reproducible command (commit `14be9db4` / `e62fb0d2`):
 
 ```powershell
 $img = "$env:TEMP\ns4_sram\org_sram\core2_sram.bin"
@@ -17,6 +17,58 @@ cargo run --release -p nord-sharc --features jit --bin sharc_jit_diff -- $img `
   --msg-base 0 --bench --profile-jit `
   --msg 0:0xc10b8=0x1215fb --msg 0:0xc10d0=0x1215fb --msg 0:0xc10e8=0x1215fb --msg 0:0xc1100=0x1215fb `
   --msg 0:0xc1118=0x1215fb --msg 0:0xc1130=0x1215fb --msg 0:0xc1148=0x1215fb --msg 0:0xc1160=0x1215fb
+```
+
+Verbatim output from the final binary (`pass 0..299: OK` lines omitted):
+
+```text
+booted 100000 steps 1:1 (pc=0x125de0)
+bench (16 warmup, 300 passes): interp 1785900 steps mean=1.028 ms worst=2.618 ms (5.79 Msteps/s) | jit 1785600 steps mean=2.492 ms worst=7.954 ms (2.39 Msteps/s)
+profile-jit (per pass): run_jit_calls=93.0 lookups=5787.2 hits=60.8 compiled=0.000 inelig=5726.5 (simd=5584.0) short_chunk=4.2 guard=90.0 | inv_calls=1420.0 evicted=0.000 resets=0 | steps: jit=131.2 fallback=5820.8 | time (ms/pass): total=2.492 scan=0.845 compile=0.000 jit_exec=0.021 fallback=0.976 other=0.651
+classify-pass (5953 steps): jit_today=150 (2.5%) simd_only=2428 (40.8%) other=3375 (56.7%) | distinct_pcs=4208 distinct_blocks=1971 blocks_90pct=1376 blocks_99pct=1912
+  other_reasons: [("Move(Other)", 1703), ("Move(DirectMem)", 739), ("RegMove(with_compute)", 302), ("Move(RegSwap)", 249), ("ShiftImm", 104), ("Compute(Multifunction)", 96), ("Flow(Return)", 54), ("Flow(CallIndirect)", 38), ("ModifyImm", 32), ("ComputeCond(cond!=31)", 25), ("Flow(CallDirect)", 16), ("Flow(JumpDirect)", 10), ("RegMove(cond!=31)", 6), ("Flow(DoUntilCounter)", 1)]
+  top_20_pcs:
+    pc=0x125e71 steps=24 (0.40%) simd=true class=simd_only
+    pc=0x12501f steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125021 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125023 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125026 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125028 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x12502b steps=16 (0.27%) simd=true class=simd_only
+    pc=0x12502d steps=16 (0.27%) simd=true class=simd_only
+    pc=0x12502e steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125031 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125033 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125035 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125038 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x12503b steps=16 (0.27%) simd=true class=RegMove(with_compute)
+    pc=0x12503e steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125040 steps=16 (0.27%) simd=true class=Compute(Multifunction)
+    pc=0x125042 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125044 steps=16 (0.27%) simd=true class=Compute(Multifunction)
+    pc=0x125046 steps=16 (0.27%) simd=true class=simd_only
+    pc=0x125047 steps=16 (0.27%) simd=true class=RegMove(with_compute)
+  top_20_blocks:
+    0x125062..=0x125081 len=18 calls=16 steps=288 (4.84%) simd=true class=simd_only
+    0x125089..=0x1250a8 len=18 calls=16 steps=288 (4.84%) simd=true class=simd_only
+    0x12501f..=0x125038 len=12 calls=16 steps=192 (3.23%) simd=true class=simd_only
+    0x12504a..=0x12505b len=11 calls=16 steps=176 (2.96%) simd=true class=simd_only
+    0x12167b..=0x12169a len=14 calls=8 steps=112 (1.88%) simd=true class=Move(Other)
+    0x1260bc..=0x126153 len=64 calls=1 steps=64 (1.08%) simd=true class=simd_only
+    0x126156..=0x1261ef len=64 calls=1 steps=64 (1.08%) simd=true class=simd_only
+    0x1261f2..=0x126282 len=63 calls=1 steps=63 (1.06%) simd=true class=simd_only
+    0x12163c..=0x121649 len=6 calls=8 steps=48 (0.81%) simd=true class=Move(Other)
+    0x12165e..=0x12166c len=6 calls=8 steps=48 (0.81%) simd=true class=Move(Other)
+    0x1250ad..=0x1250af len=3 calls=16 steps=48 (0.81%) simd=true class=simd_only
+    0x125b79..=0x125b7d len=3 calls=16 steps=48 (0.81%) simd=true class=Move(Other)
+    0x12538c..=0x12539a len=7 calls=6 steps=42 (0.71%) simd=false class=jit_today
+    0x1215fb..=0x121604 len=5 calls=8 steps=40 (0.67%) simd=true class=Move(Other)
+    0x121609..=0x121610 len=4 calls=8 steps=32 (0.54%) simd=true class=Move(Other)
+    0x12166f..=0x121678 len=4 calls=8 steps=32 (0.54%) simd=true class=RegMove(with_compute)
+    0x12505c..=0x12505f len=2 calls=16 steps=32 (0.54%) simd=true class=ShiftImm
+    0x125083..=0x125086 len=2 calls=16 steps=32 (0.54%) simd=true class=ShiftImm
+    0x125e71..=0x125e71 len=1 calls=24 steps=24 (0.40%) simd=true class=simd_only
+    0x120bfa..=0x120bfc len=2 calls=8 steps=16 (0.27%) simd=true class=Move(Other)
 ```
 
 Settled 8-voice pass (`5,953` steps, `4,208` distinct PCs, `1,971` distinct dynamic basic blocks):
@@ -73,16 +125,15 @@ Same-machine synthetic micro-benchmarks (`cargo test --release -p nord-sharc --f
 
 Projected 8-voice pass with SIMD JIT (`2,578` JIT steps + `3,375` fallback steps):
 
-| Projection | JIT part (`2,578` steps) | Fallback (`3,375` steps) | Scaled lookup/chunking (~3,500 lookups) | Total pass time | Projected speed |
+| Projection / Baseline | JIT part | Fallback / Interp | Lookup/chunking | Total pass time | Projected speed |
 |---|---:|---:|---:|---:|---:|
-| **Low** (`27.44 Msteps/s` JIT, `135.0 ns/step` fallback) | 93.8 µs | 455.6 µs | ~289 µs | **0.838 ms** | **7.1 Msteps/s** |
-| **High** (`63.98 Msteps/s` JIT, `98.3 ns/step` fallback) | 40.2 µs | 331.8 µs | ~150 µs | **0.522 ms** | **11.4 Msteps/s** |
+| **Low SIMD JIT** (`27.44 Msteps/s` JIT, `135.0 ns/step` fallback) | 93.8 µs | 455.6 µs | ~289 µs | **0.838 ms** | **7.1 Msteps/s** |
+| **High SIMD JIT** (`63.98 Msteps/s` JIT, `98.3 ns/step` fallback) | 40.2 µs | 331.8 µs | ~150 µs | **0.522 ms** | **11.4 Msteps/s** |
+| **43.3% eligible at measured JIT speed** (`16.4 Msteps/s`, `61 ns/step`) | 157.3 µs | 331.8–455.6 µs | 0 µs (no scan) | **0.489–0.613 ms** | **9.7–12.2 Msteps/s** |
+| **Faster interpreter (2×–3×)** (`33–50 ns/step`, `5,953` steps) | 0 µs | 196–298 µs | 0 µs | **0.196–0.298 ms** | **20–30 Msteps/s** |
+| **Core1 + Core2 on separate threads** (budget per core) | — | — | — | **46.08 µs budget/core** | **129.2 Msteps/s needed** |
 
 Gap drivers: (1) whether SIMD DAG/compute ops inline cleanly (`15.6 ns/step`) vs `extern "C"` helpers (`36.4 ns/step`), and (2) dispatch overhead across ~1,971 fragmented blocks.
-
-Additional baselines requested in review:
-- **Accelerating the interpreter itself** (currently `98.3 ns/step`, `10.18 Msteps/s`): even a 2×–3× faster interpreter (`33–50 ns/step`, `20–30 Msteps/s`) on `5,953` steps/pass takes `0.196–0.298 ms/pass`, still **4.3×–6.5× over** the `46.08 µs` real-time budget.
-- **Core1 and Core2 in separate host threads**: running Core1 and Core2 on separate threads keeps each core's budget at `46.08 µs/pass` (`~129.2 Msteps/s` on Core2) rather than sharing one host thread (`~23 µs/pass` per core), which is necessary for multi-core real time, though each core still requires Whole-Pass AOT to clear `46.08 µs/pass`.
 
 ## 3. Overhead removal (scan + `Vec` alloc + 64-step chunking)
 
