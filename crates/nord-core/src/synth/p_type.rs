@@ -28,13 +28,30 @@ pub fn type_cutoff_scale(model: FilterModel) -> f32 {
 /// factor 2.0 with the verified words (grid on the row factor 0.45 / 1.0 / 2.0 / 4.0: score 3.4 /
 /// 3.5 / 1.4 / 3.4 at LP24 factor 1.0); the row factor 0.45 (`pad_silk`, LP12 x 1.4) times 4.4 is
 /// 1.98. One LP24 clip, so ASSUMED for other LP24 SUPER programs.
+///
+/// D116 (`docs/research/synth-super-lp24-clips.md`): three more Part A clips do not confirm it. Horizon
+/// itself now prefers 2.0 to 3.0 (gap score 0.85 / 0.80 against 1.89 at 4.4, video-detected notes;
+/// 1.47 / 1.58 against 3.53, Transkun notes), A:25 Sidechain Whl II 1.0 to 2.2 (2.87 to 2.94 against
+/// 4.32; no PUMP, brightness only), A:76 is dominated by its LP12 layer B and A:81 is insensitive. Four-clip mean 3.17 / 3.95 at 4.4, 2.44 / 2.58 at 2.0
+/// (`--synth-super-lp24 2.0`, opt-in). The note lists are unverified, so the default stays (D22).
 pub const SUPER_LP24_TYPE_SCALE: f32 = 4.4;
 
 /// Total cutoff factor of a table row on a filter type: the row factor times the type factor
 /// ([`type_cutoff_scale`]), with the SUPER wave 0 / LP24 exception [`SUPER_LP24_TYPE_SCALE`].
 pub fn row_type_cutoff_scale(row: PWave, row_scale: f32, model: FilterModel) -> f32 {
+    row_type_cutoff_scale_with(row, row_scale, model, SUPER_LP24_TYPE_SCALE)
+}
+
+/// [`row_type_cutoff_scale`] with the SUPER wave 0 / LP24 factor given (`--synth-super-lp24`, the
+/// opt-in grid of D113): `super_lp24` replaces [`SUPER_LP24_TYPE_SCALE`], every other row is unchanged.
+pub fn row_type_cutoff_scale_with(
+    row: PWave,
+    row_scale: f32,
+    model: FilterModel,
+    super_lp24: f32,
+) -> f32 {
     if row == PWave::Super && model == FilterModel::Lp24 {
-        row_scale * SUPER_LP24_TYPE_SCALE
+        row_scale * super_lp24
     } else {
         row_scale * type_cutoff_scale(model)
     }
@@ -54,6 +71,18 @@ mod tests {
         assert!((t(FilterModel::Lp24) - 1.98).abs() < 1e-6);
         let saw = row_type_cutoff_scale(PWave::PureSaw, 0.85, FilterModel::Lp24);
         assert!((saw - 0.85).abs() < 1e-6, "other rows keep row x type");
+    }
+
+    #[test]
+    fn super_lp24_factor_override_only_touches_that_row() {
+        let w = |r, m| row_type_cutoff_scale_with(r, 0.45, m, 2.0);
+        assert!((w(PWave::Super, FilterModel::Lp24) - 0.9).abs() < 1e-6);
+        assert!((w(PWave::Super, FilterModel::Lp12) - 0.63).abs() < 1e-6);
+        assert!((w(PWave::PureSaw, FilterModel::Lp24) - 0.45).abs() < 1e-6);
+        assert_eq!(
+            row_type_cutoff_scale_with(PWave::Super, 0.45, FilterModel::Lp24, 4.4),
+            row_type_cutoff_scale(PWave::Super, 0.45, FilterModel::Lp24)
+        );
     }
 
     #[test]
