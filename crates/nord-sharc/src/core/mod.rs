@@ -17,6 +17,7 @@
 //! register sets) is described in `docs/research/sharc-sequencer.md`.
 
 mod alu;
+mod aot;
 mod arith_loop;
 mod banks;
 mod bitfifo;
@@ -76,6 +77,7 @@ mod timer;
 mod vectors;
 
 use crate::visa::Insn;
+pub use aot::AotOptions;
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
 pub use vectors::{vector_by_name, VECTOR_COUNT};
