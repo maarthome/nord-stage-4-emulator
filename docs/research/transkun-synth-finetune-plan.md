@@ -281,7 +281,7 @@ An independent read (Antigravity `agy`, plan mode, read only) listed defects. St
 
 | # | Defect | Status |
 |---|---|---|
-| 1 | `synth_dataset.py` renders without `--backup`. Grand Pad: no backup = placeholder piano (peak 0.2339, RMS 0.0476, no sound refs printed); with `--backup "Program/Bank A/Grand Pad.ns4p"` = Astoria Grand + White Grand (peak 0.5072, RMS 0.0801). Agy counts 150 programs with piano layers and 113 with synth-sample layers affected, val included. | **CONFIRMED** (render comparison; program counts SUSPECTED) |
+| 1 | `synth_dataset.py` renders without `--backup`. Grand Pad: no backup = placeholder piano (peak 0.2339, RMS 0.0476, no sound refs printed); with `--backup "Program/Bank A/Grand Pad.ns4p"` = Astoria Grand + White Grand (peak 0.5072, RMS 0.0801). Agy counts 150 programs with piano layers and 113 with synth-sample layers affected, val included. **Effect measured (`C:/tmp/ns4-ft-probe/backup_probe.py`, 40 val items, no augmentation, +-50 ms): LoRA F1 0.762 without backup, 0.748 with; base 0.571 both. The placeholder sound is a small effect, not the cause of the hardware collapse.** | **CONFIRMED** defect, effect small (program counts SUSPECTED) |
 | 2 | Labels are the input phrase; 124 of 384 programs shift octave or pitch, 48 use splits, 39 arp / pattern / hold, 30 are mono, so the sounded notes differ from the labels. LoRA F1 on the Horizon program's own training items is 0.00 to 0.06 (agy). | SUSPECTED |
 | 3 | Phrase generator is single-stream (no overlapping two-handed polyphony); hardware clips run 4.9 to 8.2 confirmed notes/s against 2.6 mean (max 4.4) in the data. | density VERIFIED (section 6.1 stats), polyphony SUSPECTED |
 | 4 | Hardware event streams (`vr/*.json`) carry chromatic clusters from low-frequency FFT resolution; the replay renders heuristic peaks too. The hardware "truth" is partly noisy, base numbers included. | SUSPECTED |
@@ -292,7 +292,7 @@ Checked clean by agy and not by me: note clipping at segment edges, `has_onset` 
 
 ### 10.4 Next step (needs user approval)
 
-A corrected dataset before any new arm: render with `--backup`, labels from the sounded notes (apply octave / split / arp or drop those programs), overlapping polyphony and 5 to 8 notes/s phrases, pedal labels only where the program honours CC64. Then rerun LoRA with the same budget. Not started.
+The `--backup` fix alone will not close the hardware gap (section 10.3 item 1). A corrected dataset before any new arm: render with `--backup`, labels from the sounded notes (apply octave / split / arp or drop those programs), overlapping polyphony and 5 to 8 notes/s phrases, pedal labels only where the program honours CC64. Then rerun LoRA with the same budget. Not started.
 
 ## Implications
 
@@ -306,6 +306,6 @@ A corrected dataset before any new arm: render with `--backup`, labels from the 
 - [x] Phase 1: `tools/synth_dataset.py` (extract, phrase generator, render, write dataset) with tests; 20 h.
 - [ ] fp32 vs bf16 loss comparison on one real batch (not needed until a new run).
 - [x] Phase 2 (LoKr, LoRA) and 3: both arms fail T5; recorded as D115 (section 10).
-- [ ] Corrected dataset (section 10.3 items 1 to 5) and one LoRA rerun; waits for user approval.
+- [ ] Measure which of section 10.3 items 2 to 4 drives the hardware gap (label mismatch, density, noisy reference), then a corrected dataset (items 1 to 5) and one LoRA rerun; waits for user approval.
 - [ ] T4 SHA-256 check of `2.0.pt` and re-run piano streams with the adapter disabled.
 - [ ] Confirm the checkpoint licence with the upstream author if weights are ever to leave the machine.
