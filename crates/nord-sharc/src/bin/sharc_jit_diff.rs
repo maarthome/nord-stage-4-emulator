@@ -21,6 +21,7 @@ struct Opts {
     chunk: u64,
     boot: u64,
     passes: u32,
+    warmup: u32,
     max_pass_steps: u64,
     trigger: u32,
     idle_pc: u32,
@@ -49,6 +50,7 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
         chunk: 1_000,
         boot: 0,
         passes: 0,
+        warmup: 0,
         max_pass_steps: 200_000,
         trigger: 0xB_00E2,
         idle_pc: 0x12_5DDF,
@@ -69,6 +71,7 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--chunk" => o.chunk = u64::from(parse_number(&val("N")?).ok_or("bad --chunk")?),
             "--boot" => o.boot = u64::from(parse_number(&val("N")?).ok_or("bad --boot")?),
             "--passes" => o.passes = parse_number(&val("N")?).ok_or("bad --passes")?,
+            "--warmup" => o.warmup = parse_number(&val("N")?).ok_or("bad --warmup")?,
             "--max-pass-steps" => {
                 o.max_pass_steps =
                     u64::from(parse_number(&val("N")?).ok_or("bad --max-pass-steps")?);
@@ -247,12 +250,30 @@ fn run_diff(o: &Opts, image: &[u8]) -> ExitCode {
                 );
             }
         }
+        for w in 0..o.warmup {
+            if w == 0 {
+                for m in o.msgs.iter().filter(|m| m.pass == 0) {
+                    let _ = msg::deliver(&mut b_interp, o.msg_base, m);
+                    let _ = msg::deliver(&mut b_jit, o.msg_base, m);
+                }
+            }
+            if let Err(e) = run_pass_burst_timed(&mut b_interp, &cfg, false) {
+                eprintln!("bench warmup interp pass {w} {e}");
+                return ExitCode::FAILURE;
+            }
+            if let Err(e) = run_pass_burst_timed(&mut b_jit, &cfg, true) {
+                eprintln!("bench warmup jit pass {w} {e}");
+                return ExitCode::FAILURE;
+            }
+        }
         let (mut i_steps, mut i_total_s, mut i_worst_s) = (0u64, 0.0f64, 0.0f64);
         let (mut j_steps, mut j_total_s, mut j_worst_s) = (0u64, 0.0f64, 0.0f64);
         for p in 0..o.passes {
-            for m in o.msgs.iter().filter(|m| m.pass == p) {
-                let _ = msg::deliver(&mut b_interp, o.msg_base, m);
-                let _ = msg::deliver(&mut b_jit, o.msg_base, m);
+            if o.warmup == 0 || p > 0 {
+                for m in o.msgs.iter().filter(|m| m.pass == p) {
+                    let _ = msg::deliver(&mut b_interp, o.msg_base, m);
+                    let _ = msg::deliver(&mut b_jit, o.msg_base, m);
+                }
             }
             match run_pass_burst_timed(&mut b_interp, &cfg, false) {
                 Ok((s, dt)) => {
@@ -279,7 +300,8 @@ fn run_diff(o: &Opts, image: &[u8]) -> ExitCode {
         }
         let n = f64::from(o.passes);
         println!(
-            "bench ({} passes): interp {} steps mean={:.3} ms worst={:.3} ms ({:.2} Msteps/s) | jit {} steps mean={:.3} ms worst={:.3} ms ({:.2} Msteps/s)",
+            "bench ({} warmup, {} passes): interp {} steps mean={:.3} ms worst={:.3} ms ({:.2} Msteps/s) | jit {} steps mean={:.3} ms worst={:.3} ms ({:.2} Msteps/s)",
+            o.warmup,
             o.passes,
             i_steps,
             (i_total_s / n) * 1e3,

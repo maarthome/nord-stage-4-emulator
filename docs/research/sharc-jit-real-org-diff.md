@@ -61,3 +61,23 @@ $env:NORD_SHARC_ORG_IMAGE = "$env:TEMP\ns4_sram\org_sram\core2_sram.bin"
 cargo test --release -p nord-sharc --features jit -- --ignored diff_real_org_passes_from_env
 # test runner::jit_diff::tests::diff_real_org_passes_from_env ... ok (1.39s)
 ```
+
+## 5. Warmed-up pass throughput & latency (`--warmup 16 --passes 300 --bench`, release)
+
+Measured after 16 unmeasured warm-up passes (so JIT block compilation completes before timing) over 300 consecutive passes without `--lenient`:
+
+| State | Interp steps | Interp mean / worst (ms) | Interp Msteps/s | JIT steps | JIT mean / worst (ms) | JIT Msteps/s |
+|---|---:|---:|---:|---:|---:|---:|
+| ORG idle | 1,279,500 | 0.411 / 1.317 | 10.38 | 1,286,400 | 0.737 / 1.616 | 5.82 |
+| 1 voice (`0xc10b8=0x1215fb`) | 1,342,800 | 0.510 / 1.265 | 8.77 | 1,344,000 | 0.928 / 2.158 | 4.83 |
+| 8 voices (`0xc10b8..0xc1160=0x1215fb`) | 1,785,900 | 0.554 / 1.349 | 10.74 | 1,785,600 | 1.006 / 2.144 | 5.92 |
+
+Reproducible command (append `--msg 0:0xc10b8=0x1215fb` .. `--msg 0:0xc1160=0x1215fb` for 1 or 8 voices):
+
+```powershell
+$img = "$env:TEMP\ns4_sram\org_sram\core2_sram.bin"
+cargo run --release -p nord-sharc --features jit --bin sharc_jit_diff -- $img `
+  --pc 0x125c88 --boot 100000 --dev 0x282c0380=1 --dev 0x3108d008=5 `
+  --trigger 0xB00E2 --idle-pc 0x125DDF --warmup 16 --passes 300 --chunk 1000 --msg-base 0 --bench
+```
+
