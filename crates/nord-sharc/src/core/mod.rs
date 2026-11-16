@@ -18,6 +18,10 @@
 
 mod alu;
 mod aot;
+mod aot_fast;
+pub(crate) mod aot_hot;
+mod aot_lower;
+mod aot_pe;
 mod arith_loop;
 mod banks;
 mod bitfifo;
@@ -82,6 +86,8 @@ mod vectors;
 
 use crate::visa::Insn;
 pub use aot::AotOptions;
+pub use aot_hot::AotHotStats;
+pub use aot_lower::AotTier;
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
 pub use vectors::{vector_by_name, VECTOR_COUNT};
@@ -275,6 +281,8 @@ pub struct Core {
     /// back to `dm_write` so `invalidate_sram_cache` stays exact across all cached blocks.
     sram_code_nw_lo: u32,
     sram_code_nw_hi: u32,
+    /// Optional hot-block AOT hook ([`aot_hot`]); `None` keeps the plain interpreter.
+    aot_hot: Option<Box<aot_hot::AotHot>>,
     /// Optional Level-2 Cranelift JIT engine (allocated lazily on first `run_jit`).
     #[cfg(feature = "jit")]
     jit: Option<Box<jit::JitEngine>>,
@@ -349,6 +357,7 @@ impl Core {
             code_gen: 1,
             sram_code_nw_lo: u32::MAX,
             sram_code_nw_hi: 0,
+            aot_hot: None,
             #[cfg(feature = "jit")]
             jit: None,
         }
