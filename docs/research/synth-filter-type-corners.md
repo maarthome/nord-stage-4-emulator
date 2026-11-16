@@ -49,11 +49,11 @@ The derived uniform factor does not reproduce the clips under either unit readin
 
 | # | Capture | Why |
 |---|---|---|
-| 1 | Stage calls per DSP frame (rate `F` or `2 F`) | the absolute factor 0.507 or 1.015 (and with it the 1.4 / 1.0 / 0.8 anchor); `sharc-org` has no pc hit counter, only `--coverage` ranges and `--watch` stores |
+| 1 | Stage calls per DSP frame (rate `F` or `2 F`): **answered, 2F** ([synth-super-lp24-clips](synth-super-lp24-clips.md) s7: the oscillator advances `note / (2 F)` per stage sample with the verified ratio 1.0; 4 samples per call, 2 frames per pass) | the absolute factor 0.507 or 1.015 (and with it the 1.4 / 1.0 / 0.8 anchor); `sharc-org` has no pc hit counter, only `--coverage` ranges and `--watch` stores |
 | 2 | LFO scale and strip words 10 / 20 in `W28` of a sounding voice | the position range 47..81 is the idle one; modulation and the filter envelope amount widen it |
 | 3 | `kFltType` to stage link (`[strip + 0x74]` to `[strip + 0x7C]`) | which stage a layer runs is ASSUMED (`FwFilterType::from_model`) |
 | 4 | Ladder24 `0x12549D`: the ARM word to `DM(-30)` (its own log-frequency position) | the ladder takes no `R`; `LadderCoefs::from_r` is ASSUMED, so its 0.8 cannot be derived here |
-| 5 | SUPER wave 0 on LP24 (4.4): the P words of the unison stage plus items 1 to 4 | one clip, entangled with the row factor 0.45 |
+| 5 | SUPER wave 0 on LP24 (4.4): the P words of the unison stage plus items 1 to 4 | one clip, entangled with the row factor 0.45; three more clips checked in [synth-super-lp24-clips](synth-super-lp24-clips.md) (D116): 4.4 does not hold, 2.0 fits better, default unchanged |
 
 ## Implications
 

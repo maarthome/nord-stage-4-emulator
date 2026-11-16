@@ -342,6 +342,9 @@ pub struct FirmwareOptions {
     /// cutoff factor on the display Hz for every type and the firmware resonance table position
     /// (`synth::fw_filter_law`; `1.0147` is the `2 F` reading, `0.5074` the `F` reading).
     pub synth_filter_law_milli: Option<u16>,
+    /// `--synth-super-lp24 <factor>`: `SynthLayer::super_lp24_scale` (opt-in grid of the SUPER wave 0
+    /// / LP24 type factor, default 4.4, D113). Stored in thousandths.
+    pub synth_super_lp24_milli: Option<u16>,
     /// `--synth-fw-resonance`: `SynthLayer::fw_resonance` (the firmware resonance table position only).
     pub synth_fw_resonance: bool,
     /// `--synth-knob-laws` / `--no-synth-knob-laws`: `SynthLayer::knob_laws` (the strip chain takes
@@ -414,6 +417,7 @@ impl Default for FirmwareOptions {
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
             synth_stages: true,
             synth_filter_law_milli: None,
+            synth_super_lp24_milli: None,
             synth_fw_resonance: false,
             synth_knob_laws: true,
             synth_wave_bank: false,
@@ -440,6 +444,7 @@ impl FirmwareOptions {
             synth_p: None,
             synth_stages: false,
             synth_filter_law_milli: None,
+            synth_super_lp24_milli: None,
             synth_fw_resonance: false,
             synth_knob_laws: false,
             piano_firmware_level: false,
@@ -476,6 +481,7 @@ impl FirmwareOptions {
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
             synth_stages: true,
             synth_filter_law_milli: None,
+            synth_super_lp24_milli: None,
             synth_fw_resonance: false,
             synth_knob_laws: true,
             synth_wave_bank: false,
@@ -565,6 +571,15 @@ impl FirmwareOptions {
                 return Err(format!("--synth-filter-law {u} outside 0.05..20"));
             }
             o.synth_filter_law_milli = Some((u * 1000.0).round() as u16);
+        }
+        if let Some(v) = value("--synth-super-lp24") {
+            let u: f32 = v
+                .parse()
+                .map_err(|_| format!("--synth-super-lp24 needs a number, got {v:?}"))?;
+            if !(0.05..=20.0).contains(&u) {
+                return Err(format!("--synth-super-lp24 {u} outside 0.05..20"));
+            }
+            o.synth_super_lp24_milli = Some((u * 1000.0).round() as u16);
         }
         o.synth_knob_laws |= has("--synth-knob-laws");
         o.synth_wave_bank |= has("--synth-wave-bank");
@@ -831,6 +846,10 @@ impl FirmwareOptions {
         engine.synth_a.fw_filter_law = law;
         engine.synth_b.fw_filter_law = law;
         engine.synth_c.fw_filter_law = law;
+        let sup = self.synth_super_lp24_milli.map(|m| f32::from(m) / 1000.0);
+        engine.synth_a.super_lp24_scale = sup;
+        engine.synth_b.super_lp24_scale = sup;
+        engine.synth_c.super_lp24_scale = sup;
         engine.synth_a.fw_resonance = self.synth_fw_resonance;
         engine.synth_b.fw_resonance = self.synth_fw_resonance;
         engine.synth_c.fw_resonance = self.synth_fw_resonance;
@@ -934,6 +953,9 @@ impl FirmwareOptions {
         }
         if let Some(m) = self.synth_filter_law_milli {
             parts.push(format!("synth-filter-law={:.3}", f32::from(m) / 1000.0));
+        }
+        if let Some(m) = self.synth_super_lp24_milli {
+            parts.push(format!("synth-super-lp24={:.3}", f32::from(m) / 1000.0));
         }
         if !self.synth_knob_laws {
             parts.push("no-knob-laws".into());
@@ -1207,6 +1229,21 @@ mod tests {
         assert!(!e.synth_a.wave_bank);
         o.apply_to(&mut e);
         assert!(e.synth_a.wave_bank && e.synth_b.wave_bank && e.synth_c.wave_bank);
+    }
+
+    #[test]
+    fn synth_super_lp24_is_opt_in_and_reaches_the_layers() {
+        assert_eq!(FirmwareOptions::default().synth_super_lp24_milli, None);
+        let o = FirmwareOptions::from_args(&["--synth-super-lp24".into(), "2.2".into()]).unwrap();
+        assert_eq!(o.synth_super_lp24_milli, Some(2200));
+        assert!(o.summary().contains("synth-super-lp24=2.200"));
+        let mut e = Stage4Engine::new(48_000.0);
+        assert_eq!(e.synth_a.super_lp24_scale, None);
+        o.apply_to(&mut e);
+        assert_eq!(e.synth_a.super_lp24_scale, Some(2.2));
+        assert_eq!(e.synth_c.super_lp24_scale, Some(2.2));
+        assert!(FirmwareOptions::from_args(&["--synth-super-lp24".into(), "x".into()]).is_err());
+        assert!(FirmwareOptions::from_args(&["--synth-super-lp24".into(), "99".into()]).is_err());
     }
 
     #[test]

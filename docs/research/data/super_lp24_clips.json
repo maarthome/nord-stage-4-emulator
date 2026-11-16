@@ -1,0 +1,154 @@
+{
+ "video": "_zksT69H30c",
+ "note": "Gap scores (tools/emu_vs_hw.py, mean absolute band delta in dB over 5 bands, lower is better) of the SUPER wave 0 / LP24 clips under the type-factor grid of D116. Derived numbers only. video_detected = video_ref.py notes list (audio salience), transkun = piano_events__zksT69H30c.json sliced; both replayed at velocity 100 / per-note velocity respectively as emu_vs_hw.py does. A rerun reproduced every score exactly.",
+ "clips": {
+  "horizon": {
+   "program": "A:16 Horizon Whl",
+   "at_s": 290,
+   "duration_s": 30,
+   "video_detected": {
+    "notes": 405,
+    "scores": {
+     "default": 1.89,
+     "law-2f": 2.11,
+     "law-f": 4.53,
+     "fw-resonance": 5.64,
+     "super-1.0": 1.36,
+     "super-1.5": 1.09,
+     "super-2.2": 0.74,
+     "super-3.0": 0.8,
+     "super-2.0": 0.85,
+     "super-2.2-fwres": 1.97,
+     "super-6.0": 2.87
+    }
+   },
+   "transkun": {
+    "notes": 275,
+    "scores": {
+     "default": 3.53,
+     "law-2f": 3.62,
+     "law-f": 5.38,
+     "fw-resonance": 7.66,
+     "super-1.0": 2.09,
+     "super-1.5": 1.88,
+     "super-2.2": 1.55,
+     "super-3.0": 1.58,
+     "super-2.0": 1.47,
+     "super-2.2-fwres": 3.66,
+     "super-6.0": 4.78
+    }
+   }
+  },
+  "sidechain": {
+   "program": "A:25 Sidechain Whl II",
+   "at_s": 594,
+   "duration_s": 28,
+   "video_detected": {
+    "notes": 407,
+    "scores": {
+     "default": 4.32,
+     "law-2f": 3.01,
+     "law-f": 2.72,
+     "fw-resonance": 6.43,
+     "super-1.0": 2.94,
+     "super-1.5": 2.88,
+     "super-2.2": 2.89,
+     "super-3.0": 3.2,
+     "super-2.0": 2.87,
+     "super-2.2-fwres": 2.97,
+     "super-6.0": 5.27
+    }
+   },
+   "transkun": {
+    "notes": 114,
+    "scores": {
+     "default": 6.09,
+     "law-2f": 4.04,
+     "law-f": 2.88,
+     "fw-resonance": 8.44,
+     "super-1.0": 2.79,
+     "super-1.5": 2.88,
+     "super-2.2": 3.26,
+     "super-3.0": 4.37,
+     "super-2.0": 3.09,
+     "super-2.2-fwres": 3.9,
+     "super-6.0": 7.1
+    }
+   }
+  },
+  "oopad": {
+   "program": "A:76 Oo Pad Whl",
+   "at_s": 2150,
+   "duration_s": 25,
+   "video_detected": {
+    "notes": 159,
+    "scores": {
+     "default": 4.86,
+     "law-2f": 4.89,
+     "law-f": 8.98,
+     "fw-resonance": 4.74,
+     "super-1.0": 4.83,
+     "super-1.5": 4.85,
+     "super-2.2": 4.35,
+     "super-3.0": 5.1,
+     "super-2.0": 4.37,
+     "super-2.2-fwres": 4.26,
+     "super-6.0": 4.54
+    }
+   },
+   "transkun": {
+    "notes": 59,
+    "scores": {
+     "default": 4.36,
+     "law-2f": 4.7,
+     "law-f": 11.1,
+     "fw-resonance": 3.99,
+     "super-1.0": 3.92,
+     "super-1.5": 3.54,
+     "super-2.2": 4.03,
+     "super-3.0": 4.02,
+     "super-2.0": 3.95,
+     "super-2.2-fwres": 3.86,
+     "super-6.0": 4.57
+    }
+   }
+  },
+  "believer": {
+   "program": "A:81 Believer",
+   "at_s": 2296,
+   "duration_s": 29,
+   "video_detected": {
+    "notes": 479,
+    "scores": {
+     "default": 1.6,
+     "law-2f": 1.51,
+     "law-f": 1.65,
+     "fw-resonance": 1.32,
+     "super-1.0": 1.64,
+     "super-1.5": 1.67,
+     "super-2.2": 1.66,
+     "super-3.0": 1.64,
+     "super-2.0": 1.66,
+     "super-2.2-fwres": 1.52,
+     "super-6.0": 1.55
+    }
+   },
+   "transkun": {
+    "notes": 297,
+    "scores": {
+     "default": 1.81,
+     "law-2f": 1.74,
+     "law-f": 1.85,
+     "fw-resonance": 1.28,
+     "super-1.0": 1.84,
+     "super-1.5": 1.81,
+     "super-2.2": 1.83,
+     "super-3.0": 1.83,
+     "super-2.0": 1.83,
+     "super-2.2-fwres": 1.76,
+     "super-6.0": 1.77
+    }
+   }
+  }
+ }
+}

@@ -109,7 +109,7 @@ pub use measured::{
 pub use p_block::{PBlock, PSpec};
 pub use p_stage_words::StageWords;
 pub use p_table::{PTable, PTableSpec, PWave, PWAVE_COUNT};
-pub use p_type::{row_type_cutoff_scale, type_cutoff_scale};
+pub use p_type::{row_type_cutoff_scale, row_type_cutoff_scale_with, type_cutoff_scale};
 pub use p_words::{type_count, type_of, words_for, words_of_type, PWords, GAIN_PER_P16};
 pub use pattern::{pan_gains, CustomPattern, PatternPan, ACCENT_VELOCITY_BOOST, PATTERN_MAX_STEPS};
 pub use perf::{
@@ -295,6 +295,9 @@ pub struct SynthLayer {
     /// replaces the fitted row and type cutoff factors by the one factor `u` on the display Hz and
     /// maps the resonance through the firmware table position (`--synth-filter-law`).
     pub fw_filter_law: Option<f32>,
+    /// Strip chain only, opt-in (default `None` = [`p_type::SUPER_LP24_TYPE_SCALE`] 4.4): the SUPER
+    /// wave 0 / LP24 type factor (`--synth-super-lp24`, grid of D113).
+    pub super_lp24_scale: Option<f32>,
     /// Strip chain only, opt-in (default off): only the firmware resonance table position of
     /// [`fw_filter_law::resonance_position`] (`--synth-fw-resonance`); implied by `fw_filter_law`.
     pub fw_resonance: bool,
@@ -444,6 +447,7 @@ impl SynthLayer {
             p_table: None,
             strip_stages: false,
             fw_filter_law: None,
+            super_lp24_scale: None,
             fw_resonance: false,
             ..Self::new(sample_rate)
         }
@@ -469,6 +473,7 @@ impl SynthLayer {
             strip_stage: None,
             strip_stages: true,
             fw_filter_law: None,
+            super_lp24_scale: None,
             fw_resonance: false,
             wave_bank: false,
             knob_laws: true,
