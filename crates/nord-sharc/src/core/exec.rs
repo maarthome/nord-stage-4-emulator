@@ -135,7 +135,7 @@ impl Core {
     pub(super) fn fetch_and_cache(&mut self, pc: u32, isa: bool) -> CachedInsn {
         let d = self.fetch(pc);
         let next_pc = d.pc.wrapping_add(if isa { 1 } else { d.insn.len as u32 });
-        let op = DecodedOp::from_insn(&d.insn, d.w);
+        let op = DecodedOp::from_insn(pc, &d.insn, d.w);
         let cond = bits(d.w, 37, 33) as u8;
         let entry = CachedInsn {
             pc,
@@ -219,17 +219,17 @@ impl Core {
                 let d = make_decoded(self, &c);
                 self.exec_shift_move(&d)?;
             }
-            DecodedOp::DualMove => {
+            DecodedOp::DualMove(dm) => {
                 let d = make_decoded(self, &c);
-                self.exec_dual_move(&d)?;
+                self.exec_dual_move_op(&d, dm)?;
             }
-            DecodedOp::Flow => {
+            DecodedOp::Flow(fl) => {
                 let d = make_decoded(self, &c);
-                next = self.exec_flow(&d, next)?;
+                next = self.exec_flow_op(&d, fl, next)?;
             }
-            DecodedOp::Move => {
+            DecodedOp::Move(mv) => {
                 let d = make_decoded(self, &c);
-                self.exec_move(&d)?;
+                self.exec_move_op(&d, mv)?;
             }
             DecodedOp::Unimplemented => return Err(self.fault(c.pc, &c.insn)),
         }
