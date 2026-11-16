@@ -2534,4 +2534,128 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn jit_loop_hoist_positive_and_mutating_mlb_or_mode1() {
+        use super::{is_dag_cfg_invariant, DecodedOp, MoveOp};
+        use crate::visa::Kind;
+
+        // 1) Positive hoist case: R0 = DM(I2, M0); R1 = R1 + R0 (is_dag_cfg_invariant == true)
+        assert!(is_dag_cfg_invariant(&[
+            (
+                0,
+                1,
+                Kind::T3c,
+                0,
+                DecodedOp::Move(MoveOp::DagMem {
+                    ii: 2,
+                    mi: 0,
+                    ureg: 0,
+                    write: false,
+                    post_modify: true,
+                    cond: 31,
+                    compute: None,
+                }),
+            ),
+            (
+                1,
+                4,
+                Kind::T2a,
+                0,
+                DecodedOp::ComputeCond {
+                    cond: 31,
+                    op: super::super::decode_cache::ComputeOp::FixedAlu {
+                        op: 0x01,
+                        n: 1,
+                        x: 1,
+                        y: 0,
+                    },
+                },
+            ),
+        ]));
+        let pos_prog = [0x0d05u16, 0x0000, 0x0004, 0x9410, 0x013e, 0x0000, 0x1110];
+        let mut p_interp = core_with(&pos_prog);
+        let mut p_jit = core_with(&pos_prog);
+        for c in [&mut p_interp, &mut p_jit] {
+            c.mode1 = crate::core::dag::MODE1_CBUFEN;
+            c.r[5] = 6;
+            (c.i[2], c.m[0], c.l[2], c.b[2]) = (0x9_0100, 1, 4, 0x9_0100);
+            for k in 0..4u32 {
+                c.dm_write(0x9_0100 + k, k + 10).unwrap();
+            }
+        }
+        assert_eq!(p_interp.run(1 + 6 * 2), None);
+        assert_eq!(p_jit.run_jit(1 + 6 * 2), None);
+        assert_eq!(
+            (p_jit.r[0], p_jit.r[1], p_jit.i[2]),
+            (p_interp.r[0], p_interp.r[1], p_interp.i[2])
+        );
+
+        // 2) Loop mutating M0 and L2 inside body: must NOT hoist M/L
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            2,
+            Kind::T17b,
+            0,
+            DecodedOp::Move(MoveOp::LoadImm {
+                ureg: 0x20,
+                value: 3,
+            }),
+        )]));
+        // DO (+5) UNTIL LCE, LCNTR=R5; R0 = DM(I2, M0); M0 = 3; L2 = 4
+        let ml_prog = [
+            0x0d05u16, 0x0000, 0x0005, 0x9410, 0x0FA0, 0x0003, 0x0FB2, 0x0004,
+        ];
+        let mut ml_interp = core_with(&ml_prog);
+        let mut ml_jit = core_with(&ml_prog);
+        for c in [&mut ml_interp, &mut ml_jit] {
+            c.mode1 = crate::core::dag::MODE1_CBUFEN;
+            c.r[5] = 5;
+            (c.i[2], c.m[0], c.l[2], c.b[2]) = (0x9_0100, 1, 0, 0x9_0100);
+            for k in 0..8u32 {
+                c.dm_write(0x9_0100 + k, 100 + k).unwrap();
+            }
+        }
+        assert_eq!(ml_interp.run(1 + 5 * 3), None);
+        assert_eq!(ml_jit.run_jit(1 + 5 * 3), None);
+        assert_eq!(
+            (ml_jit.r[0], ml_jit.i[2], ml_jit.m[0], ml_jit.l[2]),
+            (
+                ml_interp.r[0],
+                ml_interp.i[2],
+                ml_interp.m[0],
+                ml_interp.l[2]
+            )
+        );
+
+        // 3) Loop toggling MODE1 (clears CBUFEN after first iteration): must NOT hoist MODE1
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            2,
+            Kind::T17b,
+            0,
+            DecodedOp::Move(MoveOp::LoadImm {
+                ureg: 0x72,
+                value: 0,
+            }),
+        )]));
+        // DO (+3) UNTIL LCE, LCNTR=R5; R0 = DM(I2, M0); MODE1 = 0
+        let m1_prog = [0x0d05u16, 0x0000, 0x0003, 0x9410, 0x0FF2, 0x0000];
+        let mut m1_interp = core_with(&m1_prog);
+        let mut m1_jit = core_with(&m1_prog);
+        for c in [&mut m1_interp, &mut m1_jit] {
+            c.mode1 = crate::core::dag::MODE1_CBUFEN;
+            c.r[5] = 4;
+            (c.i[2], c.m[0], c.l[2], c.b[2]) = (0x9_0102, 2, 4, 0x9_0100);
+            for k in 0..8u32 {
+                c.dm_write(0x9_0100 + k, 200 + k).unwrap();
+            }
+        }
+        assert_eq!(m1_interp.run(1 + 4 * 2), None);
+        assert_eq!(m1_jit.run_jit(1 + 4 * 2), None);
+        assert_eq!(
+            (m1_jit.r[0], m1_jit.i[2], m1_jit.mode1),
+            (m1_interp.r[0], m1_interp.i[2], m1_interp.mode1)
+        );
+    }
 }
