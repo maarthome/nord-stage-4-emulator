@@ -377,6 +377,41 @@ fn run_diff(o: &Opts, image: &[u8]) -> ExitCode {
                 fallback_ms,
                 other_ms,
             );
+            match b_interp.classify_pass_for_jit(cfg.trigger, cfg.idle_pc, cfg.max_steps) {
+                Ok(rep) => {
+                    let tot = rep.total_steps as f64;
+                    println!(
+                        "classify-pass ({} steps): jit_today={} ({:.1}%) simd_only={} ({:.1}%) other={} ({:.1}%) | distinct_pcs={} distinct_blocks={} blocks_90pct={} blocks_99pct={}",
+                        rep.total_steps,
+                        rep.jit_eligible_today,
+                        100.0 * rep.jit_eligible_today as f64 / tot,
+                        rep.inelig_simd_only,
+                        100.0 * rep.inelig_simd_only as f64 / tot,
+                        rep.inelig_other,
+                        100.0 * rep.inelig_other as f64 / tot,
+                        rep.distinct_pcs,
+                        rep.distinct_blocks,
+                        rep.blocks_for_90pct,
+                        rep.blocks_for_99pct,
+                    );
+                    println!("  other_reasons: {:?}", rep.other_reasons);
+                    println!("  top_20_pcs:");
+                    for (pc, cnt, simd, cls) in &rep.top_pcs {
+                        println!(
+                            "    pc=0x{pc:x} steps={cnt} ({:.2}%) simd={simd} class={cls}",
+                            100.0 * *cnt as f64 / tot
+                        );
+                    }
+                    println!("  top_20_blocks:");
+                    for (s, e, len, simd, cls, calls, steps) in &rep.top_blocks {
+                        println!(
+                            "    0x{s:x}..=0x{e:x} len={len} calls={calls} steps={steps} ({:.2}%) simd={simd} class={cls}",
+                            100.0 * *steps as f64 / tot
+                        );
+                    }
+                }
+                Err(e) => eprintln!("classify-pass error: {e}"),
+            }
         }
     }
 

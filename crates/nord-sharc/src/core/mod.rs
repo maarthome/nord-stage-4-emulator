@@ -55,7 +55,7 @@ mod isa;
 #[cfg(feature = "jit")]
 mod jit;
 #[cfg(feature = "jit")]
-pub use jit::JitProfile;
+pub use jit::{JitProfile, PassTraceReport};
 #[cfg(all(test, feature = "jit"))]
 mod jit_diff;
 mod longword;
