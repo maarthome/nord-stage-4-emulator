@@ -6,6 +6,8 @@
 //! Msteps/s for both interpreter and JIT.
 
 use nord_sharc::core::Core;
+#[cfg(feature = "jit")]
+use nord_sharc::core::JitProfile;
 use nord_sharc::runner::msg::{self, Msg, STRIP_BASE};
 #[cfg(feature = "jit")]
 use nord_sharc::runner::pass::PassConfig;
@@ -30,6 +32,7 @@ struct Opts {
     msg_base: u32,
     coverage: bool,
     bench: bool,
+    profile_jit: bool,
     lenient: bool,
     fast_float: bool,
 }
@@ -59,6 +62,7 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
         msg_base: STRIP_BASE,
         coverage: false,
         bench: false,
+        profile_jit: false,
         lenient: false,
         fast_float: false,
     };
@@ -88,6 +92,7 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--msg-base" => o.msg_base = parse_number(&val("ADDR")?).ok_or("bad --msg-base")?,
             "--coverage" => o.coverage = true,
             "--bench" => o.bench = true,
+            "--profile-jit" => o.profile_jit = true,
             "--lenient" => o.lenient = true,
             "--fast-float" => o.fast_float = true,
             _ if a.starts_with('-') => return Err(format!("unknown option {a}")),
@@ -156,6 +161,30 @@ fn run_pass_burst_timed(
     while c.steps - start < cfg.max_steps {
         let chunk = (cfg.max_steps - (c.steps - start)).min(64);
         if let Some(fault) = c.run_jit(chunk) {
+            return Err(format!("jit fault: {fault:?}"));
+        }
+        if c.dm_read(cfg.trigger).unwrap_or(1) == 0
+            && (cfg.idle_pc.saturating_sub(4)..=cfg.idle_pc.saturating_add(4)).contains(&c.pc)
+        {
+            break;
+        }
+    }
+    Ok((c.steps - start, t0.elapsed().as_secs_f64()))
+}
+
+#[cfg(feature = "jit")]
+fn run_pass_burst_profiled(
+    c: &mut Core,
+    cfg: &PassConfig,
+    prof: &mut JitProfile,
+) -> Result<(u64, f64), String> {
+    c.dm_write(cfg.trigger, 1)
+        .map_err(|a| format!("bad trigger 0x{a:x}"))?;
+    let start = c.steps;
+    let t0 = Instant::now();
+    while c.steps - start < cfg.max_steps {
+        let chunk = (cfg.max_steps - (c.steps - start)).min(64);
+        if let Some(fault) = c.run_jit_profiled(chunk, prof) {
             return Err(format!("jit fault: {fault:?}"));
         }
         if c.dm_read(cfg.trigger).unwrap_or(1) == 0
@@ -268,6 +297,7 @@ fn run_diff(o: &Opts, image: &[u8]) -> ExitCode {
         }
         let (mut i_steps, mut i_total_s, mut i_worst_s) = (0u64, 0.0f64, 0.0f64);
         let (mut j_steps, mut j_total_s, mut j_worst_s) = (0u64, 0.0f64, 0.0f64);
+        let mut prof = JitProfile::default();
         for p in 0..o.passes {
             if o.warmup == 0 || p > 0 {
                 for m in o.msgs.iter().filter(|m| m.pass == p) {
@@ -286,7 +316,12 @@ fn run_diff(o: &Opts, image: &[u8]) -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             }
-            match run_pass_burst_timed(&mut b_jit, &cfg, true) {
+            let jit_res = if o.profile_jit {
+                run_pass_burst_profiled(&mut b_jit, &cfg, &mut prof)
+            } else {
+                run_pass_burst_timed(&mut b_jit, &cfg, true)
+            };
+            match jit_res {
                 Ok((s, dt)) => {
                     j_steps += s;
                     j_total_s += dt;
@@ -312,6 +347,37 @@ fn run_diff(o: &Opts, image: &[u8]) -> ExitCode {
             j_worst_s * 1e3,
             j_steps as f64 / 1e6 / j_total_s,
         );
+        if o.profile_jit && o.passes > 0 {
+            let total_prof_ms = j_total_s * 1e3 / n;
+            let scan_ms = prof.scan_ns as f64 / 1e6 / n;
+            let compile_ms = prof.compile_ns as f64 / 1e6 / n;
+            let jit_exec_ms = prof.jit_exec_ns as f64 / 1e6 / n;
+            let fallback_ms = prof.fallback_step_ns as f64 / 1e6 / n;
+            let other_ms =
+                (total_prof_ms - scan_ms - compile_ms - jit_exec_ms - fallback_ms).max(0.0);
+            println!(
+                "profile-jit (per pass): run_jit_calls={:.1} lookups={:.1} hits={:.1} compiled={:.3} inelig={:.1} (simd={:.1}) short_chunk={:.1} guard={:.1} | inv_calls={:.1} evicted={:.3} resets={} | steps: jit={:.1} fallback={:.1} | time (ms/pass): total={:.3} scan={:.3} compile={:.3} jit_exec={:.3} fallback={:.3} other={:.3}",
+                prof.run_jit_calls as f64 / n,
+                prof.block_lookups as f64 / n,
+                prof.cache_hits as f64 / n,
+                prof.cache_misses_compiled as f64 / n,
+                prof.ineligible_first_op as f64 / n,
+                prof.ineligible_simd as f64 / n,
+                prof.skipped_short_chunk as f64 / n,
+                prof.guard_fallbacks as f64 / n,
+                prof.invalidate_calls as f64 / n,
+                prof.blocks_evicted as f64 / n,
+                prof.code_gen_resets,
+                prof.jit_steps as f64 / n,
+                prof.fallback_steps as f64 / n,
+                total_prof_ms,
+                scan_ms,
+                compile_ms,
+                jit_exec_ms,
+                fallback_ms,
+                other_ms,
+            );
+        }
     }
 
     ExitCode::SUCCESS
