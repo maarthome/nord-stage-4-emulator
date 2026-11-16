@@ -2658,4 +2658,113 @@ mod tests {
             (m1_interp.r[0], m1_interp.i[2], m1_interp.mode1)
         );
     }
+
+    #[test]
+    fn jit_loop_hoist_rejects_call_jump_and_indirect_dag_writes() {
+        use super::super::decode_cache::FlowOp;
+        use super::{is_dag_cfg_invariant, DecodedOp, MoveOp};
+        use crate::visa::Kind;
+
+        // 1) Invariance analysis rejects CALL, JUMP out, RegMove to UREG (>=16), DagMem to UREG, and DirectMem.
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            3,
+            Kind::T8a,
+            0,
+            DecodedOp::Flow(FlowOp::JumpDirect {
+                cond: 31,
+                target: 0x12_0020,
+                call: true,
+                delayed: false,
+            }),
+        )]));
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            3,
+            Kind::T8a,
+            0,
+            DecodedOp::Flow(FlowOp::JumpDirect {
+                cond: 31,
+                target: 0x12_0020,
+                call: false,
+                delayed: false,
+            }),
+        )]));
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            2,
+            Kind::T5b,
+            0,
+            DecodedOp::Move(MoveOp::RegMove {
+                src: 1,
+                dst: 0x20, // M0
+                cond: 31,
+                compute: None,
+            }),
+        )]));
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            3,
+            Kind::T3a,
+            0,
+            DecodedOp::Move(MoveOp::DagMem {
+                ii: 2,
+                mi: 0,
+                ureg: 0x20, // M0 = DM(I2, M0)
+                write: false,
+                post_modify: true,
+                cond: 31,
+                compute: None,
+            }),
+        )]));
+        assert!(!is_dag_cfg_invariant(&[(
+            0,
+            3,
+            Kind::T14a,
+            0,
+            DecodedOp::Move(MoveOp::DirectMem {
+                addr: 0x9_0100,
+                ureg: 0x32, // L2 = DM(...)
+                write: false,
+            }),
+        )]));
+
+        // 2) End-to-end loop updating M0 indirectly via DM: DO (+3) UNTIL LCE; M0 = DM(I2, M0)
+        // T3a M0 = DM(I2, M0): 0x543e, 0x1000, 0x0000
+        let dm_m_prog = [0x0d05u16, 0x0000, 0x0003, 0x543e, 0x1000, 0x0000];
+        let mut dm_interp = core_with(&dm_m_prog);
+        let mut dm_jit = core_with(&dm_m_prog);
+        for c in [&mut dm_interp, &mut dm_jit] {
+            c.r[5] = 3;
+            (c.i[2], c.m[0]) = (0x9_0100, 2);
+            c.dm_write(0x9_0100, 3).unwrap();
+            c.dm_write(0x9_0102, 4).unwrap();
+            c.dm_write(0x9_0105, 5).unwrap();
+        }
+        assert_eq!(dm_interp.run(4), None);
+        assert_eq!(dm_jit.run_jit(4), None);
+        assert_eq!((dm_jit.i[2], dm_jit.m[0]), (dm_interp.i[2], dm_interp.m[0]));
+
+        // 3) End-to-end loop with JUMP out: DO (+6) UNTIL LCE; R0 = DM(I2, M0); JUMP (+5) -> M0 = 9
+        let jmp_prog = [
+            0x0d05u16, 0x0000, 0x0006, // DO (+6) UNTIL LCE
+            0x9410, // R0 = DM(I2, M0)
+            0x073e, 0x0000, 0x0005, // JUMP (+5) -> index 9
+            0x0001, 0x0001, // skipped padding
+            0x0FA0, 0x0009, // M0 = 9
+        ];
+        let mut j_interp = core_with(&jmp_prog);
+        let mut j_jit = core_with(&jmp_prog);
+        for c in [&mut j_interp, &mut j_jit] {
+            c.r[5] = 4;
+            (c.i[2], c.m[0]) = (0x9_0100, 1);
+            c.dm_write(0x9_0100, 77).unwrap();
+        }
+        assert_eq!(j_interp.run(4), None);
+        assert_eq!(j_jit.run_jit(4), None);
+        assert_eq!(
+            (j_jit.r[0], j_jit.i[2], j_jit.m[0], j_jit.pc),
+            (j_interp.r[0], j_interp.i[2], j_interp.m[0], j_interp.pc)
+        );
+    }
 }
