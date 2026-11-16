@@ -273,7 +273,7 @@ Probes that did not explain it:
 
 T4 (piano bit-identical with the adapter disabled) was not run: the adapter lives in a separate folder and the base `2.0.pt` is untouched, but no SHA-256 check was recorded. T6 was not run: with 6 to 54 notes per clip the replay score is meaningless.
 
-Stop rule 7.3 step 3 applies: held-out emulator scores up, hardware scores down. Decision: D113.
+Stop rule 7.3 step 3 applies: held-out emulator scores up, hardware scores down. Decision: D115.
 
 ### 10.3 Dataset defects found after the runs
 
@@ -305,7 +305,7 @@ A corrected dataset before any new arm: render with `--backup`, labels from the 
 - [x] Confirm PEFT LoRA / LoKr on Linear, Conv2d and raw q/k/v (section 4).
 - [x] Phase 1: `tools/synth_dataset.py` (extract, phrase generator, render, write dataset) with tests; 20 h.
 - [ ] fp32 vs bf16 loss comparison on one real batch (not needed until a new run).
-- [x] Phase 2 (LoKr, LoRA) and 3: both arms fail T5; recorded as D113 (section 10).
+- [x] Phase 2 (LoKr, LoRA) and 3: both arms fail T5; recorded as D115 (section 10).
 - [ ] Corrected dataset (section 10.3 items 1 to 5) and one LoRA rerun; waits for user approval.
 - [ ] T4 SHA-256 check of `2.0.pt` and re-run piano streams with the adapter disabled.
 - [ ] Confirm the checkpoint licence with the upstream author if weights are ever to leave the machine.
