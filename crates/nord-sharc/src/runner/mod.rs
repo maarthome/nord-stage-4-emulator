@@ -3,6 +3,7 @@
 //! style `(word 1, word 2)` message injection ([`msg`]) and audio buffer capture with WAV output
 //! ([`audio`]). Moved out of `bin/sharc_org/` so that several binaries use one implementation.
 pub mod audio;
+pub mod jit_diff;
 pub mod msg;
 pub mod pass;
 

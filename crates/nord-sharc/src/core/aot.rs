@@ -457,6 +457,110 @@ mod tests {
     }
 
     #[test]
+    fn aot_compiled_rustc_matches_core_run_oracle() {
+        // Transpile a real DO loop + SRAM load + fixed ADD + float MUL + RTS,
+        // compile it with `rustc -O`, execute it, and assert bit-exact equality with Core::run.
+        let program = [
+            0x0d05u16, 0x0000, 0x0007, // DO (+7) UNTIL LCE, LCNTR=R5
+            0x9410, // R0 = DM(I2, M0)
+            0x013e, 0x0000, 0x1110, // R1 = R1 + R0
+            0x013e, 0x0013, 0x0312, // F3 = F1 * F2
+            0x0abe, // RTS
+        ];
+        let mut oracle = core_with(&program);
+        oracle.r[5] = 4;
+        oracle.r[1] = 1.5f32.to_bits();
+        oracle.r[2] = 2.0f32.to_bits();
+        (oracle.i[2], oracle.m[0]) = (0x9_0100, 1);
+        for k in 0..4u32 {
+            oracle.dm_write(0x9_0100 + k, (k + 1) * 0x10_0000).unwrap();
+        }
+
+        let body = oracle
+            .emit_aot_rust(
+                oracle.pc,
+                5,
+                &AotOptions {
+                    fast_float: true,
+                    fn_name: "dsp_kernel".to_string(),
+                },
+            )
+            .expect("emit AOT Rust");
+
+        // Run oracle: 1 DO + 4 * 3 body insns = 13 steps (before RTS).
+        assert_eq!(oracle.run(13), None);
+
+        let dir = std::env::temp_dir().join(format!("sharc_aot_oracle_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let rs_path = dir.join("oracle_check.rs");
+        let exe_path = dir.join(if cfg!(windows) {
+            "oracle_check.exe"
+        } else {
+            "oracle_check"
+        });
+        let driver = format!(
+            r#"mod nord_sharc {{
+    pub mod core {{
+        #[derive(Default)]
+        pub struct Flags {{
+            pub az: bool,
+            pub an: bool,
+            pub av: bool,
+            pub ac: bool,
+        }}
+        #[derive(Default)]
+        pub struct Core {{
+            pub r: [u32; 16],
+            pub i: [u32; 16],
+            pub m: [u32; 16],
+            pub mr: [i128; 2],
+            pub flags: Flags,
+        }}
+    }}
+}}
+{body}
+fn main() {{
+    let mut core = nord_sharc::core::Core::default();
+    core.r[5] = 4;
+    core.r[1] = 1.5f32.to_bits();
+    core.r[2] = 2.0f32.to_bits();
+    core.i[2] = 0x9_0100;
+    core.m[0] = 1;
+    let mut sram = vec![0u32; 0x10_0000];
+    for k in 0..4u32 {{
+        sram[0x9_0100 + k as usize] = (k + 1) * 0x10_0000;
+    }}
+    dsp_kernel(&mut core, &mut sram);
+    println!("{{}} {{}} {{}} {{}} {{}} {{}}", core.r[0], core.r[1], core.r[3], core.i[2], core.flags.az, core.flags.an);
+}}"#
+        );
+        std::fs::write(&rs_path, driver).unwrap();
+        let status = std::process::Command::new("rustc")
+            .args(["-O", "-o"])
+            .arg(&exe_path)
+            .arg(&rs_path)
+            .status()
+            .expect("invoke rustc -O");
+        assert!(status.success(), "rustc -O failed");
+
+        let out = std::process::Command::new(&exe_path)
+            .output()
+            .expect("run compiled AOT binary");
+        assert!(out.status.success());
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        let parts: Vec<&str> = stdout.split_whitespace().collect();
+        let _ = std::fs::remove_dir_all(&dir);
+
+        assert_eq!(parts.len(), 6, "unexpected output: {stdout}");
+        assert_eq!(parts[0].parse::<u32>().unwrap(), oracle.r[0]);
+        assert_eq!(parts[1].parse::<u32>().unwrap(), oracle.r[1]);
+        assert_eq!(parts[2].parse::<u32>().unwrap(), oracle.r[3]);
+        assert_eq!(parts[3].parse::<u32>().unwrap(), oracle.i[2]);
+        assert_eq!(parts[4].parse::<bool>().unwrap(), oracle.flags.az);
+        assert_eq!(parts[5].parse::<bool>().unwrap(), oracle.flags.an);
+    }
+
+    #[test]
     #[ignore = "AOT rustc -O benchmark: run with cargo test --release -p nord-sharc --lib bench_aot_rustc_o3_throughput -- --ignored --nocapture"]
     fn bench_aot_rustc_o3_throughput() {
         let mut program = vec![0x0d00u16, 0x0000, 3 + 3 + 3];
