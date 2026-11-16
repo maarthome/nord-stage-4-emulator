@@ -238,7 +238,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] SY / SMP equality, output-stage level for the B3 clip, Vox level word, Farfisa state; real flash reads (FAT sector reads of the `.ns4b` library: sample maps, stroke tables) instead of zeros
 - [x] B3 clip gap decomposed: layer B (section II off in the program) and notes outside the zone cause the sub and most of the RMS gap; Farfisa sounds in the oracle with the key-down words ([organ-output-level](research/organ-output-level.md))
 - [x] Engine rotary drive scale: preset unit 0..10 reaches the tube law unscaled (gain 8.3 instead of 1.73); opt-in `--rotary-drive scaled` ([b3-rotary](research/b3-rotary.md)); B3 clip with routing: presence -12 dB still fails, flip not made
-- [ ] Engine: honour section I / II and zone flags for organ layers, then re-run `emu_vs_hw.py --only organ_b3`; Farfisa processor port; layer level law; Vox level word; real flash reads (FAT sector reads of the `.ns4b` library: sample maps, stroke tables) instead of zeros
+- [x] Organ engine routing and level (2026-11-15 split of the item below): section I / II and zone flags honoured by default (D73, `FirmwareRouting`), Farfisa processor port (D74, PR #376), layer level law (organ swell and `(v / 127)^2` D25; synth D87)
+- [ ] Engine: re-run `emu_vs_hw.py --only organ_b3`; Vox level word; real flash reads (FAT sector reads of the `.ns4b` library: sample maps, stroke tables) instead of zeros
 
 ### 7b.3 Organ
 
@@ -271,6 +272,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Farfisa processor `0x122B85` on the firmware machine (jumps and ALU flags, model 2 install with key-down weights; bit exact over 36 oracle calls, stage within 0.004 dB on 48 chord lines, replaces the FIRs; [organ-farfisa-bass](research/organ-farfisa-bass.md) s16, D74)
 - [ ] Real time firmware organ stages (Bass 3.3 to 3.6, Farfisa about 2 s of CPU per second of audio, s17, TD-15), Farfisa generator `0x122A71` on the machine, and the B3 processor `0x121E2B` (the Bass processor `0x122296` is done, s15): bit-exact models, then Rust (inputs known, OQ18)
 - [ ] Percussion path (second engine family `0xC00BF890`, `0xC00BE348`), key-up and velocity source
+- [ ] Proposed 2026-11-15: B3 processor `0x121E2B` and Leslie ring DMA are the two gaps behind the B3 presence residual (mid +3, brilliance +5 dB, one lone-note clip); see audio-remaining item 9
 
 ### 7b.4 Effects
 
@@ -301,6 +303,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] FX Mod 1 A-PAN (`0x122D93`, oracle verified) and TREM (`0x122C39` at mix 0) ported and wired behind `FirmwareFx::mod1` ([fx-mod-types](research/fx-mod-types.md), D26); open: the delay feedback-effect types, tempo sync and loop period (RM, A-WAH, WAH, PUMP: D50)
 - [ ] FX wiring: connect the ported routines to `fx.rs` using the measured context words (compressor amount, delay mix and feedback, Amp drive, phaser rate); the reverb tables (`ns4-ca0i`); the delay time law (`kDlyRateClkDiv`, [fx-delay-time](research/fx-delay-time.md)) is decoded and wired behind `FirmwareFx::delay_time`
 - [ ] Enable gating and the command consumer ([fx-contexts](research/fx-contexts.md) s7; wiring plan s8), then sweep the four type ids with the effects enabled
+- [ ] Proposed 2026-11-15: Mod 1 PUMP clock source (hardware 2.11 Hz against 6.1 Hz free-run, reported by the coordinating session, no repo record yet) and a hardware reverb tail clip (Hall, Cathedral, OQ21c)
 
 ### 7b.5 Piano
 
@@ -312,6 +315,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] Transkun adapter (LoKr first, then LoRA, then full) trained on emulator synth renders for better synth-clip recall and per-note velocity ([transkun-synth-finetune-plan](research/transkun-synth-finetune-plan.md)): Phase 0 feasibility and Phase 1 dataset (20.2 h, 43 held-out programs, base F1 0.546, velocity MAE 26.1) done; Phase 2 trained LoKr and LoRA: held-out F1 0.629 / 0.748 (T1 missed) but hardware recall below base on all three clips (T5 failed), stop rule 7.3 step 3, adapters not adopted (D115); the dataset renders without `--backup` (small effect: LoRA F1 0.762 vs 0.748) and labels ignore octave / split / arp (suspected main cause, unmeasured), so the next run waits for a corrected dataset and user approval
 - [ ] Piano velocity law: the call-frame word `X` of the level procedure is not traced (needs the key-down capture); the engine keeps `VelocityTouch` power laws until then
 - [ ] Edge handling of the sample stream and the step limit of one decoded sample per frame
+- [ ] Proposed 2026-11-15: piano classes 1, 2, 3, 5, 6 start an extra voice the engine does not play (250 factory programs); Touch default flip under D22 (program file bits)
 
 ### 7b.6 Synth
 
@@ -330,11 +334,16 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] The synth oscillator P block writer found and tabulated ([synth-p-writer](research/synth-p-writer.md), D62): the ARM strip apply function `0xC01CE7D8` and 44 word senders write ratios, weights, gain and the SUPER unison ratios per wave type; `tools/synth_p_writer.py`, [data/synth-p-words.csv](research/data/synth-p-words.csv) (74 types), `synth/p_words.rs`, opt-in `--synth-p verified` (pulse, SHAPE and SHAPE SINE gains from the words); MULTI / SUPER stage rows still EMPIRICAL
 - [x] The ARM P words applied to the MULTI / SUPER 0 to 4 stages (D70, `synth/p_stage_words.rs`, `synth/fw_stages/words.rs`, `--synth-p verified`, GUI Firmware bar "ARM words (verified)"): verified unison ratios, weights, gain, MULTI record and spread scale 1.0 (`s5 = Osc Ctrl`); Python-model parity golden (`tools/synth_stage_golden11.py`); cutoff factor grids on the unison clips ([synth-validation](research/synth-validation.md) s11); the default stays the EMPIRICAL table (D22 bar not met); open: joint level refit, `a` / `b` to `kOscUnison`
 - [x] Grand Pad (A:43) validation clip `pianopad_grand` in `emu_vs_hw_segments.json` (piano + synth layer split, every opt-in path) and the synth layer level law `--firmware-synth-layer-law` (D82, now the default, D87; [grand-pad-vs-video](research/grand-pad-vs-video.md)); the level handler is run (D87, [synth-layer-level-law](research/synth-layer-level-law.md)); pedal replayed and the synth FX rack shown irrelevant here (D93, [grand-pad-leftovers](research/grand-pad-leftovers.md)); opt-in `--synth-sustain-pedal`; Synth SUSTPED decoded (D97, [synth-sustped](research/synth-sustped.md): firmware default on, per program bit, 381 / 383 / 383 of 384 set); open: ARM hold logic, reverb tail, synth stereo path
-- [ ] Open audio parity items are consolidated in one table with evidence, closing method and check per item ([audio-remaining](research/audio-remaining.md)); keep it current when an item changes.
+- [ ] Open audio parity items are consolidated in one table with state, difficulty, impact, hardware need, PRs and decisions per item ([audio-remaining](research/audio-remaining.md)); keep it current when an item changes.
+- [x] Coverage table of the oracle and the audio emulator per subsystem, with counts and evidence ([emulation-coverage](research/emulation-coverage.md), 2026-11-15)
 - [x] Organ level `K = 2.8`: image, ARM write-log and per-engine Transkun audit done, no firmware gain word found, `K` stays EMPIRICAL ([organ-output-law](research/organ-output-law.md) s6, D85, D106); open: program-recall ARM capture, PNO lane to FX hand-over.
 - [x] Synth filter type factors against the SHARC stages (D108, [synth-filter-type-corners](research/synth-filter-type-corners.md)): corner table per type (`tools/synth_filter_type_corners.py`, `--check`), resonance word to table position 47.4..80.6 (`tools/synth_filter_res_probe.py`), opt-in `--synth-filter-law` / `--synth-fw-resonance`; the fitted factors are not stage physics but the derived replacement does not beat them on 12 clips (mean 2.18 against 3.88 / 3.20, no default flip). Open: stage calls per frame (`F` or `2 F`), LFO scale in `W28`, `kFltType` link, Ladder24 position word
+<<<<<<< HEAD
+- [ ] Synth parity remainder (stage models of all 312 ANALOG layers are done, see the SHAPE, SUPER, SYNC, MISC and SUB ticks below): `0x1257B2`, the knob to strip word maps (ASSUMED), `kFltType` and `osc_wave` to stage selection, then flip the defaults and re-baseline `render_hash` (TD-11)
+=======
 - [x] SUPER wave 0 / LP24 type factor 4.4 against three more Part A clips (D116, [synth-super-lp24-clips](research/synth-super-lp24-clips.md)): not confirmed (Horizon, Sidechain prefer 1.0 to 3.0; Oo Pad dominated by layer B, Believer insensitive, Sidechain misses Mod 1 PUMP); opt-in `--synth-super-lp24`, `tools/note_list_check.py`; default stays (D22); open: trusted note lists, wheel position, hold-out clip
 - [ ] Remaining stage models ( then SAW / SQUARE / TRIANGLE / SUB / SYNC stages) bit exact in Python, then opt-in Rust; synth parity remainder: `0x1257B2`, the knob to strip word maps (ASSUMED), `kFltType` and `osc_wave` to stage selection, then flip the defaults and re-baseline `render_hash` (TD-11)
+>>>>>>> origin/main
 - [x] 12 dB low pass `0x1253BD` (Lp12, 218 layers) and SHAPE SINE wave 0 `0x123427` bit exact in Python and opt-in Rust (`FwFilterType::Lp2`, `FwStage::ShapeSine`); `kFltType` = table index (filter off = 6), [synth-filter-type-map](research/synth-filter-type-map.md), [synth-stage-models-2](research/synth-stage-models-2.md): 80 % of ANALOG layers, 85 % of filter layers modelled
 - [x] SHAPE SINE waves 1, 2, 5 (`0x1235C9`, `0x1232A5`, `0x122F1F`, 15 layers) bit exact in Python and opt-in Rust (`synth/fw_sine_warps.rs`): 85 % of ANALOG layers modelled ([synth-stage-models-3](research/synth-stage-models-3.md))
 - [x] SY sample voice kernel rule: the ARM picks the 12-tap kernel from the voice key (`<= 47`, then every 12 keys; `0xC0001BAC` is a static channel record), the firmware compare chain run for keys 0..127 (`tools/arm_sy_kernel_rule.py`), Rust `sinc/key_rule.rs` (default since D46, `--sample-kernel ratio` for the old rule), sweep tags `synth.sample.kernel=K` ([synth-sample-kernel-rule](research/synth-sample-kernel-rule.md), TD-08)
@@ -369,6 +378,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] Hardware sweeps for the remaining ASSUMED scales ([synth-hardware-sweep-plan](research/synth-hardware-sweep-plan.md), OQ7)
 
 ---
+- [ ] Proposed 2026-11-15: synth envelope pass (2 SY frames ASSUMED) and ARM tick 1 or 24 kHz (OQ22); arpeggiator gate 2/3 or 1/2 of a step (OQ32); Wavetable default flip (`--synth-wave-bank`); FM level against a hardware clip
 
 ## Parallel Lanes & Bean Dependency Graph
 
