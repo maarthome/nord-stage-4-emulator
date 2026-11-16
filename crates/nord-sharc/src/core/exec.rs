@@ -147,6 +147,12 @@ impl Core {
             w: d.w,
             op,
         };
+        if !isa && pc >= 0x12_0000 {
+            let nw_lo = pc / 2;
+            let nw_hi = (pc + (d.insn.len as u32).saturating_sub(1)) / 2;
+            self.sram_code_nw_lo = self.sram_code_nw_lo.min(nw_lo);
+            self.sram_code_nw_hi = self.sram_code_nw_hi.max(nw_hi);
+        }
         let cache = self.decode_cache.get_or_insert_with(DecodeCache::new);
         cache.insert(entry);
         entry

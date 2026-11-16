@@ -551,7 +551,7 @@ fn emit_fast_float_op(
 
 /// Emits an inline linear `SRAM_WORDS` load or store for `MoveOp::DagMem` (`ureg < 16`,
 /// `ii` not subject to bitrev/broadcast), falling back to `jit_dag_mem` when `L[ii] != 0`,
-/// `addr` is outside `0x9_0000..0x10_0000`, or a store overlaps the current compiled block.
+/// `addr` is outside `0x9_0000..0x10_0000`, or a store overlaps `[sram_code_nw_lo, sram_code_nw_hi]`.
 #[allow(clippy::too_many_arguments)]
 fn emit_inline_sram_dag_transfer(
     b: &mut FunctionBuilder,
@@ -562,8 +562,6 @@ fn emit_inline_sram_dag_transfer(
     ureg: u8,
     write: bool,
     post_modify: bool,
-    code_nw_lo: u32,
-    code_nw_hi: u32,
     insn_pc: u32,
     insn_w: u64,
     arg_kind: i64,
@@ -597,12 +595,20 @@ fn emit_inline_sram_dag_transfer(
         .icmp_imm(IntCC::UnsignedLessThan, rel_addr, 0x7_0000);
     let mut can_fast = b.ins().band(is_linear, in_sram);
     if write {
-        let below = b
-            .ins()
-            .icmp_imm(IntCC::UnsignedLessThan, addr, i64::from(code_nw_lo));
-        let above = b
-            .ins()
-            .icmp_imm(IntCC::UnsignedGreaterThan, addr, i64::from(code_nw_hi));
+        let nw_lo = b.ins().load(
+            types::I32,
+            mem,
+            core_ptr,
+            offset_of!(Core, sram_code_nw_lo) as i32,
+        );
+        let nw_hi = b.ins().load(
+            types::I32,
+            mem,
+            core_ptr,
+            offset_of!(Core, sram_code_nw_hi) as i32,
+        );
+        let below = b.ins().icmp(IntCC::UnsignedLessThan, addr, nw_lo);
+        let above = b.ins().icmp(IntCC::UnsignedGreaterThan, addr, nw_hi);
         let outside_code = b.ins().bor(below, above);
         can_fast = b.ins().band(can_fast, outside_code);
     }
@@ -802,7 +808,10 @@ impl Core {
     fn get_or_compile_jit_block(&mut self, start_pc: u32, loop_end: u32) -> Option<JitBlockFn> {
         let simd = self.simd();
         let fast_float = self.fast_float;
-        let sram_fast = self.periph.is_none() && self.watch == u32::MAX && !self.rwatch_on;
+        let sram_fast = self.periph.is_none()
+            && self.watch == u32::MAX
+            && self.watch_len <= 1
+            && !self.rwatch_on;
         if self
             .jit
             .as_ref()
@@ -1063,8 +1072,6 @@ impl Core {
                             Kind::T3b => 1,
                             _ => 2,
                         };
-                        let code_nw_lo = (start_pc / 2).saturating_sub(2);
-                        let code_nw_hi = (end_pc / 2).saturating_add(2);
                         let fail_blk = b.create_block();
                         b.append_block_param(fail_blk, types::I32);
                         emit_inline_sram_dag_transfer(
@@ -1076,8 +1083,6 @@ impl Core {
                             ureg,
                             write,
                             post_modify,
-                            code_nw_lo,
-                            code_nw_hi,
                             insn_pc,
                             insn_w,
                             arg_kind,
@@ -1324,7 +1329,10 @@ impl Core {
             let start_pc = self.pc;
             let simd = self.simd();
             let fast_float = self.fast_float;
-            let sram_fast = self.periph.is_none() && self.watch == u32::MAX && !self.rwatch_on;
+            let sram_fast = self.periph.is_none()
+                && self.watch == u32::MAX
+                && self.watch_len <= 1
+                && !self.rwatch_on;
 
             if let Some(func) = self.get_or_compile_jit_block(start_pc, loop_end) {
                 let (len_insns, is_loop) = {
@@ -1672,5 +1680,60 @@ mod tests {
             "bench_jit_throughput: {} steps in {:?} ({:.2} Msteps/s)",
             c.steps, dt, msteps
         );
+    }
+
+    #[test]
+    fn jit_inline_sram_write_invalidates_other_cached_block() {
+        // Block A at 0x12_0000 (nw 0x9_0000): R0 = 1 (0x0F80, 0x0001)
+        // Block B at 0x12_0020 (nw 0x9_0010): DM(I2, M0) = R1 (0x9431)
+        let mut program = vec![0u16; 0x22];
+        program[0] = 0x0F80;
+        program[1] = 0x0001;
+        program[0x20] = 0x9431;
+
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        for c in [&mut interp, &mut jit] {
+            c.i[2] = 0x9_0000;
+            c.m[0] = 0;
+            c.r[1] = 0x0002_0F80; // R0 = 2
+        }
+
+        // Execute Block A first so it is cached in both decode_cache and jit.blocks.
+        assert_eq!(interp.run(1), None);
+        assert_eq!(jit.run_jit(1), None);
+        assert_eq!((interp.r[0], jit.r[0]), (1, 1));
+
+        // Execute Block B, overwriting Block A in SRAM.
+        interp.pc = 0x12_0020;
+        jit.pc = 0x12_0020;
+        assert_eq!(interp.run(1), None);
+        assert_eq!(jit.run_jit(1), None);
+
+        // Re-execute Block A: must observe the updated instruction (R0 = 2).
+        interp.pc = 0x12_0000;
+        jit.pc = 0x12_0000;
+        assert_eq!(interp.run(1), None);
+        assert_eq!(jit.run_jit(1), None);
+        assert_eq!(jit.r[0], 2);
+        assert_eq!(jit.r[0], interp.r[0]);
+    }
+
+    #[test]
+    fn jit_sram_write_with_watch_records_watch_addrs() {
+        let program = [0x9431u16]; // DM(I2, M0) = R1
+        let mut interp = core_with(&program);
+        let mut jit = core_with(&program);
+        for c in [&mut interp, &mut jit] {
+            c.i[2] = 0x9_0100;
+            c.r[1] = 0xDEAD_BEEF;
+            c.watch = 0x9_0100;
+            c.watch_len = 4;
+        }
+        assert_eq!(interp.run(1), None);
+        assert_eq!(jit.run_jit(1), None);
+        assert_eq!(jit.watch_addrs, vec![0x9_0100]);
+        assert_eq!(jit.watch_addrs, interp.watch_addrs);
+        assert_eq!(jit.watch_hits.len(), interp.watch_hits.len());
     }
 }
