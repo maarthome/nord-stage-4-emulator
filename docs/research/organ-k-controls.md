@@ -20,7 +20,7 @@ Tags: **VERIFIED** = reproduced by a command here, **EMPIRICAL** = measured on l
 | `notes` | `band`, frames where a stream note sounds (+0.25 s release) |
 | `matched_48up` / `matched_48_64` | `band`, frames where a note in the range sounds and no note outside it does (same frames on both clips) |
 
-**Reproduction check (VERIFIED).** The `broadband` column reproduces D106 for Vox (+3.75 vs +3.99 dB) and Pipe (-7.09 vs -6.96 dB). B3 reads 1.4 dB hotter (the D106 variant flags were not recorded; `--firmware-routing` is my choice) and the Pipe chain render 2.6 dB lower. An independent script (plain numpy, FFT band 160 to 1300 Hz) gives `k_needed` 4.21 / 1.44 / 7.07, identical to the tool for B3 engine drive, Vox and Pipe. The `agy` cross-check named in the task was blocked by the permission classifier (`--dangerously-skip-permissions`), so it was not run.
+**Reproduction check (VERIFIED).** The `broadband` column reproduces D106 for Vox (+3.75 vs +3.99 dB) and Pipe (-7.09 vs -6.96 dB). B3 reads 1.4 dB hotter (the D106 variant flags were not recorded; `--firmware-routing` is my choice) and the Pipe chain render 2.6 dB lower. An independent hand script (plain numpy, FFT band 160 to 1300 Hz) gives `k_needed` 4.21 / 1.44 / 7.07, identical to the tool for B3 engine drive, Vox and Pipe. `agy` (own script in an isolated directory, same method) also reproduced them: B3 -3.55 dB / 4.21, Vox +5.77 / 1.44, Pipe -8.04 / 7.07 in band and 4.14 / 1.82 / 6.34 broadband.
 
 ## 2. K needed per engine under each control (Transkun stream, `K = 2.8`)
 
