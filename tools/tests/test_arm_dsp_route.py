@@ -1,4 +1,4 @@
-"""Tests of `arm_dsp_route` (D139): chip specs, routing, watched words, replay logs."""
+"""Tests of `arm_dsp_route` (D144): chip specs, routing, watched words, replay logs."""
 
 import struct
 import sys

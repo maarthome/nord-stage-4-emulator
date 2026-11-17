@@ -1,4 +1,4 @@
-"""Several live chips on one ARM stream (D139): routing, chip specs, watched words, replay logs.
+"""Several live chips on one ARM stream (D144): routing, chip specs, watched words, replay logs.
 
 Pure parts (no firmware, no unicorn), tested in `tools/tests/test_arm_dsp_route.py`. The driver is
 `tools/arm_dsp_live.py`; the one-chip transport is `tools/arm_dsp_link.py` (D138).
@@ -16,7 +16,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 CHIPS = {"FX": 0, "PNO": 1, "ORG": 2, "SY": 3, "SMP": 4}
-PRESETS = ("pno", "org")  # `sharc-live` flags (`runner/live_presets.rs`); SY has none (D139 s4)
+PRESETS = ("pno", "org")  # `sharc-live` flags (`runner/live_presets.rs`); SY has none (D144 s4)
 DM_WORDS = 0x100000  # data word space of one core window (`0x28000000 + 4 w`, w < 2^20)
 
 
@@ -84,7 +84,7 @@ class Router:
         self.skipped: dict[str, int] = {}
 
     def add(self, spec: ChipSpec, link: object, path: int = 2) -> None:
-        """`link` receives the path-`path` messages of `spec` (only path 2 is wired, D139 s4)."""
+        """`link` receives the path-`path` messages of `spec` (only path 2 is wired, D144 s4)."""
         self.owner[(spec.comm, spec.core, path)] = link
 
     def dispatch(self, path: int, comm: int, core: int, dm_word: int, value: int) -> str:

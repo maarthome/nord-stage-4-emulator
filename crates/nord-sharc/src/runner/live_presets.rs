@@ -1,4 +1,4 @@
-//! Start-up presets of the chips `sharc-live` can serve (D138, D139): the constants of `sharc-sys`
+//! Start-up presets of the chips `sharc-live` can serve (D138, D144): the constants of `sharc-sys`
 //! (`--pno`, default ORG) as data, so one binary serves PNO core 1, and the organ program that runs
 //! on ORG core 1, ORG core 2 and PNO core 2 (loader entry `0x125C88`, `dsp-image-hunt.md` s5.17).
 use super::pass::{fault_text, run_steps};
@@ -39,9 +39,13 @@ pub fn pno_preset() -> Preset {
     }
 }
 
-/// VERIFIED: the `sharc-sys` defaults (ORG core 2, `org-system-run.md`; PNO core 2 runs the same
-/// program, `pno-jit-arm-profile.md` s5): entry `0x125C88`, poll loop `0x125DDF`, mailbox
-/// `0xB00E2`, boot 100,000 instructions, gates `0x282C0380 = 1` and `0x3108D008 = 5`.
+/// The organ-program start-up, shared with `sharc-sys` (its defaults are built from this value, so
+/// the two cannot drift). VERIFIED: ORG core 2 runs 16,575 idle passes under it (`org-system-run.md`,
+/// `synth-e2e-oracle-vs-native.md`): entry `0x125C88`, poll loop `0x125DDF`, mailbox `0xB00E2`,
+/// boot 100,000 instructions, gates `0x282C0380 = 1` and `0x3108D008 = 5`. EMPIRICAL: PNO core 2
+/// has the same loader entry `0x125C88` and idles every pass under it (`pno-jit-arm-profile.md`
+/// s5, `arm-dsp-live-link-synth.md`: 2,441 of 2,441 passes); that it is the same program is
+/// inferred from the entry and the block sizes (`dsp-image-hunt.md` s5.17).
 pub fn org_preset() -> Preset {
     Preset {
         entry: 0x12_5C88,

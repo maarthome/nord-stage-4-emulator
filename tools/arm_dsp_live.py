@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""Run the booted ARM firmware against several live emulated DSP chips (`sharc-live`, D138, D139).
+r"""Run the booted ARM firmware against several live emulated DSP chips (`sharc-live`, D138, D144).
 
 The ARM harness (`arm_screens.Session`, the full machine of `arm_dsp_capture`) boots with one
 factory program in the Store record. Every ARM -> DSP message is grouped as the firmware stores it

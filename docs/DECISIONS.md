@@ -6,7 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
-| [D139](#d139-the-live-arm-link-serves-several-chips-on-one-clock-org-core-2-and-pno-core-2-run-the-sy-chip-is-blocked-by-its-interrupt-driven-pass-model) | 2026-11-17 | The live ARM link serves several chips on one clock; ORG core 2 and PNO core 2 run on the real stream, the key reaches only PNO core 2; SY is blocked by its interrupt driven pass model | accepted |
+| [D144](#d144-the-live-arm-link-serves-several-chips-on-one-clock-org-core-2-and-pno-core-2-run-the-sy-chip-is-blocked-by-its-interrupt-driven-pass-model) | 2026-11-17 | The live ARM link serves several chips on one clock; ORG core 2 and PNO core 2 run on the real stream, the key reaches only PNO core 2; SY is blocked by its interrupt driven pass model | accepted |
 | [D138](#d138-the-arm-harness-runs-live-against-one-oracle-chip-pno-core-1-over-a-pipe-one-direction-only-the-leslie-gate-stays-closed) | 2026-11-17 | The ARM harness runs live against one oracle chip (PNO core 1) over a pipe; ARM to chip words and chip telemetry only; `0x1256AD` still runs in 0 of 2,441 passes | accepted |
 | [D136](#d136-firmware-validated-paths-become-the-default-unless-a-hardware-clip-gets-worse-the-owners-rule-of-2026-11-17) | 2026-11-17 | Firmware-validated paths become the default unless a hardware clip gets worse; the owner's rule of 2026-11-17 | proposed |
 | [D135](#d135-no-evidence-yet-that-the-b3-leslie-runs-on-the-fx-chip-0x1256ad-is-not-in-the-static-fx-images-and-the-boot-logs-send-no-leslie-row-to-the-fx-cores-but-run-time-loaded-code-and-the-amp-type-7-recall-are-untested) | 2026-11-17 | No evidence yet that the B3 Leslie runs on the FX chip: `0x1256AD` is not in the static FX images and the boot logs send no Leslie row to the FX cores, but run-time loaded code and the amp type 7 recall are untested | proposed |
@@ -1381,7 +1381,7 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Alternatives:** Port a speculative ring model to `nord-core` anyway (rejected: violates Step 3 and D22); leave `DM(0x310C3000)` unmodelled (rejected: the census and trace show it is the only non-1:1 per-pass peripheral write).
 - **Impact:** `crates/nord-sharc` (`core/periph/ringdma.rs`, `runner/ring_trace.rs`, `bin/sharc_ring.rs`, `core/periph/{glue,mod}.rs`, `runner/{periph_run,mod}.rs`, `Cargo.toml`), `docs/research/b3-leslie-pno-lane.md`, `docs/specs/sharc-core.md` section 7, `docs/research/audio-remaining.md` row 9, `docs/ROADMAP.md` 7b.3. No `nord-core`, golden, `render_hash` or default change.
 
-### D139. The live ARM link serves several chips on one clock; ORG core 2 and PNO core 2 run, the SY chip is blocked by its interrupt driven pass model
+### D144. The live ARM link serves several chips on one clock; ORG core 2 and PNO core 2 run, the SY chip is blocked by its interrupt driven pass model
 
 - **Status:** accepted 2026-11-17
 - **Decided by:** the session task (follow-up 1 of D138); evidence [arm-dsp-live-link-synth](research/arm-dsp-live-link-synth.md), [arm-dsp-live-link-synth.json](research/data/arm-dsp-live-link-synth.json)

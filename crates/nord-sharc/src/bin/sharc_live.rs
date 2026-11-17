@@ -38,11 +38,15 @@ fn parse(args: &[String]) -> Result<Parsed, String> {
     while let Some(a) = it.next() {
         match a.as_str() {
             "--pno" => p.preset = "pno",
-            "--org" => p.preset = "org", // ORG core 1/2 and PNO core 2 (organ program, D139)
+            "--org" => p.preset = "org", // ORG core 1/2 and PNO core 2 (organ program, D144)
             "--window" => {
                 let s = it.next().ok_or("--window needs ADDR:COUNT:STRIDE")?;
                 let bad = || format!("bad --window {s:?} (want ADDR:COUNT:STRIDE)");
-                let f: Vec<u32> = s.split(':').filter_map(parse_number).collect();
+                let f: Vec<u32> = s
+                    .split(':')
+                    .map(parse_number)
+                    .collect::<Option<_>>()
+                    .ok_or_else(bad)?;
                 match f[..] {
                     [a, n, st] if n > 0 && st > 0 && n <= 64 => p.window = Some((a, n, st)),
                     _ => return Err(bad()),
@@ -170,6 +174,8 @@ mod tests {
             &[],
             &["a", "--probe", "zz"],
             &["a", "--window", "1:2"],
+            &["a", "--window", "1:zz:2:3"],
+            &["a", "--window", "1:2:2:3"],
             &["a", "--window", "1:0:2"],
             &["a", "--window", "1:99:2"],
         ] {
