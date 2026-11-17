@@ -117,7 +117,7 @@ pub fn run_with(cfg: GuiBenchConfig, setup: impl FnOnce(&mut Stage4Engine)) -> G
     let mut times = Vec::with_capacity(cfg.blocks);
     let mut pressed = Vec::with_capacity(cfg.blocks);
     let (mut hash, mut peak) = (FNV_BASIS, 0.0f32);
-    let mut buf = vec![0.0f32; cfg.frames * 2];
+    let mut buf = vec![[0.0f32; 2]; cfg.frames];
     for i in 0..cfg.warmup_blocks + cfg.blocks {
         let timed = i >= cfg.warmup_blocks;
         let churn = cfg.churn_every > 0 && i % cfg.churn_every == 0 && i > 0;
@@ -128,7 +128,7 @@ pub fn run_with(cfg: GuiBenchConfig, setup: impl FnOnce(&mut Stage4Engine)) -> G
             oldest += 1;
             next += 1;
         }
-        for f in buf.chunks_exact_mut(2) {
+        for f in buf.iter_mut() {
             let [l, r] = e.render_frame();
             f[0] = l * 0.85;
             f[1] = r * 0.85;
@@ -136,8 +136,8 @@ pub fn run_with(cfg: GuiBenchConfig, setup: impl FnOnce(&mut Stage4Engine)) -> G
         if timed {
             times.push(t0.elapsed().as_secs_f64() * 1000.0);
             pressed.push(churn);
-            hash = fnv1a_f32(hash, &buf);
-            peak = buf.iter().fold(peak, |p, s| p.max(s.abs()));
+            hash = fnv1a_f32(hash, buf.as_flattened());
+            peak = buf.as_flattened().iter().fold(peak, |p, s| p.max(s.abs()));
         }
     }
     let deadline_ms = cfg.frames as f64 / f64::from(SAMPLE_RATE) * 1000.0;
