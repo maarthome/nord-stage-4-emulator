@@ -139,6 +139,22 @@ python tools/fx_golden_mod1.py > crates/nord-core/src/fx/tests_mod1_golden.rs
 * The PUMP counter `c[-0x15]` is driven from the engine's Master Clock (s7.2, D134); the hardware writer, the increment under sync and the tick alignment are not found (OQ36).
 * Filter coefficients (A-WAH, WAH) are those of 43.4 kHz: ASSUMED about 10 % cutoff shift at 48 kHz.
 
+### 7.2 PUMP and the Master Clock (D134)
+
+Checked 2026-11-17. Sources: the port `fw_pump.rs` (oracle verified, s7), [arm-tick-timers](arm-tick-timers.md) s4, the boot log of the ARM harness (`target/bulk/boot_log.jsonl`, local; only addresses and pcs are quoted).
+
+| Question | Result | Tag |
+|---|---|---|
+| How does `0x122D2C` use `c[-0x15]`? | `fl_icomp(c[-21], c[-20])` (signed integer compare), `c[-20] = c[-21]`; if they differ the phase `c[-31]` is replaced by `0x80000000`. **Any** change resets, the value and its step mean nothing, none while it is constant | VERIFIED (port, 500/500 oracle; test `fw_mod1_rest::a_counter_change_resets_the_pump_phase_and_a_constant_counter_does_not`) |
+| Counter increment per beat / division | One change per division is enough; the engine writes `+1` | VERIFIED for the routine, ASSUMED that the hardware advances once per division |
+| What sets the cycle length? | The increment `c[-32]`, not the counter: the phase `0x80000000 + n * inc` wraps through `0x7FFFFFFF`, the duck is at the sign change (gain falls to 0, recovers slowly to 1), cycle = `2^32 / inc` calls. With the free-run law (rate 73) that is 6.108 Hz whatever the counter does (probe: ticks every beat plus the knob increment still ducked at 6.1 Hz) | VERIFIED (run of the port, `tests_fw_pump_sync`) |
+| Increment under Master Clock | `floor(2^33 / period_frames)` (two frames per call): one cycle = one division. At 126 BPM, 1 beat: **2.10 Hz** against the hardware 2.11 Hz (FFT bin 0.04 Hz) | ASSUMED law (the hardware value is not captured), EMPIRICAL check on one clip figure |
+| 17 divisions | `period = fs * 60 / bpm * beats`, `beats` from `DELAY_SYNC_BEATS`; the cycle rate scales as `bpm / (60 beats)` (tests: 0.25, 0.5, 1, 1.5, 2 beats; 90 / 180 BPM; a BPM change follows at once) | VERIFIED for the engine side, ASSUMED that the hardware maps the same way |
+| Program load | `apply_fx_chain` turns the stored MST CLK flag (`mod1_clock_sync`) and the 7 bit rate of an enabled PUMP into `mod1_sync_beats` with the delay's 17 divisions and index law (test `engine::tests_pump_load`: rate 33 = 1 beat = 2.10 Hz at 126 BPM through `apply_program`). **A:25 stores rate 73 with MST CLK on: that is 0.375 beats = 5.6 Hz at 126 BPM, not the clip's 2.11 Hz.** The rate to division law of Mod 1 is therefore open | ASSUMED law, contradicted by the one clip (OQ36) |
+| Who writes the counter? | The ARM writes `c[-0x15]` and `c[-0x14]` (DM `0xC16B5`, `0xC16B6` of the PUMP instance) **once, with 0, in the boot settle** (message words from pc `0xC01EA048` and `0xC01E99B8`); nothing periodic (30,000 timer interrupts with A:25 loaded: 0 FX words, [arm-tick-timers](arm-tick-timers.md) s4). So the advance is DSP side, or an ARM event the harness does not run (Master Clock start or beat message, not tested) | VERIFIED (boot log, negative run), open (OQ36) |
+
+Duck position: the duck falls at the phase sign change, **half a division after the tick**; the engine has no transport beat phase, so the first duck is half a division after the clock is enabled (ASSUMED; the hardware alignment needs a clip with a known downbeat). Free run is untouched (the new code writes only when `mod1_sync_beats` is set). Reproduce: `cargo test -p nord-core --lib fx::tests_fw_pump_sync fx::fw_pump_clock fx::fw_mod1_rest engine::tests_pump_load`.
+
 ## Implications
 
 * The two most used Mod 1 types now have the firmware's own LFO shapes, depth laws and rate scale; the engine's 0.1 .. 15 Hz rate range for A-PAN and TREM is wrong by a factor of about 3 at the top.

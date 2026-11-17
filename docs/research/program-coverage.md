@@ -1,6 +1,6 @@
 # Research: factory program coverage and render health
 
-- **Checked:** 2026-11-14
+- **Checked:** 2026-11-17
 - **Sources (local, never committed):** the factory restore backup `Nord Stage 4 Factory Restore RevK v1.66.ns4b` (384 `.ns4p` programs, its `.npno` and `.nsmp4` entries), `tools/program_sweep.py` driving `crates/nord-tools/src/bin/program_sweep.rs` (release build), the classification of paths from `docs/specs/*.md` and `docs/research/*.md` cited per row.
 - **Question:** how much of the factory program space does the emulator cover, which engine paths do the 384 programs rely on, and which of them are firmware-verified, assumed or not modelled; does any program panic, go non-finite, fall silent or clip.
 
@@ -93,7 +93,7 @@ Scene II used by 213 programs, split enabled in 48, non-default key zone code on
 | `piano.class=5` | 150 | 151 |
 | `piano.class=6` | 50 | 57 |
 | `piano.class=7` | 3 | 3 |
-| `piano.string_res` (enabled) | 240 | 258 |
+| `piano.string_res` (enabled) | 223 | 244 |
 
 ## 5. Synth
 
@@ -258,47 +258,50 @@ Use-weighted: a path used by two layers counts twice. A `verified` row means the
 
 ## 8. Render health
 
-- `default`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 30, clipping >= 0.1%: 6.
-- `firmware`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 36, clipping >= 0.1%: 7.
+- `default`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 24, clipping >= 0.1%: 5.
+- `firmware`: 384 of 384 rendered without panic; non-finite 0, silent 0, any clipped sample 30, clipping >= 0.1%: 6.
 
-Level difference firmware minus default (RMS, dB) over 384 programs: min -9.03, p10 -1.52, median 0.43, p90 3.12, max 9.22, mean 0.6.
+Level difference firmware minus default (RMS, dB) over 384 programs: min -8.95, p10 -1.47, median 0.44, p90 3.51, max 9.61, mean 0.69.
 
 ### Outliers
 
-Counts: panic 0, non-finite 0, silent 0, clipping 13, level jump 10.
+Counts: panic 0, non-finite 0, silent 0, clipping 11, level jump 15.
 
 **Clipping (top 30)**
 
 | entry | mode | peak | clip_fraction |
 |---|---|---|---|
-| Program/Bank B/Burning Lead.ns4p | firmware | 1.0 | 0.126542 |
 | Program/Bank D/Windhoek B3 II.ns4p | firmware | 1.0 | 0.113964 |
-| Program/Bank B/Burning Lead.ns4p | default | 1.0 | 0.09299 |
 | Program/Bank D/Windhoek B3 II.ns4p | default | 1.0 | 0.07913 |
-| Program/Bank A/B3 Shade.ns4p | firmware | 1.0 | 0.024661 |
-| Program/Bank D/Vox Inna-Gadda.ns4p | firmware | 1.0 | 0.019714 |
-| Program/Bank A/B3 Shade.ns4p | default | 1.0 | 0.012193 |
+| Program/Bank A/B3 Shade.ns4p | firmware | 1.0 | 0.027682 |
+| Program/Bank D/Vox Inna-Gadda.ns4p | firmware | 1.0 | 0.01976 |
+| Program/Bank A/B3 Shade.ns4p | default | 1.0 | 0.014484 |
 | Program/Bank D/Vox Inna-Gadda.ns4p | default | 1.0 | 0.009443 |
-| Program/Bank E/Wah EP Ondre J.ns4p | firmware | 1.0 | 0.004646 |
+| Program/Bank E/Wah EP Ondre J.ns4p | firmware | 1.0 | 0.005302 |
 | Program/Bank B/Q and A.ns4p | firmware | 1.0 | 0.00449 |
 | Program/Bank C/Vox Like Me.ns4p | firmware | 1.0 | 0.002406 |
-| Program/Bank C/TapePiano AT.ns4p | default | 1.0 | 0.001396 |
+| Program/Bank C/TapePiano AT.ns4p | default | 1.0 | 0.001411 |
 | Program/Bank C/Vox Like Me.ns4p | default | 1.0 | 0.001047 |
 
 **Level jumps (top 30)**
 
 | entry | rms_delta_db |
 |---|---|
+| Program/Bank D/16th Note Bass.ns4p | 9.61 |
 | Program/Bank B/Fan Club Piano.ns4p | 9.22 |
-| Program/Bank E/PineScape Synth.ns4p | -9.03 |
-| Program/Bank D/16th Note Bass.ns4p | 8.52 |
-| Program/Bank E/Snappy D6.ns4p | 8.35 |
+| Program/Bank E/PineScape Synth.ns4p | -8.95 |
+| Program/Bank C/Bounce Clav.ns4p | 8.49 |
+| Program/Bank E/Snappy D6.ns4p | 8.34 |
 | Program/Bank A/Jazz Guitar II.ns4p | 8.22 |
-| Program/Bank C/Bounce Clav.ns4p | 7.49 |
+| Program/Bank E/24 Frames J3.ns4p | 8.08 |
+| Program/Bank F/Unclocked Pad.ns4p | 7.5 |
 | Program/Bank C/LoFi Piano.ns4p | 7.4 |
-| Program/Bank E/24 Frames J3.ns4p | 7.34 |
-| Program/Bank E/J3 Split Special.ns4p | 7.2 |
+| Program/Bank F/Resonant Peaks.ns4p | 7.33 |
+| Program/Bank E/J3 Split Special.ns4p | 6.66 |
 | Program/Bank F/OD Rock Bass.ns4p | 6.46 |
+| Program/Bank A/Dual Gates.ns4p | -6.43 |
+| Program/Bank E/Spin Wurly II.ns4p | 6.17 |
+| Program/Bank B/Roto EP Ondre J.ns4p | 6.0 |
 
 ## 9. Implications
 
