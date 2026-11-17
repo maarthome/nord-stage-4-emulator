@@ -17,6 +17,10 @@
 //!   stage's own latency (4 frames at `F` for the Amp stage). The first outputs are silence.
 //! * Real time: the kernel tables are built in [`RateMatch::new`] and shared (`Arc`); the
 //!   per-frame path touches fixed rings only, no allocation, lock or I/O.
+//! * Limits: the host rate must lie in about 44.1 to 169 kHz (`2 * hd <= RING` is asserted in
+//!   [`RateMatch::new`]; below the frame rate the up kernel is cut above the host Nyquist and
+//!   would alias). The tables are built for the rate given to `new`; a chain whose sample rate
+//!   changes afterwards must call `set_fx_rate_match` again.
 //! * Provenance: the rate is VERIFIED (`dsp-frame-rate.md`); the kernel shape (length, window,
 //!   cut-off) is ASSUMED (chosen for passband flatness, checked by the tests below: gain within
 //!   0.05 dB to 16 kHz and 0.3 dB for a per-frame one-pole against its analytic response).
@@ -65,6 +69,11 @@ impl Tables {
     fn new(fs: f64) -> Self {
         let ratio = fs / FIRMWARE_FRAME_RATE_HZ;
         let hd = (ZC as f64 * ratio.max(1.0)).ceil() as usize + 1;
+        assert!(
+            2 * hd <= RING,
+            "fx rate match: host rate {fs} Hz needs a {}-frame kernel, the ring holds {RING}",
+            2 * hd
+        );
         let mut down = vec![0.0f32; (PHASES + 1) * 2 * hd];
         for p in 0..=PHASES {
             let frac = p as f64 / PHASES as f64;
@@ -219,6 +228,27 @@ mod tests {
         2.0 * (s * s + c * c).sqrt() / p
     }
 
+    /// Same measurement as [`sine_gain`] with the stage called once per host frame (no matcher).
+    fn sine_gain_unmatched(fs: f32, hz: f32, mut stage: impl FnMut([f32; 2]) -> [f32; 2]) -> f64 {
+        let (mut s, mut c, mut p) = (0.0f64, 0.0f64, 0.0f64);
+        for i in 0..20_000 {
+            let ph = std::f64::consts::TAU * f64::from(hz) * i as f64 / f64::from(fs);
+            let y = stage([ph.sin() as f32; 2])[0];
+            if i > 2000 {
+                s += f64::from(y) * ph.sin();
+                c += f64::from(y) * ph.cos();
+                p += 1.0;
+            }
+        }
+        2.0 * (s * s + c * c).sqrt() / p
+    }
+
+    #[test]
+    #[should_panic(expected = "ring holds")]
+    fn a_host_rate_too_high_for_the_ring_is_rejected() {
+        let _ = RateMatch::new(192_000.0);
+    }
+
     #[test]
     fn identity_stage_is_flat_to_16_khz_within_0_05_db() {
         for hz in [100.0, 1000.0, 5000.0, 10_000.0, 16_000.0] {
@@ -248,18 +278,10 @@ mod tests {
             assert!(err.abs() < 0.3, "{hz} Hz: {err} dB (got {g}, want {want})");
             // the unmatched stage at 48 kHz is off by the 1.106 frequency stretch
             let mut z = [0.0f32; 2];
-            let mut z_out = 0.0f64;
-            let (mut s, mut c, mut p) = (0.0f64, 0.0f64, 0.0f64);
-            for i in 0..20_000 {
-                let ph = std::f64::consts::TAU * f64::from(hz) * i as f64 / 48_000.0;
-                z = [z[0] + a * (ph.sin() as f32 - z[0]), 0.0];
-                if i > 2000 {
-                    s += f64::from(z[0]) * ph.sin();
-                    c += f64::from(z[0]) * ph.cos();
-                    p += 1.0;
-                }
-            }
-            z_out += 2.0 * (s * s + c * c).sqrt() / p;
+            let z_out = sine_gain_unmatched(48_000.0, hz, |x| {
+                z = [z[0] + a * (x[0] - z[0]), z[1] + a * (x[1] - z[1])];
+                z
+            });
             assert!(
                 (20.0 * (z_out / want).log10()).abs() > err.abs(),
                 "{hz} Hz: matcher must be closer than the unmatched stage"

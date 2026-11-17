@@ -5,8 +5,9 @@
 //! Each stage is run three ways:
 //!
 //! * `fwF`   the firmware port at the DSP frame rate 43,402.34 Hz: this is the oracle response in
-//!   Hz (the ports are bit exact per frame against the `sharc-fx` oracle, and the firmware runs
-//!   one frame per 1/43,402 s, `docs/research/dsp-frame-rate.md`),
+//!   Hz by inference (the ports are bit exact per frame against the `sharc-fx` oracle goldens and
+//!   the firmware runs one frame per 1/43,402 s, `docs/research/dsp-frame-rate.md`; the oracle
+//!   itself was not driven with noise through the amp),
 //! * `fw48`  the same port at the engine rate 48 kHz (what a 48 kHz render does),
 //! * `rm48`  the same port at 48 kHz behind `LayerFxChain::set_fx_rate_match(true)` (opt-in),
 //! * `eng48` the engine's own path (RBJ biquads, `tanh`) at 48 kHz.
@@ -55,14 +56,13 @@ fn chain(rate: f64, setup: &Setup, firmware: bool) -> LayerFxChain {
     fx
 }
 
-fn row(name: &str, rms: f32, setup: &Setup, bands: &[(f64, f64)]) -> [Vec<f64>; 4] {
+fn row(rms: f32, setup: &Setup, bands: &[(f64, f64)]) -> [Vec<f64>; 4] {
     let f_hz = FIRMWARE_FRAME_RATE_HZ;
     let run = |rate: f64, firmware: bool, rm: bool| {
         let mut fx = chain(rate, setup, firmware);
         fx.set_fx_rate_match(rm);
         gains(rate, rms, bands, |x| fx.process_frame(x))
     };
-    let _ = name;
     [
         run(f_hz, true, false),
         run(48_000.0, true, false),
@@ -197,15 +197,15 @@ fn main() {
     let nm: Vec<&str> = names.iter().map(String::as_str).collect();
     println!("# amp (drive + cabinet), noise -30 dBFS rms, firmware port vs engine path");
     for (label, s) in amp_setups() {
-        print_row(&label, &row(&label, 0.0316, &s, &bands), &nm);
+        print_row(&label, &row(0.0316, &s, &bands), &nm);
     }
     println!("# Amp EQ (firmware tone stack vs engine biquads)");
     for (label, s) in eq_setups() {
-        print_row(&label, &row(&label, 0.0316, &s, &bands), &nm);
+        print_row(&label, &row(0.0316, &s, &bands), &nm);
     }
     println!("# layer compressor (firmware gain computer vs engine), noise -18 dBFS rms");
     for (label, s) in comp_setups() {
-        print_row(&label, &row(&label, 0.126, &s, &bands), &nm);
+        print_row(&label, &row(0.126, &s, &bands), &nm);
     }
     println!("# master bus");
     master_rows(&bands, &nm);
@@ -219,7 +219,7 @@ mod tests {
     fn a_flat_chain_has_zero_gain_in_every_aggregate_band() {
         let setup: Setup = Box::new(|_, _| {});
         let bands: Vec<(f64, f64)> = AGG.iter().map(|a| (a.1, a.2)).collect();
-        let g = row("flat", 0.05, &setup, &bands);
+        let g = row(0.05, &setup, &bands);
         for run in &g {
             for v in run {
                 assert!(v.abs() < 0.05, "{v}");
@@ -235,7 +235,7 @@ mod tests {
             .find(|(n, _)| n == "amp Twin I drive 0")
             .expect("twin setup");
         let bands = [(3000.0, 8000.0)];
-        let g = row("twin", 0.0316, s, &bands);
+        let g = row(0.0316, s, &bands);
         assert!(g[1][0].is_finite() && g[0][0].is_finite());
         assert!(g[1][0] != g[0][0], "the two rates must differ");
     }
