@@ -44,9 +44,16 @@ impl Runner {
         self.core.enable_epchain();
         let Some(path) = path else { return Ok(()) };
         let bytes = std::fs::read(path).map_err(|e| format!("epchain: {path}: {e}"))?;
-        let words: Vec<u32> = bytes
-            .chunks_exact(4)
-            .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        let words: Vec<u32> = (0..bytes.len() / 4)
+            .map(|i| {
+                let w = [
+                    bytes[4 * i],
+                    bytes[4 * i + 1],
+                    bytes[4 * i + 2],
+                    bytes[4 * i + 3],
+                ];
+                u32::from_le_bytes(w)
+            })
             .collect();
         if let Some(e) = self.core.epchain() {
             e.load_words(base, &words);
