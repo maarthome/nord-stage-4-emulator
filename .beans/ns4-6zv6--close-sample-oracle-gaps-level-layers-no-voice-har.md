@@ -31,8 +31,4 @@ Native engine changes, default flips, the SY receiver stage, the third layer voi
 
 ## Summary of Changes
 
-See docs/research/sample-gaps.md.
-
-## Summary of Changes
-
 Level gap: 24.0 to 24.3 dB at the voice stage vs 24.08 dB ring scale (harness omission). Whole-member capture: key 60 voice for 110 of 119 programs (50 before), 86 with every scene I layer. Per-loop poke replaced by pcm credit=on; ahead= option; Finger Bass reading fixed. Open: third layer voice, SY receiver, 3 programs. D154, docs/research/sample-gaps.md.
