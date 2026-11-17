@@ -1,4 +1,4 @@
-//! Decoded PCM refill of the SY source ring (the unpacker bypassed), for sample audio runs (D147).
+//! Decoded PCM refill of the SY source ring (the unpacker bypassed), for sample audio runs (D150).
 //!
 //! ```text
 //! pcm VOICE path=FILE [skip=FRAMES]
@@ -60,9 +60,11 @@ impl PcmRingState {
             ));
         }
         let samples: Vec<f32> = bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .skip(2 * skip)
-            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .map(|b| f32::from_le_bytes(*b))
             .collect();
         Ok(Self::new(voice, samples))
     }

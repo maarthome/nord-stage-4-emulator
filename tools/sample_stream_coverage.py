@@ -1,4 +1,4 @@
-"""Coverage of the 119 SAMPLE programs by the SY voice start (D147).
+"""Coverage of the 119 SAMPLE programs by the SY voice start (D150).
 
 Reads the `resolve` JSON of `smp_stream` (layer members per program) and the
 `arm_dsp_capture one --member` captures (`cap/<stem>/*.txt.gz`, phases `k36 / k60 / k84`) and

@@ -1,4 +1,4 @@
-//! Packed sample stream of one `.nsmp4` stroke, as the SY unpacker reads it (D147).
+//! Packed sample stream of one `.nsmp4` stroke, as the SY unpacker reads it (D150).
 //!
 //! The `\0stk` payload of a stroke is a 68-byte header, zero-word padding, the packed blocks and
 //! an end sentinel. The SY image consumes the blocks unchanged except for byte order (big endian
@@ -87,7 +87,8 @@ pub fn packed_stream(payload: &[u8]) -> Result<Vec<u8>, String> {
         ));
     }
     let mut out = Vec::with_capacity(body.len());
-    for w in body.chunks_exact(4) {
+    let (words, _) = body.as_chunks::<4>();
+    for w in words {
         out.extend_from_slice(&[w[3], w[2], w[1], w[0]]);
     }
     Ok(out)
@@ -307,8 +308,10 @@ mod tests {
     fn pcm_bytes_interleaves_and_duplicates_mono() {
         let st = pcm_bytes(&[1.0, 2.0], Some(&[3.0, 4.0]));
         let f: Vec<f32> = st
-            .chunks_exact(4)
-            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|b| f32::from_le_bytes(*b))
             .collect();
         assert_eq!(f, vec![1.0, 3.0, 2.0, 4.0]);
         let mono = pcm_bytes(&[5.0], None);

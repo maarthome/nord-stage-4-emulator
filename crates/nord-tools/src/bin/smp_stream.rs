@@ -1,4 +1,4 @@
-//! Sample stream tool for the SAMPLE oracle runs (D147).
+//! Sample stream tool for the SAMPLE oracle runs (D150).
 //!
 //! * `smp_stream resolve BACKUP.ns4b ENTRY` prints one JSON line with the `.nsmp4` member each
 //!   SAMPLE synth layer of the program entry resolves to (the native name hash, `null` if none).

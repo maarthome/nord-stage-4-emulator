@@ -1,6 +1,6 @@
 # ruff: noqa: E501
 #!/usr/bin/env python3
-r"""SAMPLE programs through the SY1SY2 oracle with the real sample, measured (D147).
+r"""SAMPLE programs through the SY1SY2 oracle with the real sample, measured (D150).
 
 For each program: resolve the layer sample files (native name hash, `smp_stream resolve`), run the
 firmware recall with that sample bound (`arm_dsp_capture one --member`), build the oracle scenario

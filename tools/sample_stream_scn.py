@@ -1,5 +1,5 @@
 # ruff: noqa: E501
-"""Scenario builder for SAMPLE voices on the SY1SY2 oracle (D147).
+"""Scenario builder for SAMPLE voices on the SY1SY2 oracle (D150).
 
 Turns the ARM to SY messages of one played key (`arm_dsp_capture` rows) into a `sharc-ref` scenario
 that starts voice 0 through the real command sequence and feeds the sample either through the
