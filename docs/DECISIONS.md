@@ -6,6 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
+| [D153](#d153-the-sy-chip-runs-live-behind-sharc-live-interrupt-driven-opt-in-the-stub-never-sent-go-because-the-arm-polls-inside-one-tick-with-the-poll-fed-go-is-sent-choir-reaches-playing-past-first-ring-is-not-shown) | 2026-11-17 | SY chip live on the ARM-DSP link, opt-in `--sy`; wait at `0xC01E26FC` explained | proposed |
 | [D147](#d147-the-dsp-to-arm-return-path-is-spi-reads-of-dsp-memory-sample-ring-refill-is-not-an-arm-signal-an-opt-in-return-source-answers-them) | 2026-11-17 | The DSP to ARM return path is SPI reads of DSP memory; sample ring refill is not an ARM signal; an opt-in return source answers them | proposed |
 | [D145](#d145-the-firmware-multi-tap-reverb-equals-the-oracle-over-its-whole-tail-and-adds-no-gain-the-by-ear-gap-is-level-tail-and-colour-not-a-port-bug-the-21-26-36-db-excess-is-consistent-with-the-packed-word-noise-floor) | 2026-11-17 | Firmware multi-tap reverb equals the oracle over 30,000 calls and adds no gain; the by-ear gap is wet level (-15 dB at knob 3), tail (1.2 s) and darkness; the +21 / +26 / +36 dB is consistent with the packed-word noise floor; opt-in stays | proposed |
 | [D142](#d142-the-synth-velocity-default-flips-to-the-firmware-law-on-owner-approval-the-file-bits-are-verified-four-of-16-distinct-synth-clips-are-marginally-worse) | 2026-11-17 | The synth velocity default flips to the firmware law on owner approval; the file bits are verified, four of 16 distinct synth clips are marginally worse | accepted |
@@ -1550,6 +1551,16 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Update 2026-11-17 (D142):** the owner overrode the clip rule for one flag: `--firmware-synth-velocity` became the default although 4 of 16 clips are marginally worse.
 - **Impact:** Documentation only in this change; no default, golden or `render_hash` changes. The audit's ranked list gives the order of flips.
 
+
+### D153. The SY chip runs live behind sharc-live (interrupt driven, opt-in); the stub never sent `go` because the ARM polls inside one tick; with the poll fed `go` is sent, Choir reaches playing, past-first-ring is not shown
+
+- **Status:** proposed 2026-11-17
+- **Decided by:** pending the user (task from the parent session; evidence [sy-live-chip](research/sy-live-chip.md), data `docs/research/data/sy-live-*.json`)
+- **Context:** D144 left the SY chip blocked (interrupt driven image, no poll loop); D147 left voice free and stealing open and attributed 40,682 status reads to the wait at `0xC01E0694`.
+- **Decision:** (1) `sharc-live --sy` (`SY:0=sy=<image>` in `arm_dsp_live`) models the SY1SY2 image as interrupt driven: per pass the FIFO pairs are fed and vector 13 (FIFO reset, `0x1C03FD`) raised, the staging ring of prepared voices is refilled with the D111 synthetic header, then vector 17 (audio ISR `0x1C05B9`) is raised `--isrs` times (default 2 = one pass of the 24 kHz ARM tick). Opt-in; no default changes. (2) The live chip answers the return path before the message driven mask. (3) The 40,682 reads of D147 are a second wait (return `0xC01E26FC`, `DM(0x9219A)`, descriptor in `r4`) spinning inside one ARM tick before the harness delivers its messages: with the stub, with the live chip and without a fed poll it never passes. `--poll-advance N` (message feed plus one pass per `N` reads of the same word) makes it pass after 192 reads and the ARM sends `prepare` and `go` for 3 of 3 chord notes (stub: 1 and 0). (4) Choir voice 0 reaches the playing state and keeps non-silent output for the whole run; Guitar and Quintet voice 0 alternate waiting and release. Past the first 128 frame ring, voice free and stealing are **not shown** in the paths run (step word reads 0, no state store after note-off). Audio from the live chip is the synthetic stand-in and is not a parity claim.
+- **Why:** The numbers are in the research note; the stub could not distinguish a missing chip from a message delivery lag, the live chip can.
+- **Alternatives:** A stub that sets the release bit on `prepare` (rejected: hides the timing the chip gives); `--epchain` as default (rejected: no external sample image); running passes on a wall clock inside the instruction loop (follow-up, larger change).
+- **Impact:** `crates/nord-sharc/src/runner/live_sy.rs`, `live.rs`, `live_presets.rs`, `periph_run.rs`, `bin/sharc_live.rs`; `tools/arm_dsp_live.py`, `arm_dsp_route.py`, `arm_dsp_return.py`, `arm_dsp_link.py`, `arm_sy_timeline.py` (+ tests); research note, ROADMAP, emulation-coverage, audio-remaining, OQ22; no render change.
 
 ### D147. The DSP to ARM return path is SPI reads of DSP memory; sample ring refill is not an ARM signal; an opt-in return source answers them
 
