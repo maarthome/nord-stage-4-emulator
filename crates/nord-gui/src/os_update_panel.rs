@@ -62,6 +62,9 @@ impl OsUpdatePanel {
     /// One line for the bar.
     pub fn summary(&self) -> String {
         match (&self.status.path, &self.status.tables) {
+            (None, _) if self.status.config_error.is_some() => {
+                "WAVE sound: placeholder (saved settings problem)".into()
+            }
             (None, _) => "WAVE sound: placeholder (no Nord OS update file set)".into(),
             (Some(_), Some(Ok(n))) => format!("WAVE sound: {n} Nord tables"),
             (Some(_), Some(Err(_))) => "WAVE sound: placeholder (update file problem)".into(),
@@ -177,13 +180,21 @@ mod tests {
         p.status = Status {
             path: at.clone(),
             tables: Some(Ok(46)),
+            config_error: None,
         };
         assert!(p.summary().contains("46 Nord tables"));
         p.status = Status {
             path: at,
             tables: Some(Err("bad".into())),
+            config_error: None,
         };
         assert!(p.summary().contains("update file problem"));
+        p.status = Status {
+            path: None,
+            tables: None,
+            config_error: Some("bad json".into()),
+        };
+        assert!(p.summary().contains("saved settings problem"));
     }
 
     #[test]

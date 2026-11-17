@@ -99,7 +99,7 @@ pub fn tables_from_file(
     path: &std::path::Path,
     boot: &Super24Tables,
 ) -> Result<Vec<Super24Tables>, String> {
-    let raw = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let raw = crate::os_update::read_capped(path)?;
     let code = match crate::os_update::extract_firmware_container(&raw) {
         Ok(container) => {
             let fw = FirmwareContainer::parse(&container)?;

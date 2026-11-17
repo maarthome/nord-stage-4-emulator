@@ -24,6 +24,8 @@ use crate::firmware::FirmwareContainer;
 
 /// Largest input or decoded image accepted (the real files are 12.8 MB and 40 MB decoded).
 pub(crate) const MAX_BYTES: usize = 256 << 20;
+/// Largest file read from disk (the real update files are 12.8 MB; a `.ns4b` is 3 GB).
+pub const MAX_INPUT: u64 = 512 << 20;
 const HEADER: usize = 0x20;
 /// Nesting limit: zip -> exe/dmg.
 const MAX_DEPTH: u32 = 2;
@@ -62,6 +64,26 @@ pub(crate) fn find_container(b: &[u8]) -> Option<&[u8]> {
         from = at + 1;
     }
     None
+}
+
+/// Reads `path` whole, refusing a file larger than [`MAX_INPUT`] before allocating it.
+pub fn read_capped(path: &std::path::Path) -> Result<Vec<u8>, String> {
+    read_capped_to(path, MAX_INPUT)
+}
+
+fn read_capped_to(path: &std::path::Path, cap: u64) -> Result<Vec<u8>, String> {
+    let shown = path.display();
+    let len = std::fs::metadata(path)
+        .map_err(|e| format!("{shown}: {e}"))?
+        .len();
+    if len > cap {
+        return Err(format!(
+            "{shown}: file is {} MB, too big to be a Nord OS update (limit {} MB)",
+            len >> 20,
+            cap >> 20
+        ));
+    }
+    std::fs::read(path).map_err(|e| format!("{shown}: {e}"))
 }
 
 fn extract(bytes: &[u8], depth: u32) -> Result<Vec<u8>, String> {
@@ -161,6 +183,17 @@ mod tests {
         }
         let z = fake_zip(&[("a.txt", b"no firmware here")], false);
         assert!(extract_firmware_container(&z).is_err());
+    }
+
+    #[test]
+    fn a_file_over_the_cap_is_refused_before_it_is_read() {
+        let p = std::env::temp_dir().join(format!("ns4-cap-{}.bin", std::process::id()));
+        std::fs::write(&p, vec![0u8; 3 << 20]).unwrap();
+        assert_eq!(read_capped_to(&p, 4 << 20).unwrap().len(), 3 << 20);
+        let e = read_capped_to(&p, 2 << 20).unwrap_err();
+        assert!(e.contains("too big") && e.contains("3 MB"), "{e}");
+        assert!(read_capped(&p).is_ok());
+        assert!(read_capped(&p.with_extension("missing")).is_err());
     }
 
     #[test]

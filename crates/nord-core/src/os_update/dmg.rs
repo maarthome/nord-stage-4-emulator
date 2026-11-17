@@ -103,6 +103,7 @@ pub(super) fn decode(b: &[u8]) -> Result<Vec<u8>, String> {
             };
             let chunk = match t {
                 0 | 2 | 0x7FFF_FFFE => continue,
+                1 if cl > len => return Err(bad()),
                 1 => src().ok_or_else(bad)?.to_vec(),
                 0x8000_0005 => decompress_to_vec_zlib_with_limit(src().ok_or_else(bad)?, len)
                     .map_err(|e| format!("cannot unpack a disk image block ({e:?})"))?,
@@ -154,5 +155,22 @@ mod tests {
         let n = d.len();
         d[n - 512 + 0xD8..n - 512 + 0xE0].copy_from_slice(&u64::MAX.to_be_bytes());
         assert!(decode(&d).is_err());
+    }
+
+    #[test]
+    fn a_raw_chunk_longer_than_its_sectors_is_damage() {
+        use super::super::support::b64;
+        let mut d = fake_dmg(&container());
+        let xml = String::from_utf8_lossy(&d).into_owned();
+        let mut mish = tables(&xml).remove(0);
+        let old = b64(&mish);
+        // third chunk (raw): claim zero sectors while its stored length stays one sector
+        mish[204 + 80 + 16..204 + 80 + 24].copy_from_slice(&0u64.to_be_bytes());
+        let at = d
+            .windows(old.len())
+            .position(|w| w == old.as_bytes())
+            .unwrap();
+        d[at..at + old.len()].copy_from_slice(b64(&mish).as_bytes());
+        assert!(decode(&d).unwrap_err().contains("damaged"));
     }
 }

@@ -81,7 +81,7 @@ pub fn fake_zip(entries: &[(&str, &[u8])], deflate: bool) -> Vec<u8> {
     out
 }
 
-fn b64(data: &[u8]) -> String {
+pub fn b64(data: &[u8]) -> String {
     const A: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut s = String::new();
     for c in data.chunks(3) {

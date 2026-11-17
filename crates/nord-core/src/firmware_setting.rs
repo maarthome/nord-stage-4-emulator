@@ -32,6 +32,8 @@ pub struct Status {
     pub path: Option<(PathBuf, Source)>,
     /// Number of WAVE tables read from it, or the plain-language reason it failed.
     pub tables: Option<Result<usize, String>>,
+    /// The saved settings file could not be read (corrupt); the placeholder is in use.
+    pub config_error: Option<String>,
 }
 
 /// Number of WAVE tables `path` yields (reads and drops them; installs nothing).
@@ -42,12 +44,23 @@ pub fn check(path: &Path) -> Result<usize, String> {
 
 /// The effective setting: the environment variable, else the config file at `config`.
 pub fn status(env: Option<&str>, config: &Path) -> Status {
+    let mut config_error = None;
     let path = match env.map(str::trim).filter(|v| !v.is_empty()) {
         Some(v) => Some((PathBuf::from(v), Source::Environment)),
-        None => user_config::saved_default(None, config).map(|p| (p, Source::Saved)),
+        None => match user_config::saved_default(None, config) {
+            Ok(p) => p.map(|p| (p, Source::Saved)),
+            Err(e) => {
+                config_error = Some(e);
+                None
+            }
+        },
     };
     let tables = path.as_ref().map(|(p, _)| check(p));
-    Status { path, tables }
+    Status {
+        path,
+        tables,
+        config_error,
+    }
 }
 
 /// Validates `path`, then remembers it in `config` (made absolute). Returns the table count.
@@ -73,8 +86,14 @@ pub fn clear(config: &Path) -> Result<(), String> {
 /// Plain-language text of a [`Status`] for the CLI and the GUI.
 pub fn describe(s: &Status) -> String {
     let Some((path, src)) = &s.path else {
+        let broken = s.config_error.as_ref().map_or(String::new(), |e| {
+            format!(
+                "PROBLEM: saved settings not readable ({e}).
+"
+            )
+        });
         return format!(
-            "{PLACEHOLDER_NOTE}\nGet the official update: {DOWNLOAD_WINDOWS}\n(Mac: {DOWNLOAD_MAC})\nThen run: ns4 firmware set \"<downloaded file>\""
+            "{broken}{PLACEHOLDER_NOTE}\nGet the official update: {DOWNLOAD_WINDOWS}\n(Mac: {DOWNLOAD_MAC})\nThen run: ns4 firmware set \"<downloaded file>\""
         );
     };
     let from = match src {
@@ -98,7 +117,7 @@ pub fn fnv1a64(bytes: &[u8]) -> u64 {
 
 /// `container: <bytes> bytes, fnv1a64 <hex>; WAVE tables: <n>` for `path`: numbers only.
 pub fn info(path: &Path) -> Result<String, String> {
-    let raw = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let raw = crate::os_update::read_capped(path)?;
     let c = crate::os_update::extract_firmware_container(&raw)?;
     Ok(format!(
         "container: {} bytes, fnv1a64 {:016x}; WAVE tables: {}",
@@ -144,12 +163,24 @@ mod tests {
             s,
             Status {
                 path: None,
-                tables: None
+                tables: None,
+                config_error: None
             }
         );
         let t = describe(&s);
         assert!(t.contains("placeholder"), "{t}");
         assert!(t.contains("nordkeyboards.com/wt/documents/1042"), "{t}");
+    }
+
+    #[test]
+    fn a_corrupt_config_shows_in_status() {
+        let c = cfg("corrupt");
+        std::fs::create_dir_all(c.parent().unwrap()).unwrap();
+        std::fs::write(&c, "{ nope").unwrap();
+        let s = status(None, &c);
+        assert_eq!(s.path, None);
+        let t = describe(&s);
+        assert!(t.contains("PROBLEM") && t.contains("placeholder"), "{t}");
     }
 
     #[test]

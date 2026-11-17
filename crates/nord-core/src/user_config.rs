@@ -74,26 +74,77 @@ pub fn save(path: &Path, cfg: &UserConfig) -> Result<(), String> {
     std::fs::write(path, text + "\n").map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The saved update-file path that applies now: `None` when `env` (the value of `NS4_WAVE_TABLES`)
-/// is set and non-empty (the variable wins), else the path in the config file at `config`.
-pub fn saved_default(env: Option<&str>, config: &Path) -> Option<PathBuf> {
+/// The saved update-file path that applies now: `Ok(None)` when `env` (the value of
+/// `NS4_WAVE_TABLES`) is set and non-empty (the variable wins) or nothing is saved, else the path in
+/// the config file at `config`. A config file that cannot be read or parsed is an `Err` (never
+/// silently ignored).
+pub fn saved_default(env: Option<&str>, config: &Path) -> Result<Option<PathBuf>, String> {
     if env.is_some_and(|v| !v.trim().is_empty()) {
-        return None;
+        return Ok(None);
     }
-    load(config)
-        .ok()?
+    Ok(load(config)?
         .os_update_path
         .filter(|p| !p.trim().is_empty())
-        .map(PathBuf::from)
+        .map(PathBuf::from))
+}
+
+/// What start-up does with the saved setting: the path to put in `NS4_WAVE_TABLES` (only when it
+/// works), and a plain-language warning when a saved setting had to be skipped.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct SavedApplication {
+    /// Saved update file that loads; `None` means the placeholder wavetable is used.
+    pub path: Option<PathBuf>,
+    /// Why a saved setting was skipped (moved, deleted, corrupt config or file).
+    pub warning: Option<String>,
+}
+
+/// Decides what to apply for `env` and the config file at `config`. A saved path is applied only
+/// when it still loads (`check` = `firmware_setting::check`); otherwise the placeholder stays and a
+/// warning says why, so a moved download never stops the app or `ns4` from starting (the explicit
+/// variable and flag keep failing loudly: they never go through here).
+pub fn resolve_saved(
+    env: Option<&str>,
+    config: &Path,
+    check: impl Fn(&Path) -> Result<usize, String>,
+) -> SavedApplication {
+    match saved_default(env, config) {
+        Ok(None) => SavedApplication::default(),
+        Ok(Some(p)) => match check(&p) {
+            Ok(_) => SavedApplication {
+                path: Some(p),
+                warning: None,
+            },
+            Err(e) => SavedApplication {
+                path: None,
+                warning: Some(format!(
+                    "saved Nord OS update file not used ({e}); the placeholder wavetable is used. Fix with: ns4 firmware set \"<file>\""
+                )),
+            },
+        },
+        Err(e) => SavedApplication {
+            path: None,
+            warning: Some(format!(
+                "saved settings not used ({e}); the placeholder wavetable is used"
+            )),
+        },
+    }
 }
 
 /// Binaries only, once, before any thread starts and before options are parsed: fills
-/// `NS4_WAVE_TABLES` from the saved config when the variable is unset. Returns the path applied.
+/// `NS4_WAVE_TABLES` from the saved config when the variable is unset and the saved file still
+/// loads. A saved file that moved or is damaged prints a warning on stderr and leaves the
+/// placeholder in place. Returns the path applied.
 pub fn apply_saved_default() -> Option<PathBuf> {
     let cfg = default_config_path()?;
-    let path = saved_default(std::env::var(WAVE_TABLES_ENV).ok().as_deref(), &cfg)?;
-    std::env::set_var(WAVE_TABLES_ENV, &path);
-    Some(path)
+    let env = std::env::var(WAVE_TABLES_ENV).ok();
+    let applied = resolve_saved(env.as_deref(), &cfg, crate::firmware_setting::check);
+    if let Some(w) = &applied.warning {
+        eprintln!("ns4: {w}");
+    }
+    if let Some(p) = &applied.path {
+        std::env::set_var(WAVE_TABLES_ENV, p);
+    }
+    applied.path
 }
 
 #[cfg(test)]
@@ -155,14 +206,17 @@ mod tests {
         .unwrap();
         assert_eq!(
             saved_default(None, &path),
-            Some(PathBuf::from("/saved/os.exe"))
+            Ok(Some(PathBuf::from("/saved/os.exe")))
         );
         assert_eq!(
             saved_default(Some(""), &path),
-            Some(PathBuf::from("/saved/os.exe"))
+            Ok(Some(PathBuf::from("/saved/os.exe")))
         );
-        assert_eq!(saved_default(Some("/env/os.exe"), &path), None);
-        assert_eq!(saved_default(None, Path::new("no/such/config.json")), None);
+        assert_eq!(saved_default(Some("/env/os.exe"), &path), Ok(None));
+        assert_eq!(
+            saved_default(None, Path::new("no/such/config.json")),
+            Ok(None)
+        );
     }
 
     #[test]
@@ -170,6 +224,64 @@ mod tests {
         let path = tmp("empty");
         save(&path, &UserConfig::default()).unwrap();
         assert_eq!(std::fs::read_to_string(&path).unwrap().trim(), "{}");
-        assert_eq!(saved_default(None, &path), None);
+        assert_eq!(saved_default(None, &path), Ok(None));
+    }
+
+    #[test]
+    fn a_corrupt_config_is_reported_not_ignored() {
+        let path = tmp("corrupt");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "{ not json").unwrap();
+        assert!(saved_default(None, &path)
+            .unwrap_err()
+            .contains("config.json"));
+        let r = resolve_saved(None, &path, |_| Ok(46));
+        assert_eq!(r.path, None);
+        assert!(r.warning.unwrap().contains("placeholder"));
+        // the variable still wins without touching the broken file
+        assert_eq!(
+            resolve_saved(Some("/env"), &path, |_| Ok(46)),
+            Default::default()
+        );
+    }
+
+    #[test]
+    fn a_moved_saved_file_falls_back_to_the_placeholder_with_a_message() {
+        let path = tmp("stale");
+        let gone = std::env::temp_dir().join(format!("ns4-cfg-gone-{}.exe", std::process::id()));
+        let _ = std::fs::remove_file(&gone);
+        let cfg = UserConfig {
+            os_update_path: Some(gone.display().to_string()),
+        };
+        save(&path, &cfg).unwrap();
+        let r = resolve_saved(None, &path, crate::firmware_setting::check);
+        assert_eq!(r.path, None, "a stale path must not reach NS4_WAVE_TABLES");
+        let w = r.warning.expect("a visible message");
+        assert!(
+            w.contains("placeholder") && w.contains("ns4 firmware set"),
+            "{w}"
+        );
+        // a damaged (wrong) file falls back the same way
+        std::fs::write(&gone, b"not an update").unwrap();
+        let r = resolve_saved(None, &path, crate::firmware_setting::check);
+        assert_eq!(r.path, None);
+        assert!(r.warning.unwrap().contains("not a Nord OS update"));
+    }
+
+    #[test]
+    fn a_saved_file_that_loads_is_applied_without_a_warning() {
+        let path = tmp("good");
+        let img = std::env::temp_dir().join(format!("ns4-cfg-good-{}.bin", std::process::id()));
+        std::fs::write(&img, crate::synth::fw_wave_tables::tests::image()).unwrap();
+        save(
+            &path,
+            &UserConfig {
+                os_update_path: Some(img.display().to_string()),
+            },
+        )
+        .unwrap();
+        let r = resolve_saved(None, &path, crate::firmware_setting::check);
+        assert_eq!(r.path, Some(img));
+        assert_eq!(r.warning, None);
     }
 }

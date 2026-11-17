@@ -19,6 +19,11 @@ pub(super) fn is_zip(b: &[u8]) -> bool {
 
 /// `(name, bytes)` of every file entry, read through the central directory.
 pub(super) fn entries(b: &[u8]) -> Result<Vec<(String, Vec<u8>)>, String> {
+    entries_within(b, MAX_BYTES)
+}
+
+/// [`entries`] with a cap on the total unpacked size of all entries.
+fn entries_within(b: &[u8], budget: usize) -> Result<Vec<(String, Vec<u8>)>, String> {
     let bad = || "the zip is damaged".to_string();
     let lo = b.len().saturating_sub(22 + 65_535);
     let eocd = (lo..b.len().saturating_sub(21))
@@ -28,6 +33,7 @@ pub(super) fn entries(b: &[u8]) -> Result<Vec<(String, Vec<u8>)>, String> {
     let count = le16(b, eocd + 10).ok_or_else(bad)?;
     let mut at = le32(b, eocd + 16).ok_or_else(bad)?;
     let mut out = Vec::new();
+    let mut budget = budget;
     for _ in 0..count {
         if le32(b, at) != Some(0x0201_4B50) {
             return Err(bad());
@@ -45,6 +51,9 @@ pub(super) fn entries(b: &[u8]) -> Result<Vec<(String, Vec<u8>)>, String> {
         if name.ends_with('/') || usize_ > MAX_BYTES {
             continue;
         }
+        budget = budget
+            .checked_sub(usize_)
+            .ok_or("the zip unpacks to more data than expected")?;
         if le32(b, local) != Some(0x0403_4B50) {
             return Err(bad());
         }
@@ -94,5 +103,13 @@ mod tests {
         let cd = m.windows(4).position(|w| w == b"PK\x01\x02").unwrap();
         m[cd + 10] = 99;
         assert!(entries(&m).unwrap_err().contains("unsupported zip method"));
+    }
+
+    #[test]
+    fn the_total_unpacked_size_is_capped() {
+        let z = fake_zip(&[("a", &[7u8; 600]), ("b", &[8u8; 600])], true);
+        assert_eq!(entries_within(&z, 1200).unwrap().len(), 2);
+        let e = entries_within(&z, 1000).unwrap_err();
+        assert!(e.contains("more data than expected"), "{e}");
     }
 }
