@@ -10,6 +10,7 @@ pub mod fx_probe;
 pub mod fx_run;
 pub mod fx_wav;
 pub mod jit_diff;
+pub mod live;
 pub mod msg;
 pub mod pass;
 pub mod periph_run;
