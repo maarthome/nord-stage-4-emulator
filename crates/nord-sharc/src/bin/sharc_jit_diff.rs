@@ -5,15 +5,15 @@
 //! optionally reports `--coverage` PC ranges, and `--bench` measures mean/worst pass latency and
 //! Msteps/s for both interpreter and JIT.
 //!
-//! `--aot-hot START:LAST` swaps the JIT for the hot-block AOT prototype (`Core::run_aot`, built
+//! `--aot-hot START:LAST[,...]` or `--aot-top N` swaps the JIT for the hot-block AOT prototype (`Core::run_aot`, built
 //! with `NORD_SHARC_AOT_HOT`, see `docs/research/sharc-aot-hot-block.md`): the same lockstep
 //! diff (strict state, every pass) and, with `--bench`, interpreter-vs-AOT timings.
 
 use nord_sharc::core::Core;
 #[cfg(feature = "jit")]
 use nord_sharc::core::JitProfile;
+use nord_sharc::runner::aot_hot::AotRun;
 use nord_sharc::runner::msg::{self, Msg, STRIP_BASE};
-#[cfg(feature = "jit")]
 use nord_sharc::runner::pass::PassConfig;
 use nord_sharc::runner::{parse_number, parse_value};
 use std::process::ExitCode;
@@ -39,9 +39,15 @@ struct Opts {
     profile_jit: bool,
     lenient: bool,
     fast_float: bool,
-    aot_hot: Option<(u32, u32)>,
+    /// `--aot-hot A:B,C:D`: blocks to enable (each must be embedded in this binary).
+    aot_hot: Vec<(u32, u32)>,
+    /// `--aot-top N`: enable the first N blocks embedded in this binary (rank order).
+    aot_top: Option<usize>,
+    /// `--aot-detail`: print the counters of each enabled block.
+    aot_detail: bool,
     aot_audio: bool,
     bufs: Vec<String>,
+    aot_rank: Option<(usize, u32)>,
 }
 
 fn parse_kv(s: &str) -> Result<(u32, u32), String> {
@@ -80,9 +86,12 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
         profile_jit: false,
         lenient: false,
         fast_float: false,
-        aot_hot: None,
+        aot_hot: Vec::new(),
+        aot_top: None,
+        aot_detail: false,
         aot_audio: false,
         bufs: Vec::new(),
+        aot_rank: None,
     };
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -113,9 +122,26 @@ fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--profile-jit" => o.profile_jit = true,
             "--lenient" => o.lenient = true,
             "--fast-float" => o.fast_float = true,
+            "--aot-rank" => {
+                let v = val("TOP:MINLEN")?;
+                let (a, b) = v.split_once(':').ok_or("--aot-rank needs TOP:MINLEN")?;
+                o.aot_rank = Some((
+                    a.parse().map_err(|_| "bad --aot-rank TOP")?,
+                    b.parse().map_err(|_| "bad --aot-rank MINLEN")?,
+                ));
+            }
             "--aot-audio" => o.aot_audio = true,
             "--buf" => o.bufs.push(val("SPEC")?),
-            "--aot-hot" => o.aot_hot = Some(parse_range(&val("START:LAST")?)?),
+            "--aot-hot" => {
+                o.aot_hot = val("START:LAST[,START:LAST...]")?
+                    .split(',')
+                    .map(parse_range)
+                    .collect::<Result<_, _>>()?;
+            }
+            "--aot-detail" => o.aot_detail = true,
+            "--aot-top" => {
+                o.aot_top = Some(val("N")?.parse().map_err(|_| "bad --aot-top N")?);
+            }
             _ if a.starts_with('-') => return Err(format!("unknown option {a}")),
             _ => o.image = a.clone(),
         }
@@ -447,11 +473,8 @@ fn run_diff(_o: &Opts, _image: &[u8]) -> ExitCode {
 }
 
 /// `--aot-hot`: strict lockstep diff of interpreter vs hot-block AOT, then the benchmark.
-fn run_aot(o: &Opts, image: &[u8], (start, last): (u32, u32)) -> ExitCode {
-    use nord_sharc::runner::aot_hot::{diff, AotRun};
-    use nord_sharc::runner::pass::PassConfig;
-
-    let r = AotRun {
+fn aot_run<'a>(o: &'a Opts, image: &'a [u8], ranges: &'a [(u32, u32)]) -> AotRun<'a> {
+    AotRun {
         image,
         pc: o.pc,
         devs: &o.devs,
@@ -467,10 +490,41 @@ fn run_aot(o: &Opts, image: &[u8], (start, last): (u32, u32)) -> ExitCode {
             max_steps: o.max_pass_steps,
             irq: None,
         },
-        start,
-        last,
+        ranges,
         lenient: o.lenient,
+    }
+}
+
+/// `--aot-rank TOP:MINLEN`: rank the straight-line runs of the (real) pass, print the gaps.
+fn run_rank(o: &Opts, image: &[u8], (top, min_len): (usize, u32)) -> ExitCode {
+    use nord_sharc::core::Core;
+    use nord_sharc::runner::aot_rank::{build_report, format_report, profile};
+    let r = aot_run(o, image, &[]);
+    let (core, prof) = match profile(&r) {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("rank failed: {e}");
+            return ExitCode::FAILURE;
+        }
     };
+    let mut shape = |pc: u32| Core::aot_insn_class(&core, pc).1;
+    let rep = build_report(&prof, &mut shape, min_len);
+    print!("{}", format_report(&rep, top));
+    let ranges: Vec<String> = rep
+        .runs
+        .iter()
+        .take(top)
+        .map(|r| format!("0x{:x}:0x{:x}", r.start, r.last))
+        .collect();
+    println!("ranges {}", ranges.join(","));
+    ExitCode::SUCCESS
+}
+
+/// `--aot-hot`: strict lockstep diff of interpreter vs hot-block AOT, then the benchmark.
+fn run_aot(o: &Opts, image: &[u8], ranges: &[(u32, u32)]) -> ExitCode {
+    use nord_sharc::runner::aot_hot::diff;
+
+    let r = aot_run(o, image, ranges);
     if o.aot_audio {
         let code = run_audio(o, &r);
         if o.bench && code == ExitCode::SUCCESS {
@@ -479,10 +533,34 @@ fn run_aot(o: &Opts, image: &[u8], (start, last): (u32, u32)) -> ExitCode {
         return code;
     }
     match diff(&r) {
-        Ok(rep) => println!(
-            "AOT DIFF OK: boot {} steps + {} passes ({} steps) matched 1:1 (strict state + SRAM every {} steps); block calls={} steps={} misses={}",
-            rep.boot_steps, rep.passes, rep.pass_steps, o.chunk, rep.aot.calls, rep.aot.steps, rep.aot.misses
-        ),
+        Ok(rep) => {
+            let p = rep.aot_passes;
+            println!(
+                "AOT DIFF OK: {} blocks, boot {} steps + {} passes ({} steps) matched 1:1 (strict state + SRAM every {} steps); block calls={} steps={} misses={} bails={}; audio passes: {:.2}% of steps covered ({:.2}% native), calls={} misses={} bails={}",
+                ranges.len(),
+                rep.boot_steps,
+                rep.passes,
+                rep.pass_steps,
+                o.chunk,
+                rep.aot.calls,
+                rep.aot.steps,
+                rep.aot.misses,
+                rep.aot.bails,
+                100.0 * p.steps as f64 / rep.pass_steps.max(1) as f64,
+                100.0 * p.native_steps as f64 / rep.pass_steps.max(1) as f64,
+                p.calls,
+                p.misses,
+                p.bails
+            );
+            if o.aot_detail {
+                for (start, last, steps, native, st) in &rep.blocks {
+                    println!(
+                        "  block 0x{start:x}..0x{last:x} {steps} insns ({native} native): calls={} misses={} bails={}",
+                        st.calls, st.misses, st.bails
+                    );
+                }
+            }
+        }
         Err(e) => {
             eprintln!("AOT MISMATCH: {e}");
             return ExitCode::FAILURE;
@@ -559,8 +637,18 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    if let Some(range) = opts.aot_hot {
-        return run_aot(&opts, &image, range);
+    if let Some(rank) = opts.aot_rank {
+        return run_rank(&opts, &image, rank);
+    }
+    if opts.aot_top.is_some() || !opts.aot_hot.is_empty() {
+        let mut ranges = opts.aot_hot.clone();
+        if let Some(n) = opts.aot_top {
+            ranges = nord_sharc::core::Core::aot_generated_ranges()
+                .into_iter()
+                .take(n)
+                .collect();
+        }
+        return run_aot(&opts, &image, &ranges);
     }
     run_diff(&opts, &image)
 }
@@ -606,7 +694,7 @@ mod tests {
         assert_eq!(o.msgs.len(), 1);
         assert!(o.coverage);
         assert!(o.bench);
-        assert_eq!(o.aot_hot, Some((0x12_5021, 0x12_50AA)));
+        assert_eq!(o.aot_hot, vec![(0x12_5021, 0x12_50AA)]);
         assert!(o.aot_audio);
         assert_eq!(o.bufs, vec!["@0xB2EF4:8:f32".to_string()]);
         assert!(parse_range("0x1").is_err());

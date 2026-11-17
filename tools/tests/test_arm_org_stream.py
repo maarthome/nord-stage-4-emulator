@@ -69,7 +69,9 @@ def test_count_by_target_names_cores_and_path1() -> None:
     assert aos.count_by_target(rows) == {"ORG core 2": 2, "PNO core 1": 1, "SY path 1": 1}
 
 
-def test_targets_cover_org_core2_and_pno_core1() -> None:
-    assert [(t[1], t[2]) for t in aos.TARGETS] == [("ORG", 2), ("PNO", 1)]
+def test_targets_cover_every_path2_receiver() -> None:
+    targets = [(t[1], t[2]) for t in aos.TARGETS]
+    assert targets[:2] == [("ORG", 2), ("PNO", 1)]
+    assert set(targets) == {(c, n) for c in ("ORG", "PNO", "FX") for n in (1, 2)}
     rows = [(0, msg(1, 5, 9, core=1)), (1, msg(2, 6, 7))]
     assert [m.dm_word for _t, m in aos.select(rows, "PNO", 1)] == [5]
