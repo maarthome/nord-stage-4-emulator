@@ -29,7 +29,9 @@ pub fn speed_words(rotor_hz: f64, horn_hz: f64) -> [u32; 3] {
 
 /// RMS of consecutive blocks of [`BLOCK`] samples.
 pub fn block_rms(x: &[f32]) -> Vec<f64> {
-    x.chunks_exact(BLOCK)
+    x.as_chunks::<BLOCK>()
+        .0
+        .iter()
         .map(|c| (c.iter().map(|v| f64::from(*v).powi(2)).sum::<f64>() / BLOCK as f64).sqrt())
         .collect()
 }
