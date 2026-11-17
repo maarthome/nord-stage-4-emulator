@@ -21,6 +21,12 @@ fn run_cli(args: &[String]) -> Result<String, String> {
              Routing: 7 Independent Per-Layer FX Racks + 4 Split Zones + 3-Source Morph Matrix"
                 .to_string(),
         ),
+        "firmware" => nord_core::firmware_setting::run(
+            &args[2.min(args.len())..],
+            &nord_core::user_config::default_config_path()
+                .ok_or("no per-user config directory on this system")?,
+            env::var("NS4_WAVE_TABLES").ok().as_deref(),
+        ),
         "inspect" => {
             let path = args
                 .get(2)
@@ -479,6 +485,10 @@ Wrote {wav_path} ({} bytes, 32-bit float stereo)", wav.len()));
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    // the saved update file fills NS4_WAVE_TABLES, except for `ns4 firmware` which reports the raw setting
+    if args.get(1).map(String::as_str) != Some("firmware") {
+        nord_core::user_config::apply_saved_default();
+    }
     match run_cli(&args) {
         Ok(out) => println!("{out}"),
         Err(err) => {
