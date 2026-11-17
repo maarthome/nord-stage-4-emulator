@@ -25,7 +25,7 @@ impl LayerFxChain {
     /// of `kFx1Type` 0..=3 (types 4..=11 go to `process_fw_mod1_rest`), runs in Master Clock sync, or has no raw values (engine path).
     fn process_fw_mod1(&mut self, l: f32, r: f32) -> Option<[f32; 2]> {
         let (ty, rate) = (self.mod1_type_raw?, self.mod1_rate_raw?);
-        // PUMP follows the Master Clock through its counter word (D134); every other type in sync
+        // PUMP follows the Master Clock through a clock word (D149); every other type in sync
         // stays on the engine model.
         let pump_period = if matches!(ty, 10 | 11) {
             self.pump_clock_period_frames()
@@ -71,7 +71,7 @@ impl LayerFxChain {
         &mut self,
         ty: u8,
         rate: u32,
-        clock_period: Option<f64>,
+        clock_period: Option<(f64, f32)>,
         l: f32,
         r: f32,
     ) -> Option<[f32; 2]> {
@@ -132,10 +132,15 @@ impl LayerFxChain {
 
     /// Master Clock division of the PUMP in engine frames (`fs * 60 / bpm * beats`): `Some` only
     /// when `mod1_sync_beats` and the BPM are valid.
-    fn pump_clock_period_frames(&self) -> Option<f64> {
-        let beats = f64::from(self.mod1_sync_beats.filter(|b| b.is_finite() && *b > 0.0)?);
+    fn pump_clock_period_frames(&self) -> Option<(f64, f32)> {
+        let beats = self.mod1_sync_beats.filter(|b| b.is_finite() && *b > 0.0)?;
         let bpm = f64::from(self.clock_bpm);
-        (bpm.is_finite() && bpm > 0.0).then(|| f64::from(self.sample_rate) * 60.0 / bpm * beats)
+        (bpm.is_finite() && bpm > 0.0).then(|| {
+            (
+                f64::from(self.sample_rate) * 60.0 / bpm * f64::from(beats),
+                beats,
+            )
+        })
     }
 
     pub(super) fn process_mod1(&mut self, l: f32, r: f32, inv_fs: f32) -> [f32; 2] {
