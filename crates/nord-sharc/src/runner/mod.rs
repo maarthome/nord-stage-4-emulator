@@ -8,6 +8,7 @@ pub mod aot_rank;
 pub mod audio;
 pub mod fx_run;
 pub mod jit_diff;
+pub mod live;
 pub mod msg;
 pub mod pass;
 pub mod periph_run;
