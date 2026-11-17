@@ -2,7 +2,7 @@
 //!
 //! Generated from the `tools/adi_dis.py` listing of the OS v1.66 FX image (core 2, `0x122E24` ..
 //! `0x122F53`), one `Pe::apply` per executed instruction (`tools/fx_model_chorus.py` is the Python
-//! twin). VERIFIED: the model reproduces the routine word for word against the `sharc-fx` oracle
+//! twin). Direct-call check (before D133, see `fw_chorus.rs` provenance): the model reproduces the routine word for word against the `sharc-fx` oracle
 //! (500/500 scenarios, two seeds, and the per-instruction register trace), the golden vectors of
 //! `tests_chorus_golden.rs` pin this port to the model (`docs/research/fx-mod2-types.md`).
 

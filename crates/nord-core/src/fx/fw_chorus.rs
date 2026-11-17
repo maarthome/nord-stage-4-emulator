@@ -9,7 +9,14 @@
 //! addresses of the model scenarios (`tools/fx_model_chorus.py`), so a context captured from the
 //! DSP loads unchanged and the written-back words compare word for word with the golden vectors.
 //!
-//! VERIFIED: both routines against the `sharc-fx` oracle (`docs/research/fx-mod2-types.md`).
+//! Provenance (D133): the direct-call scenarios of `docs/research/fx-mod2-types.md` missed the
+//! left wet tap (a wrapped pre-modify store wrote no guard copy), so that old claim is withdrawn.
+//! EMPIRICAL: the live chain of the oracle (`sharc-fxlive`, real dispatcher) against this port,
+//! `python tools/fx_oracle_live.py chor4|chor5 --image <core1_sram.bin> --signal noise`: null depth
+//! -119 to -156 dB for CHOR soft over rates 0..127 and amounts 0..127, and -89.5 dB for the
+//! variation at rate 64 / amount 64 only (the oracle context of `chor5` is fixed; the residual
+//! cause is not measured). The check needs the local firmware image, so no test in the repo
+//! compares against the oracle; `tests_chorus_golden.rs` pins the port to the Python twin only.
 
 use super::fw_pe::{Mem, Pe};
 use super::{fw_chorus4, fw_chorus5};
