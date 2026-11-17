@@ -67,7 +67,7 @@ VERIFIED in the oracle (research doc section 4): SY smooths each voice gain per 
 |---|---|---|
 | Law | `gain_state += (1 - pole)(gain_target - gain_state)` once per `render_frame` | VERIFIED (first frames match the oracle series within 2e-6) |
 | Pole at engine rate | `0.979^(43402.34 / fs)`: the same 1.08 ms time constant (47.1 frames at the SY frame rate) at any `fs` | SY frame rate 43,402.34 Hz VERIFIED ([dsp-frame-rate](../research/dsp-frame-rate.md) s3.4; was ASSUMED 48 kHz, 0.98 ms) |
-| Target | `gain_target` takes `gain` at note-on and every `fs / 1000` frames (control tick); `set_voice_gain(note, g)` writes `gain`, the tick latches it | 1 kHz tick ASSUMED: the ARM timer is **24 kHz** and no 1 kHz task exists (D127, [arm-tick-timers](../research/arm-tick-timers.md) s5); voice words are event driven, so the real update instants are unknown (opt-in path only) |
+| Target | `gain_target` takes `gain` at note-on and every `fs / 1000` frames (control tick); `set_voice_gain(note, g)` writes `gain`, the tick latches it | 1 kHz tick ASSUMED: the ARM timer is **24 kHz** and no 1 kHz task exists (D130, [arm-tick-timers](../research/arm-tick-timers.md) s5); voice words are event driven, so the real update instants are unknown (opt-in path only) |
 | Start state | a slot keeps the `gain_state` of the voice it replaces; a never used slot starts at 0 (a 1 ms fade in) | ASSUMED (the SY initial block is zero except the pole) |
 
 Default off: the envelope (amp ADR) is not smoothed, since the DSP-side envelope law is unknown (research doc section 8 item 5).

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The real ARM timer and the periodic tasks of the host firmware, measured in the harness (D127).
+"""The real ARM timer and the periodic tasks of the host firmware, measured in the harness (D130).
 
 Boots the full machine to the main loop (`arm_steady.boot_to_main_loop`) with write hooks on the
 timer block, then reads the firmware's own scheduler tables and runs ticks to count calls:
@@ -435,7 +435,7 @@ def fx_watch(  # pragma: no cover - needs unicorn and the firmware
     }
 
 
-# VERIFIED (D127, `flagscan`): the arpeggiator code ranges scanned for stores to `[rX, #0xC]`.
+# VERIFIED (D130, `flagscan`): the arpeggiator code ranges scanned for stores to `[rX, #0xC]`.
 ARP_SCAN_RANGES = ((0xC023B000, 0xC0243000), (0xC011A000, 0xC0120000), (0xC00FD000, 0xC00FE000))
 
 

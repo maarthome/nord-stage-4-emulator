@@ -6,7 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
-| [D127](#d127-the-arm-timer-is-24-khz-the-periodic-tasks-and-the-key-down-delays-are-timer-driven-the-engines-1-khz-ticks-are-documented-not-changed-pump-figures-are-sourced-the-arp-gate-is-23-in-the-replay) | 2026-11-17 | The ARM timer is 24 kHz (Timer0 PRD34 = 1000); 17 periodic tasks at 1 to 200 Hz, none at 1 kHz; Vox key-down delays 3 / 17 / 47 are timer interrupts (0.125 / 0.71 / 1.96 ms, the engine assumes ms); PUMP 6.11 Hz free run reproduced, 2.11 Hz is the beat, the counter writer open; arp gate 2/3 in the replayed boot; no engine change | proposed |
+| [D130](#d130-the-arm-timer-is-24-khz-the-periodic-tasks-and-the-key-down-delays-are-timer-driven-the-engines-1-khz-ticks-are-documented-not-changed-pump-figures-are-sourced-the-arp-gate-is-23-in-the-replay) | 2026-11-17 | The ARM timer is 24 kHz (Timer0 PRD34 = 1000); 17 periodic tasks at 1 to 200 Hz, none at 1 kHz; Vox key-down delays 3 / 17 / 47 are timer interrupts (0.125 / 0.71 / 1.96 ms, the engine assumes ms); PUMP 6.11 Hz free run reproduced, 2.11 Hz is the beat, the counter writer open; arp gate 2/3 in the replayed boot; no engine change | proposed |
 | [D97](#d97-the-synth-sustped-default-is-on-in-the-firmware-and-stored-per-program-the-opt-in-follows-the-program-bit-the-default-render-stays) | 2026-11-15 | The Synth SUSTPED default is on in the firmware and stored per program; `--synth-sustain-pedal` follows the program bit, the default render stays | accepted |
 | [D93](#d93-grand-pad-leftovers-the-pedal-replay-closes-most-of-the-width-and-tail-gap-the-synth-fx-rack-is-irrelevant-here---synth-sustain-pedal-is-opt-in) | 2026-11-15 | Grand Pad leftovers: pedal replay closes most of the width and tail gap, the synth FX rack is irrelevant here; `--synth-sustain-pedal` opt-in | accepted |
 | [D90](#d90-mod-2-parameter-laws-are-verified-on-a-dense-arm-grid-the-shared-amountrate-words-get-their-joint-law-mod2-stays-opt-in) | 2026-11-15 | Mod 2 parameter laws are verified on a dense ARM grid; the shared amount / rate words get their joint law; `mod2` stays opt-in | accepted |
@@ -1352,7 +1352,7 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Alternatives:** Port a speculative ring model to `nord-core` anyway (rejected: violates Step 3 and D22); leave `DM(0x310C3000)` unmodelled (rejected: the census and trace show it is the only non-1:1 per-pass peripheral write).
 - **Impact:** `crates/nord-sharc` (`core/periph/ringdma.rs`, `runner/ring_trace.rs`, `bin/sharc_ring.rs`, `core/periph/{glue,mod}.rs`, `runner/{periph_run,mod}.rs`, `Cargo.toml`), `docs/research/b3-leslie-pno-lane.md`, `docs/specs/sharc-core.md` section 7, `docs/research/audio-remaining.md` row 9, `docs/ROADMAP.md` 7b.3. No `nord-core`, golden, `render_hash` or default change.
 
-### D127. The ARM timer is 24 kHz, the periodic tasks and the key-down delays are timer driven, the engine's 1 kHz ticks are documented not changed, PUMP figures are sourced, the arp gate is 2/3 in the replay
+### D130. The ARM timer is 24 kHz, the periodic tasks and the key-down delays are timer driven, the engine's 1 kHz ticks are documented not changed, PUMP figures are sourced, the arp gate is 2/3 in the replay
 
 - **Status:** proposed 2026-11-17
 - **Decided by:** pending the user (task from the parent session; evidence [arm-tick-timers](research/arm-tick-timers.md))
