@@ -18,6 +18,7 @@ pub mod access_log;
 pub mod dma;
 pub mod epdma;
 pub mod l2;
+pub mod ringdma;
 pub mod sec;
 pub mod spi2;
 pub mod spi_boot;
@@ -27,6 +28,7 @@ pub mod sc57x;
 
 pub use access_log::AccessLog;
 pub use epdma::EpDma;
+pub use ringdma::RingDma;
 pub use sc57x::Sc57x;
 pub use spi_boot::SpiBoot;
 
@@ -46,6 +48,8 @@ pub struct Periph {
     pub epdma: Option<EpDma>,
     /// Census of the accesses outside SRAM (opt-in, `Core::enable_access_log`).
     pub log: Option<AccessLog>,
+    /// PNO core 1 Leslie history-ring restart (opt-in, `Core::enable_ringdma`, D126).
+    pub ringdma: Option<RingDma>,
 }
 
 #[cfg(test)]
@@ -56,6 +60,6 @@ mod tests {
     fn peripherals_are_off_by_default() {
         let p = Periph::default();
         assert!(p.sc57x.is_none() && p.boot.is_none());
-        assert!(p.epdma.is_none() && p.log.is_none());
+        assert!(p.epdma.is_none() && p.log.is_none() && p.ringdma.is_none());
     }
 }

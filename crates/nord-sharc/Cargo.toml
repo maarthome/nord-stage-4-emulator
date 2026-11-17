@@ -65,3 +65,7 @@ cranelift-native = { version = "0.116", optional = true }
 [[bin]]
 name = "sharc-sys"
 path = "src/bin/sharc_sys.rs"
+
+[[bin]]
+name = "sharc-ring"
+path = "src/bin/sharc_ring.rs"

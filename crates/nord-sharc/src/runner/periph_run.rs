@@ -19,6 +19,8 @@ pub struct PeriphOpts {
     /// `--sec-id ID`: start Core1-style passes through the SEC model: source `ID` is raised, the
     /// ISR reads it from `CSID` and ends it with a write to `END` (replaces the preset status).
     pub sec_id: Option<u32>,
+    /// `--ring-dma`: the Leslie history-ring restart register of PNO core 1 (`core::periph::ringdma`).
+    pub ring_dma: bool,
 }
 
 impl PeriphOpts {
@@ -27,6 +29,7 @@ impl PeriphOpts {
         match arg {
             "--epdma" => self.epdma = true,
             "--census" => self.census = true,
+            "--ring-dma" => self.ring_dma = true,
             _ => return false,
         }
         true
@@ -40,7 +43,7 @@ impl PeriphOpts {
 
     /// Whether any model or census is on.
     pub fn any(&self) -> bool {
-        self.epdma || self.census || self.sec_id.is_some()
+        self.epdma || self.census || self.ring_dma || self.sec_id.is_some()
     }
 
     /// Pass-start status for `irq`: the SEC source id when `--sec-id` is given.
@@ -58,6 +61,9 @@ impl PeriphOpts {
         }
         if self.sec_id.is_some() {
             core.enable_sc57x(0);
+        }
+        if self.ring_dma {
+            core.enable_ringdma();
         }
     }
 }
@@ -245,9 +251,11 @@ mod tests {
         let mut o = PeriphOpts::default();
         assert!(!o.any() && !o.take_flag("--bogus"));
         assert!(o.take_flag("--epdma") && o.take_flag("--census") && o.any());
+        assert!(o.take_flag("--ring-dma") && o.ring_dma);
         let mut c = clearing_core();
         o.attach(&mut c);
         assert!(c.epdma().is_some() && c.access_log().is_some());
+        assert!(c.ringdma().is_some());
     }
 
     #[test]
@@ -300,6 +308,7 @@ mod tests {
             epdma: true,
             census: true,
             sec_id: None,
+            ..PeriphOpts::default()
         }
         .attach(&mut c);
         // a register write between passes is a boot-phase access of the census

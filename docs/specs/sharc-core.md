@@ -66,9 +66,10 @@ The oracle can act as the DSP half of a small system run: the ARM firmware runs 
 | Audio-input DMA | stub only: the pass-input words `DM(0xB0078..)` and `DM(0xB00C8..)` are re-stored (cost, no data) |
 | External-port range registers `DM(0x3E000..0x3E03F)` | opt-in `--epdma` (`core::periph::epdma`): a range opens when `DM(0x3E010)` is written with `DM(0x3E002)` bits 1:0 set, `DM(0x3E021)` returns the opened count and clears it (ASSUMED, D120); replaces `--pre 0x3E021=1`, 0 differing words |
 | Peripheral census | opt-in `--census` (`core::periph::access_log`): every access outside SRAM with counts and last value |
+| Leslie history-ring restart | opt-in `--ring-dma` (`core::periph::ringdma`, D126 placeholder): `DM(0x310C3000)` `7` then `0x107` copies the first record (`0x40` words) of chains `0xE31E8` and `0xE35E0` in `0x0A00_0000` DMA view into `c[-8]` (`0xE31A6` / `0xE359E`); `sharc-ring` (`runner/ring_trace.rs`) traces load/store windows per pass |
 | PNO output lane | `--lane SET:PAIR`, `--wav`: reads the output pointer set after each pass (stands in for the SPORT transmit DMA); needs the boot message log |
 | Interrupts, other cores, SPI/SPORT | not modelled |
 
 Opt-in additions: `sharc-sys --jit-diff` (`runner/system_diff.rs`) runs the same passes on the interpreter and the JIT in lockstep and stops at the first divergence; `--irq VEC:STATUS` and `--flag1` start Core1 sections by the receive interrupt. Measurements for PNO core 1, the ARM tick cost and the other cores: [pno-jit-arm-profile](../research/pno-jit-arm-profile.md).
 
-Evidence, timing table and limits: [org-system-run](../research/org-system-run.md); peripheral census, `0x3E0xx` rule, PNO lane and hardware numbers: [dsp-peripherals-audio](../research/dsp-peripherals-audio.md).
+Evidence, timing table and limits: [org-system-run](../research/org-system-run.md); peripheral census, `0x3E0xx` rule, PNO lane and hardware numbers: [dsp-peripherals-audio](../research/dsp-peripherals-audio.md); B3 Leslie ring-DMA trace and lane check: [b3-leslie-pno-lane](../research/b3-leslie-pno-lane.md).
