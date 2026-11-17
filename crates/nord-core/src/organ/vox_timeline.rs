@@ -10,7 +10,10 @@
 
 use super::vox_keys::{self, ROWS};
 
-/// Seconds per ARM tick. ASSUMED 1 ms (the tick of the capture script; the ARM timer was not read).
+/// Seconds per ARM tick. ASSUMED 1 ms (the tick of the capture script). The tick counted by the
+/// capture is one timer interrupt of the **24 kHz** timer, 41.67 us, and the slot delays below are
+/// timer driven (same ticks at every interrupt spacing: `docs/research/arm-tick-timers.md`, D130),
+/// so the delays are 24 x shorter on hardware if the ARM keeps up (opt-in change left open).
 pub(super) const TICK_SECONDS: f32 = 0.001;
 
 /// Delay in ticks after key-down before slot `slot` is sent.

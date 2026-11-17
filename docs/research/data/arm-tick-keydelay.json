@@ -1,0 +1,168 @@
+{
+ "note": 60,
+ "model": 1,
+ "runs": [
+  {
+   "per_tick": 200000,
+   "message_ticks": [
+    3,
+    17,
+    47
+   ],
+   "detail": [
+    [
+     3,
+     [
+      "PNO1 0x95e5e"
+     ]
+    ],
+    [
+     17,
+     [
+      "PNO1 0x95e6a",
+      "PNO1 0x95e76"
+     ]
+    ],
+    [
+     47,
+     [
+      "PNO1 0x95e82"
+     ]
+    ]
+   ]
+  },
+  {
+   "per_tick": 100000,
+   "message_ticks": [
+    3,
+    17,
+    47,
+    122
+   ],
+   "detail": [
+    [
+     3,
+     [
+      "PNO1 0x95e5e"
+     ]
+    ],
+    [
+     17,
+     [
+      "PNO1 0x95e6a",
+      "PNO1 0x95e76"
+     ]
+    ],
+    [
+     47,
+     [
+      "PNO1 0x95e82"
+     ]
+    ],
+    [
+     122,
+     [
+      "PNO1 0xb2f26",
+      "PNO1 0xb2fa1",
+      "PNO1 0xb2f25"
+     ]
+    ]
+   ]
+  },
+  {
+   "per_tick": 50000,
+   "message_ticks": [
+    3,
+    17,
+    47,
+    122
+   ],
+   "detail": [
+    [
+     3,
+     [
+      "PNO1 0x95e5e"
+     ]
+    ],
+    [
+     17,
+     [
+      "PNO1 0x95e6a",
+      "PNO1 0x95e76"
+     ]
+    ],
+    [
+     47,
+     [
+      "PNO1 0x95e82"
+     ]
+    ],
+    [
+     122,
+     [
+      "PNO1 0xb2f26",
+      "PNO1 0xb2fa1",
+      "PNO1 0xb2f25"
+     ]
+    ]
+   ]
+  },
+  {
+   "per_tick": 25000,
+   "message_ticks": [
+    3,
+    17,
+    47,
+    122,
+    410,
+    698
+   ],
+   "detail": [
+    [
+     3,
+     [
+      "PNO1 0x95e5e"
+     ]
+    ],
+    [
+     17,
+     [
+      "PNO1 0x95e6a",
+      "PNO1 0x95e76"
+     ]
+    ],
+    [
+     47,
+     [
+      "PNO1 0x95e82"
+     ]
+    ],
+    [
+     122,
+     [
+      "PNO1 0xb2f26",
+      "PNO1 0xb2fa1",
+      "PNO1 0xb2f25"
+     ]
+    ],
+    [
+     410,
+     [
+      "PNO1 0xb2f26",
+      "PNO1 0xb2fa1",
+      "PNO1 0xb2f25"
+     ]
+    ],
+    [
+     698,
+     [
+      "PNO1 0xb2f26",
+      "PNO1 0xb2fa1",
+      "PNO1 0xb2f25"
+     ]
+    ]
+   ]
+  }
+ ],
+ "model_first_group": "timer"
+}

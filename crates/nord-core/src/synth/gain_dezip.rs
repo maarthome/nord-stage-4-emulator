@@ -23,8 +23,10 @@ pub const SY_GAIN_POLE: f32 = 0.979;
 /// 47.1 frames are 1.09 ms.
 pub const SY_FRAME_RATE_HZ: f32 = crate::organ::FIRMWARE_FRAME_RATE_HZ as f32;
 
-/// ASSUMED: the ARM writes gain targets at a 1 kHz timer tick (timer irq 22, 1 ms,
-/// `docs/research/arm-organ-messages.md` section 10.1); the tick phase relative to notes is unknown.
+/// ASSUMED: the ARM writes gain targets at a 1 kHz tick. The ARM timer (irq 22) is **24 kHz** and
+/// no firmware task runs at 1 kHz (`docs/research/arm-tick-timers.md`, D130); the synth voice words
+/// are event driven, so the real update instants are unknown. The tick phase relative to notes is
+/// unknown too.
 pub const CONTROL_TICK_HZ: f32 = 1_000.0;
 
 /// Per-frame pole at engine rate `fs`: the hardware pole stretched to the same time constant,

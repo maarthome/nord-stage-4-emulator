@@ -382,6 +382,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Synth filter stages compared with the Rust port (D122, [synth-filter-stage-vs-model](research/synth-filter-stage-vs-model.md)): LP12 / LP24 / BP / HP / Ladder24 equal the oracle to 3.3e-5 .. 1.4e-4 of the output peak, the per-type factors are not a port error; `[ ]` Ladder24 position word in a sounding voice, terms added into `R` before the stage (OQ22)
 - [x] FX chip live run in the oracle (D125, [fx-oracle-live](research/fx-oracle-live.md)): `sharc-fxlive`, native counterpart `fx_live_native`, comparison `tools/fx_oracle_live.py`; the chain transfer is exact (0.1866, -157.6 dB), reverb type 0 and CHOR installs run but do not match the ports yet (stage calling convention open, OQ35)
 - [ ] FX reverb / chorus / ENS / FLANG oracle responses on live input equal to `FwReverb` / `FirmwareFx::mod2` (D125 follow-ups 1 to 4); PNO lane WAV as the FX input
+- [x] ARM timer and periodic tasks measured in the harness (`tools/arm_tick_probe.py`, [arm-tick-timers](research/arm-tick-timers.md), D130): the tick is 24 kHz (Timer0 `PRD34 = 1000`), 17 periodic tasks at 1 to 200 Hz, the arp clock 1,500 Hz, the Vox key-down delays are timer driven (0.125 / 0.71 / 1.96 ms); PUMP free-run 6.11 Hz reproduced, the 2.11 Hz is the beat; OQ22 tick answered, OQ32 gate 2/3 in the replay
+- [ ] Vox key timeline on the 24 kHz base (`organ/vox_timeline.rs` `TICK_SECONDS`, opt-in) once a Vox attack clip or the ARM key-down work time exists; PUMP Master Clock counter writer (OQ36); arp gate 2/3 and staccato plain arpeggio as an opt-in flag
 
 ## Parallel Lanes & Bean Dependency Graph
 
