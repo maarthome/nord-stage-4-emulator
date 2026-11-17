@@ -1572,6 +1572,16 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Impact:** `tools/arm_voice_gate.py` (+ test), `tools/arm_dsp_capture.py` (+ test), `docs/research/sample-voice-gate.md`, `docs/research/data/voice-gate-*.json`; [arm-dsp-capture](research/arm-dsp-capture.md) follow-up 2 answered; [audio-remaining](research/audio-remaining.md) row 2; OQ22 note; no engine change. Limit: the hardware value of the SPI read is ASSUMED neutral (0).
 
 
+### D151. The SHARC oracle census-diff open list is closed except the MR2F read-back
+
+- **Status:** accepted 2026-11-17
+- **Decided by:** the user's task for this session (close the known instruction-level differences of the oracle, no default flips)
+- **Context:** [sharc-census-diff](research/sharc-census-diff.md) listed 18 cases in 6 shapes where `crates/nord-sharc` differed from the CCES ADSP-21489 simulator on a firmware instruction. The census was rerun (49,722 cases, same seed) and reproduced exactly those 18 (plus 4 simulator `HALT` cases that agree on a rerun).
+- **Decision:** Fix 5 shapes in the model, each measured on the simulator with `census_probe.py`: (1) the shift-immediate count of `LSHIFT`/`ASHIFT`/`ROT` and OR forms is 8-bit signed; (2) conditions `MV` (5) and `MS` (6) read ASTAT bits 7 and 6 of the element; (3) `Rx <-> Sy` writes `Rx` under PEx's condition and `Sy` under PEy's, no PEy exchange; (4) a long-word load into ASTATx/y or STKYx/y loads the named register twice; (5) a conditional load into a non-data register in SIMD runs when either element's condition holds. Leave `MR1F = R3, R1 = DM(..)` (MR2F read-back, 2 cases, 2 firmware occurrences) and `SF` (unused in firmware) as open and documented. 461 new regression cases are committed.
+- **Why:** Every oracle-based audio conclusion rests on the core model. The 5 shapes cover 54 of 65,343 firmware instruction occurrences (15 sites in ORG/PNO shared code, FX and PNO). Old and new oracle give identical output on PNO bank/mix/post, PNO and ORG passes, so no conclusion changes.
+- **Alternatives:** Fix only the most frequent shape (rejected: each fix is a few lines and a measured case set); model MR2F as zero-extension (rejected: it depends on the previous MR2F, the cause is unmeasured); run the 21571 census first (rejected: 4 h of machine time, kept as follow-up).
+- **Impact:** `crates/nord-sharc/src/core/{shifter,mod,moves,float_ops}.rs`, `census_regress.rs`, `docs/research/sharc-seq/{census_probe,census_freq}.py`, `census_extra_*.txt`, [sharc-census-diff](research/sharc-census-diff.md), [emulation-coverage](research/emulation-coverage.md), ROADMAP 7b.1. No engine, golden or default changes. Does not touch D118 or the multi-core scheduler PRs.
+
 ### D149. PUMP under the Master Clock reads a clock word through `c[-29]` (ARM run): the counter and the own phase are not the mechanism, the duck is on the beat
 
 - **Status:** proposed 2026-11-17

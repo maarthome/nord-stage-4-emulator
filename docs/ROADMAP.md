@@ -210,7 +210,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 
 - [x] M1 decoder: `visa/` ports `tools/sharc_visa.py`; `sharc-disasm` output equals the Python listing on about 970,000 instruction lines ([sharc-core](specs/sharc-core.md) s5)
 - [x] M2 core model: registers, DAGs, loops, calls, SIMD, shifter, bit FIFO, float and fixed ALU/multiplier, long-word moves, interrupts, timer, PC/loop/status stacks. Each behaviour is checked against the ADI simulator ([float](research/sharc-float.md), [fixed](research/sharc-fixed.md), [simd](research/sharc-simd.md), [stacks](research/sharc-stacks.md), [loops](research/sharc-loops.md), [type 2c](research/sharc-type2c.md), [bit FIFO](research/sharc-bitfifo.md), [sequencer](research/sharc-sequencer.md), [leftovers](research/sharc-leftovers.md))
-- [x] Census diff: every instruction form in the firmware images run on the simulator and the model, 12 model gaps fixed ([sharc-census-diff](research/sharc-census-diff.md)); SHARC+ flag masks measured on the ADSP-21571 simulator ([sharc-plus](research/sharc-plus.md))
+- [x] Census diff: every instruction form in the firmware images run on the simulator and the model, 12 model gaps fixed, then 5 of the last 6 open shapes (2026-11-17, [D151](DECISIONS.md#d151-the-sharc-oracle-census-diff-open-list-is-closed-except-the-mr2f-read-back); 2 cases left) ([sharc-census-diff](research/sharc-census-diff.md)); SHARC+ flag masks measured on the ADSP-21571 simulator ([sharc-plus](research/sharc-plus.md))
 - [x] Headless CCES simulator runner (`TpsdkServer`, `docs/research/sharc-seq/sim_run.py`, `sim_batch.py`, 21489 and 21571 targets)
 - [x] Chip identity and peripherals: FX/PNO/ORG on ADSP-2157x, SY1SY2/SMP on ADSP-2148x ([sharc-chip-identity](research/sharc-chip-identity.md), [D17](DECISIONS.md#d17-chip-identity-fx-pno-and-org-run-on-adsp-2157x-sharc-sy1sy2-and-smp-on-adsp-2148x)); `core/periph/` models SEC0, SPI2 peek port, descriptor DMA, TRU, LP1, L2 and the 2148x SPI-slave boot
 - [x] M3 start-up of FX, ORG, SY1SY2 and SMP to their idle loops; PNO core 1 runs the complete pass (`sharc-pass`, [pno-full-pass](research/pno-full-pass.md))
@@ -218,6 +218,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Binaries: `sharc-run`, `sharc-org`, `sharc-bank`, `sharc-organ`, `sharc-chain`, `sharc-pass`, `sharc-fx`, `sharc-ref`, `sharc-census-run`, `sharc-disasm` ([ARCHITECTURE](ARCHITECTURE.md) s4)
 - [ ] Simulator probes P1..P8 (L2 size, SEC0 `CSID`/`END`, memory DMA, 2D DMA, peek-port descriptor timing, SPI2 status, reset values; [sharc-chip-identity](research/sharc-chip-identity.md) s7): promote or correct the ASSUMED peripheral behaviours
 - [ ] Model the `0x28xxxxxx` core aliases, SPORT/DAI audio DMA and wire `--sc57x` into `sharc-org`
+- [ ] SHARC+ instruction census on the ADSP-21571 simulator (about 4 h, `census21_fixture.txt`; the 21489 census is closed except 2 MR2F cases)
 - [ ] Oracle speed: long passes (`sharc-pass`, census diff on the 21571 target, about 140 s start-up per run) need profiling and a faster step loop before the oracle can sit in CI
 - [ ] M5 host protocol and M6 engine comparison for every effect (the oracle plus the ARM harness make this one routine at a time; see 7b.4)
 
