@@ -213,10 +213,13 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     flags = [*ns.flags, *[x for p in ns.probe for x in ("--probe", p)]]
     link = dl.Link.spawn(str(ns.live), str(ns.dsp_image), *flags)
-    result = drive(ns, link)
-    if ns.log:
-        ns.log.write_text(dl.script_text(link.log), encoding="utf-8")
-    link.close()
+    try:
+        result = drive(ns, link)
+        if ns.log:
+            with ns.log.open("w", encoding="utf-8", newline="\n") as fh:
+                fh.write(dl.script_text(link.log))
+    finally:
+        link.close()
     if ns.sys_exe and ns.log:
         result["replay_sharc_sys"] = replay(ns, link.pass_index).strip().splitlines()
     text = json.dumps(result, indent=1)

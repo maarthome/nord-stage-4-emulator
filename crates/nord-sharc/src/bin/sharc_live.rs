@@ -69,10 +69,8 @@ fn serve(args: &[String]) -> Result<(), String> {
         if line.trim() == "Q" {
             break;
         }
-        match live.exec(&line) {
-            Ok(Some(reply)) => writeln!(out, "{reply}").map_err(|e| e.to_string())?,
-            Ok(None) => {}
-            Err(e) => live.note_error(e),
+        if let Some(reply) = live.handle(&line) {
+            writeln!(out, "{reply}").map_err(|e| e.to_string())?;
         }
         if line.trim_start().starts_with(['P', 'D']) {
             out.flush().map_err(|e| e.to_string())?;

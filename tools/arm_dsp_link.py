@@ -14,11 +14,15 @@ runs of the same ARM instruction stream give the same pass schedule.
 
 from __future__ import annotations
 
+import queue
 import subprocess
+import threading
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-# VERIFIED (arithmetic): F = 43402.34375 = 1,388,875 / 32 exactly; passes/s = F / 2; ticks/s 24,000.
+# F = 43402.34375 Hz is the audio frame rate of `docs/research/dsp-frame-rate.md`; only the identity
+# F = 1,388,875 / 32 (exact) is arithmetic here, the value of F keeps that note's tag. Passes/s =
+# F / 2 (two frames per pass), ticks/s = 24,000 (D130).
 PASS_NUM, PASS_DEN = 1_388_875, 1_536_000
 
 
@@ -162,15 +166,33 @@ class LinkStats:
 class Link:
     """Client of one `sharc-live` process (or any object with `stdin` / `stdout` text streams)."""
 
-    def __init__(self, proc, log: list[tuple[int, int, int]] | None = None) -> None:  # noqa: ANN001
+    def __init__(  # noqa: ANN001
+        self, proc, log: list[tuple[int, int, int]] | None = None, timeout: float = 600.0
+    ) -> None:
         self.proc = proc
         self.stats = LinkStats()
         self.pass_index = 0
         self.log = log if log is not None else []
         self._buf: list[str] = []
-        ready = proc.stdout.readline().strip()
+        self.timeout = timeout
+        self._lines: queue.Queue[str] = queue.Queue()
+        threading.Thread(target=self._pump, daemon=True).start()
+        ready = self._readline().strip()
         if ready != "READY":
             raise RuntimeError(f"sharc-live did not start: {ready!r}")
+
+    def _pump(self) -> None:
+        """Reader thread: stdout lines to a queue (a blocking pipe has no portable timeout)."""
+        for line in iter(self.proc.stdout.readline, ""):
+            self._lines.put(line)
+        self._lines.put("")  # EOF marker
+
+    def _readline(self) -> str:
+        """Next reply line; raises `TimeoutError` when the server stays silent for `timeout` s."""
+        try:
+            return self._lines.get(timeout=self.timeout)
+        except queue.Empty:
+            raise TimeoutError(f"sharc-live silent for {self.timeout} s") from None
 
     @classmethod
     def spawn(cls, exe: str, image: str, *flags: str) -> Link:  # pragma: no cover - subprocess
@@ -200,7 +222,7 @@ class Link:
         self._flush()
         self.proc.stdin.write(f"P {n}\n")
         self.proc.stdin.flush()
-        line = self.proc.stdout.readline().strip()
+        line = self._readline().strip()
         if line.startswith("ERR"):
             raise RuntimeError(line)
         report = PassReport.parse(line)
@@ -213,15 +235,24 @@ class Link:
         self._flush()
         self.proc.stdin.write(f"D {addr:#x} {count}\n")
         self.proc.stdin.flush()
-        parts = self.proc.stdout.readline().split()
+        parts = self._readline().split()
+        if parts[:1] == ["ERR"]:
+            raise RuntimeError(" ".join(parts))
         return [int(w, 16) for w in parts[2:]]
 
     def close(self) -> None:
-        self._flush()
-        self.proc.stdin.write("Q\n")
-        self.proc.stdin.flush()
+        """Ask the server to end; kill it when it does not (also safe after a failed run)."""
+        try:
+            self._flush()
+            self.proc.stdin.write("Q\n")
+            self.proc.stdin.flush()
+        except (OSError, ValueError):
+            pass
         if hasattr(self.proc, "wait"):
-            self.proc.wait(timeout=30)
+            try:
+                self.proc.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
 
 
 def script_text(log: Iterable[tuple[int, int, int]]) -> str:

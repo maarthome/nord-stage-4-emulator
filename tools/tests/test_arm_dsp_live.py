@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-import types
 
 import arm_dsp_link as dl
 import arm_dsp_live as live
@@ -61,7 +60,6 @@ def test_snapshot_reports_link_stats() -> None:
     assert s["messages_sent"] == 1 and s["idle_passes"] == 2 and s["lane_peak"] == 0.5
     assert s["probe_hits"] == {"0x1256ad": 1} and s["probe_first_pass"] == {"0x1256ad": 0}
     assert s["lane_rms"] == 0.5
-    assert isinstance(types.SimpleNamespace(), object)
 
 
 def test_feeder_skips_words_outside_the_core_window() -> None:
