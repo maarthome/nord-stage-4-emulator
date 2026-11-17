@@ -602,13 +602,27 @@ impl FirmwareOptions {
         }
         o.synth_knob_laws |= has("--synth-knob-laws");
         o.synth_wave_bank |= has("--synth-wave-bank");
-        if let Some(path) = value("--synth-wave-tables") {
-            // opt-in: the 46 tables come from the user's own OS image (never committed, D22)
+        // the 46 tables come from the user's own OS image (never committed, D22): by the flag, or by
+        // default when `NS4_WAVE_TABLES` names the image (placeholder everywhere else)
+        let env_tables = crate::render_opts_wave::default_tables_path(
+            value("--synth-wave-tables").is_some(),
+            has("--no-synth-wave-bank"),
+            std::env::var(crate::render_opts_wave::WAVE_TABLES_ENV)
+                .ok()
+                .as_deref(),
+        );
+        let tables_path = value("--synth-wave-tables")
+            .map(std::path::PathBuf::from)
+            .or(env_tables);
+        if let Some(path) = tables_path {
             o.synth_wave_bank = true;
             crate::synth::prepare_wave_bank();
             let boot = crate::synth::boot_tables();
-            let t = crate::synth::tables_from_file(std::path::Path::new(path), boot)?;
+            let t = crate::synth::tables_from_file(&path, boot)?;
             crate::synth::install_wave_tables(t);
+        }
+        if has("--no-synth-wave-bank") {
+            o.synth_wave_bank = false;
         }
         if has("--no-synth-stages") {
             o.synth_stages = false;
@@ -1251,6 +1265,21 @@ mod tests {
         assert!(e.synth_a.knob_laws && e.synth_b.knob_laws && e.synth_c.knob_laws);
         let on = FirmwareOptions::from_args(&["--legacy-all".into(), "--synth-knob-laws".into()]);
         assert!(on.unwrap().synth_knob_laws, "the flag turns it back on");
+    }
+
+    #[test]
+    fn no_synth_wave_bank_switches_the_bank_off_and_the_flag_alone_needs_no_image() {
+        let o = FirmwareOptions::from_args(&[
+            "--synth-wave-bank".into(),
+            "--no-synth-wave-bank".into(),
+        ])
+        .unwrap();
+        assert!(!o.synth_wave_bank);
+        // a missing image named by the flag is an error, not a silent placeholder
+        let err =
+            FirmwareOptions::from_args(&["--synth-wave-tables".into(), "Z:/no/such/os.bin".into()])
+                .unwrap_err();
+        assert!(err.contains("os.bin"));
     }
 
     #[test]
