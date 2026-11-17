@@ -1,0 +1,4827 @@
+{
+ "programs": [
+  {
+   "program": "Bank_A__Acoustic_Guitar",
+   "sample_ids": [
+    "0xa281b28c",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_A__B3_Old_Forest",
+   "sample_ids": [
+    "0x4ec6fa2b",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_A__Hybrid_Str_Whl",
+   "sample_ids": [
+    "0xf5da36ae",
+    "0xc2c686a9",
+    "0x0"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_A__Intense_Score",
+   "sample_ids": [
+    "0xd47c574f",
+    "0xaf754986",
+    "0xe863bebc"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_A__Jazz_Guitar_II",
+   "sample_ids": [
+    "0xdb86e0a0",
+    "0xc22c82d0",
+    "0xa976bf04"
+   ],
+   "sy_messages": 35,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_A__Mm-Oh_Choir_Whl",
+   "sample_ids": [
+    "0xe8ed9987",
+    "0x72050df9",
+    "0x0"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_A__Momentum_Whl",
+   "sample_ids": [
+    "0xe863bebc",
+    "0x310bc578",
+    "0x0"
+   ],
+   "sy_messages": 39,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x9244c",
+    "0x92484",
+    "0x924bc",
+    "0x924f4"
+   ]
+  },
+  {
+   "program": "Bank_A__NS4_Palette",
+   "sample_ids": [
+    "0x0",
+    "0x29177446",
+    "0x0"
+   ],
+   "sy_messages": 35,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_A__Oo_Pad_Whl",
+   "sample_ids": [
+    "0x0",
+    "0x72ba2abf",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_A__Silver_Rush",
+   "sample_ids": [
+    "0xecdf91bb",
+    "0x6dda6bfc",
+    "0x72ba2abf"
+   ],
+   "sy_messages": 71,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_A__Soft_Padding_Whl",
+   "sample_ids": [
+    "0x4c6a6219",
+    "0x0",
+    "0xff1f439d"
+   ],
+   "sy_messages": 9,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_A__Space_Drama_II",
+   "sample_ids": [
+    "0xa95c8faf",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_A__String_Quintet",
+   "sample_ids": [
+    "0x790f9add",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_A__Supreme_Mdrn_Whl",
+   "sample_ids": [
+    "0x804c3275",
+    "0xb473b86",
+    "0x264e69cd"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_A__Texas_Nights_J3",
+   "sample_ids": [
+    "0xf76df686",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_B__12_Strings_Pad",
+   "sample_ids": [
+    "0x63a162fc",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_B__Bass_Chorus_Whl",
+   "sample_ids": [
+    "0xa1eaa41a",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_B__Cathedral_Pipes",
+   "sample_ids": [
+    "0x9a0ac186",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_B__Choral_Pad",
+   "sample_ids": [
+    "0x87cc1245",
+    "0x630a53b0",
+    "0x3b359e53"
+   ],
+   "sy_messages": 71,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_B__Chorus_Caster",
+   "sample_ids": [
+    "0xf76df686",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_B__Continuo",
+   "sample_ids": [
+    "0x3b359e53",
+    "0xf5da36ae",
+    "0x0"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_B__Dark_Matter_Mk_I",
+   "sample_ids": [
+    "0x0",
+    "0x4c6a6219",
+    "0x19b9ec9c"
+   ],
+   "sy_messages": 0,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": []
+  },
+  {
+   "program": "Bank_B__Felt_Soft_Str",
+   "sample_ids": [
+    "0xdac3c22d",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_B__Gradient_Whl",
+   "sample_ids": [
+    "0x0",
+    "0xa281b28c",
+    "0x29177446"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_B__Grand_Vibra_Bs",
+   "sample_ids": [
+    "0x310bc578",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 1,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_B__Guitar_Concerto",
+   "sample_ids": [
+    "0x8925d4f2",
+    "0xd47c574f",
+    "0x50352a0"
+   ],
+   "sy_messages": 8,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_B__Heart_Strings_II",
+   "sample_ids": [
+    "0x630a53b0",
+    "0x7926155",
+    "0x4c6a6219"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_B__HiFi_Grand_Str",
+   "sample_ids": [
+    "0x29177446",
+    "0xe863bebc",
+    "0x7324ff24"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_B__Hot_Brass",
+   "sample_ids": [
+    "0xb9948819",
+    "0x74bfa77",
+    "0xa3cb54bf"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_B__Hybrid_Strings_2",
+   "sample_ids": [
+    "0x3388b425",
+    "0x29177446",
+    "0x0"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_B__Marcus_Solo_J3",
+   "sample_ids": [
+    "0xc7a2dc05",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 204,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x921bc",
+    "0x921bd",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x9247a",
+    "0x9247b",
+    "0x9247c",
+    "0x9247d",
+    "0x9247e",
+    "0x9247f",
+    "0x92483",
+    "0x92484",
+    "0x92486",
+    "0x92490",
+    "0x92491",
+    "0x924a2",
+    "0x924a3",
+    "0x924ab",
+    "0x924b2",
+    "0x924b3",
+    "0x924b4",
+    "0x924b5",
+    "0x924b6",
+    "0x924b7",
+    "0x924bb",
+    "0x924bc",
+    "0x924be",
+    "0x924c8",
+    "0x924c9",
+    "0x924da",
+    "0x924db",
+    "0x924e3"
+   ]
+  },
+  {
+   "program": "Bank_B__Marimba",
+   "sample_ids": [
+    "0xffa387f4",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 0,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": []
+  },
+  {
+   "program": "Bank_B__Organ_Pipe_Mix",
+   "sample_ids": [
+    "0x9a0ac186",
+    "0xbcae3663",
+    "0x49b89b92"
+   ],
+   "sy_messages": 9,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_B__Soul_Bass_Split",
+   "sample_ids": [
+    "0x310bc578",
+    "0x31332f16",
+    "0xe71a930e"
+   ],
+   "sy_messages": 119,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x921bc",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x9247a",
+    "0x9247b",
+    "0x9247c",
+    "0x9247d",
+    "0x9247e",
+    "0x9247f",
+    "0x92483",
+    "0x92484",
+    "0x92486",
+    "0x92490",
+    "0x92491",
+    "0x924a2",
+    "0x924a3",
+    "0x924ab"
+   ]
+  },
+  {
+   "program": "Bank_B__Str_Big_Band_II",
+   "sample_ids": [
+    "0x29177446",
+    "0x7324ff24",
+    "0xad426aab"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_B__Strings_Trem_Whl",
+   "sample_ids": [
+    "0x790f9add",
+    "0x1acc5e22",
+    "0x0"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_B__Velvet_Strings",
+   "sample_ids": [
+    "0x790f9add",
+    "0xe96e0e31",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_B__Vintage_Str_Whl",
+   "sample_ids": [
+    "0xfa26e1d2",
+    "0x29177446",
+    "0x2e64283"
+   ],
+   "sy_messages": 73,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x92484",
+    "0x924bc",
+    "0x924f4"
+   ]
+  },
+  {
+   "program": "Bank_B__Wind_Section_1",
+   "sample_ids": [
+    "0x9b9c5100",
+    "0x8a88a7ac",
+    "0x0"
+   ],
+   "sy_messages": 12,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484",
+    "0x924bc"
+   ]
+  },
+  {
+   "program": "Bank_B__Wormhole_Organ",
+   "sample_ids": [
+    "0xfb074690",
+    "0xbcae3663",
+    "0x465d3674"
+   ],
+   "sy_messages": 69,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_C__Chord_N_Melody",
+   "sample_ids": [
+    "0x0",
+    "0x0",
+    "0xf5da36ae"
+   ],
+   "sy_messages": 0,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": []
+  },
+  {
+   "program": "Bank_C__Farfisa_II",
+   "sample_ids": [
+    "0x7926155",
+    "0xd4dd62ce",
+    "0x72050df9"
+   ],
+   "sy_messages": 0,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": []
+  },
+  {
+   "program": "Bank_C__Flautando_Pad",
+   "sample_ids": [
+    "0xdac3c22d",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_C__Ghost_Melody",
+   "sample_ids": [
+    "0xa308b2d3",
+    "0xe9915392",
+    "0x0"
+   ],
+   "sy_messages": 70,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_C__Hangar_Choir",
+   "sample_ids": [
+    "0x0",
+    "0xa559e58f",
+    "0xe8ed9987"
+   ],
+   "sy_messages": 35,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_C__Horn_Room",
+   "sample_ids": [
+    "0xa3cb54bf",
+    "0x2b20d8d0",
+    "0x0"
+   ],
+   "sy_messages": 9,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_C__Orchestra_Pd_Whl",
+   "sample_ids": [
+    "0xa6032916",
+    "0xe5a3136f",
+    "0xd47c574f"
+   ],
+   "sy_messages": 9,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_C__Piano_Soft_Orch",
+   "sample_ids": [
+    "0x4c6a6219",
+    "0xb8c9b807",
+    "0xe5a3136f"
+   ],
+   "sy_messages": 8,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_C__Piano_Str_Pad",
+   "sample_ids": [
+    "0x0",
+    "0xd47c574f",
+    "0x13c28411"
+   ],
+   "sy_messages": 70,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_C__Pizz_Quintet_Spl",
+   "sample_ids": [
+    "0x6d7433ec",
+    "0xea1a63f9",
+    "0xe8ed9987"
+   ],
+   "sy_messages": 36,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_C__Pop_Brass_3",
+   "sample_ids": [
+    "0xb9948819",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_C__Santoor_Pluck",
+   "sample_ids": [
+    "0xb718b3d8",
+    "0xf1246048",
+    "0x0"
+   ],
+   "sy_messages": 105,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x921bc",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x9247a",
+    "0x9247b",
+    "0x9247c",
+    "0x9247d",
+    "0x9247e",
+    "0x9247f",
+    "0x92483",
+    "0x92484",
+    "0x92486",
+    "0x92490",
+    "0x92491",
+    "0x924a2",
+    "0x924a3",
+    "0x924ab"
+   ]
+  },
+  {
+   "program": "Bank_C__Stereo_AnaStr_II",
+   "sample_ids": [
+    "0xe0b581ff",
+    "0x86401af1",
+    "0x0"
+   ],
+   "sy_messages": 70,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_C__Supreme_Soul_Fp",
+   "sample_ids": [
+    "0x3b693c35",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_C__Sweet_Bells",
+   "sample_ids": [
+    "0x19d37317",
+    "0x5ed7e72c",
+    "0x0"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_C__Sweet_Supreme",
+   "sample_ids": [
+    "0x33982da5",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_C__Vista_Layer_Whl",
+   "sample_ids": [
+    "0x0",
+    "0x630a53b0",
+    "0x63c058dd"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_D__3_Vlns_Mellotron",
+   "sample_ids": [
+    "0xfa26e1d2",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_D__Arctic_Choir_Whl",
+   "sample_ids": [
+    "0xb578fe76",
+    "0x75238265",
+    "0x72ba2abf"
+   ],
+   "sy_messages": 9,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_D__Bell_Collection",
+   "sample_ids": [
+    "0xd95a33ca",
+    "0xb6df8c6a",
+    "0x19d37317"
+   ],
+   "sy_messages": 9,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_D__Cinematic_Str_II",
+   "sample_ids": [
+    "0xe7ba3cf5",
+    "0x70e23edc",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_D__Dynamic_Orch",
+   "sample_ids": [
+    "0x3388b425",
+    "0x5be018f4",
+    "0xaf754986"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_D__Fast_Quintet",
+   "sample_ids": [
+    "0x264e69cd",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_D__Finger_Bass",
+   "sample_ids": [
+    "0xb897d2b1",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_D__Flute_Mellotron_",
+   "sample_ids": [
+    "0x4ec6fa2b",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_D__Grand_Strings",
+   "sample_ids": [
+    "0x3388b425",
+    "0x0",
+    "0x630a53b0"
+   ],
+   "sy_messages": 35,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_D__Innocense",
+   "sample_ids": [
+    "0x70e23edc",
+    "0x19b9ec9c",
+    "0x4c6a6219"
+   ],
+   "sy_messages": 5,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_D__Jealous_Upright",
+   "sample_ids": [
+    "0xc2c686a9",
+    "0x29177446",
+    "0x0"
+   ],
+   "sy_messages": 0,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": []
+  },
+  {
+   "program": "Bank_D__Mellotron_Voices",
+   "sample_ids": [
+    "0x8ce529d5",
+    "0xb873f451",
+    "0x0"
+   ],
+   "sy_messages": 140,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x921bc",
+    "0x921bd",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x9247a",
+    "0x9247b",
+    "0x9247c",
+    "0x9247d",
+    "0x9247e",
+    "0x9247f",
+    "0x92483",
+    "0x92484",
+    "0x92486",
+    "0x92490",
+    "0x92491",
+    "0x924a2",
+    "0x924a3",
+    "0x924ab",
+    "0x924b2",
+    "0x924b3",
+    "0x924b4",
+    "0x924b5",
+    "0x924b6",
+    "0x924b7",
+    "0x924bb",
+    "0x924bc",
+    "0x924be",
+    "0x924c8",
+    "0x924c9",
+    "0x924da",
+    "0x924db",
+    "0x924e3"
+   ]
+  },
+  {
+   "program": "Bank_D__Memory_Glitch",
+   "sample_ids": [
+    "0x252bcf39",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 35,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_D__Nox_Split",
+   "sample_ids": [
+    "0xa95c8faf",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 34,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_D__Quintet_Bass_Spl",
+   "sample_ids": [
+    "0x790f9add",
+    "0x310bc578",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_D__Rehearsal_Pipes",
+   "sample_ids": [
+    "0x49b89b92",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_D__Sidechain_String",
+   "sample_ids": [
+    "0xf5da36ae",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 35,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_D__Soft_Vocal",
+   "sample_ids": [
+    "0xe8ed9987",
+    "0xb578fe76",
+    "0x0"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_D__Soul_Str_Layer",
+   "sample_ids": [
+    "0x5659c608",
+    "0x264e69cd",
+    "0x0"
+   ],
+   "sy_messages": 70,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_D__Space_Bass",
+   "sample_ids": [
+    "0xc7a2dc05",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 35,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_D__Sunrise_Mello",
+   "sample_ids": [
+    "0xfa26e1d2",
+    "0x4ec6fa2b",
+    "0x0"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_D__Upright_Bass",
+   "sample_ids": [
+    "0x310bc578",
+    "0x79fa55bd",
+    "0x0"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_D__Vibra_Band",
+   "sample_ids": [
+    "0x29177446",
+    "0x33982da5",
+    "0xe863bebc"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_E__24_Frames_J3",
+   "sample_ids": [
+    "0xe863bebc",
+    "0xffa387f4",
+    "0x0"
+   ],
+   "sy_messages": 10,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484",
+    "0x924bc"
+   ]
+  },
+  {
+   "program": "Bank_E__Affection_Whl",
+   "sample_ids": [
+    "0x1a7b897f",
+    "0xd47c574f",
+    "0x4c6a6219"
+   ],
+   "sy_messages": 71,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_E__Americana_II",
+   "sample_ids": [
+    "0x1e20e890",
+    "0xb61e034b",
+    "0xd4dd62ce"
+   ],
+   "sy_messages": 255,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x921bc",
+    "0x921bd",
+    "0x921d2",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x9247a",
+    "0x9247b",
+    "0x9247c",
+    "0x9247d",
+    "0x9247e",
+    "0x9247f",
+    "0x92483",
+    "0x92484",
+    "0x92486",
+    "0x92490",
+    "0x92491",
+    "0x924a2",
+    "0x924a3",
+    "0x924ab",
+    "0x924b2",
+    "0x924b3",
+    "0x924b4",
+    "0x924b5",
+    "0x924b6",
+    "0x924b7",
+    "0x924bb",
+    "0x924bc",
+    "0x924be",
+    "0x924c8",
+    "0x924c9",
+    "0x924da",
+    "0x924db",
+    "0x924e3",
+    "0x924ea",
+    "0x924eb",
+    "0x924ec",
+    "0x924ed",
+    "0x924ee",
+    "0x924ef",
+    "0x924f3",
+    "0x924f4",
+    "0x924f6",
+    "0x92500",
+    "0x92501",
+    "0x92512",
+    "0x92513",
+    "0x9251b"
+   ]
+  },
+  {
+   "program": "Bank_E__Babylon_EP_Whl",
+   "sample_ids": [
+    "0x74bfa77",
+    "0xa3cb54bf",
+    "0x2c73ad9"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_E__Big_Band_Saws",
+   "sample_ids": [
+    "0xad426aab",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_E__Brass_and_Wind",
+   "sample_ids": [
+    "0xe5a3136f",
+    "0xb540ca9d",
+    "0x50125e08"
+   ],
+   "sy_messages": 9,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_E__Breath_Pad",
+   "sample_ids": [
+    "0x72050df9",
+    "0xb578fe76",
+    "0x0"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_E__Calm_Before_Whl",
+   "sample_ids": [
+    "0xa559e58f",
+    "0x4c6a6219",
+    "0xe5a3136f"
+   ],
+   "sy_messages": 71,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_E__English_Horn",
+   "sample_ids": [
+    "0xba8bb317",
+    "0xf55a5abd",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_E__Fast_Octaves",
+   "sample_ids": [
+    "0x264e69cd",
+    "0xe7ba3cf5",
+    "0x0"
+   ],
+   "sy_messages": 5,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_E__Forlorn_Whl",
+   "sample_ids": [
+    "0x49b89b92",
+    "0x3b359e53",
+    "0xcb532f7"
+   ],
+   "sy_messages": 141,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x921bc",
+    "0x921bd",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x9247a",
+    "0x9247b",
+    "0x9247c",
+    "0x9247d",
+    "0x9247e",
+    "0x9247f",
+    "0x92483",
+    "0x92484",
+    "0x92486",
+    "0x92490",
+    "0x92491",
+    "0x924a2",
+    "0x924a3",
+    "0x924ab",
+    "0x924b2",
+    "0x924b3",
+    "0x924b4",
+    "0x924b5",
+    "0x924b6",
+    "0x924b7",
+    "0x924bb",
+    "0x924bc",
+    "0x924be",
+    "0x924c8",
+    "0x924c9",
+    "0x924da",
+    "0x924db",
+    "0x924e3",
+    "0x924f4"
+   ]
+  },
+  {
+   "program": "Bank_E__Helium_Whl",
+   "sample_ids": [
+    "0x0",
+    "0xfc7a005",
+    "0x0"
+   ],
+   "sy_messages": 70,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_E__Horns_n_Strings",
+   "sample_ids": [
+    "0x74bfa77",
+    "0x29177446",
+    "0x0"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_E__J3_Grand_Layers",
+   "sample_ids": [
+    "0x0",
+    "0x630a53b0",
+    "0x0"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_E__J3_Split_Special",
+   "sample_ids": [
+    "0x0",
+    "0xb578fe76",
+    "0x0"
+   ],
+   "sy_messages": 34,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_E__Pillow_Fight",
+   "sample_ids": [
+    "0x0",
+    "0xb578fe76",
+    "0x7324ff24"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_E__Slow_Octaves",
+   "sample_ids": [
+    "0x4c6a6219",
+    "0x7926155",
+    "0xe863bebc"
+   ],
+   "sy_messages": 102,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_E__Solo_Flute",
+   "sample_ids": [
+    "0x8a88a7ac",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_E__Solo_Trumpet",
+   "sample_ids": [
+    "0xa976bf04",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_E__Spin_Wurly_II",
+   "sample_ids": [
+    "0xd4dd62ce",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 0,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": []
+  },
+  {
+   "program": "Bank_E__Vibra-Spin_Whl",
+   "sample_ids": [
+    "0xf76df686",
+    "0xdb86e0a0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_E__Wind_Section_2",
+   "sample_ids": [
+    "0x9b9c5100",
+    "0x8a88a7ac",
+    "0x50352a0"
+   ],
+   "sy_messages": 18,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484",
+    "0x924bc",
+    "0x924f4",
+    "0x9252c"
+   ]
+  },
+  {
+   "program": "Bank_F__1905_Orchestra",
+   "sample_ids": [
+    "0xc1f1542b",
+    "0x13c28411",
+    "0xf55a5abd"
+   ],
+   "sy_messages": 70,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_F__Aerial_Gaze",
+   "sample_ids": [
+    "0xdb86e0a0",
+    "0x4c6a6219",
+    "0x0"
+   ],
+   "sy_messages": 36,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_F__B3_Meditation_II",
+   "sample_ids": [
+    "0x0",
+    "0x4c6a6219",
+    "0x4f511fdd"
+   ],
+   "sy_messages": 7,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c",
+    "0x92484"
+   ]
+  },
+  {
+   "program": "Bank_F__Bell_Pad",
+   "sample_ids": [
+    "0x5ed7e72c",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_F__Bell_Strings",
+   "sample_ids": [
+    "0x0",
+    "0x0",
+    "0xe96e0e31"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_F__Cute_Orchestra",
+   "sample_ids": [
+    "0x5ed7e72c",
+    "0x29177446",
+    "0xffa387f4"
+   ],
+   "sy_messages": 85,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_F__Dynamic_Trumpet",
+   "sample_ids": [
+    "0xa976bf04",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 35,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_F__Glass_Pad",
+   "sample_ids": [
+    "0x0",
+    "0x252bcf39",
+    "0x0"
+   ],
+   "sy_messages": 6,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_F__OD_Rock_Bass",
+   "sample_ids": [
+    "0x3f381fce",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_F__Ostinato_Whl",
+   "sample_ids": [
+    "0x167ef536",
+    "0x0",
+    "0x5106c921"
+   ],
+   "sy_messages": 53,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_F__Pearl_Str_Fl_Whl",
+   "sample_ids": [
+    "0x790f9add",
+    "0x4ec6fa2b",
+    "0x0"
+   ],
+   "sy_messages": 5,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414",
+    "0x9244c"
+   ]
+  },
+  {
+   "program": "Bank_F__Plucked_EP",
+   "sample_ids": [
+    "0xcf8aad2e",
+    "0x173a15a7",
+    "0x0"
+   ],
+   "sy_messages": 70,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473"
+   ]
+  },
+  {
+   "program": "Bank_F__Strings_and_Saws",
+   "sample_ids": [
+    "0x4c6a6219",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_F__Symph_Str_Legato",
+   "sample_ids": [
+    "0xf5da36ae",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 3,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x92414"
+   ]
+  },
+  {
+   "program": "Bank_F__Taped_Section",
+   "sample_ids": [
+    "0x1c67e403",
+    "0x0",
+    "0x0"
+   ],
+   "sy_messages": 51,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b"
+   ]
+  },
+  {
+   "program": "Bank_F__Unclocked_Pad",
+   "sample_ids": [
+    "0x0",
+    "0x19d37317",
+    "0x0"
+   ],
+   "sy_messages": 0,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": []
+  },
+  {
+   "program": "Bank_F__Vintage_Strings",
+   "sample_ids": [
+    "0xf5da36ae",
+    "0xa95c8faf",
+    "0xfa26e1d2"
+   ],
+   "sy_messages": 153,
+   "window_hits": 0,
+   "e_shaped_hits": 0,
+   "sy_key_words": [
+    "0x921a6",
+    "0x921a7",
+    "0x921bc",
+    "0x9240a",
+    "0x9240b",
+    "0x9240c",
+    "0x9240d",
+    "0x9240e",
+    "0x9240f",
+    "0x92413",
+    "0x92414",
+    "0x92416",
+    "0x92420",
+    "0x92421",
+    "0x92432",
+    "0x92433",
+    "0x9243b",
+    "0x92442",
+    "0x92443",
+    "0x92444",
+    "0x92445",
+    "0x92446",
+    "0x92447",
+    "0x9244b",
+    "0x9244c",
+    "0x9244e",
+    "0x92458",
+    "0x92459",
+    "0x9246a",
+    "0x9246b",
+    "0x92473",
+    "0x9247a",
+    "0x9247b",
+    "0x9247c",
+    "0x9247d",
+    "0x9247e",
+    "0x9247f",
+    "0x92483",
+    "0x92484",
+    "0x92486",
+    "0x92490",
+    "0x92491",
+    "0x924a2",
+    "0x924a3",
+    "0x924ab"
+   ]
+  }
+ ],
+ "sy_key_words": [
+  {
+   "dm": "0x921a6",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x3bb6ff00",
+     "0x3bb70f00",
+     "0x3bf46900"
+    ],
+    "k60": [
+     "0x3bf46900",
+     "0x3c747080",
+     "0x3c748500"
+    ],
+    "k84": [
+     "0x3bf46900",
+     "0x3cf430c0",
+     "0x3d83fec0"
+    ]
+   }
+  },
+  {
+   "dm": "0x921a7",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x3bb6ff00",
+     "0x3bb70f00",
+     "0x3bc20200"
+    ],
+    "k60": [
+     "0x3bf46900",
+     "0x3c66a400",
+     "0x3c66b780"
+    ],
+    "k84": [
+     "0x3bf46900",
+     "0x3c748500",
+     "0x3cf430c0"
+    ]
+   }
+  },
+  {
+   "dm": "0x921bc",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x3bb70f00",
+     "0x3bc20200",
+     "0x3bf46900"
+    ],
+    "k60": [
+     "0x3c66b780",
+     "0x3c747080",
+     "0x3c748500"
+    ],
+    "k84": [
+     "0x3c748500",
+     "0x3cf430c0",
+     "0x3d5d3c20"
+    ]
+   }
+  },
+  {
+   "dm": "0x921bd",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x3bf46900",
+     "0x3d8409f0"
+    ],
+    "k60": [
+     "0x3c66b780",
+     "0x3c748500",
+     "0x3cf430c0"
+    ],
+    "k84": [
+     "0x3cf430c0",
+     "0x3d5d3c20",
+     "0x3d8409f0"
+    ]
+   }
+  },
+  {
+   "dm": "0x921d2",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x3d8409f0"
+    ],
+    "k60": [
+     "0x3d8409f0"
+    ],
+    "k84": [
+     "0x3d8409f0"
+    ]
+   }
+  },
+  {
+   "dm": "0x9240a",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x0",
+     "0x1",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x9240b",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xc00",
+     "0xe00"
+    ],
+    "k60": [
+     "0xc00",
+     "0x1ca0",
+     "0x2c60"
+    ],
+    "k84": [
+     "0xc00",
+     "0xde0",
+     "0x1140"
+    ]
+   }
+  },
+  {
+   "dm": "0x9240c",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x9240d",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x2320",
+     "0x37a0"
+    ],
+    "k60": [
+     "0xb40",
+     "0x2320",
+     "0x2ba0"
+    ],
+    "k84": [
+     "0xec0",
+     "0x1000",
+     "0x2320"
+    ]
+   }
+  },
+  {
+   "dm": "0x9240e",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x9240f",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x2380",
+     "0x3820"
+    ],
+    "k60": [
+     "0xbe0",
+     "0x2380",
+     "0x2c40"
+    ],
+    "k84": [
+     "0xfc0",
+     "0x1080",
+     "0x2380"
+    ]
+   }
+  },
+  {
+   "dm": "0x92413",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x0",
+     "0x16"
+    ],
+    "k60": [
+     "0x0",
+     "0x7",
+     "0x12"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0x12"
+    ]
+   }
+  },
+  {
+   "dm": "0x92414",
+   "programs": 112,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k60": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k84": [
+     "0x1c0794",
+     "0x1c07cd"
+    ]
+   }
+  },
+  {
+   "dm": "0x92416",
+   "programs": 60,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x0"
+    ],
+    "k60": [
+     "0x0"
+    ],
+    "k84": [
+     "0x0"
+    ]
+   }
+  },
+  {
+   "dm": "0x92420",
+   "programs": 60,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x3f128f5c"
+    ],
+    "k60": [
+     "0x3f128f5c"
+    ],
+    "k84": [
+     "0x3f128f5c"
+    ]
+   }
+  },
+  {
+   "dm": "0x92421",
+   "programs": 60,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbedae148"
+    ],
+    "k60": [
+     "0xbedae148"
+    ],
+    "k84": [
+     "0xbedae148"
+    ]
+   }
+  },
+  {
+   "dm": "0x92432",
+   "programs": 60,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbf800000"
+    ],
+    "k60": [
+     "0xbf800000"
+    ],
+    "k84": [
+     "0xbf800000"
+    ]
+   }
+  },
+  {
+   "dm": "0x92433",
+   "programs": 60,
+   "varies_with_key": false,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x0",
+     "0x2",
+     "0x4"
+    ],
+    "k60": [
+     "0x0",
+     "0x2",
+     "0x4"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0x4"
+    ]
+   }
+  },
+  {
+   "dm": "0x9243b",
+   "programs": 60,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xe3400",
+     "0xe4000"
+    ],
+    "k60": [
+     "0xe4000",
+     "0xe4c00",
+     "0xe5800"
+    ],
+    "k84": [
+     "0xe4000",
+     "0xe5800",
+     "0xe6400"
+    ]
+   }
+  },
+  {
+   "dm": "0x92442",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x2",
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x0",
+     "0x1",
+     "0x2"
+    ]
+   }
+  },
+  {
+   "dm": "0x92443",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xc00",
+     "0xe00",
+     "0x31e0"
+    ],
+    "k60": [
+     "0xc00",
+     "0x1ca0",
+     "0x23a0"
+    ],
+    "k84": [
+     "0xc00",
+     "0xde0",
+     "0xfe0"
+    ]
+   }
+  },
+  {
+   "dm": "0x92444",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x3",
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xc",
+     "0xd",
+     "0xe"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x92445",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xb60",
+     "0x2320",
+     "0x37a0"
+    ],
+    "k60": [
+     "0x480",
+     "0xb40",
+     "0x2320"
+    ],
+    "k84": [
+     "0xb40",
+     "0xec0",
+     "0x1000"
+    ]
+   }
+  },
+  {
+   "dm": "0x92446",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x3",
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xc",
+     "0xd",
+     "0xe"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x92447",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xbe0",
+     "0x2380",
+     "0x3820"
+    ],
+    "k60": [
+     "0x4c0",
+     "0xbe0",
+     "0x2380"
+    ],
+    "k84": [
+     "0xbe0",
+     "0xfc0",
+     "0x1080"
+    ]
+   }
+  },
+  {
+   "dm": "0x9244b",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x0",
+     "0x16",
+     "0x1a"
+    ],
+    "k60": [
+     "0x0",
+     "0x4",
+     "0x7"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0x7"
+    ]
+   }
+  },
+  {
+   "dm": "0x9244c",
+   "programs": 68,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k60": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k84": [
+     "0x1c0794",
+     "0x1c07cd"
+    ]
+   }
+  },
+  {
+   "dm": "0x9244e",
+   "programs": 38,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x0"
+    ],
+    "k60": [
+     "0x0"
+    ],
+    "k84": [
+     "0x0"
+    ]
+   }
+  },
+  {
+   "dm": "0x92458",
+   "programs": 38,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x3f128f5c"
+    ],
+    "k60": [
+     "0x3f128f5c"
+    ],
+    "k84": [
+     "0x3f128f5c"
+    ]
+   }
+  },
+  {
+   "dm": "0x92459",
+   "programs": 38,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbedae148"
+    ],
+    "k60": [
+     "0xbedae148"
+    ],
+    "k84": [
+     "0xbedae148"
+    ]
+   }
+  },
+  {
+   "dm": "0x9246a",
+   "programs": 38,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbf800000"
+    ],
+    "k60": [
+     "0xbf800000"
+    ],
+    "k84": [
+     "0xbf800000"
+    ]
+   }
+  },
+  {
+   "dm": "0x9246b",
+   "programs": 38,
+   "varies_with_key": false,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x0",
+     "0x2",
+     "0x4"
+    ],
+    "k60": [
+     "0x0",
+     "0x2",
+     "0x4"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0x4"
+    ]
+   }
+  },
+  {
+   "dm": "0x92473",
+   "programs": 38,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xe3400",
+     "0xe4000"
+    ],
+    "k60": [
+     "0xe4000",
+     "0xe4c00",
+     "0xe5800"
+    ],
+    "k84": [
+     "0xe4000",
+     "0xe4c00",
+     "0xe5800"
+    ]
+   }
+  },
+  {
+   "dm": "0x9247a",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x2",
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xb",
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x0",
+     "0x1",
+     "0x2"
+    ]
+   }
+  },
+  {
+   "dm": "0x9247b",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xc00",
+     "0xe00",
+     "0x31e0"
+    ],
+    "k60": [
+     "0x1280",
+     "0x1ca0",
+     "0x2c60"
+    ],
+    "k84": [
+     "0xae0",
+     "0xde0",
+     "0x10a0"
+    ]
+   }
+  },
+  {
+   "dm": "0x9247c",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x3",
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xb",
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x9247d",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xb60",
+     "0x2320",
+     "0x37a0"
+    ],
+    "k60": [
+     "0x480",
+     "0xb40",
+     "0x2b40"
+    ],
+    "k84": [
+     "0xb40",
+     "0xca0",
+     "0xec0"
+    ]
+   }
+  },
+  {
+   "dm": "0x9247e",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x3",
+     "0x4",
+     "0xd"
+    ],
+    "k60": [
+     "0xb",
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x9247f",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xbe0",
+     "0x2380",
+     "0x3820"
+    ],
+    "k60": [
+     "0x4c0",
+     "0xbe0",
+     "0x2c20"
+    ],
+    "k84": [
+     "0xbe0",
+     "0xdc0",
+     "0xfc0"
+    ]
+   }
+  },
+  {
+   "dm": "0x92483",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x0",
+     "0x16",
+     "0x1a"
+    ],
+    "k60": [
+     "0x0",
+     "0x7",
+     "0x12"
+    ],
+    "k84": [
+     "0x2",
+     "0x7",
+     "0x12"
+    ]
+   }
+  },
+  {
+   "dm": "0x92484",
+   "programs": 27,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k60": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k84": [
+     "0x1c0794",
+     "0x1c07cd"
+    ]
+   }
+  },
+  {
+   "dm": "0x92486",
+   "programs": 7,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x0"
+    ],
+    "k60": [
+     "0x0"
+    ],
+    "k84": [
+     "0x0"
+    ]
+   }
+  },
+  {
+   "dm": "0x92490",
+   "programs": 7,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x3f128f5c"
+    ],
+    "k60": [
+     "0x3f128f5c"
+    ],
+    "k84": [
+     "0x3f128f5c"
+    ]
+   }
+  },
+  {
+   "dm": "0x92491",
+   "programs": 7,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbedae148"
+    ],
+    "k60": [
+     "0xbedae148"
+    ],
+    "k84": [
+     "0xbedae148"
+    ]
+   }
+  },
+  {
+   "dm": "0x924a2",
+   "programs": 7,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbf800000"
+    ],
+    "k60": [
+     "0xbf800000"
+    ],
+    "k84": [
+     "0xbf800000"
+    ]
+   }
+  },
+  {
+   "dm": "0x924a3",
+   "programs": 7,
+   "varies_with_key": false,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x0",
+     "0x2",
+     "0x50"
+    ],
+    "k60": [
+     "0x0",
+     "0x2",
+     "0x50"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0x50"
+    ]
+   }
+  },
+  {
+   "dm": "0x924ab",
+   "programs": 7,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xe3400",
+     "0xe4000"
+    ],
+    "k60": [
+     "0xe4c00",
+     "0xe5800"
+    ],
+    "k84": [
+     "0xe4c00",
+     "0xe5800",
+     "0xe6400"
+    ]
+   }
+  },
+  {
+   "dm": "0x924b2",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x1",
+     "0xd"
+    ],
+    "k60": [
+     "0x1",
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x1",
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x924b3",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xc00",
+     "0x1140"
+    ],
+    "k60": [
+     "0x1140",
+     "0x1ca0",
+     "0x2c60"
+    ],
+    "k84": [
+     "0x10a0",
+     "0x1140",
+     "0x1ca0"
+    ]
+   }
+  },
+  {
+   "dm": "0x924b4",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x2",
+     "0xd"
+    ],
+    "k60": [
+     "0x2",
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x924b5",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x1000",
+     "0x2320"
+    ],
+    "k60": [
+     "0x480",
+     "0xb40",
+     "0x1000"
+    ],
+    "k84": [
+     "0x1000",
+     "0x1ca0",
+     "0x2ba0"
+    ]
+   }
+  },
+  {
+   "dm": "0x924b6",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x2",
+     "0xd"
+    ],
+    "k60": [
+     "0x2",
+     "0xc",
+     "0xd"
+    ],
+    "k84": [
+     "0x2",
+     "0xc"
+    ]
+   }
+  },
+  {
+   "dm": "0x924b7",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x1080",
+     "0x2380"
+    ],
+    "k60": [
+     "0x4c0",
+     "0xbe0",
+     "0x1080"
+    ],
+    "k84": [
+     "0x1080",
+     "0x1d20",
+     "0x2c40"
+    ]
+   }
+  },
+  {
+   "dm": "0x924bb",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x0",
+     "0x2"
+    ],
+    "k60": [
+     "0x0",
+     "0x2",
+     "0x7"
+    ],
+    "k84": [
+     "0x2",
+     "0x12",
+     "0x16"
+    ]
+   }
+  },
+  {
+   "dm": "0x924bc",
+   "programs": 9,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k60": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k84": [
+     "0x1c0794",
+     "0x1c07cd"
+    ]
+   }
+  },
+  {
+   "dm": "0x924be",
+   "programs": 4,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x0"
+    ],
+    "k60": [
+     "0x0"
+    ],
+    "k84": [
+     "0x0"
+    ]
+   }
+  },
+  {
+   "dm": "0x924c8",
+   "programs": 4,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x3f128f5c"
+    ],
+    "k60": [
+     "0x3f128f5c"
+    ],
+    "k84": [
+     "0x3f128f5c"
+    ]
+   }
+  },
+  {
+   "dm": "0x924c9",
+   "programs": 4,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbedae148"
+    ],
+    "k60": [
+     "0xbedae148"
+    ],
+    "k84": [
+     "0xbedae148"
+    ]
+   }
+  },
+  {
+   "dm": "0x924da",
+   "programs": 4,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbf800000"
+    ],
+    "k60": [
+     "0xbf800000"
+    ],
+    "k84": [
+     "0xbf800000"
+    ]
+   }
+  },
+  {
+   "dm": "0x924db",
+   "programs": 4,
+   "varies_with_key": false,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x0",
+     "0x50"
+    ],
+    "k60": [
+     "0x0",
+     "0x2",
+     "0x50"
+    ],
+    "k84": [
+     "0x0",
+     "0x2",
+     "0x50"
+    ]
+   }
+  },
+  {
+   "dm": "0x924e3",
+   "programs": 4,
+   "varies_with_key": true,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0xe4000",
+     "0xe6400"
+    ],
+    "k60": [
+     "0xe4c00",
+     "0xe5800",
+     "0xe6400"
+    ],
+    "k84": [
+     "0xe5800",
+     "0xe6400"
+    ]
+   }
+  },
+  {
+   "dm": "0x924ea",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x1"
+    ],
+    "k60": [
+     "0x1"
+    ],
+    "k84": [
+     "0x1"
+    ]
+   }
+  },
+  {
+   "dm": "0x924eb",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x1140"
+    ],
+    "k60": [
+     "0x1140"
+    ],
+    "k84": [
+     "0x1140"
+    ]
+   }
+  },
+  {
+   "dm": "0x924ec",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x2"
+    ],
+    "k60": [
+     "0x2"
+    ],
+    "k84": [
+     "0x2"
+    ]
+   }
+  },
+  {
+   "dm": "0x924ed",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x1000"
+    ],
+    "k60": [
+     "0x1000"
+    ],
+    "k84": [
+     "0x1000"
+    ]
+   }
+  },
+  {
+   "dm": "0x924ee",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x2"
+    ],
+    "k60": [
+     "0x2"
+    ],
+    "k84": [
+     "0x2"
+    ]
+   }
+  },
+  {
+   "dm": "0x924ef",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x1080"
+    ],
+    "k60": [
+     "0x1080"
+    ],
+    "k84": [
+     "0x1080"
+    ]
+   }
+  },
+  {
+   "dm": "0x924f3",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x2"
+    ],
+    "k60": [
+     "0x2"
+    ],
+    "k84": [
+     "0x2"
+    ]
+   }
+  },
+  {
+   "dm": "0x924f4",
+   "programs": 5,
+   "varies_with_key": false,
+   "varies_with_program": true,
+   "values": {
+    "k36": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k60": [
+     "0x1c0794",
+     "0x1c07cd"
+    ],
+    "k84": [
+     "0x1c0794",
+     "0x1c07cd"
+    ]
+   }
+  },
+  {
+   "dm": "0x924f6",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x0"
+    ],
+    "k60": [
+     "0x0"
+    ],
+    "k84": [
+     "0x0"
+    ]
+   }
+  },
+  {
+   "dm": "0x92500",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x3f128f5c"
+    ],
+    "k60": [
+     "0x3f128f5c"
+    ],
+    "k84": [
+     "0x3f128f5c"
+    ]
+   }
+  },
+  {
+   "dm": "0x92501",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbedae148"
+    ],
+    "k60": [
+     "0xbedae148"
+    ],
+    "k84": [
+     "0xbedae148"
+    ]
+   }
+  },
+  {
+   "dm": "0x92512",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xbf800000"
+    ],
+    "k60": [
+     "0xbf800000"
+    ],
+    "k84": [
+     "0xbf800000"
+    ]
+   }
+  },
+  {
+   "dm": "0x92513",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x50"
+    ],
+    "k60": [
+     "0x50"
+    ],
+    "k84": [
+     "0x50"
+    ]
+   }
+  },
+  {
+   "dm": "0x9251b",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0xe6400"
+    ],
+    "k60": [
+     "0xe6400"
+    ],
+    "k84": [
+     "0xe6400"
+    ]
+   }
+  },
+  {
+   "dm": "0x9252c",
+   "programs": 1,
+   "varies_with_key": false,
+   "varies_with_program": false,
+   "values": {
+    "k36": [
+     "0x1c0794"
+    ],
+    "k60": [
+     "0x1c0794"
+    ],
+    "k84": [
+     "0x1c0794"
+    ]
+   }
+  }
+ ]
+}
