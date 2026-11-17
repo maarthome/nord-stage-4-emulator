@@ -2,10 +2,12 @@
 //! transpiles a SHARC VISA routine from a flat SRAM image into standalone Rust source (Level-3 AOT).
 //!
 //! `sharc-aot IMAGE START LAST --ops` lists the decoded ops of the instructions starting in
-//! `START..=LAST`; `sharc-aot IMAGE START LAST --hot [--tier interp|fast|pe|guarded|approx] --out FILE` writes (tiers: see
-//! `AotTier`) the hot-block module that
-//! `NORD_SHARC_AOT_HOT=FILE cargo build` compiles into `nord-sharc` (see
-//! `docs/research/sharc-aot-hot-block.md`).
+//! `START..=LAST`; `sharc-aot IMAGE START LAST --hot [--tier pe|guarded|approx] --out FILE` writes
+//! (tiers: see `AotTier`) the hot-block module that `NORD_SHARC_AOT_HOT=FILE cargo build`
+//! compiles into `nord-sharc` (see `docs/research/sharc-aot-hot-block.md`).
+//! `sharc-aot IMAGE --ranges A:B,C:D,... [--tier T] --out FILE` does the same for a list of
+//! ranges, in the given order (`sharc_jit_diff --aot-top N` enables the first N)
+//! (`docs/research/sharc-aot-multi-block.md`).
 use nord_sharc::core::{AotOptions, AotTier, Core};
 use std::process::ExitCode;
 
@@ -22,21 +24,21 @@ fn run_cli(args: &[String]) -> Result<Option<String>, String> {
     let mut out_path: Option<String> = None;
     let mut ops = false;
     let mut hot = false;
-    let mut tier = AotTier::Interp;
+    let mut tier = AotTier::Pe;
+    let mut ranges: Option<String> = None;
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--fast-float" => opts.fast_float = true,
             "--ops" => ops = true,
             "--hot" => hot = true,
+            "--ranges" => ranges = Some(it.next().ok_or("--ranges needs A:B,C:D,...")?.clone()),
             "--tier" => {
                 tier = match it.next().map(String::as_str) {
-                    Some("interp") => AotTier::Interp,
-                    Some("fast") => AotTier::Fast,
                     Some("pe") => AotTier::Pe,
                     Some("guarded") => AotTier::Guarded,
                     Some("approx") => AotTier::Approx,
-                    _ => return Err("--tier needs interp, fast, pe, guarded or approx".to_string()),
+                    _ => return Err("--tier needs pe, guarded or approx".to_string()),
                 };
             }
             "--fn" => {
@@ -47,6 +49,31 @@ fn run_cli(args: &[String]) -> Result<Option<String>, String> {
             }
             _ => positional.push(a.clone()),
         }
+    }
+    if let Some(list) = ranges {
+        let [image] = positional.as_slice() else {
+            return Err(
+                "usage: sharc-aot IMAGE --ranges A:B,C:D,... [--tier T] [--out FILE]".into(),
+            );
+        };
+        let pairs = list
+            .split(',')
+            .map(|r| {
+                let (a, b) = r.split_once(':').ok_or("range needs START:LAST")?;
+                Ok((
+                    parse_number(a).ok_or("bad range START")? as u32,
+                    parse_number(b).ok_or("bad range LAST")? as u32,
+                ))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let data = std::fs::read(image).map_err(|e| format!("{image}: {e}"))?;
+        let src = Core::new(&data).emit_hot_blocks_rust(&pairs, tier)?;
+        return match out_path {
+            Some(path) => std::fs::write(&path, &src)
+                .map(|()| None)
+                .map_err(|e| format!("{path}: {e}")),
+            None => Ok(Some(src)),
+        };
     }
     let [image, entry, max_insns] = positional.as_slice() else {
         return Err(
@@ -133,12 +160,21 @@ mod tests {
         .unwrap()
         .unwrap();
         assert!(ops.contains("LoadImm"), "{ops}");
+        let image2 = image.clone();
         let hot = run_cli(&[image, "0x120000".into(), "0x120002".into(), "--hot".into()])
             .unwrap()
             .unwrap();
-        let _ = std::fs::remove_file(&img);
-        assert!(hot.contains("core.write_ureg(1, 0x00000007);"), "{hot}");
         assert!(hot.contains("steps: 2"), "{hot}");
+        let both = run_cli(&[
+            image2,
+            "--ranges".into(),
+            "0x120000:0x120002,0x120002:0x120002".into(),
+        ])
+        .unwrap()
+        .unwrap();
+        let _ = std::fs::remove_file(&img);
+        assert!(both.contains("static BLOCKS: [AotBlock; 2]"), "{both}");
+        assert!(run_cli(&["x".into(), "--ranges".into(), "bad".into()]).is_err());
     }
 
     #[test]

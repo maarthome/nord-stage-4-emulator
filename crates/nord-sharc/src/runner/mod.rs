@@ -4,6 +4,7 @@
 //! ([`audio`]). Moved out of `bin/sharc_org/` so that several binaries use one implementation.
 pub mod aot_audio;
 pub mod aot_hot;
+pub mod aot_rank;
 pub mod audio;
 pub mod jit_diff;
 pub mod msg;

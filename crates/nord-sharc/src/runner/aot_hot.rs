@@ -5,6 +5,7 @@ use super::jit_diff::{diff_pass_with, diff_run_with};
 use super::msg::{self, Msg};
 use super::pass::PassConfig;
 use crate::core::{AotHotStats, Core};
+use std::collections::HashMap;
 use std::time::Instant;
 
 /// Everything one AOT differential or benchmark run needs.
@@ -19,9 +20,8 @@ pub struct AotRun<'a> {
     pub warmup: u32,
     pub chunk: u64,
     pub cfg: PassConfig,
-    /// Block range: instruction starts `start..=last`.
-    pub start: u32,
-    pub last: u32,
+    /// Block ranges: instruction starts `start..=last` of each enabled block.
+    pub ranges: &'a [(u32, u32)],
     pub lenient: bool,
 }
 
@@ -36,7 +36,7 @@ impl AotRun<'_> {
             c.preset_device(a, v);
         }
         if aot {
-            c.enable_aot_hot(self.start, self.last)?;
+            c.enable_aot_hot(self.ranges)?;
         }
         Ok(c)
     }
@@ -52,12 +52,17 @@ impl AotRun<'_> {
 }
 
 /// Result of a differential run that matched.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct AotDiffReport {
     pub boot_steps: u64,
     pub passes: u32,
     pub pass_steps: u64,
+    /// Counters of the whole run (boot included).
     pub aot: AotHotStats,
+    /// Counters of the audio passes only (boot excluded).
+    pub aot_passes: AotHotStats,
+    /// `(start, last, steps, native steps, counters)` of each enabled block, whole run.
+    pub blocks: Vec<(u32, u32, u32, u32, AotHotStats)>,
 }
 
 /// Boots both cores, then runs `passes` audio passes in lockstep and compares the strict state
@@ -68,6 +73,7 @@ pub fn diff(r: &AotRun) -> Result<AotDiffReport, String> {
     diff_run_with(&mut interp, &mut aot, r.boot, r.chunk, true, &mut run_aot)
         .map_err(|m| format!("boot: {m}"))?;
     let boot_steps = interp.steps;
+    let boot_stats = aot.aot_hot_stats();
     let mut pass_steps = 0;
     for p in 0..r.passes {
         r.deliver(&mut [&mut interp, &mut aot], p)?;
@@ -88,6 +94,8 @@ pub fn diff(r: &AotRun) -> Result<AotDiffReport, String> {
         passes: r.passes,
         pass_steps,
         aot: aot.aot_hot_stats(),
+        aot_passes: aot.aot_hot_stats().since(&boot_stats),
+        blocks: aot.aot_block_stats(),
     })
 }
 
@@ -111,7 +119,8 @@ pub struct BlockTiming {
 #[derive(Debug, Clone, Copy)]
 pub struct AotBench {
     pub passes: u32,
-    pub block_steps: u32,
+    /// Enabled blocks.
+    pub blocks: usize,
     pub interp: PassTiming,
     pub aot: PassTiming,
     pub interp_block: BlockTiming,
@@ -131,7 +140,11 @@ pub(super) fn run_pass(
     let mut left_idle = false;
     let t0 = Instant::now();
     while c.steps < limit {
-        if !(use_aot && c.aot_try(limit)) {
+        if use_aot && c.aot_try(limit) {
+            if let Some(f) = c.aot_take_fault() {
+                return Err(format!("fault: {f:?}"));
+            }
+        } else {
             c.step().map_err(|f| format!("fault: {f:?}"))?;
         }
         if c.pc != cfg.idle_pc {
@@ -148,7 +161,7 @@ pub(super) fn run_pass(
 fn run_pass_block_timed(
     c: &mut Core,
     cfg: &PassConfig,
-    block: (u32, u32),
+    blocks: &HashMap<u32, u32>,
     use_aot: bool,
     bt: &mut BlockTiming,
 ) -> Result<(), String> {
@@ -157,18 +170,25 @@ fn run_pass_block_timed(
     let limit = c.steps + cfg.max_steps;
     let mut left_idle = false;
     while c.steps < limit {
-        if c.pc == block.0 && c.steps + u64::from(block.1) <= limit {
+        let n = blocks
+            .get(&c.pc)
+            .copied()
+            .filter(|&n| c.steps + u64::from(n) <= limit);
+        if let Some(n) = n {
+            let before = c.steps;
             let t0 = Instant::now();
             let ran = if use_aot {
                 c.aot_try(limit)
             } else {
-                c.run(u64::from(block.1)).is_none()
+                c.run(u64::from(n)).is_none()
             };
             let dt = t0.elapsed().as_secs_f64();
             if ran {
                 bt.calls += 1;
-                bt.steps += u64::from(block.1);
+                bt.steps += c.steps - before;
                 bt.total_s += dt;
+            } else {
+                c.step().map_err(|f| format!("fault: {f:?}"))?;
             }
         } else {
             c.step().map_err(|f| format!("fault: {f:?}"))?;
@@ -187,7 +207,11 @@ fn run_pass_block_timed(
 /// `exact` = the final state of both cores must match (false for the approximate tier).
 pub fn bench(r: &AotRun, exact: bool) -> Result<AotBench, String> {
     let (mut interp, mut aot) = (r.core(false)?, r.core(true)?);
-    let block = (r.start, aot.aot_hot_range().ok_or("no block")?.2);
+    let ranges = aot.aot_hot_ranges();
+    if ranges.is_empty() {
+        return Err("no block".into());
+    }
+    let blocks: HashMap<u32, u32> = ranges.iter().map(|&(s, _, n)| (s, n)).collect();
     interp.run(r.boot);
     aot.run_aot(r.boot);
     if (interp.pc, interp.steps) != (aot.pc, aot.steps) {
@@ -212,15 +236,15 @@ pub fn bench(r: &AotRun, exact: bool) -> Result<AotBench, String> {
     }
     let (mut bi, mut ba) = (BlockTiming::default(), BlockTiming::default());
     for _ in 0..r.passes {
-        run_pass_block_timed(&mut interp, &r.cfg, block, false, &mut bi)?;
-        run_pass_block_timed(&mut aot, &r.cfg, block, true, &mut ba)?;
+        run_pass_block_timed(&mut interp, &r.cfg, &blocks, false, &mut bi)?;
+        run_pass_block_timed(&mut aot, &r.cfg, &blocks, true, &mut ba)?;
     }
     if let Some(m) = interp.state_mismatch(&aot).filter(|_| exact) {
         return Err(format!("state diverged during bench: {m}"));
     }
     Ok(AotBench {
         passes: r.passes,
-        block_steps: block.1,
+        blocks: ranges.len(),
         interp: ti,
         aot: ta,
         interp_block: bi,
@@ -240,7 +264,7 @@ impl AotBench {
         let (as_, at) = blk(&self.aot_block);
         let pass_steps = self.interp.steps as f64 / n;
         format!(
-            "{label}: steps/pass={pass_steps:.1} | interp mean={:.3} ms worst={:.3} ms ({:.2} Msteps/s) | aot mean={:.3} ms worst={:.3} ms ({:.2} Msteps/s) | speedup x{:.3} | block {} steps: interp {is:.1} steps/pass ({:.1}% of pass) {it:.1} us/pass ({:.1}% of time) | aot {as_:.1} steps/pass {at:.1} us/pass | block speedup x{:.2} | aot calls={} misses={}",
+            "{label}: steps/pass={pass_steps:.1} | interp mean={:.3} ms worst={:.3} ms ({:.2} Msteps/s) | aot mean={:.3} ms worst={:.3} ms ({:.2} Msteps/s) | speedup x{:.3} | {} blocks: interp {is:.1} steps/pass ({:.1}% of pass) {it:.1} us/pass ({:.1}% of time) | aot {as_:.1} steps/pass {at:.1} us/pass | block speedup x{:.2} | aot calls={} misses={}",
             ms(self.interp.total_s),
             self.interp.worst_s * 1e3,
             rate(&self.interp),
@@ -248,7 +272,7 @@ impl AotBench {
             self.aot.worst_s * 1e3,
             rate(&self.aot),
             self.interp.total_s / self.aot.total_s,
-            self.block_steps,
+            self.blocks,
             100.0 * is / pass_steps,
             100.0 * it / (ms(self.interp.total_s) * 1e3),
             it / at.max(1e-9),
@@ -280,8 +304,7 @@ mod tests {
                 max_steps: 100,
                 irq: None,
             },
-            start: 0x12_5021,
-            last: 0x12_50aa,
+            ranges: &[(0x12_5021, 0x12_50aa)],
             lenient: false,
         };
         assert!(diff(&r).unwrap_err().contains("generated AOT block"));
@@ -297,7 +320,7 @@ mod tests {
         };
         let b = AotBench {
             passes: 10,
-            block_steps: 79,
+            blocks: 79,
             interp: t(1000, 0.02, 0.003),
             aot: t(1000, 0.01, 0.002),
             interp_block: BlockTiming {
