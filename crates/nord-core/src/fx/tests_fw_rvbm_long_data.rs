@@ -179,3 +179,26 @@ fn the_long_table_covers_the_nine_types_with_both_signals() {
     }
     assert!(GOLDEN_LONG.iter().all(|g| g.calls == 30_000));
 }
+
+/// The table equals the committed CSV (`docs/research/data/fx-rvbmulti-golden-long.csv`). The CSV
+/// itself needs the local FX image and the oracle to regenerate, so CI cannot check it against
+/// the oracle.
+#[test]
+fn the_table_equals_the_committed_csv() {
+    let csv = include_str!("../../../../docs/research/data/fx-rvbmulti-golden-long.csv");
+    let rows: Vec<Vec<&str>> = csv
+        .lines()
+        .skip(1)
+        .map(|l| l.trim().split(',').collect())
+        .collect();
+    assert_eq!(rows.len(), GOLDEN_LONG.len());
+    for (r, g) in rows.iter().zip(&GOLDEN_LONG) {
+        assert_eq!(r[0].parse::<usize>().unwrap(), g.rvb_type);
+        assert_eq!(r[1] == "noise", g.noise);
+        assert_eq!(r[2].parse::<usize>().unwrap(), g.amount);
+        assert_eq!(r[3].parse::<usize>().unwrap(), g.calls);
+        assert_eq!(u64::from_str_radix(&r[4][2..], 16).unwrap(), g.hash);
+        assert_eq!(r[5].parse::<usize>().unwrap(), g.nonzero);
+        assert_eq!(r[6].parse::<i64>().unwrap(), g.first);
+    }
+}

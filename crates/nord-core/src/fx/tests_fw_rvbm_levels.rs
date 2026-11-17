@@ -77,3 +77,24 @@ fn firmware_hall_and_cathedral_tails_are_equal() {
     assert!((hall - cath).abs() < 0.05, "{hall} {cath}");
     assert!((cath - 1.19).abs() < 0.05, "{cath}");
 }
+
+/// A 220 Hz tone through the firmware Cathedral (mix 1) leaves a floor of the packed delay words:
+/// loose bounds on the measured -51 / -61 / -70 dB (sub, brilliance, air) re the tone.
+#[test]
+fn a_pure_tone_leaves_a_low_floor_outside_its_band() {
+    let mut fx = chain(true, ReverbModel::Cathedral, false);
+    let mut y = Vec::new();
+    for i in 0..65_536 {
+        let x = 0.3 * (std::f32::consts::TAU * 220.0 * i as f32 / 48_000.0).sin();
+        y.push(fx.process_reverb(x, x, INV_FS)[0]);
+    }
+    // power above 3 kHz via a first difference twice (crude high-pass) against total power
+    let tail = &y[16_384..];
+    let hp: f64 = tail
+        .windows(3)
+        .map(|w| f64::from(w[0] - 2.0 * w[1] + w[2]).powi(2))
+        .sum();
+    let tot: f64 = tail.iter().map(|v| f64::from(*v).powi(2)).sum();
+    // the second difference gains up to +12 dB at 3 kHz and +24 dB at Nyquist; 220 Hz is -37 dB
+    assert!(10.0 * (hp / tot).log10() < -20.0, "{}", hp / tot);
+}
