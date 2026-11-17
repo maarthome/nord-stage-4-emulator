@@ -136,7 +136,7 @@ python tools/fx_golden_mod1.py > crates/nord-core/src/fx/tests_mod1_golden.rs
 
 * No hardware clip contains RM, A-WAH, WAH or PUMP (`docs/research/data/emu_vs_hw_*.json`: the Vox clip has Mod 2 VIBE only); the stages are compared with the oracle word for word, not with hardware.
 * The piano unit words are used for every layer (ASSUMED); the synth unit has its own rate tables (RM `0x1C200 .. 0x7DB1D00`).
-* The PUMP counter `c[-0x15]` is driven from the engine's Master Clock (s7.2, D134); the clock word source (`DM(0xC0230)`) and its zero point are not found (OQ36, D148).
+* The PUMP counter `c[-0x15]` is driven from the engine's Master Clock (s7.2, D134); the clock word source (`DM(0xC0230)`) and its zero point are not found (OQ36, D149).
 * Filter coefficients (A-WAH, WAH) are those of 43.4 kHz: ASSUMED about 10 % cutoff shift at 48 kHz.
 
 ### 7.2 PUMP and the Master Clock (D134)
@@ -153,7 +153,7 @@ Checked 2026-11-17. Sources: the port `fw_pump.rs` (oracle verified, s7), [arm-t
 | What fills `DM(0xC0230)`? | Not the ARM: no message to `0xC0230..0xC0233` from any chip in the 96,111 message boot log, none in 30,000 ticks. A DSP-side DMA or the SMP chip's serial stream; the SMP DSP image was not searched. Span (one wrap = 32 beats) and zero point (clock start) are ASSUMED; the A:25 clip gives only the rate | open (OQ36) |
 | Counter `c[-0x15]` | Only resets the own phase `c[-31]`, which the sync output does not read: **not the beat mechanism** (the ARM writes it once with 0 at boot, [arm-tick-timers](arm-tick-timers.md) s4) | VERIFIED |
 
-Engine (D148): `c[-29]` points at a clock word `c[0x2A]` (32 bit saw, wrap = `N` divisions, 0 at the clock start), `c[-28]` = `N`; the counter write and the `c[-32]` division increment of D134 are removed. The duck falls where `imul(word, N) + c[-18]` crosses the sign boundary, i.e. **on the beat** at word 0 (the D134 model put it half a division after the start; zero point ASSUMED, a clip with a known downbeat would settle it). A:25 clip: envelope line 2.098 Hz hardware, 2.097 Hz render, 2.10 Hz the law (`tools/pump_envelope_hz.py`); scores in D148 (flag off 5.90, counter model 5.01, clock word 5.33, lower is better). Probe output: [fx-pump-clock-probe.txt](data/fx-pump-clock-probe.txt) (`python tools/fx_pump_clock_probe.py CODE SRAM --cache SNAP --rate 73`). Free run is untouched (the new code writes only when `mod1_sync_beats` is set). Reproduce: `cargo test -p nord-core --lib fx::tests_fw_pump_sync fx::fw_pump_clock fx::fw_mod1_rest engine::tests_pump_load`.
+Engine (D149): `c[-29]` points at a clock word `c[0x2A]` (32 bit saw, wrap = `N` divisions, 0 at the clock start), `c[-28]` = `N`; the counter write and the `c[-32]` division increment of D134 are removed. The duck falls where `imul(word, N) + c[-18]` crosses the sign boundary, i.e. **on the beat** at word 0 (the D134 model put it half a division after the start; zero point ASSUMED, a clip with a known downbeat would settle it). A:25 clip: envelope line 2.098 Hz hardware, 2.097 Hz render, 2.10 Hz the law (`tools/pump_envelope_hz.py`); scores in D149 (flag off 5.90, counter model 5.01, clock word 5.33, lower is better). Probe output: [fx-pump-clock-probe.txt](data/fx-pump-clock-probe.txt) (`python tools/fx_pump_clock_probe.py CODE SRAM --cache SNAP --rate 73`). Free run is untouched (the new code writes only when `mod1_sync_beats` is set). Reproduce: `cargo test -p nord-core --lib fx::tests_fw_pump_sync fx::fw_pump_clock fx::fw_mod1_rest engine::tests_pump_load`.
 
 ## Implications
 

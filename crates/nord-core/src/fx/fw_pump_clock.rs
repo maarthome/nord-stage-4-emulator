@@ -1,6 +1,6 @@
 //! Master Clock input of the firmware PUMP (`kFx1Type` 10, 11, routine `0x122D2C`).
 //!
-//! **How the hardware follows the beat (ARM run + routine, D148).** The routine reads its LFO
+//! **How the hardware follows the beat (ARM run + routine, D149).** The routine reads its LFO
 //! position through the pointer `c[-29]`: `g = f(imul([c[-29]], c[-28]) + c[-18])`. Free run
 //! points `c[-29]` at its own phase word `c[-31]` with `c[-28] = 1`. With `kFx1ClkEnable` = 1 the
 //! ARM handler of `kFx1RateClkDiv` rewrites **both**: `c[-29]` becomes the address `0xC0C70` (a

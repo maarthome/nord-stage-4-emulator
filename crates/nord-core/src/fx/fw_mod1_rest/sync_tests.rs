@@ -1,4 +1,4 @@
-//! Tests of the PUMP Master Clock drive of [`FwMod1Rest`] (`fw_pump_clock`, D148).
+//! Tests of the PUMP Master Clock drive of [`FwMod1Rest`] (`fw_pump_clock`, D149).
 
 use super::*;
 
