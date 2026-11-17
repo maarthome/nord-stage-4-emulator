@@ -20,10 +20,10 @@ Audio 1:1 with hardware; close OQ22.
 - [x] e verdict for the SAMPLE programs, with the evidence command
 - [x] Capture of all 384 programs, summary table by engine
 - [x] tools/arm_dsp_capture.py, tools/arm_dsp_summary.py with tests
-- [x] docs/research/arm-dsp-capture.md, decision D123
+- [x] docs/research/arm-dsp-capture.md, decision D124
 
 ## Out of Scope
 SHARC code changes, JIT/AOT, SPI flash model, flipping defaults.
 
 ## Summary of Changes
-Added `tools/arm_dsp_capture.py` (resumable batch capture, 384 of 384 programs, 0 failed) and `tools/arm_dsp_summary.py` with tests, the research note `docs/research/arm-dsp-capture.md`, small summaries under `docs/research/data/arm-dsp-capture-*`, and D123. Verdict: no ARM word in `DM(0x93500..0x935A0)` in 119 of 119 SAMPLE programs; no sample id, address or descriptor sent; recall sends 0 words to SY. OQ22, audio-remaining, emulation-coverage, ROADMAP and the synth-engine spec updated.
+Added `tools/arm_dsp_capture.py` (resumable batch capture, 384 of 384 programs, 0 failed) and `tools/arm_dsp_summary.py` with tests, the research note `docs/research/arm-dsp-capture.md`, small summaries under `docs/research/data/arm-dsp-capture-*`, and D124. Verdict: no ARM word in `DM(0x93500..0x935A0)` in 119 of 119 SAMPLE programs; no sample id, address or descriptor sent; recall sends 0 words to SY. OQ22, audio-remaining, emulation-coverage, ROADMAP and the synth-engine spec updated.

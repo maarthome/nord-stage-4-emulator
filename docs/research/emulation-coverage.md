@@ -95,7 +95,7 @@ Lane E beans (`ns4-36hw`, `ns4-doy1`, `ns4-vnp2`, `ns4-qll9`, `ns4-ca0i`, `ns4-a
 | Organ `K`, level chain | 7b.6 tick "Organ level K = 2.8" (audit done); open part: 7b.3 "Pipe-only hardware clip, organ level L"; 4 "Close the absolute level chain" |
 | Reverb tails | 7b.4 "FX wiring ... reverb tables" (open); tail clip: proposed in this PR |
 | Touch default | 7b.5 Touch tick; flip: proposed in this PR |
-| Piano extra voices | proposed in this PR |
+| Piano extra voices | closed: already played by default (D23), pedal-down list opt-in (D123, [piano-extra-voices](piano-extra-voices.md)) |
 | Sample pitch entry `e` | 7b.6 "SAMPLES remainder" (open) |
 | B3 processor, Leslie | 7b.3 "B3 / Vox presence", "Real time firmware organ stages", "Organ unit EQ routines, Leslie rotor" (open) |
 | Mod 1 PUMP clock | proposed in this PR |
@@ -143,7 +143,7 @@ Effort to close the 18 census cases: low. Effort to run the 21571 census: medium
 | Vectors 1 and 12 | vector 1 is reset code with no `RTI`; vector 12 is a one-instruction `RTI` stub the harness misses | D112 |
 | Opcode 9 (SPI DMA) with a flash model | not run | open |
 | ARM state after the DSP answers "prepare" | status bit set by hand (`DspAck`, meaning ASSUMED "SY voice ready") | [synth-sample-kernel-rule](synth-sample-kernel-rule.md) s12 |
-| Result | The writer of the pitch entry `e` at `DM(0x9354A + index)` is **not found** after D89, D105, D111, D112, D123 (the ARM stream of all 384 recalls and 149 played voices holds no `e`, [arm-dsp-capture](arm-dsp-capture.md)); `--sample-pitch fw` stays opt-in | D65, OQ22 |
+| Result | The writer of the pitch entry `e` at `DM(0x9354A + index)` is **not found** after D89, D105, D111, D112, D124 (the ARM stream of all 384 recalls and 149 played voices holds no `e`, [arm-dsp-capture](arm-dsp-capture.md)); `--sample-pitch fw` stays opt-in | D65, OQ22 |
 
 ### 3.4 ARM harness (`tools/arm_*.py`, Unicorn ARM926EJ-S)
 
@@ -183,7 +183,7 @@ Status columns: **Fw** = verified against firmware or oracle, **Clip** = fitted 
 
 | Subsystem | Programs | Status | Default or opt-in | Evidence | Open gap | Effort | Audible impact |
 |---|---|---|---|---|---|---|---|
-| Classes (`.npno` sample path) | 272 (311 layers) load samples | Fw: stream decode and level law (D23) | default | `CNSP` voice bit-exact against `smp_voice.rs` | classes 1, 2, 3, 5, 6 start an extra voice the engine does not play: 250 programs (276 layers) | medium | medium |
+| Classes (`.npno` sample path) | 272 (311 layers) load samples | Fw: stream decode and level law (D23) | default | `CNSP` voice bit-exact against `smp_voice.rs` | classes 1, 2, 3, 5, 6 extra voice (250 programs, 276 layers) is played by default since D23; pedal-down notes use the firmware list opt-in (D123, [piano-extra-voices](piano-extra-voices.md)) | medium | medium |
 | Categories | Grand 153, Electric 59, Upright 50, Digital 14, Clav 12, Misc 8 programs | | | | Clav EQ unmodelled (OQ31) | low | low |
 | SMP slew / chain | all piano | Fw (voice-gain slew rule D103, rate word D110); chain 0.7464 per `y / 8192` VERIFIED | **opt-in** (`--piano-slew-fw`, `--firmware-piano-chain`) | oracle chain equals emulator (D110); Felt Upright score 2.18 to 1.31, Velvet 3.25 to 3.74 (D103) | pedal-down bypass, open bus scale (OQ20) | medium | medium (attack 47 to 70 ms against 56 to 64 ms on hardware) |
 | Decay / T60 | all | gap was a replay artefact (D86) | | [piano-decay-attack](piano-decay-attack.md) | none known | | |
@@ -256,7 +256,7 @@ The 119 unmodelled uses: Wavetable 14 (12 programs), SHAPE SINE 32 (30), MULTI 4
 | 1 | Organ `K` (OQ24) and the absolute piano / organ level chain | medium | high | clip helps | [audio-remaining](audio-remaining.md) 3 |
 | 2 | Reverb tails per type | medium | high (358 programs) | tail clip | 7 |
 | 3 | Touch velocity curves default | low | high | listening | 4 |
-| 4 | Piano extra voices (classes 1, 2, 3, 5, 6; 250 programs) | medium | medium | no | 11 |
+| 4 | Piano extra voices (classes 1, 2, 3, 5, 6; 250 programs): closed, already played (D23); pedal-down list opt-in (D123) | medium | medium | no | 11 |
 | 5 | Sample pitch entry `e` | high | medium (119 programs) | no | 2 |
 | 6 | B3 processor and Leslie presence | high | high (27 programs) | one clip | 9 |
 | 7 | Mod 1 PUMP clock (2.11 Hz against 6.1 Hz) | medium | medium (9 programs) | clip | 6 |

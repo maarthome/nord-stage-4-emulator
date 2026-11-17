@@ -1,4 +1,4 @@
-# Research: ARM to DSP message capture over all 384 factory programs, and the sample pitch entry `e` (D123)
+# Research: ARM to DSP message capture over all 384 factory programs, and the sample pitch entry `e` (D124)
 
 - **Checked:** 2026-11-17
 - **Sources (local, never committed):** OS v1.66 `target/fw_unpacked/bank0_CODE.bin` and `bank0_SRAM.bin`, the factory restore EEPROM image `target/oled/eeprom.bin`, the 384 programs of `factory_programs/Program/`, the sample file `Samp Lib/Accordion_Harm/Carina Accordion 1_PS 4.1.nsmp4` of `Nord Stage 4 Factory Restore RevK v1.66.ns4b` (first 4 MB, bound as a stand-in sample). Tools: `tools/arm_dsp_capture.py`, `tools/arm_dsp_summary.py` (new, `tools/tests/test_arm_dsp_*.py`), built on `arm_program_load.py`, `arm_org_stream.py`, `arm_keydown.py`, `arm_sy_voice.py`, `arm_sample_probe.py`. Background: [sy-pitch-entry-writer](sy-pitch-entry-writer.md), [synth-sample-kernel-rule](synth-sample-kernel-rule.md), [org-system-run](org-system-run.md), [arm-param-messages](arm-param-messages.md).

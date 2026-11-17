@@ -28,8 +28,9 @@ impl PianoLayer {
         detune_ratio: f64,
         gain: f32,
     ) -> bool {
-        // The damper-down strokes (sympathetic harp, `kind 1`) are selected by the legacy path.
-        if self.damper_pedal_down {
+        // Pedal down: the legacy path selects the damper-down strokes unless the firmware voice
+        // list is opted in (`pedal_voices.rs`).
+        if !self.firmware_voices_allowed() {
             return false;
         }
         let Some(sound) = self.sound.clone() else {
