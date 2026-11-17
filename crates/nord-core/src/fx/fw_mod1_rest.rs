@@ -19,6 +19,10 @@ use super::fw_mod1_data as d;
 use super::fw_mod1_dense as dense;
 use super::fw_mod2_data::{Law, SAMPLES};
 use super::fw_mod2_run::{process, Mod2State, Routine};
+use super::fw_pump_clock::{sync_increment, MasterClockTick};
+
+/// PUMP counter word `c[-0x15]` (Master Clock tick, `fw_pump_clock`).
+const PUMP_COUNTER: i32 = -0x15;
 
 /// One wired type: routine, instance row (and its `I1`), type words, laws, phase words.
 struct Spec {
@@ -157,6 +161,9 @@ pub(super) struct FwMod1Rest {
     input: [[f32; 2]; 2],
     output: [[f32; 2]; 2],
     pos: usize,
+    /// PUMP only: Master Clock division period in engine frames (`None`: free run, counter untouched).
+    clock_period: Option<f64>,
+    clock: MasterClockTick,
 }
 
 impl FwMod1Rest {
@@ -188,14 +195,34 @@ impl FwMod1Rest {
             input: [[0.0; 2]; 2],
             output: [[0.0; 2]; 2],
             pos: 0,
+            clock_period: None,
+            clock: MasterClockTick::default(),
         };
         me.set_params(rate, amount);
         Some(me)
     }
 
+    /// Parks the stage: the type no longer matches any request, so the next use re-initialises
+    /// it (`ty` 255 has no `spec`).
+    pub(super) fn retire(&mut self) {
+        self.ty = u8::MAX;
+        self.clock_period = None;
+    }
+
     /// The `kFx1Type` this stage was built for.
     pub(super) fn ty(&self) -> u8 {
         self.ty
+    }
+
+    /// Follows the Master Clock (PUMP types 10, 11 only): `Some(period)` drives the counter
+    /// `c[-0x15]` once per `period` engine frames, `None` leaves it alone (free run). Other types
+    /// ignore it.
+    pub(super) fn set_clock_period(&mut self, period: Option<f64>) {
+        let period = period.filter(|_| matches!(self.ty, 10 | 11));
+        if period.is_none() != self.clock_period.is_none() {
+            self.clock.restart();
+        }
+        self.clock_period = period;
     }
 
     /// Writes the targets of `kFx1RateClkDiv` and `kFx1Amt`.
@@ -215,6 +242,10 @@ impl FwMod1Rest {
                 self.st.ctx[index(law.off)] = to_word(law, x);
             }
         }
+        if let Some(period) = self.clock_period {
+            // Under the Master Clock one cycle is one division (`fw_pump_clock`).
+            self.st.ctx[index(-32)] = sync_increment(period);
+        }
     }
 
     /// Pushes one frame and returns the frame of the previous block at the same position.
@@ -226,6 +257,11 @@ impl FwMod1Rest {
         if self.pos == 2 {
             self.pos = 0;
             let routine = spec(self.ty).map_or(Routine::Rm, |s| s.routine);
+            if let Some(period) = self.clock_period {
+                if let Some(counter) = self.clock.advance(2.0, period) {
+                    self.st.ctx[index(PUMP_COUNTER)] = counter;
+                }
+            }
             let mut block: [f32; 4] = std::array::from_fn(|i| self.input[i / 2][i % 2]);
             process(routine, &mut self.st, &mut block);
             self.output = std::array::from_fn(|k| [block[2 * k], block[2 * k + 1]]);
@@ -332,5 +368,26 @@ mod tests {
                 "amount {ty}"
             );
         }
+    }
+
+    #[test]
+    fn a_counter_change_resets_the_pump_phase_and_a_constant_counter_does_not() {
+        let gain_after = |tick: bool| {
+            let mut st = FwMod1Rest::new(10, 73, 127, 48_000.0).unwrap();
+            st.set_clock_period(Some(22_857.0));
+            st.set_params(73, 127); // writes the division increment
+            let mut g = 0.0;
+            for i in 0..11_000 {
+                if tick && i == 10_000 {
+                    st.clock.restart(); // the next block changes `c[-0x15]`
+                }
+                g = st.process_frame([1.0, 1.0])[0];
+            }
+            g
+        };
+        // 11,000 frames into a 22,857 frame cycle the gain has recovered (>0.9); a tick at
+        // frame 10,000 restarts the cycle 1,000 frames earlier (gain < 0.4).
+        assert!(gain_after(false) > 0.9, "{}", gain_after(false));
+        assert!(gain_after(true) < 0.4, "{}", gain_after(true));
     }
 }

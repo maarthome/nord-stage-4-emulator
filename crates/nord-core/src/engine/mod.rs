@@ -78,6 +78,8 @@ mod tests_pedals;
 #[cfg(test)]
 mod tests_program;
 #[cfg(test)]
+mod tests_pump_load;
+#[cfg(test)]
 mod tests_routing;
 mod undo;
 mod undo_ops;

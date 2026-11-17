@@ -82,6 +82,22 @@ impl Live {
         self.error.get_or_insert(e);
     }
 
+    /// One protocol line to its reply: `M` and `T` errors wait for the next `P` reply, a bad `P`
+    /// or `D` line is answered at once with `ERR ...` so a client never waits for a reply that
+    /// will not come.
+    pub fn handle(&mut self, line: &str) -> Option<String> {
+        match self.exec(line) {
+            Ok(reply) => reply,
+            Err(e) if matches!(line.trim_start().chars().next(), Some('P' | 'D')) => {
+                Some(format!("ERR {e}"))
+            }
+            Err(e) => {
+                self.note_error(e);
+                None
+            }
+        }
+    }
+
     /// Executes one command line; `Ok(None)` for commands without a reply, `Err` for a bad line.
     pub fn exec(&mut self, line: &str) -> Result<Option<String>, String> {
         let f: Vec<&str> = line.split_whitespace().collect();
@@ -260,6 +276,59 @@ mod tests {
             l.exec("T 1").unwrap(),
             None,
             "no probes: coverage stays off"
+        );
+    }
+
+    #[test]
+    fn bad_p_and_d_lines_are_answered_and_bad_m_lines_are_deferred() {
+        let mut l = live(vec![]);
+        assert!(l.handle("P x").unwrap().starts_with("ERR "));
+        assert!(l.handle("D").unwrap().starts_with("ERR "));
+        assert_eq!(l.handle("M zz 1"), None);
+        assert!(l.handle("P 1").unwrap().contains("error=bad_command"));
+    }
+
+    #[test]
+    fn server_passes_equal_lane_run_on_the_same_messages() {
+        use super::super::periph_run::{lane_run, OUT_POINTERS};
+        let cfg = PassConfig {
+            trigger: 0xB_00E2,
+            idle_pc: 0x12_0002,
+            max_steps: 10,
+            irq: None,
+        };
+        let msgs = [
+            (OUT_POINTERS + 2, 0xB_0200),
+            (0xB_0204, 0.5f32.to_bits()),
+            (0xB_0205, (-0.25f32).to_bits()),
+            (0xB_0206, 0.125f32.to_bits()),
+            (0xB_0207, 1.0f32.to_bits()),
+        ];
+        let list: Vec<Msg> = msgs
+            .iter()
+            .map(|&(w1, w2)| Msg {
+                pass: 0,
+                word1: w1,
+                word2: w2,
+            })
+            .collect();
+        let want = lane_run(&mut clearing_core(), &cfg, &list, 3, None, (2, 1)).unwrap();
+        let mut l = Live::new(clearing_core(), cfg, None, (2, 1), vec![]);
+        for (w1, w2) in msgs {
+            l.exec(&format!("M {w1:#x} {w2:#x}")).unwrap();
+        }
+        let r = l.exec("P 3").unwrap().unwrap();
+        let (peak, rms) = want.level();
+        assert!(r.contains(&format!("idle={}", want.passes)), "{r}");
+        assert!(
+            r.contains(&format!("cnt={}", want.left.len() + want.right.len())),
+            "{r}"
+        );
+        assert!(r.contains(&format!("peak={:.9e}", peak)), "{r}");
+        let sumsq = rms * rms * (want.left.len() + want.right.len()) as f64;
+        assert!(
+            r.contains(&format!("sumsq={:.9e}", sumsq)),
+            "{r} vs {sumsq:e}"
         );
     }
 }

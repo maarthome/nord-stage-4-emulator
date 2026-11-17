@@ -276,14 +276,17 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
         router.add(s, link)
         items.append((s, link))
     chips = Chips(items)
-    result = drive(ns, chips, router)
-    result["chips"] = {s.name: " ".join(s.flags()) for s in specs}
-    if ns.log:
-        ns.log.mkdir(parents=True, exist_ok=True)
-        for s, link in items:
-            (ns.log / f"{s.name}.script").write_text(dl.script_text(link.log), encoding="utf-8")
-    for _, link in items:
-        link.close()
+    try:
+        result = drive(ns, chips, router)
+        result["chips"] = {s.name: " ".join(s.flags()) for s in specs}
+        if ns.log:
+            ns.log.mkdir(parents=True, exist_ok=True)
+            for s, link in items:
+                with (ns.log / f"{s.name}.script").open("w", encoding="utf-8", newline="\n") as fh:
+                    fh.write(dl.script_text(link.log))
+    finally:
+        for _, link in items:
+            link.close()
     if ns.sys_exe and ns.log:
         result["replay"] = {
             s.name: replay_levels(s, ns.sys_exe, ns.log / f"{s.name}.script", link.pass_index,

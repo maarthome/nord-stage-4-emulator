@@ -131,11 +131,52 @@ def test_link_refuses_a_server_that_does_not_say_ready() -> None:
         dl.Link(proc)
 
 
-def test_error_lines_raise() -> None:
-    proc = FakeProc(["ERR bad command"])
+def test_error_lines_raise_for_p_and_d() -> None:
+    proc = FakeProc(["ERR bad command", "ERR bad command"])
     link = dl.Link(proc)
     with pytest.raises(RuntimeError):
         link.run(1)
+    with pytest.raises(RuntimeError):
+        link.dump(0, 1)
+
+
+def test_a_silent_server_times_out_instead_of_hanging() -> None:
+    import os
+
+    r, w = os.pipe()  # a pipe that never closes: readline blocks like a wedged server
+    os.write(w, b"READY" + bytes([10]))
+
+    class Silent:
+        stdin = io.StringIO()
+        stdout = os.fdopen(r, "r")
+
+    link = dl.Link(Silent(), timeout=0.3)
+    with pytest.raises(TimeoutError):
+        link.run(1)  # no reply line follows READY
+    os.close(w)
+
+
+def test_close_survives_a_dead_pipe_and_kills_a_server_that_will_not_end() -> None:
+    import subprocess
+
+    class Dead(FakeProc):
+        def __init__(self) -> None:
+            super().__init__([])
+            self.killed = False
+            self.stdin = None  # writing raises AttributeError-free? use a closed stream instead
+
+        def wait(self, timeout: int = 0) -> int:
+            raise subprocess.TimeoutExpired("x", timeout)
+
+        def kill(self) -> None:
+            self.killed = True
+
+    proc = Dead()
+    proc.stdin = io.StringIO()
+    proc.stdin.close()  # ValueError on write
+    link = dl.Link(proc)
+    link.close()
+    assert proc.killed
 
 
 def test_script_text_is_a_msg_script_in_send_order() -> None:

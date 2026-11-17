@@ -17,7 +17,7 @@ Tags follow `.agents/rules/provenance-in-code.md`: **VERIFIED** = reproduced by 
 | Is the live run equal to a replay of its own stream? | **Yes, exactly.** `sharc-sys` fed the messages `sharc-live` received (pass index = passes run before the message) gives lane `2:0` peak **0.074589**, rms **0.017788** in both, 2,441 passes; two live runs give a byte-identical message stream and equal per-phase numbers (section 5). | VERIFIED |
 | Does `0x1256AD` run now? | **No: 0 of 2,441 passes.** Also `0x1237F8` and `0x1236F8` (cabinet): 0 of 2,441. B3 processor `0x121E2B`: **2,143 of 2,441** (from pass 298 on, i.e. after the recall settles); chain loop `0x1213E9`: 2,441 of 2,441. The ARM sent **no word in `0xC2E00..0xC2FFF`** (chain heads `0xC2F48, 0xC2F82, 0xC2FBC, 0xC2FD6` stay at the stub `0xC2E4A`) and no word with the value `0x1256AD`. The Leslie element descriptors `0xB0476` / `0xB047E` arrive at pass 160 and no pass reads `0xB0470..0xB048F` (traces of passes 161 to 163 and 298 to 300). | VERIFIED (probe, `sharc-ring`, stream scan) |
 | Lane level against the old replay | Live: peak 0.0746, rms 0.0178 over 2,441 passes with key 60 held from pass 813 to 2,170. Old replay (boot log + load + `key1`, 2,016 passes): peak 0.0674, rms 0.0249. Not the same note, program build or window, so the levels are the same order of magnitude, not a comparison. | EMPIRICAL |
-| Verdict on the gap | The closed Leslie gate is **not** an ARM to DSP message gap that live running closes: with the real ARM next to the chip the chain heads still never move. Whether the ARM waits for a DSP answer before sending the chain-head words is untestable until the reply direction exists. | VERIFIED (negative) |
+| Verdict on the gap | **Not closed by the in-window ARM stream under the conditions of this run.** Narrow statement VERIFIED: the ARM sent no word in `0xC2E00..0xC2FFF` and none equal to `0x1256AD`. It does not cover: the 5,910 PNO core 1 stores outside the core window (bulk path, counted not sent), a DSP reply that the ARM may wait for (reply direction missing), other chips, the DSP running during the boot, or the 16 x denser ARM stream per DSP pass. If the installer is reached through the bulk path or a reply handshake, this run cannot see it. | EMPIRICAL (the narrow statement VERIFIED) |
 
 ## 2. Design (written before the implementation)
 
@@ -48,8 +48,8 @@ Protocol (`runner/live.rs`): `M W1 W2` store a data word before the next pass; `
 
 | Part | File | Tests |
 |---|---|---|
-| Chip server: command interpreter, PNO preset, boot | `crates/nord-sharc/src/runner/live.rs`, `src/bin/sharc_live.rs` | 4 + 2 Rust unit tests (round trip, idle/halt/lane/probe summary, errors, preset, arguments) |
-| Clock, incremental grouper, protocol client, stats | `tools/arm_dsp_link.py` | `tools/tests/test_arm_dsp_link.py` (10) |
+| Chip server: command interpreter, PNO preset, boot | `crates/nord-sharc/src/runner/live.rs`, `src/bin/sharc_live.rs` | 6 + 2 Rust unit tests (round trip, idle/halt/lane/probe summary, equality with `lane_run`, error replies, preset, arguments); `sharc-sys --pno` now uses the same `pno_preset()` |
+| Clock, incremental grouper, protocol client, stats | `tools/arm_dsp_link.py` | `tools/tests/test_arm_dsp_link.py` (12, including the read timeout and a dead server) |
 | Firmware driver (boot with feed, phases, key, report) | `tools/arm_dsp_live.py` | `tools/tests/test_arm_dsp_live.py` (4, feeder and report helpers) |
 
 ARM messages for other chips are counted per chip, core and path (`arm_messages` in the JSON).
@@ -75,9 +75,9 @@ Replay of the same stream (`sharc-sys --msg-script live.script`): 2,441 passes, 
 
 ## 6. Implications
 
-- **The transport works and costs little**: 150 lines of Rust, 250 of Python, no change to the oracle core. The same pattern serves any other chip (ORG core 2 and SY need their own preset, one `Preset` value each).
-- **The B3 Leslie gate is not closed by missing ARM messages.** Even live, with 1,500 ticks of a held key, no chain-head word and no `0x1256AD` word is sent, and the descriptors the ARM does send (`0xB0476`, `0xB047E`) are never read by a pass. Something else must trigger the DSP side consumer, or a DSP answer is required first (unmeasurable until the reply direction exists), or the Leslie of this program runs on the FX chip (PR #486, D135).
-- **Replay equivalence is now a test, not a claim**: the replay of the live stream equals the live run bit for bit, and the load stream count matches (7,340).
+- **The transport works and costs little**: 150 lines of Rust, 250 of Python, no change to the oracle core. The same pattern serves any other chip (ORG core 2 and SY need their own preset, one `Preset` value each; `sharc-sys --pno` already shares `pno_preset()`).
+- **The in-window ARM stream does not close the B3 Leslie gate (EMPIRICAL, narrow).** Even live, with 1,500 ticks of a held key, no chain-head word and no `0x1256AD` word is sent in the window, and the descriptors the ARM does send (`0xB0476`, `0xB047E`) are never read by a pass. Something else must trigger the DSP side consumer, or a DSP answer is required first (unmeasurable until the reply direction exists), or the installer sits behind the bulk path (5,910 stores not sent), or the Leslie of this program runs on the FX chip (PR #486, D135, still open). PR #493 (D136, open) reaches a similar negative from the recall and edit stream; the two are independent evidence for the same gap and touch the same `audio-remaining.md` row 9, so whichever merges second merges that row by hand.
+- **Protocol equivalence is tested, hardware equivalence is not claimed**: `server_passes_equal_lane_run_on_the_same_messages` (Rust) checks that the server's summary equals `lane_run` for the same messages, and the manual run found the live lane equal to a `sharc-sys` replay of its own stream (`cmp` of two live streams too, 97 s each, not automated). Both sides share the oracle code, so this checks pass-index alignment and the probe/non-probe pass variants, not the oracle against hardware. The load stream count matches the committed one (7,340).
 - **Synth envelope words** (D132) need the ORG/SY live chip: the transport carries over, the preset does not exist yet.
 
 ## 7. Follow-ups
@@ -86,7 +86,7 @@ Replay of the same stream (`sharc-sys --msg-script live.script`): 2,441 passes, 
 2. Reply direction: find a PNO-side word the ARM polls (OQ36 PUMP counter is the same question for FX) and write it back into ARM memory at each batch; then re-run to see whether the chain-head words appear.
 3. Find the DSP-side trigger of the chain installer (what reads `0xB0474..0xB048F`): trace the PNO image for loads of that window with a mode word set.
 4. DSP clock from the main loop is ASSUMED: compare with the boot messages delivered one pass at a time (`--dsp-from-boot`).
-5. Replace the duplicated PNO preset in `sharc-sys --pno` by `runner::live::pno_preset()` (DRY).
+5. Automate the two-run `cmp` determinism check and the live-vs-`sharc-sys` replay comparison (`replay()` prints, asserts nothing).
 6. Compare live lane against a hardware clip of the same program and key once the key and settle times match (the 16 x instruction budget per tick, section 2, changes the ARM to DSP spacing).
 
 ## Reproduce
