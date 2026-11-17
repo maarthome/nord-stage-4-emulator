@@ -105,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     ap.add_argument("--eeprom", type=Path, required=True)
     ap.add_argument("--range", dest="span", required=True, help="START:END, END exclusive")
     ap.add_argument("--ticks", type=int, default=LOAD_TICKS)
-    ap.add_argument("--call", type=lambda t: int(t, 0), help="also log r0..r3, lr at this pc")
+    ap.add_argument("--call", type=lambda t: int(t, 0), help="also log r0..r3 and lr at this pc")
     ap.add_argument(
         "--call-r0", type=lambda t: int(t, 0), help="only when [r0] (table pointer) equals this"
     )
@@ -146,8 +146,6 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
 
         def at_call(_uc, _address, _size, _user) -> None:  # noqa: ANN001
             regs = [emu.reg(n) for n in (0, 1, 2, 3, 14)]
-            sp = emu.reg(13)
-            regs += [emu.read32(sp + 0x20 * 0 + 4 * k) for k in range(4)]  # stack args
             if ns.call_r0 is None or emu.read32(regs[0]) == ns.call_r0:
                 print("call " + " ".join(f"{r:#010x}" for r in regs))
 

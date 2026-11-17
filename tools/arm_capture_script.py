@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Iterable, Iterator
+from typing import Any
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -22,8 +23,8 @@ import arm_dsp_capture as cap
 
 
 def select(
-    rows: Iterable[dict[str, object]], chip: str, core: int, phases: set[str] | None
-) -> Iterator[dict[str, object]]:
+    rows: Iterable[dict[str, Any]], chip: str, core: int, phases: set[str] | None
+) -> Iterator[dict[str, Any]]:
     """Rows of `chip` / `core` (and of the listed `phases`, any when `None`), in order."""
     for row in rows:
         if row["chip"] != chip or row["core"] != core:
@@ -33,10 +34,10 @@ def select(
         yield row
 
 
-def script_lines(rows: Iterable[dict[str, object]], pass_per_tick: int = 0) -> list[str]:
+def script_lines(rows: Iterable[dict[str, Any]], pass_per_tick: int = 0) -> list[str]:
     """`PASS DM W2` lines; PASS = `tick * pass_per_tick` (0 when the factor is 0)."""
     return [
-        f"{int(row['tick']) * pass_per_tick} {int(row['dm']):#x} {int(row['w2']):#010x}"  # type: ignore[call-overload]
+        f"{int(row['tick']) * pass_per_tick} {int(row['dm']):#x} {int(row['w2']):#010x}"
         for row in rows
     ]
 
