@@ -1,6 +1,6 @@
 //! Master Clock input of the firmware PUMP (`kFx1Type` 10, 11, routine `0x122D2C`).
 //!
-//! **How the hardware follows the beat (ARM run + routine, D145).** The routine reads its LFO
+//! **How the hardware follows the beat (ARM run + routine, D148).** The routine reads its LFO
 //! position through the pointer `c[-29]`: `g = f(imul([c[-29]], c[-28]) + c[-18])`. Free run
 //! points `c[-29]` at its own phase word `c[-31]` with `c[-28] = 1`. With `kFx1ClkEnable` = 1 the
 //! ARM handler of `kFx1RateClkDiv` rewrites **both**: `c[-29]` becomes the address `0xC0C70` (a
@@ -11,7 +11,7 @@
 //! DSP side (DMA), not by an ARM message: the ARM never writes it (boot log, harness).
 //!
 //! VERIFIED: pointer, `N` and the unchanged `c[-18]`, `c[-22]` under MST CLK = ARM run
-//! (`docs/research/fx-mod-types.md` s7.2, `tools/fx_pump_clock_probe.py`); `c[-29]` is the only
+//! (`docs/research/fx-mod-types.md` s7.2, `tools/fx_pump_clock_probe.py`, output `docs/research/data/fx-pump-clock-probe.txt`); `c[-29]` is the only
 //! read of the position (the oracle verified port `fw_pump`, 500/500). ASSUMED: the clock word
 //! wraps once per 32 beats (what makes A:25, `N` = 32, one duck per beat, EMPIRICAL 2.11 Hz at
 //! 126 BPM against 2.10 Hz) and is 0 at the clock start, so the duck falls on the beat

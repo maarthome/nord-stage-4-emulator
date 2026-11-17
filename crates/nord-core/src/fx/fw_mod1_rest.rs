@@ -224,17 +224,21 @@ impl FwMod1Rest {
     /// phase, `N` = 1). Other types ignore it.
     pub(super) fn set_clock_period(&mut self, clock: Option<(f64, f32)>) {
         let clock = clock.filter(|_| matches!(self.ty, 10 | 11));
-        if clock.is_some() != self.clock_period.is_some() {
+        let was_synced = self.clock_period.is_some();
+        if clock.is_some() != was_synced {
             self.clock.restart();
         }
         self.clock_period = clock.map(|c| c.0);
         self.clock_n = clock.map_or(1, |c| multiplier(c.1));
-        self.st.ctx[index(PUMP_POINTER)] = if clock.is_some() {
-            CLOCK_ADDRESS
-        } else {
-            CTX_I1 - 31
-        };
-        self.st.ctx[index(PUMP_MULTIPLIER)] = self.clock_n;
+        // Free run that was never synced keeps its boot words untouched.
+        if clock.is_some() || was_synced {
+            self.st.ctx[index(PUMP_POINTER)] = if clock.is_some() {
+                CLOCK_ADDRESS
+            } else {
+                CTX_I1 - 31
+            };
+            self.st.ctx[index(PUMP_MULTIPLIER)] = self.clock_n;
+        }
     }
 
     /// Writes the targets of `kFx1RateClkDiv` and `kFx1Amt`.
@@ -378,69 +382,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn a_counter_change_resets_the_free_running_pump_phase() {
-        const N_FRAMES: usize = 7_000;
-        let gain_after = |tick: bool| {
-            let mut st = FwMod1Rest::new(10, 73, 127, 48_000.0).unwrap();
-            let mut g = 0.0;
-            for i in 0..N_FRAMES {
-                if tick && i == N_FRAMES - 1_000 {
-                    st.st.ctx[index(-0x15)] = 1; // the next block sees a changed counter
-                }
-                g = st.process_frame([1.0, 1.0])[0];
-            }
-            g
-        };
-        // 7,000 frames into the 7,862 frame cycle the gain is 0.896 without a tick; a tick 1,000
-        // frames earlier restarts the cycle (0.438, measured).
-        let (free, ticked) = (gain_after(false), gain_after(true));
-        assert!(free > 0.85 && ticked < 0.55, "{free} {ticked}");
-    }
-
-    fn sync_gains(frames: usize, mutate: impl Fn(&mut FwMod1Rest, usize)) -> Vec<f32> {
-        let mut st = FwMod1Rest::new(10, 73, 127, 48_000.0).unwrap();
-        st.set_clock_period(Some((22_857.142_857, 1.0))); // 126 BPM, one beat
-        (0..frames)
-            .map(|i| {
-                mutate(&mut st, i);
-                st.process_frame([1.0, 1.0])[0]
-            })
-            .collect()
-    }
-
-    #[test]
-    fn under_the_clock_the_counter_and_the_own_phase_do_not_reach_the_output() {
-        // Hardware: `c[-29]` points at the clock word, so `c[-31]`, `c[-32]` and `c[-0x15]` only
-        // feed the stored phase (ARM run, `fw_pump_clock` module note).
-        let base = sync_gains(60_000, |_, _| {});
-        let poked = sync_gains(60_000, |st, i| {
-            st.st.ctx[index(-0x15)] = (i / 2) as u32 + 1; // counter changes on every block
-            st.st.ctx[index(-32)] = 0x0100_0000 + i as u32;
-        });
-        assert_eq!(base, poked);
-    }
-
-    #[test]
-    fn the_clock_word_places_one_duck_per_beat_on_the_beat() {
-        let g = sync_gains(60_000, |_, _| {});
-        // Falling edges (gain drops by more than 0.5 within 600 frames), first in each beat.
-        let mut ducks = vec![];
-        let mut i = 0;
-        while i + 600 < g.len() {
-            if g[i] - g[i + 600] > 0.5 {
-                ducks.push(i);
-                i += 2_000;
-            } else {
-                i += 1;
-            }
-        }
-        let beat = 22_857.142_857;
-        assert!(ducks.len() >= 2, "{ducks:?}");
-        for w in ducks.windows(2) {
-            assert!(((w[1] - w[0]) as f64 - beat).abs() < 4.0, "{ducks:?}");
-        }
-        // The first duck of the clock start is complete within 600 frames of the beat.
-        assert!((ducks[0] as f64 + 600.0 - beat).abs() < 700.0, "{ducks:?}");
-    }
+    // PUMP sync tests (counter, clock word, `c[0x2A]`): `fw_mod1_rest/sync_tests.rs`.
 }
+
+#[cfg(test)]
+mod sync_tests;

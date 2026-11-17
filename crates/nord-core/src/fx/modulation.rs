@@ -25,7 +25,7 @@ impl LayerFxChain {
     /// of `kFx1Type` 0..=3 (types 4..=11 go to `process_fw_mod1_rest`), runs in Master Clock sync, or has no raw values (engine path).
     fn process_fw_mod1(&mut self, l: f32, r: f32) -> Option<[f32; 2]> {
         let (ty, rate) = (self.mod1_type_raw?, self.mod1_rate_raw?);
-        // PUMP follows the Master Clock through its counter word (D134); every other type in sync
+        // PUMP follows the Master Clock through a clock word (D148); every other type in sync
         // stays on the engine model.
         let pump_period = if matches!(ty, 10 | 11) {
             self.pump_clock_period_frames()
