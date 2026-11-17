@@ -6,6 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
+| [D147](#d147-the-dsp-to-arm-return-path-is-spi-reads-of-dsp-memory-sample-ring-refill-is-not-an-arm-signal-an-opt-in-return-source-answers-them) | 2026-11-17 | The DSP to ARM return path is SPI reads of DSP memory; sample ring refill is not an ARM signal; an opt-in return source answers them | proposed |
 | [D138](#d138-the-arm-harness-runs-live-against-one-oracle-chip-pno-core-1-over-a-pipe-one-direction-only-the-leslie-gate-stays-closed) | 2026-11-17 | The ARM harness runs live against one oracle chip (PNO core 1) over a pipe; ARM to chip words and chip telemetry only; `0x1256AD` still runs in 0 of 2,441 passes | accepted |
 | [D140](#d140-synth-oscillator-stages-and-the-voice-constant-025-equal-the-oracle-p-gain-idle-rows-other-fm-and-shape-square-sit-8-db-high-and-get-an-opt-in-oracle-table-native-analog-unison-level-is-2-to-8-db-off-and-not-fixed) | 2026-11-17 | Oscillator stages and voice constant 0.25 equal the oracle; idle rows Other / Fm / SHAPE square +8 dB high get opt-in `--synth-p oracle`; native unison level 2 to 8 dB off, not fixed | proposed |
 
@@ -1513,6 +1514,16 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Alternatives:** Keep D22 unchanged (rejected by the owner: leaves verified paths off); flip everything oracle-validated regardless of clips (rejected: `--synth-fw-resonance` 3.20 against 2.18 under D108, `--synth-filter-law 1.015` 3.88 against 2.18, piano pedal voices on Velvet 1.37 to 2.74 would have been flipped).
 - **Impact:** Documentation only in this change; no default, golden or `render_hash` changes. The audit's ranked list gives the order of flips.
 
+
+### D147. The DSP to ARM return path is SPI reads of DSP memory; sample ring refill is not an ARM signal; an opt-in return source answers them
+
+- **Status:** proposed 2026-11-17
+- **Decided by:** pending the user (task from the parent session; evidence [dsp-to-arm-return](research/dsp-to-arm-return.md))
+- **Context:** D138 left the DSP to ARM direction as telemetry; D143 left the SPI1 device behind `0xC00119A4` open.
+- **Decision:** (1) The ARM reads DSP state only through SPI reads of DSP data memory (`0xC00119A4`, `0xC00117E8`, `0xC0066E64`); SPI1 is the DSP SPI slave. In a note it reads the SY idle voice mask `DM(0x92196)` and 3 peeks of `DM(0xC1DDC..F)` (PNO core 2, ORG cores 1, 2). (2) Add the opt-in `tools/arm_dsp_return.py` return source and `arm_dsp_live.py --return-path`; nothing changes unless used. (3) Sample ring refill is not an ARM signal. (4) For 2 SAMPLE programs run in three modes the SY words, voice updates and key-down delay equal the neutral stub; voice free timing needs a live SY chip.
+- **Why:** The reads are the only DSP to ARM data path found; the answers from images and shadow reproduce the D143 neutral read.
+- **Alternatives:** Invent a ring refill reply (rejected: no ARM reader exists); model the release transition in Python (rejected: it is a DSP sample position test).
+- **Impact:** `tools/arm_dsp_return.py`, `tools/arm_dsp_return_run.py`, `tools/arm_dsp_live.py`, research note, ROADMAP, emulation-coverage, audio-remaining row 2, OQ22; no render change.
 
 ### D143. The 59 stopped SAMPLE programs of the D124 capture were a harness artefact (SPI1 stand-in RAM defers the voice event); the SPI read is neutralised, no flash or DMA model
 

@@ -70,3 +70,26 @@ def test_feeder_skips_words_outside_the_core_window() -> None:
     emu.port_writes += [(pno, 0x27000000, 1), (pno, 0, 2), (pno, 5, 3)]
     f.feed()
     assert link.log == [] and f.skipped == 1
+
+
+def test_return_observer_mirrors_messages_into_the_source() -> None:
+    import arm_dsp_return as rt
+
+    src = rt.ReturnSource()
+    obs = live.return_observer(src)
+    obs(ae.Message(1, 3, 0x92414, rt.STATE_PREPARE))  # SY path 1 state message
+    obs(ae.Message(2, 1, 0x28800000 + 4 * 7, 99))  # PNO core 2 word 7
+    assert src.read(3, rt.IDLE_MASK, 1) == [0xFFFFFFFE]
+    assert src.word(1, 2, 7) == 99
+    assert live.return_observer(None) is None
+
+
+def test_return_report_counts_reads_layers_and_busy_voices() -> None:
+    import arm_dsp_return as rt
+
+    src, log = rt.ReturnSource(), rt.ReadLog()
+    src.observe(3, 0, 1, 0x92414, rt.STATE_GO)
+    src.read(3, rt.IDLE_MASK, 2)
+    rep = live.return_report(src, log)
+    assert rep["reads"] == {"SY:0:0x92196": 1, "SY:0:0x92197": 1}
+    assert rep["answered_by"] == {"sy_mask": 2} and rep["busy_voices"] == 1

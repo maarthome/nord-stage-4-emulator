@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 
 import arm_dsp_link as dl
+import arm_dsp_return as rt
 
 CHIPS = {"FX": 0, "PNO": 1, "ORG": 2, "SY": 3, "SMP": 4}
 LOAD_TICKS, IDLE_TICKS, KEY_TICKS, OFF_TICKS = 800, 100, 1500, 300
@@ -74,10 +75,11 @@ def phase_delta(before: dict[str, object], after: dict[str, object]) -> dict[str
 class Feeder:
     """Moves the new port stores of the emulator through the grouper to the link."""
 
-    def __init__(self, emu, link: dl.Link, chip: str, core: int) -> None:  # noqa: ANN001
+    def __init__(self, emu, link: dl.Link, chip: str, core: int, observer=None) -> None:  # noqa: ANN001
         import arm_emu as ae
 
         self.emu, self.link, self.want = emu, link, (CHIPS[chip], core)
+        self.observer = observer  # called with every grouped message (the return path shadow)
         self.ae = ae
         self.grouper = dl.PortGrouper(
             dl.port_table(ae.PORT2_BASE, ae.PORT1_BASE, ae.COMM_COUNT, emu.pad)
@@ -90,6 +92,8 @@ class Feeder:
         self.emu.port_writes.clear()
         for path, comm, w1, w2, pc in self.grouper.feed(writes):
             m = self.ae.Message(path, comm, w1, w2, pc)
+            if self.observer:
+                self.observer(m)
             key = f"{m.chip}{m.core}p{path}"
             self.seen[key] = self.seen.get(key, 0) + 1
             if path == 2 and (comm, m.core) == self.want:
@@ -97,6 +101,26 @@ class Feeder:
                     self.link.send(m.dm_word, w2)
                 else:  # not a DSP data word (address outside the core window)
                     self.skipped += 1
+
+
+def return_observer(source):  # noqa: ANN001, ANN201
+    """Feeder callback that mirrors every grouped ARM message into the return source."""
+    if source is None:
+        return None
+    return lambda m: source.observe(m.comm, m.core, m.path, m.word1, m.word2)
+
+
+def return_report(source: rt.ReturnSource, log: rt.ReadLog) -> dict[str, object]:
+    """Numbers of the return path: reads per chip and address, answering layers."""
+    reads = {
+        f"{rt.CHIPS[c]}:{core}:{dm:#x}": n for (c, core, dm), n in sorted(source.reads.items())
+    }
+    return {
+        "reads": reads,
+        "answered_by": dict(source.layer),
+        "calls": len(log.calls),
+        "busy_voices": rt.VOICES - bin(source.sy.idle).count("1"),
+    }
 
 
 def boot_live(session, feeder: Feeder) -> tuple[int, int]:  # noqa: ANN001  # pragma: no cover
@@ -155,13 +179,21 @@ def drive(ns, link: dl.Link) -> dict[str, object]:  # noqa: ANN001  # pragma: no
     session.load_eeproms(apl.build_image(ns.eeprom.read_bytes(), program, ns.program.stem[:23]))
     kd.install_board_present(session.emu)
     real_port_capture(session.emu)
-    feeder = Feeder(session.emu, link, ns.chip, ns.core)
+    source = None
+    if ns.return_path:  # D147: the DSP answers the ARM reads (live chip, shadow, images)
+        source = rt.ReturnSource(images=rt.load_images(ns.images, {1: "PNO", 2: "ORG"}))
+        source.live[(CHIPS[ns.chip], ns.core)] = link.dump
+    feeder = Feeder(session.emu, link, ns.chip, ns.core, return_observer(source))
     pc, insns = boot_live(session, feeder)
     result: dict[str, object] = {"boot_pc": f"{pc:#x}", "boot_insns": insns}
     result["boot"] = snapshot(link, t0)
     rig = kd.Rig(session.emu, kd.Uart2().install(session.emu))
     session.emu.install_dsp_ports()
-    cap.install_dsp_ack(session.emu)
+    read_log = rt.ReadLog()
+    if source:
+        rt.install(session.emu, source, read_log)
+    else:
+        cap.install_dsp_ack(session.emu)
     feeder.grouper.pending.clear()
     clock, phases, prev = dl.Clock(), {}, snapshot(link, t0)
     plan = [("load", LOAD_TICKS, None), ("idle", IDLE_TICKS, None),
@@ -181,6 +213,8 @@ def drive(ns, link: dl.Link) -> dict[str, object]:  # noqa: ANN001  # pragma: no
         skipped_out_of_window=feeder.skipped,
     )
     result["ticks"], result["clock_passes"] = clock.ticks, clock.passes
+    if source:
+        result["return_path"] = return_report(source, read_log)
     return result
 
 
@@ -207,6 +241,14 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     ap.add_argument("--key", type=int, default=KEY)
     ap.add_argument("--key-ticks", type=int, default=KEY_TICKS)
     ap.add_argument("--insns-per-tick", type=int, default=200_000)
+    ap.add_argument(
+        "--return-path",
+        action="store_true",
+        help="answer the ARM's SPI reads from the chip, the ARM shadow and the images (D147)",
+    )
+    ap.add_argument(
+        "--images", type=Path, help="dir with PNO/ ORG/ core<N>_sram.bin for the return path"
+    )
     ap.add_argument("--log", type=Path, help="write the sent messages as a msg-script")
     ap.add_argument("--out", type=Path)
     ns = ap.parse_args(argv)
