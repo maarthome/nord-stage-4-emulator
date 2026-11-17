@@ -41,7 +41,7 @@ pub enum PWave {
     Noise,
     /// Everything else of the ANALOG bank (sine, triangle, SUB OSC, SYNC, MISC): idle block.
     Other,
-    /// The FM oscillator mode (any wave): idle block, own row since D136 so the oracle level
+    /// The FM oscillator mode (any wave): idle block, own row since D140 so the oracle level
     /// (`docs/research/synth-osc-gain-oracle.md`) can move it without touching the sample path.
     Fm,
     /// The SAMPLE and WAVETABLE oscillator modes: idle block, never measured against the oracle

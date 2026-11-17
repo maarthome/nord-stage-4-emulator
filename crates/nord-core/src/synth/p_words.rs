@@ -198,14 +198,14 @@ impl PTableSpec {
         PTableSpec::from_rows(rows, true)
     }
 
-    /// The table of `--synth-p oracle` (D136): the built-in table with the three rows that were
+    /// The table of `--synth-p oracle` (D140): the built-in table with the three rows that were
     /// never fitted (ASSUMED idle block, gain 1.0) at `GAIN_PER_P16 * 0.25 = 0.4`: SHAPE square,
     /// the ANALOG `Other` row (PURE sine / triangle, SUB OSC, SYNC, MISC) and the FM row.
     ///
     /// VERIFIED (oracle, `tools/synth_osc_gain.py`, `docs/research/data/synth-osc-gain-oracle.csv`):
     /// the native oscillator times the fixed voice constant 0.25 equals the ORG core 2 oscillator
     /// stage at row gain 1.0 within 0.1 dB (needed row gain 1.006, 1.006, 1.006 on three SHAPE
-    /// square programs, 1.001 on PURE sine, 0.999 / 1.003 on two FM programs), and the ARM writes
+    /// square programs, 1.001 on PURE sine, 0.999 / 1.003 on two FM programs, 0.956 on a third with an octave mismatch), and the ARM writes
     /// `P[16] = 0.25` for these waves like for the saw, whose hardware fit is 0.4: the oracle puts
     /// all of them at the same level, so an idle 1.0 sits +8 dB against the saw. The link to the
     /// saw anchor (the voice gain behind the stage, 0.4) is EMPIRICAL (the oracle stream has no

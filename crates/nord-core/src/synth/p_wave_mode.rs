@@ -1,4 +1,4 @@
-//! Table row of a decoded oscillator, by oscillator mode (D136).
+//! Table row of a decoded oscillator, by oscillator mode (D140).
 //!
 //! ANALOG waves pick their row from `(category, wave)` ([`PWave::from_category_wave`]); the FM
 //! mode and the SAMPLE / WAVETABLE modes have a row of their own so the level of the ANALOG

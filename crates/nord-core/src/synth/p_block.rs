@@ -117,7 +117,7 @@ pub enum PSpec {
     /// choice list and the option defaults stay `const`.
     Verified,
     /// [`PSpec::Verified`] plus the oracle level of the rows the verified words do not cover
-    /// (`PTableSpec::oracle`, D136): opt-in, `--synth-p oracle`.
+    /// (`PTableSpec::oracle`, D140): opt-in, `--synth-p oracle`.
     Oracle,
 }
 

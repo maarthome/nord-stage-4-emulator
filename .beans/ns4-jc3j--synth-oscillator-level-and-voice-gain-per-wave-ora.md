@@ -1,6 +1,6 @@
 ---
 # ns4-jc3j
-title: Synth oscillator level and voice gain per wave, oracle vs native (D137)
+title: Synth oscillator level and voice gain per wave, oracle vs native (D140)
 status: completed
 type: task
 created_at: 2026-11-17T14:13:57Z
@@ -19,4 +19,4 @@ updated_at: 2026-11-17T14:13:57Z
 **Out of Scope:** default flips, filter gain, envelope words, WAVE.
 
 ## Summary of Changes
-See docs/research/synth-osc-gain-oracle.md and D137.
+See docs/research/synth-osc-gain-oracle.md and D140.
