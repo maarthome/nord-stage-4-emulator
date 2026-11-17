@@ -176,3 +176,7 @@ target/release/sharc-ref sy.bin tools/oracle_scenarios/sy_isr_stream.scn --out t
 1. Read the two unread users of the pool list `0xC0563664` (`0xC01E41B8`, `0xC01ECD74`) and the activation that gives a pool object a slot; the cold-boot watch (section 5) shows boot and the settled loop never write it.
 2. Drive an SMP / SY ISR set in `sharc-ref` (vector sweep beyond vector 0) with the full message list and a table fill poked at `0x9354A`, to see whether the zero entry really mutes the voice.
 3. Run opcode 9 (`0x1C03AA`) with a harness SPI model if the ARM ever sends it.
+
+## 9. ARM side over all 384 programs (2026-11-17, D124)
+
+[arm-dsp-capture](arm-dsp-capture.md): the ARM to DSP stream of the firmware's own recall of every factory program plus keys 36 / 60 / 84, with a stand-in sample bound by the real loader to the flagged synth layers. **No ARM word** of any chip lands in `DM(0x93500..0x935A0)` in the 119 programs with an active SAMPLE layer (0 hits, 0 e-shaped halves, 60 programs / 149 voices ran the voice path, 76 distinct SY words in `0x921A6..0x9252C`); the recall sends 0 words to SY, the same 1,516 words to SMP in every program, no sample id and no address, and the sample loader plus bind send 0 messages. So the writer is not an ARM message in any path the harness runs; the open candidates are the SY image's own SPI / external-port DMA and the SMP DSP (checks 2 to 5 of section 5 stay as listed).
