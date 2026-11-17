@@ -289,7 +289,7 @@ fn core_of(r: &AotRun, aot: bool) -> Result<Core, String> {
         c.preset_device(a, v);
     }
     if aot {
-        c.enable_aot_hot(r.start, r.last)?;
+        c.enable_aot_hot(r.ranges)?;
     }
     Ok(c)
 }

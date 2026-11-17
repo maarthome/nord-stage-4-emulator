@@ -100,7 +100,7 @@ One pass is 2 audio frames at `F = 43,402.34375 Hz` (44,444,000 / 1024) = **46.0
 | Audio DMA | stub: the 32 input words are re-stored each pass; no samples are delivered |
 | External-port DMA | not modelled. `DM(0x3E021)` is read at pass 15 as a loop count; run with `--pre 0x3E021=1` (ASSUMED value, no hardware reading). `0x3E002/3`, `0x3E010..12` are written by the same code (store sites `0x12714B`, `0x127150`, `0x127155`) |
 | Interrupts | none; the pass is started by the mailbox write (`DM(0xB00E2)`), not by P4I |
-| Other cores | ORG Core1, PNO, FX, SY, SMP are not run; PNO core 1 receives the key messages and would carry the organ voice |
+| Other cores | ORG Core1, PNO, FX, SY, SMP are not run here (see [pno-jit-arm-profile](pno-jit-arm-profile.md) section 5); PNO core 1 receives the key messages and would carry the organ voice |
 | Timing | wall clock of an interpreter on a loaded host, no cycle model; the SHARC cycle count of a pass is not measured |
 
 ## 6. PNO core 1 with the same ARM stream
