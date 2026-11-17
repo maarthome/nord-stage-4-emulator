@@ -1458,3 +1458,14 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Why:** The goal is audio 1:1 with the hardware. Keeping verified paths off costs parity on every default render; D22's original reason (a verified routine with a guessed mapping, the B3 mix-up) is kept by criteria 1 and 2.
 - **Alternatives:** Keep D22 unchanged (rejected by the owner: leaves verified paths off); flip everything oracle-validated regardless of clips (rejected: `--synth-fw-resonance` 3.20 against 2.18 under D108, `--synth-filter-law 1.015` 3.88 against 2.18, piano pedal voices on Velvet 1.37 to 2.74 would have been flipped).
 - **Impact:** Documentation only in this change; no default, golden or `render_hash` changes. The audit's ranked list gives the order of flips.
+
+
+### D143. The 59 stopped SAMPLE programs of the D124 capture were a harness artefact (SPI1 stand-in RAM defers the voice event); the SPI read is neutralised, no flash or DMA model
+
+- **Status:** proposed 2026-11-17
+- **Decided by:** pending the user (task from the parent session; evidence [sample-voice-gate](research/sample-voice-gate.md))
+- **Context:** D124 left 59 of 119 SAMPLE programs at the synth voice gate, undiagnosed, with the open question whether it relates to the missing pitch entry `e`.
+- **Decision:** (1) The gate is `0xC01DEAFC` returning 0: the slot counter `[0x90639A50 + 4]` (`|signed byte|` of the SPI refill table `0xC05A4AB0`) is above 1, filled from the SPI1 data register `0x01E12040`, which the harness serves as auto-mapped RAM with test-pattern leftovers (3 or 1). (2) `tools/arm_voice_gate.py` zeroes `r12` at the two SPI store pcs (`0xC0011AEC`, `0xC0011930`); `arm_dsp_capture.py` applies it by default (`--no-spi-neutral` restores the old stream). (3) Measured on key 60: gated voiced 32, stopped 87; neutral voiced 110, **78 of 87 fixed**, 0 regressions; 9 programs queue no voice (6 scene II only, 3 scene I only), undiagnosed. (4) No change to `e`; `--sample-pitch fw` stays opt-in.
+- **Why:** The pc traces of a stopped and a voiced program are identical until the scheduler return value; one compare (`cmp r3, #1`) differs and its word comes from a register the harness does not model. Neutralising it makes the voice update run in the stopped program with no other change.
+- **Alternatives:** Model SPI flash or DMA (rejected: the gate is not the sample data path); force `0xC01DEAFC` to return 1 (rejected: skips the deadline logic, the data fix is smaller); leave undiagnosed (rejected).
+- **Impact:** `tools/arm_voice_gate.py` (+ test), `tools/arm_dsp_capture.py` (+ test), `docs/research/sample-voice-gate.md`, `docs/research/data/voice-gate-*.json`; [arm-dsp-capture](research/arm-dsp-capture.md) follow-up 2 answered; [audio-remaining](research/audio-remaining.md) row 2; OQ22 note; no engine change. Limit: the hardware value of the SPI read is ASSUMED neutral (0).
