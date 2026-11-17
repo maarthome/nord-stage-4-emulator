@@ -43,12 +43,15 @@ CHUNK = 200_000
 # system interrupt number, filled by `0xC005012C(dev, handler, channel)` with `irq = [dev + 4]`.
 # Observed after the boot: 14 -> 0x80000AD8, 22 -> 0x800007D8, 58 -> 0x80000770, 61 -> 0x80000434.
 IRQ_TABLE = 0xC055F674
-# VERIFIED (disassembly): 22 is the 1 kHz timer (`0xC005019C` programs `[timer + 0x24]` from
-# 24 MHz / 0x5DC0 = 1 ms) whose handler `0x800007D8` increments the 64-bit tick `0x80001DC0`,
-# switches the context index `[0x8000C000]` to 3 and drains the context 3 ring.
+# VERIFIED (disassembly, run `arm_tick_probe.py timers`, D130): 22 is the **24 kHz** timer
+# (`0xC005019C(dev, 1, 0x5DC0)` takes a frequency: `PRD34 = 24 MHz / 24000 = 1000`) whose handler
+# `0x800007D8` increments the 64-bit tick `0x80001DC0`, switches the context index
+# `[0x8000C000]` to 3 and drains the context 3 ring. One interrupt is 41.67 us, not 1 ms.
 TIMER_IRQ = 22
-# ASSUMED: virtual time. One 1 ms tick per this many ARM instructions (about 200 MIPS, the order
-# of an ARM926 at 300 MHz); the emulator itself runs 15 to 20 M instructions per second.
+# ASSUMED: virtual time. One timer interrupt (41.67 us at 24 kHz, D130) per this many ARM
+# instructions; 200,000 is 16 x the 12,500 cycles of an ARM926 at 300 MHz per interrupt, so
+# instruction-gated work runs relatively fast here and timer-gated work is right in ticks. The
+# emulator itself runs 15 to 20 M instructions per second.
 INSNS_PER_TICK = 200_000
 
 
