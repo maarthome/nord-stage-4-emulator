@@ -146,8 +146,6 @@ impl Core {
 mod tests {
     use super::*;
 
-    const MODE1_RND32: u32 = 1 << 16;
-
     fn word(op: u64, n: u64, x: u64, y: u64) -> u64 {
         (op << 12) | (n << 8) | (x << 4) | y
     }

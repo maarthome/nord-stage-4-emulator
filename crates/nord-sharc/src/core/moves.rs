@@ -179,7 +179,7 @@ impl Core {
 
 #[cfg(test)]
 mod tests {
-    use super::super::support::{core_at_zero, core_with};
+    use super::super::support::core_at_zero;
 
     #[test]
     fn type_3c_loads_and_stores_with_post_modify() {

@@ -9,6 +9,7 @@
 //! * AOT: only `cond 31` compute, `LoadImm`, `RegMove` and the bit-operation shifts `0xC0`, `0xC4`,
 //!   `0xC8` are native (`aot_lower.rs`); everything else is an interpreter item. The test checks
 //!   the classification of every census instruction and `Pe::shift` against the interpreter.
+//!
 //! The census slot code cannot run as a generated AOT block (blocks are generated from firmware
 //! ranges), hence the classification check instead of a lockstep run.
 use super::aot_lower::InsnClass;
