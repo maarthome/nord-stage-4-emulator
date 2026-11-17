@@ -30,7 +30,7 @@ APP_PUBLISHER = "Nord Stage 4 Emulator Contributors"
 DESKTOP_ENTRY = """[Desktop Entry]
 Type=Application
 Name=Nord Stage 4 Emulator
-Comment=Open-source DSP sound engine and front-panel emulator for the Nord Stage 4
+Comment=Source-available DSP sound engine and front-panel emulator for the Nord Stage 4
 Exec=nord-stage4
 Icon=nord-stage4
 Categories=AudioVideo;Audio;Music;Synthesizer;
@@ -303,7 +303,7 @@ def render_deb_control(label: str) -> str:
         f"Maintainer: {APP_PUBLISHER} <noreply@github.com>\n"
         "Depends: libc6 (>= 2.38), libasound2t64 | libasound2, libgl1, libx11-6\n"
         f"Homepage: {APP_URL}\n"
-        "Description: Open-source DSP emulator, CLI, GUI, and CLAP/VST3 plugin for Nord Stage 4\n"
+        "Description: Source-available DSP emulator, CLI, GUI & CLAP/VST3 plugin for Nord Stage 4\n"
         " Includes the ns4 CLI, nord-stage4 standalone GUI, nord-plugin-standalone,\n"
         " and CLAP (/usr/lib/clap) + VST3 (/usr/lib/vst3) DAW plugins.\n"
     )

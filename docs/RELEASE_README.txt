@@ -1,8 +1,9 @@
 Nord Stage 4 Emulator - release archive
 =======================================
 
-Open-source software emulator, DSP engine and binary-format toolkit for the
-Nord Stage 4 keyboard. Built for interoperability, research and preservation.
+Source-available (non-commercial) software emulator, DSP engine and
+binary-format toolkit for the Nord Stage 4 keyboard. Built for
+interoperability, research and preservation.
 Source: https://github.com/ymatrix1/nord-stage-4-emulator
 
 Status: early release (AS IS, no warranty or support)
@@ -26,7 +27,9 @@ License
 
   LICENSE         PolyForm Noncommercial License 1.0.0 (emulator, DSP core,
                   GUI, CLI, and tools — non-commercial use only)
-  LICENSE-PLUGIN  GNU General Public License v3.0 (nord-plugin CLAP/VST3)
+  LICENSE-PLUGIN  GNU General Public License v3.0 (nord-plugin CLAP/VST3;
+                  includes GPL-3.0-only permission for nord-core/nord-gui/
+                  nord-panel solely when compiled into nord-plugin)
 
 Contents
 --------

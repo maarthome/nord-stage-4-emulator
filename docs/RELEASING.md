@@ -50,7 +50,7 @@ A tag with a hyphen is published as a GitHub pre-release.
 - [ ] Checks from `AGENTS.md` pass locally if the bump touched anything besides the version.
 - [ ] Dry run is green (next section) and the artifacts were downloaded and inspected at least once for this release.
 - [ ] `docs/HOST_COMPATIBILITY.md` is current. If a DAW test result changed, update the README wording in `RELEASE_README.txt`.
-- [ ] No `.reference/`, firmware, backup or preset files are staged (`git status`, and `tools/release_verify.py` enforces it for archives).
+- [ ] No `.reference/`, firmware, backup or preset files are staged (`git status`, and `tools/release_verify.py` enforces it for archives), and embedded firmware data (`fw-data-inventory`, e.g. `bass-fw-image.csv`, `farfisa-fw-image.csv`) has been migrated to runtime loading before tagging a public release.
 - [ ] `LICENSE` file(s) exist in the repo root; `tools/release_package.py` includes any `LICENSE*` it finds.
 
 ## Dry run (publishes nothing)

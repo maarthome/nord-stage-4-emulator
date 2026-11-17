@@ -1,7 +1,7 @@
 <h1 align="center">Nord Stage 4 Emulator</h1>
 
 <p align="center">
-  <strong>Open-source DSP sound engine, binary preset toolkit (<code>CBIN</code> / <code>.ns4b</code> / <code>.ns4p</code>), and High-Level Emulator for the Clavia Nord Stage 4.</strong><br>
+  <strong>Source-available (non-commercial) DSP sound engine, binary preset toolkit (<code>CBIN</code> / <code>.ns4b</code> / <code>.ns4p</code>), and High-Level Emulator for the Clavia Nord Stage 4.</strong><br>
   <sub>Built for interoperability, research, preservation, and compatibility purposes.</sub>
 </p>
 
@@ -101,8 +101,8 @@ Before opening a pull request:
 
 ## License & Disclaimer
 
-- **Emulator, DSP Core, GUI, CLI & Tools:** [`PolyForm-Noncommercial-1.0.0`](LICENSE) — free for personal, research, educational, and preservation use; **commercial use is prohibited**.
-- **DAW Plugin (`crates/nord-plugin`):** [`GPL-3.0-only`](crates/nord-plugin/LICENSE).
+- **Emulator, DSP Core, GUI, CLI & Tools:** [`PolyForm-Noncommercial-1.0.0`](LICENSE) — free for personal, research, educational, and preservation use; **commercial use is prohibited** (source-available, not OSI open source).
+- **DAW Plugin (`crates/nord-plugin`):** [`GPL-3.0-only`](crates/nord-plugin/LICENSE). As the copyright holder, the author additionally grants permission to use and distribute `nord-core`, `nord-gui`, and `nord-panel` under `GPL-3.0-only` solely when compiled into and distributed as part of `nord-plugin` (for `vst3-sys` GPLv3 compatibility); standalone, CLI, and library use of those crates remains governed by `PolyForm-Noncommercial-1.0.0`.
 - **Provided AS IS:** This software is provided "as is", without warranty or support of any kind.
 
 The developers of `nord-stage-4-emulator` are not affiliated, associated, endorsed by, or in any way officially connected with Nord Keyboards / Clavia DMI AB, or any of its subsidiaries or its affiliates. The official Nord Keyboards website can be found at https://www.nordkeyboards.com. The names Nord and Clavia as well as related names, marks, emblems and images are registered trademarks of their respective owners.
