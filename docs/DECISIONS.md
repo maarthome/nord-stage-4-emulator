@@ -1426,7 +1426,7 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Impact:** new `crates/nord-core/src/os_update/`, `user_config.rs`, `firmware_setting.rs`, `crates/nord-gui/src/os_update_panel.rs`; dependency `miniz_oxide` 0.8 (MIT / Zlib / Apache-2.0, already in the lock file through `image`); [synth-engine](specs/synth-engine.md) s4.4, [guide](guides/nord-os-update.md), ROADMAP. The container is read at every start. The WAVE tables install once per process, so a file chosen in the GUI applies after a restart. The v1.44 to v1.64 updaters unpack, but their registry address differs: "unsupported Nord OS version".
 
 
-### D138. The 59 stopped SAMPLE programs of the D124 capture were a harness artefact (SPI1 stand-in RAM defers the voice event); the SPI read is neutralised, no flash or DMA model
+### D143. The 59 stopped SAMPLE programs of the D124 capture were a harness artefact (SPI1 stand-in RAM defers the voice event); the SPI read is neutralised, no flash or DMA model
 
 - **Status:** proposed 2026-11-17
 - **Decided by:** pending the user (task from the parent session; evidence [sample-voice-gate](research/sample-voice-gate.md))

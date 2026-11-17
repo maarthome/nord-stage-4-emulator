@@ -1,7 +1,7 @@
-# Research: why 59 of 119 SAMPLE programs stop at the synth voice gate (D138)
+# Research: why 59 of 119 SAMPLE programs stop at the synth voice gate (D143)
 
 - **Checked:** 2026-11-17
-- **Sources (local, never committed):** OS v1.66 `target/fw_unpacked/bank0_CODE.bin` and `bank0_SRAM.bin`, the factory restore EEPROM image `target/oled/eeprom.bin`, the 119 SAMPLE programs of `factory_programs/Program/`, one stand-in sample bound by the real loader (as in [arm-dsp-capture](arm-dsp-capture.md)). Disassembly with capstone over the firmware image (addresses and numbers only, no contents). Tool: `tools/arm_voice_gate.py` (new, `tools/tests/test_arm_voice_gate.py`); data [voice-gate-summary.json](data/voice-gate-summary.json), [voice-gate-programs.json](data/voice-gate-programs.json) (program names, counts, one SPI word each).
+- **Sources (local, never committed):** OS v1.66 `target/fw_unpacked/bank0_CODE.bin` and `bank0_SRAM.bin`, the factory restore EEPROM image `target/oled/eeprom.bin`, the 119 SAMPLE programs of `factory_programs/Program/`, one stand-in sample bound by the real loader (as in [arm-dsp-capture](arm-dsp-capture.md)). Disassembly with capstone over the firmware image (addresses and numbers only, no contents). Tool: `tools/arm_voice_gate.py` (`tools/tests/test_arm_voice_gate.py`); data [voice-gate-summary.json](data/voice-gate-summary.json) and [voice-gate-programs.json](data/voice-gate-programs.json) (the raw rows the tool writes, one per program, merged into one JSON list; `arm_voice_gate.py summary` reads it directly; program names, counts, one SPI word each).
 - **Question:** What holds the synth voice update `0xC01E00AC` for 59 of the 119 SAMPLE programs of the D124 capture, and is it related to the missing pitch entry `e`?
 
 Tags: **VERIFIED** = reproduced by the command in "Reproduce", **EMPIRICAL** = measured in this harness, **ASSUMED** = reading.
@@ -72,4 +72,4 @@ uv run python arm_voice_gate.py summary ../target/arm_voice_gate
 uv run pytest tests/test_arm_voice_gate.py
 ```
 
-`--only <file of program stems>` restricts the batch to the 119 SAMPLE programs of [arm-dsp-capture-programs.csv](data/arm-dsp-capture-programs.csv). The pc traces of `0xC01E72C4` and `0xC01DEAFC` were scratch scripts, not committed.
+`--only <file>` (a plain whitespace-separated list of `Bank_X__Name` stems, as in the `program` column of the CSV) restricts the batch to the 119 SAMPLE programs of [arm-dsp-capture-programs.csv](data/arm-dsp-capture-programs.csv). The pc traces of `0xC01E72C4` and `0xC01DEAFC` were scratch scripts, not committed.

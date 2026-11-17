@@ -189,7 +189,7 @@ def capture(
     session.emu.install_dsp_ports()
     install_dsp_ack(session.emu)
     if spi_neutral:
-        # D138: the harness maps SPI1 as RAM, the note-on refill reads test-pattern leftovers.
+        # D143: the harness maps SPI1 as RAM, the note-on refill reads test-pattern leftovers.
         import arm_voice_gate as vg
 
         vg.install_spi_neutral(session.emu)
@@ -261,7 +261,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
             "--spi-neutral",
             action=argparse.BooleanOptionalAction,
             default=True,
-            help="zero the SPI1 refill read the voice scheduler gates on (D138)",
+            help="zero the SPI1 refill read the voice scheduler gates on (D143)",
         )
         p.add_argument("programs" if name == "batch" else "program", type=Path)
         if name == "batch":

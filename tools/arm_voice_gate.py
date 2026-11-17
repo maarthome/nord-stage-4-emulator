@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""Why the synth voice update does not run for half of the SAMPLE programs (D136).
+r"""Why the synth voice update does not run for half of the SAMPLE programs (D143).
 
 The voice event `0xC01EC690 -> 0xC01E72C4` queues an event that the drain `0xC01E623C` hands to
 `0xC01DEAFC` (event scheduler). `0xC01DEAFC` returns 0 (event deferred, voice update never runs)
@@ -82,9 +82,11 @@ def summarize(rows: Iterable[dict]) -> dict[str, object]:
     }
 
 
-def read_rows(directory: Path) -> list[dict]:
-    """Result rows of a batch directory (one JSON file per program)."""
-    return [json.loads(p.read_text()) for p in sorted(directory.glob("*.json"))]
+def read_rows(path: Path) -> list[dict]:
+    """Result rows of a batch directory (one JSON file per program) or of one JSON list file."""
+    if path.is_file():
+        return list(json.loads(path.read_text()))
+    return [json.loads(p.read_text()) for p in sorted(path.glob("*.json"))]
 
 
 def install_spi_neutral(emu, state: dict | None = None) -> dict:  # noqa: ANN001  # pragma: no cover

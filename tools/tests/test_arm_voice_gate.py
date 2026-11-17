@@ -56,3 +56,11 @@ def test_summarize_counts(tmp_path: Path) -> None:
     assert out["fixed"] == 1
     assert out["prediction_agrees"] == 2  # C has no prediction, so None != True
     assert out["spi_words"]["0x3"] == 1
+
+
+def test_read_rows_accepts_a_single_list_file(tmp_path: Path) -> None:
+    rows = [avg.program_row("A", run(0, 3), run(1, 0)), avg.program_row("B", run(1, 1), run(1, 1))]
+    path = tmp_path / "rows.json"
+    path.write_text(json.dumps(rows))
+    assert avg.read_rows(path) == rows
+    assert avg.summarize(avg.read_rows(path))["fixed"] == 1
