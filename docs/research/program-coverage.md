@@ -220,7 +220,7 @@ Uses count a path once per layer or enabled FX unit that needs it; one layer or 
 | `organ.percussion` | 6 | 8 | assumed | assumed | organ-engine: percussion ASSUMED |
 | `organ.rotary` | 24 | 35 | assumed | assumed | organ-engine: Rotary 122 model ASSUMED; Leslie routine not wired into the program path |
 | `organ.vibrato` | 21 | 25 | assumed | assumed | organ-engine: scanner vibrato/chorus ASSUMED (B3 tail opt-in) |
-| `piano.extra_voice=not_played` | 250 | 276 | assumed | assumed | piano-sound-load: classes 1,2,3,5,6 start an extra voice the engine does not play |
+| `piano.extra_voice=played` | 250 | 276 | verified | verified | piano-extra-voices: classes 1,2,3,5,6 extra voice rule and gain VERIFIED, played by default since D23 (muted only under --piano-slew-fw, where the SMP mutes it) |
 | `piano.sample=loaded` | 272 | 311 | verified | verified | piano-engine: .npno stream decode and firmware level law (D23 default) |
 | `routing.split` | 48 | 48 | assumed | verified | morph-and-zones: splits/zones follow the program only with --firmware-routing (zone codes partly verified) |
 | `synth.analog=MISC` | 8 | 8 | unmodelled | unmodelled | synth-wave-models: not modelled |
@@ -251,8 +251,8 @@ Uses count a path once per layer or enabled FX unit that needs it; one layer or 
 
 | Configuration | verified | assumed | unmodelled |
 |---|---|---|---|
-| default | 1015 (15%) | 5677 (83%) | 119 (2%) |
-| firmware-all | 2634 (39%) | 4058 (60%) | 119 (2%) |
+| default | 1291 (19%) | 5401 (79%) | 119 (2%) |
+| firmware-all | 2910 (43%) | 3782 (56%) | 119 (2%) |
 
 Use-weighted: a path used by two layers counts twice. A `verified` row means the algorithm is firmware-verified, not that its parameters or the panel mapping are.
 

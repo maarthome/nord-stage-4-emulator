@@ -21,4 +21,4 @@ updated_at: 2026-11-17T03:05:53Z
 
 **Out of Scope**: synth, organ, piano models, JIT/AOT, default flips.
 
-**Summary of Changes**: see docs/research/fx-oracle-live.md and D123.
+**Summary of Changes**: see docs/research/fx-oracle-live.md and D125.

@@ -29,6 +29,7 @@ pub mod velocity_level;
 mod extra_voice;
 #[cfg(test)]
 mod interp_switch;
+mod pedal_voices;
 mod slew_voice;
 mod touch_layer;
 
@@ -889,6 +890,11 @@ pub struct PianoLayer {
     /// and the first (extra) voice, which the SMP mutes, is not started. Only `.npno` sounds with a
     /// level model; needs `firmware_velocity_level`. Default `false` (D22, OQ20).
     pub firmware_slew: bool,
+    /// Notes struck with the damper pedal down take the firmware voice list too (the same
+    /// voices and gains as with the pedal up, `piano/pedal_voices.rs`, VERIFIED by the ARM run
+    /// `tools/arm_piano_pedal.py`) instead of the legacy damper-stroke path. Default `false`
+    /// (D22): the pedal-down key-up record placement is not decoded.
+    pub firmware_pedal_voices: bool,
     /// Scale the sample path by the SMP bus convention (`downstream::FIRMWARE_SAMPLE_SCALE`,
     /// 0.5) instead of the legacy 0.55. Default `false`: the Q31 receiver convention is ASSUMED.
     pub firmware_bus_scale: bool,
@@ -985,6 +991,7 @@ impl PianoLayer {
             firmware_velocity_level: true,
             firmware_touch: false,
             firmware_slew: false,
+            firmware_pedal_voices: false,
             firmware_bus_scale: false,
             receiver_chain_scale: false,
             firmware_layer_law: false,

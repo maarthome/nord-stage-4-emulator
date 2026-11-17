@@ -55,7 +55,7 @@ Candidates, in the order they should be tested (none verified):
 
 ## Implications
 
-- The oracle can run the real FX chain on live audio and the chain transfer is exact (0.1866, lag 0, -157.6 dB), so the harness is a valid reference for any stage once its calling convention is reproduced. Reverb and chorus are **not yet reachable** through the stage install; D123 records the status and the next tests.
+- The oracle can run the real FX chain on live audio and the chain transfer is exact (0.1866, lag 0, -157.6 dB), so the harness is a valid reference for any stage once its calling convention is reproduced. Reverb and chorus are **not yet reachable** through the stage install; D125 records the status and the next tests.
 - No native FX model is changed and none is shown wrong: the native ports remain verified against direct routine calls ([fx-reverb-leslie](fx-reverb-leslie.md), [fx-mod2-validation](fx-mod2-validation.md)); this note adds no hardware evidence about them.
 - Nothing here needs a hardware clip. A clip would only be needed after the oracle FX matches the ports and the question becomes hardware against firmware (OQ21c, OQ21a).
 

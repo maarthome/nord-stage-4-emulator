@@ -73,7 +73,7 @@ Opt-in additions: `sharc-sys --jit-diff` (`runner/system_diff.rs`) runs the same
 
 Evidence, timing table and limits: [org-system-run](../research/org-system-run.md); peripheral census, `0x3E0xx` rule, PNO lane and hardware numbers: [dsp-peripherals-audio](../research/dsp-peripherals-audio.md).
 
-## 8. FX chip live run (D123, proposed, opt-in)
+## 8. FX chip live run (D125, proposed, opt-in)
 
 `sharc-fxlive IMAGE --core 1|2` (`crates/nord-sharc/src/runner/fx_run.rs`, new bin) runs the FX Core1 or Core2 pass on a stereo signal: messages (`--msg`, `--script-flat`) are delivered before the named pass, 4 frames per pass are written into the input block (`--slot`, default `0xC01BC` core 1, `0xC0180` core 2; `--in-wav`, `--sine`, `--impulse`, `--lead N` silent passes because the master stage fades in over about 2000 passes), the pass runs from the `P4I` vector 15 (core 1) or the mailbox (core 2), and the output frames are collected (`--wav`). `--tap ADDR` records an 8-word bus after every pass, `--regs-at PC` prints the `M` and `I` registers and `DM(I0..+8)` where a pass first reaches `PC` (entry registers of a stage routine), `--census` lists accesses outside SRAM. Flags off: `sharc-sys`, `sharc-fx` and every other bin are unchanged (one `start()` visibility change in `runner/system.rs`).
 

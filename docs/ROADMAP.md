@@ -316,7 +316,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] Transkun adapter (LoKr first, then LoRA, then full) trained on emulator synth renders for better synth-clip recall and per-note velocity ([transkun-synth-finetune-plan](research/transkun-synth-finetune-plan.md)): Phase 0 feasibility and Phase 1 dataset (20.2 h, 43 held-out programs, base F1 0.546, velocity MAE 26.1) done; Phase 2 trained LoKr and LoRA: held-out F1 0.629 / 0.748 (T1 missed) but hardware recall below base on all three clips (T5 failed), stop rule 7.3 step 3, adapters not adopted (D115); the dataset renders without `--backup` (small effect: LoRA F1 0.762 vs 0.748) and labels ignore octave / split / arp (suspected main cause, unmeasured), so the next run waits for a corrected dataset and user approval
 - [ ] Piano velocity law: the call-frame word `X` of the level procedure is not traced (needs the key-down capture); the engine keeps `VelocityTouch` power laws until then
 - [ ] Edge handling of the sample stream and the step limit of one decoded sample per frame
-- [ ] Proposed 2026-11-15: piano classes 1, 2, 3, 5, 6 start an extra voice the engine does not play (250 factory programs); Touch default flip under D22 (program file bits)
+- [x] Piano extra voices and the damper-down voice list (D123, [piano-extra-voices](research/piano-extra-voices.md)): the extra voice of classes 1, 2, 3, 5, 6 was already played by default (D23; the coverage row was stale and now reads `played`); the stroke kind byte is the selector's list index (0 normal, 1 damper-down, 2 key-up); the firmware runs the same level calls with the pedal down on all 38 factory sounds, so pedal-down notes take the firmware list as the opt-in `--firmware-piano-pedal-voices` (`piano/pedal_voices.rs`, `tools/arm_piano_pedal.py`); defaults and `render_hash` unchanged
+- [ ] Proposed 2026-11-15: Touch default flip under D22 (program file bits)
 
 ### 7b.6 Synth
 
@@ -378,8 +379,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] Proposed 2026-11-15: synth envelope pass (2 SY frames ASSUMED) and ARM tick 1 or 24 kHz (OQ22); arpeggiator gate 2/3 or 1/2 of a step (OQ32); Wavetable default flip (`--synth-wave-bank`); FM level against a hardware clip
 - [x] Synth filter chain links measured (D121, [synth-filter-links](research/synth-filter-links.md)): `kFltType` identity stage table, settled resonance position `128 knob / 127`, 16 stage calls per pass; opt-in `--synth-fw-filter` scores 3.36 against 2.18 so the fitted factors stay; `[ ]` model stage `0x1257B2` (raw type 3)
 - [x] Synth filter stages compared with the Rust port (D122, [synth-filter-stage-vs-model](research/synth-filter-stage-vs-model.md)): LP12 / LP24 / BP / HP / Ladder24 equal the oracle to 3.3e-5 .. 1.4e-4 of the output peak, the per-type factors are not a port error; `[ ]` Ladder24 position word in a sounding voice, terms added into `R` before the stage (OQ22)
-- [x] FX chip live run in the oracle (D123, [fx-oracle-live](research/fx-oracle-live.md)): `sharc-fxlive`, native counterpart `fx_live_native`, comparison `tools/fx_oracle_live.py`; the chain transfer is exact (0.1866, -157.6 dB), reverb type 0 and CHOR installs run but do not match the ports yet (stage calling convention open, OQ35)
-- [ ] FX reverb / chorus / ENS / FLANG oracle responses on live input equal to `FwReverb` / `FirmwareFx::mod2` (D123 follow-ups 1 to 4); PNO lane WAV as the FX input
+- [x] FX chip live run in the oracle (D125, [fx-oracle-live](research/fx-oracle-live.md)): `sharc-fxlive`, native counterpart `fx_live_native`, comparison `tools/fx_oracle_live.py`; the chain transfer is exact (0.1866, -157.6 dB), reverb type 0 and CHOR installs run but do not match the ports yet (stage calling convention open, OQ35)
+- [ ] FX reverb / chorus / ENS / FLANG oracle responses on live input equal to `FwReverb` / `FirmwareFx::mod2` (D125 follow-ups 1 to 4); PNO lane WAV as the FX input
 
 ## Parallel Lanes & Bean Dependency Graph
 
