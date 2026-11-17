@@ -337,7 +337,7 @@
    "programs": 3,
    "uses": 3
   },
-  "piano.extra_voice=not_played": {
+  "piano.extra_voice=played": {
    "programs": 250,
    "uses": 276
   },
@@ -952,12 +952,12 @@
    "basis": "organ-engine: scanner vibrato/chorus ASSUMED (B3 tail opt-in)"
   },
   {
-   "path": "piano.extra_voice=not_played",
+   "path": "piano.extra_voice=played",
    "programs": 250,
    "uses": 276,
-   "default": "assumed",
-   "firmware_all": "assumed",
-   "basis": "piano-sound-load: classes 1,2,3,5,6 start an extra voice the engine does not play"
+   "default": "verified",
+   "firmware_all": "verified",
+   "basis": "piano-extra-voices: classes 1,2,3,5,6 extra voice rule and gain VERIFIED, played by default since D23 (muted only under --piano-slew-fw, where the SMP mutes it)"
   },
   {
    "path": "piano.sample=loaded",
@@ -1178,13 +1178,13 @@
  ],
  "status_totals": {
   "default": {
-   "verified": 1015,
-   "assumed": 5677,
+   "verified": 1291,
+   "assumed": 5401,
    "unmodelled": 119
   },
   "firmware_all": {
-   "verified": 2634,
-   "assumed": 4058,
+   "verified": 2910,
+   "assumed": 3782,
    "unmodelled": 119
   }
  },

@@ -98,10 +98,10 @@ STATUS: dict[str, tuple[str, str, str]] = {
         "piano-engine: .npno stream decode and firmware level law (D23 default)",
     ),
     "piano.sample=missing": (N, N, "no .npno resolved or loadable: synthetic fallback voice"),
-    "piano.extra_voice=not_played": (
-        A,
-        A,
-        "piano-sound-load: classes 1,2,3,5,6 start an extra voice the engine does not play",
+    "piano.extra_voice=played": (
+        V,
+        V,
+        "piano-extra-voices: classes 1,2,3,5,6 extra voice rule and gain VERIFIED, played by default since D23 (muted only under --piano-slew-fw, where the SMP mutes it)",
     ),
     "piano.class=unchecked": (
         A,
@@ -286,7 +286,7 @@ def _piano_paths(p: dict, snd: dict, cls: int | None, tag: str) -> list[str]:
         if cls is not None:
             out.append(f"piano.class={cls}")
             if cls in PIANO_EXTRA_VOICE:
-                out.append("piano.extra_voice=not_played")
+                out.append("piano.extra_voice=played")
             elif cls not in PIANO_MAIN_ONLY:
                 out.append("piano.class=unchecked")
     else:
