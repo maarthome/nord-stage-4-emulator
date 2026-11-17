@@ -8,6 +8,7 @@ pub mod audio;
 pub mod jit_diff;
 pub mod msg;
 pub mod pass;
+pub mod periph_run;
 pub mod system;
 
 /// Parses `0x` hex or decimal.
