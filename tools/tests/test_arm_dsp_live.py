@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import io
+import types
+from pathlib import Path
 
 import arm_dsp_link as dl
 import arm_dsp_live as live
+import arm_dsp_route as rt
 import arm_emu as ae
 
 
@@ -23,9 +26,11 @@ class Proc:
         self.stdout = io.StringIO("READY\n")
 
 
-def test_feeder_sends_only_the_chosen_chip_and_counts_the_rest() -> None:
+def test_feeder_sends_only_wired_chips_and_counts_the_rest() -> None:
     emu, link = FakeEmu(), dl.Link(Proc())
-    f = live.Feeder(emu, link, "PNO", 1)
+    router = rt.Router()
+    router.add(rt.parse_chip_spec("PNO:1=pno=i.bin"), link)
+    f = live.Feeder(emu, router)
     pno, org = ae.PORT2_BASE + 0x10, ae.PORT2_BASE + 0x20  # comm 1 = PNO, comm 2 = ORG
     # PNO core 1: byte address 0x28000000 + 4 * 0xB0200, pad byte 0, value 0x1234
     emu.port_writes += [(pno, 0x28000000 + 4 * 0xB0200, 1), (pno, 0, 2), (pno, 0x1234, 3)]
@@ -35,11 +40,43 @@ def test_feeder_sends_only_the_chosen_chip_and_counts_the_rest() -> None:
     emu.port_writes += [(pno, 0x28000000 + 4 * 6, 10)]  # partial group waits
     f.feed()
     assert link.log == [(0, 0xB0200, 0x1234)]
-    assert f.seen == {"PNO1p2": 1, "PNO2p2": 1, "ORG1p2": 1}
+    assert router.seen == {"PNO1p2": 1, "PNO2p2": 1, "ORG1p2": 1}
     assert emu.port_writes == []
     emu.port_writes += [(pno, 0, 11), (pno, 0x55, 12)]
     f.feed()
-    assert link.log[-1] == (0, 6, 0x55) and f.seen["PNO1p2"] == 2
+    assert link.log[-1] == (0, 6, 0x55) and router.seen["PNO1p2"] == 2
+
+
+def test_two_chips_get_their_own_messages_and_run_the_same_passes() -> None:
+    emu = FakeEmu()
+    a, b = dl.Link(Proc()), dl.Link(Proc())
+    router = rt.Router()
+    sa, sb = rt.parse_chip_spec("ORG:2=org=a.bin=,=,"), rt.parse_chip_spec("PNO:2=org=b.bin")
+    router.add(sa, a)
+    router.add(sb, b)
+    f = live.Feeder(emu, router)
+    org, pno = ae.PORT2_BASE + 0x20, ae.PORT2_BASE + 0x10
+    emu.port_writes += [(org, 0x28800000 + 4 * 0xC1DCC, 1), (org, 0, 2), (org, 5, 3)]
+    emu.port_writes += [(pno, 0x28800000 + 4 * 0xC1DCC, 4), (pno, 0, 5), (pno, 7, 6)]
+    f.feed()
+    assert a.log == [(0, 0xC1DCC, 5)] and b.log == [(0, 0xC1DCC, 7)]
+
+
+def test_replay_command_uses_the_lane_for_pno_and_a_tap_for_the_organ_program() -> None:
+    pno = rt.parse_chip_spec("PNO:1=pno=p.bin")
+    c = live.replay_cmd(pno, Path("sys"), Path("l.script"), 9, Path("t"))
+    assert "--pno" in c and c[c.index("--passes") + 1] == "9" and "--tap" not in c
+    org = rt.parse_chip_spec("ORG:2=org=o.bin=0xC1F83:4:2")
+    c = live.replay_cmd(org, Path("sys"), Path("l.script"), 9, Path("t"))
+    assert "--pno" not in c and c[c.index("--tap") + 1] == "0xc1f83:8"
+
+
+def test_specs_from_args_keeps_the_one_chip_form() -> None:
+    ns = types.SimpleNamespace(chip=[], dsp_image="core1.bin", probe=["0x1256AD"])
+    (s,) = live.specs_from_args(ns)
+    assert (s.name, s.preset, s.probes, s.window) == ("PNO1", "pno", ["0x1256AD"], "")
+    ns = types.SimpleNamespace(chip=["ORG:2=org=o.bin"], dsp_image=None, probe=[])
+    assert live.specs_from_args(ns)[0].name == "ORG2"
 
 
 def test_phase_delta_subtracts_the_additive_numbers_and_the_probe_hits() -> None:
@@ -60,13 +97,16 @@ def test_snapshot_reports_link_stats() -> None:
     assert s["messages_sent"] == 1 and s["idle_passes"] == 2 and s["lane_peak"] == 0.5
     assert s["probe_hits"] == {"0x1256ad": 1} and s["probe_first_pass"] == {"0x1256ad": 0}
     assert s["lane_rms"] == 0.5
+    assert isinstance(types.SimpleNamespace(), object)
 
 
 def test_feeder_skips_words_outside_the_core_window() -> None:
     emu, link = FakeEmu(), dl.Link(Proc())
-    f = live.Feeder(emu, link, "PNO", 1)
+    router = rt.Router()
+    router.add(rt.parse_chip_spec("PNO:1=pno=i.bin"), link)
+    f = live.Feeder(emu, router)
     pno = ae.PORT2_BASE + 0x10
     # byte address below 0x28000000: dm_word would be negative (core 1 by the 0x28800000 split)
     emu.port_writes += [(pno, 0x27000000, 1), (pno, 0, 2), (pno, 5, 3)]
     f.feed()
-    assert link.log == [] and f.skipped == 1
+    assert link.log == [] and router.skipped == {"PNO1p2": 1}
