@@ -206,7 +206,7 @@ Status columns: **Fw** = verified against firmware or oracle, **Clip** = fitted 
 | Unison | 51 / 47 / 72 programs at 1 / 2 / 3 | Asm (SUPER voice spread EMPIRICAL) | default | Super Saw level flat within 1.2 dB over Detune 0 to 10 (hardware flat) | | medium | low |
 | Layer level law | all | Fw `(v / 127)^2` (D87) | **default** | handler `0xC011BB48` run live; Leaky Stabs II 3.19 to 1.95 | Reverb GLOBAL, DSoundman taper | | |
 | Sustain pedal (SUSTPED) | 381 of 384 set | Fw bit decoded (D97) | opt-in `--synth-sustain-pedal` | | ARM hold logic | low | low |
-| Velocity | 213 of 287 synth programs sensitive | Fw laws (D104) | **opt-in** `--firmware-synth-velocity` (flip tried, D137) | 768 of 768 words within 1 ulp; file bits VERIFIED (27 of 27) | 4 of 16 clips worse at replay v100, multiply in the voice, `kOscEnvVel` | medium | medium |
+| Velocity | 213 of 287 synth programs sensitive | Fw laws (D104) | **opt-in** `--firmware-synth-velocity` (flip tried, D142) | 768 of 768 words within 1 ulp; file bits VERIFIED (27 of 27) | 4 of 16 clips worse at replay v100, multiply in the voice, `kOscEnvVel` | medium | medium |
 | Not modelled | MISC 8, MULTI 43, SHAPE SINE 30, SYNC 16, SUB OSC 1 programs per program-coverage | stale: stage models exist (section 5) | | | regenerate the classification | low | none (bookkeeping) |
 
 ### 4.4 Effects

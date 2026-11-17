@@ -161,7 +161,7 @@ pub const SYNTH_VELOCITY: SwitchInfo = sw(
     "--firmware-synth-velocity",
     "Firmware velocity",
     Mixed,
-    "Amp gain V and filter-envelope factor F from the ORG core 2 pass (768 of 768 oracle words within 1 ulp, file bits recalled); the multiply inside the voice is ASSUMED; opt-in because 4 of 16 distinct synth clips score worse at the assumed replay velocity 100 (D137).",
+    "Amp gain V and filter-envelope factor F from the ORG core 2 pass (768 of 768 oracle words within 1 ulp, file bits recalled); the multiply inside the voice is ASSUMED; opt-in because 4 of 16 distinct synth clips score worse at the assumed replay velocity 100 (D142).",
 );
 /// Piano level (`--firmware-piano-level` / `--legacy-piano-level`).
 pub const PIANO_LEVEL: SwitchInfo = sw(

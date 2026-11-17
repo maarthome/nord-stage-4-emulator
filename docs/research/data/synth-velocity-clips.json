@@ -1,5 +1,5 @@
 {
- "note": "D137: score and RMS delta (emulator minus hardware, dB) per Part A synth clip, tools/emu_vs_hw.py; derived numbers only. default = linear velocity blend (flag off), fw = --firmware-synth-velocity. Replay velocity 100 unless v<N> is given.",
+ "note": "D142: score and RMS delta (emulator minus hardware, dB) per Part A synth clip, tools/emu_vs_hw.py; derived numbers only. default = linear velocity blend (flag off), fw = --firmware-synth-velocity. Replay velocity 100 unless v<N> is given.",
  "replay_v100": {
   "organ_pipe": {
    "default_score": 1.74,

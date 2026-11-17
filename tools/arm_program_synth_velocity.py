@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Program recall to the three synth velocity edit values, no poke (D104 follow-up, D137).
+"""Program recall to the three synth velocity edit values, no poke (D104 follow-up, D142).
 
 Puts a factory `.ns4p` into the Store record of the I2C EEPROM image
 (`arm_program_load.build_image`), boots the full machine so the firmware recalls the program
@@ -83,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     session.run(ns.ticks)
     emu = session.emu
     synth = [s for s in aec.find_stores(emu) if s.kind == "synth"]
-    # VERIFIED (run, D137): each synth layer client owns two stores (client 4, 5, 6 = layer A, B, C)
+    # VERIFIED (run, D142): each synth layer client owns two stores (client 4, 5, 6 = layer A, B, C)
     # that hold the same three values; the clients are listed in layer order.
     by_client: dict[int, list[tuple[int, ...]]] = {}
     for store in synth:
