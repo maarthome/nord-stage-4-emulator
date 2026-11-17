@@ -1,6 +1,7 @@
 //! Wiring of the peripheral models into [`Core`]: the [`Bus`] onto its data memory and the
 //! enable, feed and access hooks used by `memory.rs`, `interrupts.rs` and `sharc-run`.
 use super::epdma::EpDma;
+use super::ringdma::RingDma;
 use super::sc57x::Sc57x;
 use super::spi_boot::{self, SpiBoot};
 use super::{AccessLog, Bus};
@@ -83,6 +84,16 @@ impl Core {
     /// Switches on the ORG Core2 range-transfer registers at `DM(0x3E000..0x3E03F)`.
     pub fn enable_epdma(&mut self) {
         self.periph.get_or_insert_with(Default::default).epdma = Some(EpDma::default());
+    }
+
+    /// Switches on the history-ring restart register `DM(0x310C3000)` (PNO core 1, D126).
+    pub fn enable_ringdma(&mut self) {
+        self.periph.get_or_insert_with(Default::default).ringdma = Some(RingDma::default());
+    }
+
+    /// The history-ring restart model, if enabled.
+    pub fn ringdma(&mut self) -> Option<&mut RingDma> {
+        self.periph.as_mut()?.ringdma.as_mut()
     }
 
     /// Switches on the census of every data access outside SRAM (IOP window and system range).
@@ -180,6 +191,9 @@ impl Core {
         let mut irqs = Vec::new();
         let taken = if let Some(e) = p.epdma.as_mut().filter(|_| EpDma::contains(addr)) {
             e.write(addr, v);
+            true
+        } else if let Some(r) = p.ringdma.as_mut().filter(|_| RingDma::contains(addr)) {
+            r.write(v, &mut CoreBus(self));
             true
         } else if let Some(b) = p.boot.as_mut().filter(|_| SpiBoot::contains(addr)) {
             b.write(addr, v);
@@ -392,5 +406,27 @@ mod tests {
             .1
             .last_write;
         assert_eq!(last, Some(5));
+    }
+
+    #[test]
+    fn ringdma_is_off_by_default_and_copies_on_the_restart_pair() {
+        use crate::core::periph::ringdma::{ARM_WORD, CHAINS, DMA_BASE, GO_WORD, RESTART};
+        let mut c = Core::new(&[]);
+        for (k, w) in [1, DMA_BASE + 0x9_6634, DMA_BASE + 0xE_31A6, 2]
+            .into_iter()
+            .enumerate()
+        {
+            c.dm_write(CHAINS[0] + k as u32, w).unwrap();
+        }
+        c.dm_write(0x9_6634, 5).unwrap();
+        c.dm_write(0x9_6635, 6).unwrap();
+        c.dm_write(RESTART, ARM_WORD).unwrap();
+        c.dm_write(RESTART, GO_WORD).unwrap();
+        assert!(c.ringdma().is_none() && c.dm_read(0xE_31A6) == Ok(0));
+        c.enable_ringdma();
+        c.dm_write(RESTART, ARM_WORD).unwrap();
+        c.dm_write(RESTART, GO_WORD).unwrap();
+        assert_eq!((c.dm_read(0xE_31A6), c.dm_read(0xE_31A7)), (Ok(5), Ok(6)));
+        assert_eq!(c.ringdma().unwrap().restarts, 1);
     }
 }
