@@ -380,6 +380,8 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] Proposed 2026-11-15: synth envelope pass (2 SY frames ASSUMED) and ARM tick 1 or 24 kHz (OQ22); arpeggiator gate 2/3 or 1/2 of a step (OQ32); Wavetable default flip (`--synth-wave-bank`); FM level against a hardware clip
 - [x] Synth filter chain links measured (D121, [synth-filter-links](research/synth-filter-links.md)): `kFltType` identity stage table, settled resonance position `128 knob / 127`, 16 stage calls per pass; opt-in `--synth-fw-filter` scores 3.36 against 2.18 so the fitted factors stay; `[ ]` model stage `0x1257B2` (raw type 3)
 - [x] Synth filter stages compared with the Rust port (D122, [synth-filter-stage-vs-model](research/synth-filter-stage-vs-model.md)): LP12 / LP24 / BP / HP / Ladder24 equal the oracle to 3.3e-5 .. 1.4e-4 of the output peak, the per-type factors are not a port error; `[ ]` Ladder24 position word in a sounding voice, terms added into `R` before the stage (OQ22)
+- [x] FX chip live run in the oracle (D125, [fx-oracle-live](research/fx-oracle-live.md)): `sharc-fxlive`, native counterpart `fx_live_native`, comparison `tools/fx_oracle_live.py`; the chain transfer is exact (0.1866, -157.6 dB), reverb type 0 and CHOR installs run but do not match the ports yet (stage calling convention open, OQ35)
+- [ ] FX reverb / chorus / ENS / FLANG oracle responses on live input equal to `FwReverb` / `FirmwareFx::mod2` (D125 follow-ups 1 to 4); PNO lane WAV as the FX input
 
 ## Parallel Lanes & Bean Dependency Graph
 
