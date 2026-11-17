@@ -143,7 +143,7 @@ Effort to close the 18 census cases: low. Effort to run the 21571 census: medium
 | Vectors 1 and 12 | vector 1 is reset code with no `RTI`; vector 12 is a one-instruction `RTI` stub the harness misses | D112 |
 | Opcode 9 (SPI DMA) with a flash model | not run | open |
 | ARM state after the DSP answers "prepare" | status bit set by hand (`DspAck`, meaning ASSUMED "SY voice ready") | [synth-sample-kernel-rule](synth-sample-kernel-rule.md) s12 |
-| Result | The writer of the pitch entry `e` at `DM(0x9354A + index)` is **not found** after D89, D105, D111, D112; `--sample-pitch fw` stays opt-in | D65, OQ22 |
+| Result | The writer of the pitch entry `e` at `DM(0x9354A + index)` is **not found** after D89, D105, D111, D112, D124 (the ARM stream of all 384 recalls and 149 played voices holds no `e`, [arm-dsp-capture](arm-dsp-capture.md)); `--sample-pitch fw` stays opt-in | D65, OQ22 |
 
 ### 3.4 ARM harness (`tools/arm_*.py`, Unicorn ARM926EJ-S)
 
