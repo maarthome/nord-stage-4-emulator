@@ -15,8 +15,8 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Iterable, Iterator
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import arm_dsp_capture as cap
