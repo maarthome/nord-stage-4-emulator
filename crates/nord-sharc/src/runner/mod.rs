@@ -5,6 +5,7 @@
 pub mod aot_audio;
 pub mod aot_hot;
 pub mod audio;
+pub mod fx_run;
 pub mod jit_diff;
 pub mod msg;
 pub mod pass;
