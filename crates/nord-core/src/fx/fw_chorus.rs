@@ -191,7 +191,9 @@ mod tests {
             let got: Vec<u32> = frames.iter().map(|f| f.to_bits()).collect();
             assert_close(&got, o, 5.0e-6, &format!("{kind:?} call {n}"));
         }
-        assert_close(c.words(), ctx_out, 5.0e-6, "final context");
+        // The context words carry the f32 rounding of three calls on the live ring (the model keeps
+        // extended precision): 2e-5 relative, the frames stay within 5e-6.
+        assert_close(c.words(), ctx_out, 2.0e-5, "final context");
         let want = golden_ring();
         let changed: Vec<usize> = (0..RING_N).filter(|&k| c.ring()[k] != want[k]).collect();
         assert_eq!(
@@ -247,5 +249,45 @@ mod tests {
         assert_eq!(m.rd(0x1234), 0);
         m.wr(SCRATCH + 3, 5);
         assert_eq!(m.rd(SCRATCH + 3), 5);
+    }
+
+    /// Regression for the pre-modify store `DM(M6, I6)` (`I6 + 0x202`, no wrap, D114): the ports
+    /// wrapped it, so the guard copy of the ring was never written and the left wet tap of an
+    /// impulse stayed silent while the oracle (live FX chain, `docs/research/fx-reverb0-chor-oracle-diff.md`)
+    /// plays it (port against oracle after the fix: 80 calls, max difference 9.2e-7).
+    fn impulse_through(variation: bool) -> (Vec<[f32; 2]>, [u32; RING_N]) {
+        let mut st = super::super::fw_mod2::FwMod2Stage::new(variation, 64, 64, 43_402.344);
+        let out: Vec<[f32; 2]> = (0..400)
+            .map(|i| {
+                let x = if i == 0 { 0.5 } else { 0.0 };
+                st.process_frame([x, 0.8 * x])
+            })
+            .collect();
+        (out, *st.ring_for_test())
+    }
+
+    #[test]
+    fn an_impulse_has_a_left_and_a_right_wet_tap_and_the_guard_copy() {
+        for variation in [false, true] {
+            let (out, ring) = impulse_through(variation);
+            let wet = |ch: usize| out[40..].iter().map(|f| f[ch].abs()).fold(0.0f32, f32::max);
+            assert!(
+                wet(0) > 1.0e-4,
+                "variation {variation}: left wet {}",
+                wet(0)
+            );
+            assert!(
+                wet(1) > 1.0e-4,
+                "variation {variation}: right wet {}",
+                wet(1)
+            );
+            let mirrored = (0..0x200)
+                .filter(|&k| ring[k] != 0 && ring[k + 0x200] == ring[k])
+                .count();
+            assert!(
+                mirrored >= 1,
+                "variation {variation}: guard copy written ({mirrored} words)"
+            );
+        }
     }
 }
