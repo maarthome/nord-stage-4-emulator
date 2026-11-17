@@ -67,4 +67,6 @@ The oracle can act as the DSP half of a small system run: the ARM firmware runs 
 | External-port DMA | not modelled; `DM(0x3E021)` is read as a loop count from pass 15 of the real load stream, so the run pre-sets it (`--pre 0x3E021=1`, ASSUMED) |
 | Interrupts, other cores, SPI/SPORT | not modelled |
 
+Opt-in additions: `sharc-sys --jit-diff` (`runner/system_diff.rs`) runs the same passes on the interpreter and the JIT in lockstep and stops at the first divergence; `--irq VEC:STATUS` and `--flag1` start Core1 sections by the receive interrupt. Measurements for PNO core 1, the ARM tick cost and the other cores: [pno-jit-arm-profile](../research/pno-jit-arm-profile.md).
+
 Evidence, timing table and limits: [org-system-run](../research/org-system-run.md).
