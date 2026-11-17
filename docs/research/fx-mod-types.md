@@ -15,7 +15,7 @@ Tags follow `.agents/rules/provenance-in-code.md`: **VERIFIED** = reproduced by 
 | 4, 5 RM | `0x1239D0`, module `0xC02BB10C` | **model VERIFIED 500/500 twice, ported, wired** (`FwMod1Rest`, s7) | 3 / 3 |
 | 6, 7 A-WAH | `0x123E9B`, module `0xC0279290` | **model VERIFIED, ported, wired** (s7) | 6 / 7 |
 | 8, 9 WAH | `0x123DD2` (what s1 of the first version called the waveshaper: an LFO or pedal driven state variable filter; module `0xC04414C4`) | **model VERIFIED, ported, wired** (s7) | 2 / 2 |
-| 10, 11 PUMP | `0x122D2C` (`0x124374` is the module's reset routine, not audio), module `0xC02BB5E4` | **model VERIFIED, ported, wired** (s7) | 9 / 19 |
+| 10, 11 PUMP | `0x122D2C` (`0x124374` is the module's reset routine, not audio), module `0xC02BB5E4` | **model VERIFIED, ported, wired** (s7); Master Clock sync (s7.2, D134) | 9 / 19 |
 
 Update (s7): all 12 Mod 1 types now run a firmware routine under `FirmwareFx::mod1`, so every one of the 89 programs with Mod 1 enabled (123 occurrences) is covered.
 
@@ -130,13 +130,13 @@ python tools/fx_golden_mod1.py > crates/nord-core/src/fx/tests_mod1_golden.rs
 
 **Boot words (VERIFIED).** The boot message log of the harness (96,111 messages in this capture) holds the words the ARM sends to the DSPs; the DSP words of the FX instances are reduced to the last value per word by `python tools/arm_bulk_tables.py capture target/fw_unpacked/bank0_CODE.bin target/fw_unpacked/bank0_SRAM.bin --out target/bulk` (`fx_core1.script`, 3,499 words). Applied over the static image they give the words that no type or parameter write lists: the **self pointers** (`c[-29]` of RM, WAH, PUMP: the address of `c[-31]`; PHAS 1 `c[-29]`; ENS `c[-5]`; SPIN `c[-8]`: `c[-10]`), the **block counts (1 block of 2 frames for the piano unit)**, and the instance constants (PHAS 1 all-pass gains `c[-26] = 0.3125`, `c[-25] = 0.5`, `c[-23] = 0.7383`, `c[-17] = -0.7`, `c[-16] = -0.7299`; SPIN speed clamps and tap words; PUMP `c[-17..-15]`; A-WAH `c[-5] = 1.44`). `python tools/fx_mod1_laws.py rows SRAM/core1_sram.bin target/bulk/fx_core1.script` writes [data/fx-mod1-rows.csv](data/fx-mod1-rows.csv) (name, offset, word, source `image` or `boot`); `python tools/fx_mod1_laws.py rust` writes `fx/fw_mod1_data.rs` (rows, type words and the 11 sample laws of types 4 to 11). Tests: `tools/tests/test_fx_mod1_laws.py`, `fx::fw_mod1_rest`, `fx::fw_mod2_run` (golden), `fx::tests_fw_mod1_chain`.
 
-**Stage (`fx/fw_mod1_rest.rs`, `FwMod1Rest`).** Row (relocated self pointers), then type words, then the laws at `v` (linear between the samples, exact at them); phase increments x `F / fs`; **latency 2 frames** (the piano unit runs one block of two frames per call; the first Mod 1 stages of s2 / s3 assume 4 frames from the synth boot row: the piano boot word `c[-3]` of A-PAN is 1, so the LFO rate of `FwMod1Stage` may be a factor 2 low for the piano and organ units: open, OQ21). Wiring: `process_fw_mod1` sends types 4 to 11 to the new stage; Master Clock sync (`mod1_sync_beats`) and missing raw values keep the engine path; WAH type 9 with `mod1_ped` takes `mod1_ped_pos * 127` as its rate value (ASSUMED: the pedal reaches the DSP through the rate id).
+**Stage (`fx/fw_mod1_rest.rs`, `FwMod1Rest`).** Row (relocated self pointers), then type words, then the laws at `v` (linear between the samples, exact at them); phase increments x `F / fs`; **latency 2 frames** (the piano unit runs one block of two frames per call; the first Mod 1 stages of s2 / s3 assume 4 frames from the synth boot row: the piano boot word `c[-3]` of A-PAN is 1, so the LFO rate of `FwMod1Stage` may be a factor 2 low for the piano and organ units: open, OQ21). Wiring: `process_fw_mod1` sends types 4 to 11 to the new stage; Master Clock sync (`mod1_sync_beats`) keeps the engine path except for PUMP (s7.2) and so do missing raw values; WAH type 9 with `mod1_ped` takes `mod1_ped_pos * 127` as its rate value (ASSUMED: the pedal reaches the DSP through the rate id).
 
 ### 7.1 Not verified
 
 * No hardware clip contains RM, A-WAH, WAH or PUMP (`docs/research/data/emu_vs_hw_*.json`: the Vox clip has Mod 2 VIBE only); the stages are compared with the oracle word for word, not with hardware.
 * The piano unit words are used for every layer (ASSUMED); the synth unit has its own rate tables (RM `0x1C200 .. 0x7DB1D00`).
-* The PUMP counter `c[-0x15]` (Master Clock tick) is not driven: the stage free runs; sync stays on the engine.
+* The PUMP counter `c[-0x15]` is driven from the engine's Master Clock (s7.2, D134); the hardware writer, the increment under sync and the tick alignment are not found (OQ36).
 * Filter coefficients (A-WAH, WAH) are those of 43.4 kHz: ASSUMED about 10 % cutoff shift at 48 kHz.
 
 ## Implications
@@ -146,7 +146,7 @@ python tools/fx_golden_mod1.py > crates/nord-core/src/fx/tests_mod1_golden.rs
 
 ## Follow-ups
 
-0. Compare a hardware recording of a WAH or PUMP program; drive the PUMP counter from the Master Clock; check the 2-frame versus 4-frame call of the A-PAN / TREM stages on the piano unit (s7).
+0. Compare a hardware recording of a WAH or PUMP program (A:25 against `--firmware-fx` with Master Clock sync); find the writer of the PUMP counter (OQ36); check the 2-frame versus 4-frame call of the A-PAN / TREM stages on the piano unit (s7).
 
 1. Model `0x12379B` (Fx2 type 0, Phaser) and `0x12348D` / `0x123539` (Fx2 types 2, 3) with the same tools: their instance words are static image DM like the A-PAN row.
 2. Find the Dly feedback-effect instance words (activation path, [fx-contexts](fx-contexts.md) s7) so the `0x123A7B` family can be modelled on a real instance.

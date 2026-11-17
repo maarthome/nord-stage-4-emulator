@@ -25,13 +25,20 @@ impl LayerFxChain {
     /// of `kFx1Type` 0..=3 (types 4..=11 go to `process_fw_mod1_rest`), runs in Master Clock sync, or has no raw values (engine path).
     fn process_fw_mod1(&mut self, l: f32, r: f32) -> Option<[f32; 2]> {
         let (ty, rate) = (self.mod1_type_raw?, self.mod1_rate_raw?);
-        if ty > 11 || self.mod1_sync_beats.is_some() {
+        // PUMP follows the Master Clock through its counter word (D133); every other type in sync
+        // stays on the engine model.
+        let pump_period = if matches!(ty, 10 | 11) {
+            self.pump_clock_period_frames()
+        } else {
+            None
+        };
+        if ty > 11 || (self.mod1_sync_beats.is_some() && pump_period.is_none()) {
             self.fw_mod1 = None;
             self.fw_mod1_rest = None;
             return None;
         }
         if ty > 3 {
-            return self.process_fw_mod1_rest(ty, u32::from(rate), l, r);
+            return self.process_fw_mod1_rest(ty, u32::from(rate), pump_period, l, r);
         }
         self.fw_mod1_rest = None;
         let shape = if ty < 2 {
@@ -60,7 +67,14 @@ impl LayerFxChain {
     /// The firmware RM / A-WAH / WAH / PUMP stages (`kFx1Type` 4 to 11). The PED variation of the
     /// wah (type 9) takes its position from the pedal in place of the rate (ASSUMED: the ARM
     /// writes the pedal through the rate id, the type 9 law of `c[-16]` is `v / 128`).
-    fn process_fw_mod1_rest(&mut self, ty: u8, rate: u32, l: f32, r: f32) -> Option<[f32; 2]> {
+    fn process_fw_mod1_rest(
+        &mut self,
+        ty: u8,
+        rate: u32,
+        clock_period: Option<f64>,
+        l: f32,
+        r: f32,
+    ) -> Option<[f32; 2]> {
         self.fw_mod1 = None;
         let amount = (self.mod1_amount.clamp(0.0, 1.0) * 127.0).round() as u32;
         let rate = if ty == 9 && self.mod1_ped {
@@ -69,15 +83,30 @@ impl LayerFxChain {
             rate
         };
         match &mut self.fw_mod1_rest {
-            Some(st) if st.ty() == ty => st.set_params(rate, amount),
+            Some(st) if st.ty() == ty => {
+                st.set_clock_period(clock_period);
+                st.set_params(rate, amount);
+            }
             slot => {
                 *slot =
                     fw_mod1_rest::FwMod1Rest::new(ty, rate, amount, self.sample_rate).map(Box::new);
+                if let Some(st) = slot {
+                    st.set_clock_period(clock_period);
+                    st.set_params(rate, amount);
+                }
             }
         }
         self.fw_mod1_rest
             .as_mut()
             .map(|st| st.process_frame([l, r]))
+    }
+
+    /// Master Clock division of the PUMP in engine frames (`fs * 60 / bpm * beats`): `Some` only
+    /// when `mod1_sync_beats` and the BPM are valid.
+    fn pump_clock_period_frames(&self) -> Option<f64> {
+        let beats = f64::from(self.mod1_sync_beats.filter(|b| b.is_finite() && *b > 0.0)?);
+        let bpm = f64::from(self.clock_bpm);
+        (bpm.is_finite() && bpm > 0.0).then(|| f64::from(self.sample_rate) * 60.0 / bpm * beats)
     }
 
     pub(super) fn process_mod1(&mut self, l: f32, r: f32, inv_fs: f32) -> [f32; 2] {
