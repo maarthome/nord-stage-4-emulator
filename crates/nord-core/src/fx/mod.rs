@@ -65,7 +65,9 @@ mod fw_pe_ops;
 mod fw_phas0;
 mod fw_phas1;
 mod fw_pump;
+mod fw_pump_clock;
 mod fw_rate_match;
+pub(crate) use fw_pump_clock::sync_beats as pump_sync_beats;
 mod fw_reverb;
 mod fw_rm;
 mod fw_rvb_core;
@@ -137,6 +139,8 @@ mod tests_fw_map;
 mod tests_fw_mod1_chain;
 #[cfg(test)]
 mod tests_fw_mod2_chain;
+#[cfg(test)]
+mod tests_fw_pump_sync;
 #[cfg(test)]
 mod tests_fw_rate_match_chain;
 #[cfg(test)]
