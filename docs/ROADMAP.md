@@ -311,6 +311,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] FX wiring: connect the ported routines to `fx.rs` using the measured context words (compressor amount, delay mix and feedback, Amp drive, phaser rate); the reverb tables (`ns4-ca0i`); the delay time law (`kDlyRateClkDiv`, [fx-delay-time](research/fx-delay-time.md)) is decoded and wired behind `FirmwareFx::delay_time`
 - [ ] Enable gating and the command consumer ([fx-contexts](research/fx-contexts.md) s7; wiring plan s8), then sweep the four type ids with the effects enabled
 - [x] Firmware multi-tap reverb checked over the whole tail and measured per type (D145, [reverb-fw-vs-hw](research/reverb-fw-vs-hw.md)): port = oracle over 30,000 calls, no gain bug, `fx_reverb_types` tool; `[ ]` the reverb stage input gain and the second module routine `0x1211C1` in the real dispatcher, hardware tail clip (OQ21c)
+- [x] Firmware reverb stage gain, send / return words, `0x1211C1` and the real rate (D157, [reverb-stage-gain](research/reverb-stage-gain.md)): dispatcher stage law verified in the oracle (no gain above unity), `kRvbAmt` writes only send / dry and the module reads only the send, the +21 / +26 / +36 dB is a signal-relative floor, core rate 21,701 Hz; `[ ]` the stage level writer (module install / part activation) and a hardware clip stay open
 - [ ] Proposed 2026-11-15: Mod 1 PUMP clock source (hardware 2.11 Hz against 6.1 Hz free-run, reported by the coordinating session, no repo record yet) and a hardware reverb tail clip (Hall, Cathedral, OQ21c)
 
 ### 7b.5 Piano
