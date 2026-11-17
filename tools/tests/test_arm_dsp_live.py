@@ -110,3 +110,52 @@ def test_feeder_skips_words_outside_the_core_window() -> None:
     emu.port_writes += [(pno, 0x27000000, 1), (pno, 0, 2), (pno, 5, 3)]
     f.feed()
     assert link.log == [] and router.skipped == {"PNO1p2": 1}
+
+
+def test_return_observer_mirrors_messages_and_registers_every_live_chip() -> None:
+    import arm_dsp_return as rtn
+
+    link_p, link_o = dl.Link(Proc()), dl.Link(Proc())
+    items = [
+        (rt.parse_chip_spec("PNO:2=pno=i.bin"), link_p),
+        (rt.parse_chip_spec("ORG:2=org=i.bin"), link_o),
+    ]
+    source = live.return_source(items, None)
+    assert set(source.live) == {(1, 2), (2, 2)}
+    assert live.return_observer(None) is None
+    seen = live.return_observer(source)
+    seen(ae.Message(1, 3, 0x92414, rtn.STATE_PREPARE, 0))
+    assert source.sy.idle & 1 == 0
+
+
+def test_return_report_counts_reads_and_busy_voices() -> None:
+    import arm_dsp_return as rtn
+
+    source, log = rtn.ReturnSource(), rtn.ReadLog()
+    source.read(3, rtn.IDLE_MASK, 2)
+    rep = live.return_report(source, log)
+    assert rep["reads"] == {"SY:0:0x92196": 1, "SY:0:0x92197": 1}
+    assert rep["answered_by"] == {"sy_mask": 2} and rep["busy_voices"] == 0
+
+
+def test_poll_advance_feeds_the_messages_then_runs_one_sy_pass() -> None:
+    class Link:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def dump(self, addr: int, count: int) -> list[int]:
+            return [addr] * count
+
+        def run(self, n: int) -> None:
+            self.calls.append(f"run{n}")
+
+    link, order = Link(), []
+    before = [lambda: order.append("feed")]
+    items = [(rt.parse_chip_spec("SY:0=sy=i.bin"), link)]
+    source = live.return_source(items, None, 2, before)
+    live_dump = source.live[(3, 0)]
+    link.run = lambda n: order.append(f"run{n}")  # type: ignore[method-assign]
+    assert [live_dump(0x9219A, 1)[0] for _ in range(4)] == [0x9219A] * 4
+    assert order == ["feed", "run1", "feed", "run1"]  # every 2nd read of the address
+    off = live.return_source(items, None, 0, before).live[(3, 0)]
+    assert off == link.dump  # poll 0: the plain dump
