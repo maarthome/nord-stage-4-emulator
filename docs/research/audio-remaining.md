@@ -65,6 +65,8 @@ Score = programs touched x audible impact, divided by effort; the program counts
 
 Out of the ranking by decision: real-time SHARC and ARM execution (rows 16 and the D118 plan). It is not needed for the native engine to match the hardware; the oracle stays an offline validator.
 
+See also [firmware-flag-audit](firmware-flag-audit.md) (2026-11-17): every opt-in firmware flag with oracle evidence, clip numbers, blockers and a ranked flip list; policy D136 (proposed).
+
 ## Implications
 
 - The audio is not done: 83 % of default-path uses of the 384 factory programs are still assumed ([emulation-coverage](emulation-coverage.md) s5).
