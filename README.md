@@ -45,7 +45,12 @@ Read the full specification suite in [`docs/`](docs/README.md):
 
 **Playing the GUI:** `nord-stage4` plays from a MIDI keyboard (first MIDI port, velocity passed through unchanged), the mouse (velocity 88) or the computer keyboard (`A S D F G H J K L ; '` white keys, `W E T Y U O P` black keys, `Z` / `X` octave, `C` / `V` velocity, `Space` sustain; see [GUI testing](docs/gui-testing.md)).
 
-Tagged releases ship `ns4` (CLI), `nord-stage4` (GUI), the standalone plugin host, and the CLAP + VST3 plugin for Windows x86_64, Linux x86_64 and macOS arm64, with SHA256 files. Install paths per OS are in the `README.txt` inside each archive. The plugin has **not** been verified in any DAW yet ([docs/HOST_COMPATIBILITY.md](docs/HOST_COMPATIBILITY.md)); builds are unsigned. Maintainers: see [docs/RELEASING.md](docs/RELEASING.md).
+Tagged releases ship `ns4` (CLI), `nord-stage4` (GUI), `nord-plugin-standalone`, and the CLAP + VST3 DAW plugins in multiple formats (all with `.sha256` checksums):
+- **Windows (x86_64):** `-setup.exe` installer (with selectable GUI, CLI, VST3 & CLAP components) and portable `.zip`
+- **macOS (arm64):** `.pkg` installer (selectable app, VST3 & CLAP), `.dmg` disk image, and portable `.tar.gz`
+- **Linux (x86_64):** `.deb` package, portable `.AppImage` (run with `--install-plugins` to copy CLAP/VST3 to `~/.clap` and `~/.vst3`), and `.tar.gz`
+
+All builds are unsigned and provided **AS IS, without warranty or support of any kind**. The plugin has **not** been verified in any DAW yet ([docs/HOST_COMPATIBILITY.md](docs/HOST_COMPATIBILITY.md)). Maintainers: see [docs/RELEASING.md](docs/RELEASING.md).
 
 ---
 
@@ -94,6 +99,10 @@ Before opening a pull request:
 
 ---
 
-## Disclaimer
+## License & Disclaimer
+
+- **Emulator, DSP Core, GUI, CLI & Tools:** [`PolyForm-Noncommercial-1.0.0`](LICENSE) — free for personal, research, educational, and preservation use; **commercial use is prohibited**.
+- **DAW Plugin (`crates/nord-plugin`):** [`GPL-3.0-only`](crates/nord-plugin/LICENSE).
+- **Provided AS IS:** This software is provided "as is", without warranty or support of any kind.
 
 The developers of `nord-stage-4-emulator` are not affiliated, associated, endorsed by, or in any way officially connected with Nord Keyboards / Clavia DMI AB, or any of its subsidiaries or its affiliates. The official Nord Keyboards website can be found at https://www.nordkeyboards.com. The names Nord and Clavia as well as related names, marks, emblems and images are registered trademarks of their respective owners.
