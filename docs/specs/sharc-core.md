@@ -72,3 +72,14 @@ The oracle can act as the DSP half of a small system run: the ARM firmware runs 
 Opt-in additions: `sharc-sys --jit-diff` (`runner/system_diff.rs`) runs the same passes on the interpreter and the JIT in lockstep and stops at the first divergence; `--irq VEC:STATUS` and `--flag1` start Core1 sections by the receive interrupt. Measurements for PNO core 1, the ARM tick cost and the other cores: [pno-jit-arm-profile](../research/pno-jit-arm-profile.md).
 
 Evidence, timing table and limits: [org-system-run](../research/org-system-run.md); peripheral census, `0x3E0xx` rule, PNO lane and hardware numbers: [dsp-peripherals-audio](../research/dsp-peripherals-audio.md).
+
+## 8. FX chip live run (D123, proposed, opt-in)
+
+`sharc-fxlive IMAGE --core 1|2` (`crates/nord-sharc/src/runner/fx_run.rs`, new bin) runs the FX Core1 or Core2 pass on a stereo signal: messages (`--msg`, `--script-flat`) are delivered before the named pass, 4 frames per pass are written into the input block (`--slot`, default `0xC01BC` core 1, `0xC0180` core 2; `--in-wav`, `--sine`, `--impulse`, `--lead N` silent passes because the master stage fades in over about 2000 passes), the pass runs from the `P4I` vector 15 (core 1) or the mailbox (core 2), and the output frames are collected (`--wav`). `--tap ADDR` records an 8-word bus after every pass, `--regs-at PC` prints the `M` and `I` registers and `DM(I0..+8)` where a pass first reaches `PC` (entry registers of a stage routine), `--census` lists accesses outside SRAM. Flags off: `sharc-sys`, `sharc-fx` and every other bin are unchanged (one `start()` visibility change in `runner/system.rs`).
+
+| Item | State |
+|---|---|
+| Chain transfer, pass-through stage `0x1231CB` | output = `0.1866 x DM(0xB6518) x input`, lag 0, -157.6 dB null after the gain fit (VERIFIED, [fx-oracle-live](../research/fx-oracle-live.md)) |
+| Stage install | records `S-0x20 ..` written by messages as the ARM does; reverb type 0 (`0x124AF2`) and Mod 2 CHOR (`0x123798`) install and run, their output does **not** match the native ports yet (stage calling convention open, OQ35) |
+| Native counterpart | `fx_live_native` (`crates/nord-tools`), `tools/fx_oracle_live.py` compares (lag, fitted gain, RMS delta, centroid, tail, null depth) |
+| PNO lane to FX input | not wired (WAV hand-over only) |
