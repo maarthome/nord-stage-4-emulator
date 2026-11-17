@@ -5,6 +5,7 @@
 
 mod apply;
 #[cfg(feature = "app")]
+mod buffer;
 mod callback;
 mod command;
 pub mod control;

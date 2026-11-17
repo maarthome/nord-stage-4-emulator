@@ -52,6 +52,9 @@ pub struct AudioMeter {
     blocks: AtomicU64,
     late: AtomicU64,
     total_ns: AtomicU64,
+    /// Sum of `frames / sample_rate` over the blocks, so `load` stays right when the device
+    /// changes its buffer size.
+    audio_ns: AtomicU64,
     worst_ns: AtomicU64,
     worst_drain_ns: AtomicU64,
     worst_publish_ns: AtomicU64,
@@ -70,6 +73,8 @@ pub struct MeterSnapshot {
     /// Blocks whose callback took longer than `frames / sample_rate`.
     pub late: u64,
     pub mean_ms: f64,
+    /// Callback time over audio time of all blocks since the reset (`0.5` = half a core-block).
+    pub load: f64,
     pub worst_ms: f64,
     pub worst_drain_ms: f64,
     pub worst_publish_ms: f64,
@@ -87,14 +92,9 @@ impl MeterSnapshot {
         }
     }
 
-    /// Mean callback time as a share of the deadline.
+    /// Callback time as a share of the audio time it produced, over all blocks since the reset.
     pub fn load(&self) -> f64 {
-        let d = self.deadline_ms();
-        if d > 0.0 {
-            self.mean_ms / d
-        } else {
-            0.0
-        }
+        self.load
     }
 
     /// Peak in dBFS (`-inf` for silence).
@@ -141,6 +141,7 @@ impl AudioMeter {
                 &self.blocks,
                 &self.late,
                 &self.total_ns,
+                &self.audio_ns,
                 &self.worst_ns,
                 &self.worst_drain_ns,
                 &self.worst_publish_ns,
@@ -155,6 +156,7 @@ impl AudioMeter {
         self.frames.store(b.frames, Relaxed);
         self.blocks.fetch_add(1, Relaxed);
         self.total_ns.fetch_add(b.total_ns, Relaxed);
+        self.audio_ns.fetch_add(deadline_ns, Relaxed);
         if b.total_ns > deadline_ns {
             self.late.fetch_add(1, Relaxed);
         }
@@ -169,13 +171,19 @@ impl AudioMeter {
     /// GUI: a consistent-enough copy of the counters.
     pub fn snapshot(&self) -> MeterSnapshot {
         let blocks = self.blocks.load(Relaxed);
+        let (total_ns, audio_ns) = (self.total_ns.load(Relaxed), self.audio_ns.load(Relaxed));
         let ms = |ns: u64| ns as f64 / 1e6;
         MeterSnapshot {
             sample_rate: self.sample_rate.load(Relaxed),
             frames: self.frames.load(Relaxed),
             blocks,
             late: self.late.load(Relaxed),
-            mean_ms: ms(self.total_ns.load(Relaxed)) / blocks.max(1) as f64,
+            mean_ms: ms(total_ns) / blocks.max(1) as f64,
+            load: if audio_ns > 0 {
+                total_ns as f64 / audio_ns as f64
+            } else {
+                0.0
+            },
             worst_ms: ms(self.worst_ns.load(Relaxed)),
             worst_drain_ms: ms(self.worst_drain_ns.load(Relaxed)),
             worst_publish_ms: ms(self.worst_publish_ns.load(Relaxed)),
@@ -246,6 +254,25 @@ mod tests {
         st.push(f32::NAN, 0.0);
         assert_eq!(st.peak, 1.5);
         assert_eq!(st.over_0db, 2);
+    }
+
+    #[test]
+    fn load_is_total_callback_time_over_total_audio_time_across_buffer_sizes() {
+        let m = meter();
+        // 128 frames = 2.667 ms at 1.0 ms, then 1024 frames = 21.333 ms at 10.667 ms: load 0.4 / 0.5.
+        m.record(block(1_000_000, 0.1, 0));
+        m.record(BlockSample {
+            frames: 1024,
+            total_ns: 10_666_667,
+            ..block(0, 0.1, 0)
+        });
+        let s = m.snapshot();
+        assert!((s.load() - 11.666_667 / 24.0).abs() < 1e-6, "{}", s.load());
+        // Old formula (mean over the latest deadline) would say 5.83 / 21.33 = 0.27.
+        assert!(s.load() > 0.45);
+        m.request_reset();
+        m.record(block(1_333_333, 0.1, 0));
+        assert!((m.snapshot().load() - 0.5).abs() < 1e-6);
     }
 
     #[test]

@@ -6,10 +6,13 @@
 //! (blocks over the deadline, worst block and where it was) and can replay key churn to price a
 //! voice start. Timing is wall clock; the hash is deterministic and covers the left/right pair.
 
-use crate::bench::{fnv1a_f32, BLOCK_FRAMES, FNV_BASIS, SAMPLE_RATE};
+use crate::bench::{
+    fnv1a_f32, BLOCK_FRAMES, FNV_BASIS, KEY_RANGE, SAMPLE_RATE, STANDALONE_MASTER_VOL,
+};
 use crate::engine::Stage4Engine;
 use crate::midi::MidiEvent;
 use crate::render_opts::FirmwareOptions;
+use std::collections::VecDeque;
 use std::time::Instant;
 
 /// What to render.
@@ -93,6 +96,42 @@ fn note(e: &mut Stage4Engine, note: u8, on: bool) {
     });
 }
 
+/// The held chord of a churn run: which key to release and which free key to press next.
+struct Chord {
+    held: VecDeque<u8>,
+    cursor: u8,
+}
+
+impl Chord {
+    /// `keys` consecutive notes from 36, moved down so the top stays on the 88-key keybed.
+    fn new(keys: u8) -> Self {
+        let (lo, hi) = (*KEY_RANGE.start(), *KEY_RANGE.end());
+        let keys = keys.min(hi - lo + 1);
+        let first = 36u8.min(hi + 1 - keys).max(lo);
+        Self {
+            held: (first..first + keys).collect(),
+            cursor: first + keys - 1,
+        }
+    }
+
+    /// Oldest held key released (if any) and the next key not held pressed, cycling the keybed.
+    fn churn(&mut self) -> (Option<u8>, u8) {
+        let released = self.held.pop_front();
+        let (lo, hi) = (*KEY_RANGE.start(), *KEY_RANGE.end());
+        let span = hi - lo + 1;
+        let mut n = self.cursor;
+        loop {
+            n = lo + (n - lo + 1) % span;
+            if !self.held.contains(&n) {
+                break;
+            }
+        }
+        self.cursor = n;
+        self.held.push_back(n);
+        (released, n)
+    }
+}
+
 fn quantile(sorted: &[f64], q: f64) -> f64 {
     sorted
         .get(((sorted.len() as f64 - 1.0) * q).round() as usize)
@@ -108,30 +147,29 @@ fn mean(v: &[f64]) -> f64 {
 pub fn run_with(cfg: GuiBenchConfig, setup: impl FnOnce(&mut Stage4Engine)) -> GuiBenchReport {
     let mut e = engine(&cfg);
     setup(&mut e);
-    let first_key = 36u8;
-    for k in 0..cfg.keys {
-        note(&mut e, first_key.saturating_add(k).min(127), true);
+    let mut chord = Chord::new(cfg.keys);
+    for &k in &chord.held {
+        note(&mut e, k, true);
     }
-    let mut next = u16::from(first_key) + u16::from(cfg.keys);
-    let mut oldest = u16::from(first_key);
     let mut times = Vec::with_capacity(cfg.blocks);
     let mut pressed = Vec::with_capacity(cfg.blocks);
     let (mut hash, mut peak) = (FNV_BASIS, 0.0f32);
     let mut buf = vec![[0.0f32; 2]; cfg.frames];
     for i in 0..cfg.warmup_blocks + cfg.blocks {
         let timed = i >= cfg.warmup_blocks;
-        let churn = cfg.churn_every > 0 && i % cfg.churn_every == 0 && i > 0;
+        let churn = cfg.keys > 0 && cfg.churn_every > 0 && i % cfg.churn_every == 0 && i > 0;
         let t0 = Instant::now();
         if churn {
-            note(&mut e, (oldest % 100 + 21) as u8, false);
-            note(&mut e, (next % 100 + 21) as u8, true);
-            oldest += 1;
-            next += 1;
+            let (off, on) = chord.churn();
+            if let Some(k) = off {
+                note(&mut e, k, false);
+            }
+            note(&mut e, on, true);
         }
         for f in buf.iter_mut() {
             let [l, r] = e.render_frame();
-            f[0] = l * 0.85;
-            f[1] = r * 0.85;
+            f[0] = l * STANDALONE_MASTER_VOL;
+            f[1] = r * STANDALONE_MASTER_VOL;
         }
         if timed {
             times.push(t0.elapsed().as_secs_f64() * 1000.0);
@@ -268,6 +306,33 @@ mod tests {
         });
         assert!(churn.press_mean_ms > 0.0 && churn.quiet_mean_ms > 0.0);
         assert!(churn.press_max_ms > 0.0);
+        let still = run(GuiBenchConfig {
+            keys: 10,
+            ..quick()
+        });
+        assert_ne!(churn.hash, still.hash, "churn changes the sounding chord");
+    }
+
+    #[test]
+    fn churn_releases_a_held_key_and_presses_a_free_one_inside_the_keybed() {
+        assert!(Chord::new(0).held.is_empty());
+        for keys in [1u8, 10, 87, 88] {
+            let mut c = Chord::new(keys);
+            assert!(c.held.iter().all(|k| KEY_RANGE.contains(k)), "{keys} keys");
+            assert_eq!(c.held.len(), usize::from(keys));
+            for _ in 0..200 {
+                let before = c.held.clone();
+                let (off, on) = c.churn();
+                assert!(off.is_some());
+                if let Some(k) = off {
+                    assert!(before.contains(&k), "released a key that was not held");
+                }
+                assert!(KEY_RANGE.contains(&on));
+                let others: Vec<_> = before.iter().filter(|&&k| Some(k) != off).collect();
+                assert!(!others.contains(&&on), "pressed a key that is already held");
+                assert_eq!(c.held.len(), usize::from(keys));
+            }
+        }
     }
 
     #[test]

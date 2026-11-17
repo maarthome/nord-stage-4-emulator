@@ -12,6 +12,9 @@ pub enum Severity {
 }
 
 /// Red once a block overran, amber above 70 % load or after a sample above 0 dBFS.
+///
+/// ASSUMED: the 70 % amber threshold is a UI choice (headroom for a loaded host), not measured on
+/// hardware; the red state (late block) is exact. Confirm with device data from the meter.
 pub fn severity(s: &MeterSnapshot) -> Severity {
     if s.late > 0 {
         Severity::Late

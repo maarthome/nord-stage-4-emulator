@@ -7,12 +7,10 @@
 use super::meter::{AudioMeter, BlockSample, BlockStats};
 use super::{apply_audio_command, AudioCommand};
 use crossbeam_channel::Receiver;
+use nord_core::bench::STANDALONE_MASTER_VOL;
 use nord_core::engine::Stage4Engine;
 use std::sync::Arc;
 use std::time::Instant;
-
-/// Start-up master volume of the standalone.
-const MASTER_VOL: f32 = 0.85;
 
 /// State the audio thread owns for the life of the stream.
 pub struct AudioCallback {
@@ -34,7 +32,7 @@ impl AudioCallback {
             engine,
             rx,
             channels: channels.max(1),
-            master_vol: MASTER_VOL,
+            master_vol: STANDALONE_MASTER_VOL,
             meter,
         }
     }

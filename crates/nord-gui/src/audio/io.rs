@@ -1,5 +1,6 @@
 //! CPAL audio output stream and MIDIR MIDI input listener.
 
+use super::buffer::{buffer_frames_from_args, clamp_buffer, stream_config, with_buffer_fallback};
 use super::callback::AudioCallback;
 use super::control::ControlLink;
 use super::frame::{render_frame_to_f32, render_frame_to_i16};
@@ -79,52 +80,60 @@ fn run_cpal_audio(
         }
     );
 
-    let mut engine = standalone_engine(sample_rate);
-    // From here on the control thread keeps a shadow of this engine and runs every allocating
-    // program edit itself (TD-12); the callback below only swaps prepared state in.
-    engine.attach_telemetry(telemetry);
-    if let Some(link) = &control {
-        link.attach(sample_rate, to_audio);
+    let supported = *config.buffer_size();
+    let requested = buffer_frames.map(|n| clamp_buffer(n, &supported));
+    if requested != buffer_frames {
+        eprintln!(
+            "[Audio] --audio-buffer {} is outside the device range {:?}, using {:?}",
+            buffer_frames.unwrap_or(0),
+            supported,
+            requested
+        );
     }
-
-    let mut cb = AudioCallback::new(engine, rx, channels, meter);
-    let err_fn = |err| eprintln!("[Audio] Stream error: {}", err);
-    let stream_config = stream_config(config.clone().into(), buffer_frames);
-
-    let stream = match config.sample_format() {
-        cpal::SampleFormat::F32 => device.build_output_stream(
-            &stream_config,
-            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                cb.run(data, render_frame_to_f32);
-            },
-            err_fn,
-            None,
-        ),
-        cpal::SampleFormat::I16 => device.build_output_stream(
-            &stream_config,
-            move |data: &mut [i16], _: &cpal::OutputCallbackInfo| {
-                cb.run(data, render_frame_to_i16);
-            },
-            err_fn,
-            None,
-        ),
-        _ => {
-            eprintln!(
-                "[Audio] Unsupported sample format: {:?}",
-                config.sample_format()
-            );
-            return;
+    let sample_format = config.sample_format();
+    let base_config: cpal::StreamConfig = config.into();
+    // The callback owns the engine, so every attempt builds its own (a rejected size drops it).
+    let build = |frames: Option<u32>| -> Result<cpal::Stream, String> {
+        let mut engine = standalone_engine(sample_rate);
+        // From here on the control thread keeps a shadow of this engine and runs every allocating
+        // program edit itself (TD-12); the callback below only swaps prepared state in.
+        engine.attach_telemetry(Arc::clone(&telemetry));
+        if let Some(link) = &control {
+            link.attach(sample_rate, to_audio.clone());
         }
+        let mut cb = AudioCallback::new(engine, rx.clone(), channels, Arc::clone(&meter));
+        let err_fn = |err| eprintln!("[Audio] Stream error: {}", err);
+        let cfg = stream_config(base_config.clone(), frames);
+        match sample_format {
+            cpal::SampleFormat::F32 => device.build_output_stream(
+                &cfg,
+                move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                    cb.run(data, render_frame_to_f32);
+                },
+                err_fn,
+                None,
+            ),
+            cpal::SampleFormat::I16 => device.build_output_stream(
+                &cfg,
+                move |data: &mut [i16], _: &cpal::OutputCallbackInfo| {
+                    cb.run(data, render_frame_to_i16);
+                },
+                err_fn,
+                None,
+            ),
+            other => return Err(format!("unsupported sample format {other:?}")),
+        }
+        .map_err(|e| e.to_string())
     };
 
-    if let Ok(s) = stream {
-        if let Err(e) = s.play() {
-            eprintln!("[Audio] Playback failed: {}", e);
-        } else {
-            loop {
+    match with_buffer_fallback(requested, build) {
+        Ok(s) => match s.play() {
+            Ok(()) => loop {
                 std::thread::park();
-            }
-        }
+            },
+            Err(e) => eprintln!("[Audio] Playback failed: {}", e),
+        },
+        Err(e) => eprintln!("[Audio] Could not open the output stream: {e}"),
     }
 }
 
@@ -238,57 +247,9 @@ pub fn handle_midi_bytes(message: &[u8], handle: &AudioHandle, active_keys: &[At
     }
 }
 
-/// `--audio-buffer <frames>`: fixed device buffer size; `None` keeps the driver default.
-pub fn buffer_frames_from_args(args: &[String]) -> Option<u32> {
-    let i = args.iter().position(|a| a == "--audio-buffer")?;
-    args.get(i + 1)?.parse().ok().filter(|&n| n > 0)
-}
-
-/// `config` with the buffer size the user asked for.
-fn stream_config(mut config: cpal::StreamConfig, frames: Option<u32>) -> cpal::StreamConfig {
-    if let Some(n) = frames {
-        config.buffer_size = cpal::BufferSize::Fixed(n);
-    }
-    config
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn args(v: &[&str]) -> Vec<String> {
-        v.iter().map(|s| s.to_string()).collect()
-    }
-
-    #[test]
-    fn audio_buffer_flag_parses_positive_frame_counts_only() {
-        assert_eq!(buffer_frames_from_args(&args(&["x"])), None);
-        let ok = args(&["x", "--audio-buffer", "512"]);
-        assert_eq!(buffer_frames_from_args(&ok), Some(512));
-        for bad in ["0", "big"] {
-            assert_eq!(
-                buffer_frames_from_args(&args(&["x", "--audio-buffer", bad])),
-                None
-            );
-        }
-        assert_eq!(
-            buffer_frames_from_args(&args(&["x", "--audio-buffer"])),
-            None
-        );
-    }
-
-    #[test]
-    fn stream_config_applies_the_fixed_buffer() {
-        let base = cpal::StreamConfig {
-            channels: 2,
-            sample_rate: cpal::SampleRate(48_000),
-            buffer_size: cpal::BufferSize::Default,
-        };
-        let kept = stream_config(base.clone(), None);
-        assert!(matches!(kept.buffer_size, cpal::BufferSize::Default));
-        let fixed = stream_config(base, Some(256));
-        assert!(matches!(fixed.buffer_size, cpal::BufferSize::Fixed(256)));
-    }
 
     #[test]
     fn test_handle_midi_bytes_note_on_off() {

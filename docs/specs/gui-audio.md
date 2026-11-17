@@ -23,6 +23,7 @@ The GUI path does not call `begin_block` (extern volume sync, FX / organ sharing
 |---|---|
 | late blocks | callback time (drain + render + publish) greater than `frames / sample_rate` |
 | mean / worst ms | callback time; worst drain and worst publish are kept separately |
+| load | total callback time over total audio time (sum of `frames / sample_rate`) since reset, so it stays right if the device changes the buffer size |
 | peak, over 0 dBFS | post master-volume sample magnitude; count of samples with abs > 1 or NaN |
 
 The GUI shows it in the bottom bar (`late n/blocks  worst x/deadline ms  load  peak`), amber above 70 % load or over 0 dBFS, red after a late block; Reset asks the audio thread to zero the counters at its next block. The summary line is also printed to stderr on exit. A late block is a lower bound on a dropout: the driver may hold more than one buffer.
@@ -35,6 +36,6 @@ The GUI shows it in the bottom bar (`late n/blocks  worst x/deadline ms  load  p
 | 3 layers, 20 keys | 0.5 to 0.65 ms | 0.9 to 1.0 | 1.4 to 2.1 | 0 |
 
 - Flush-to-zero was tried (MXCSR FTZ+DAZ): output hash identical on and off (static chord and key churn), no timing change. No denormal cost, so no FTZ in the app.
-- Voice start: blocks with a key press cost the same as others (churn run, 7 layers: 1.345 vs 1.331 ms mean).
-- Worst block index changes from run to run, also with no key held or one layer, so tail spikes are host scheduling, not a render stage. Remaining lever: device buffer size (`--audio-buffer`).
+- Voice start: `--churn 8` (release the oldest held key, press a free one, every 8th block; 7 layers, 88 keys, 200 warm-up blocks, 3000 blocks, same noisy host, three runs) gave press blocks mean 1.80 / 1.81 / 2.05 ms against 1.80 / 1.76 / 2.06 ms for the others, so a voice start adds no visible mean cost. Worst press block was 3.4 to 8.2 ms, in the range of the worst block of runs without churn (6 to 34 ms on this host), so one voice start is not isolated as a spike source either; the sample is small and the host was loaded. An earlier version of the bench pressed keys that were already held (fixed: the chord is tracked and keys stay inside the 21..=108 keybed).
+- Worst block index changes from run to run, also with no key held or one layer, so tail spikes are host scheduling, not a render stage. Remaining lever: device buffer size (`--audio-buffer`; a size the device rejects is reported and the default buffer is used instead, a size outside the supported range is clamped).
 - Device seen: 44.1 kHz stereo F32, driver default buffer (size not reported by CPAL; the meter shows the real callback size).
