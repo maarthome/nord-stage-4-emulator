@@ -1,5 +1,6 @@
-# SY1SY2 audio ISR of sy_isr_refill.scn with the external-port DMA chain model on (`epchain`, D137,
-# docs/research/dsp-flash-dma-model.md). The report lines `epchain ...` follow the run output:
+# sy_isr_refill.scn with the external-port DMA chain model on (`epchain`, D141,
+# docs/research/dsp-flash-dma-model.md). Keep the poke block in step with sy_isr_refill.scn; the
+# `epchain ...` report lines follow the run output:
 #   sharc-ref sy.bin tools/oracle_scenarios/sy_isr_epchain.scn --out <scratch>/epc --watch 0x93500:0xA0
 # SY1SY2 audio ISR with the firmware's own initialisation script and a modelled ring refill, for the
 # pitch entry writer hunt (docs/research/sy-pitch-entry-writer.md section 7, D111).

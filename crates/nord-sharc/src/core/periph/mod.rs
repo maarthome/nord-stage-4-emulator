@@ -48,7 +48,7 @@ pub struct Periph {
     pub boot: Option<SpiBoot>,
     /// ORG Core2 range-transfer registers at `DM(0x3E000..)` (opt-in, `Core::enable_epdma`).
     pub epdma: Option<EpDma>,
-    /// SY external-port DMA channel 0 with chain loading (opt-in, `Core::enable_epchain`, D137).
+    /// SY external-port DMA channel 0 with chain loading (opt-in, `Core::enable_epchain`, D141).
     pub epchain: Option<EpChain>,
     /// Census of the accesses outside SRAM (opt-in, `Core::enable_access_log`).
     pub log: Option<AccessLog>,

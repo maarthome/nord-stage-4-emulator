@@ -84,3 +84,39 @@ def test_tcb_records_rejects_a_missing_record() -> None:
     code = bytes(s.TCB_SPAN[1] - s.LOAD_BASE)
     with pytest.raises(ValueError):
         s.tcb_records(code)
+
+
+def test_tcb_b_count_zero_is_checked_with_the_isr_count() -> None:
+    nodes = [
+        {
+            "slot": 0,
+            "kind": ord("B"),
+            "p": 0,
+            "cp": 0,
+            "em": 1,
+            "ei": 0,
+            "c": 0,
+            "im": 1,
+            "ii": 0x93549,
+        }
+    ]
+    nodes += [{**nodes[0], "kind": ord(k), "c": 1, "ii": 0x93FF7} for k in "AX"]
+    lines = s.tcb_summary(nodes)
+    assert lines[2].startswith("B: 1 TCBs, internal 0x93549..0x93550")
+    assert lines[2].endswith("pitch window hits 8")
+
+
+def test_tcb_records_rejects_a_short_image() -> None:
+    import pytest
+
+    with pytest.raises(ValueError):
+        s.tcb_records(bytes(16))
+
+
+def test_main_emits_tcb_pokes_and_the_summary(tmp_path, capsys) -> None:
+    code = tmp_path / "code.bin"
+    code.write_bytes(_synthetic_tcb_code())
+    assert s.main([str(code), "--tcb-summary"]) == 0
+    assert "A: 68 TCBs" in capsys.readouterr().out
+    assert s.main([str(code), "--tcb"]) == 0
+    assert capsys.readouterr().out.startswith("poke 0xB6003 ")

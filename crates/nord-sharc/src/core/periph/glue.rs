@@ -87,7 +87,7 @@ impl Core {
         self.periph.get_or_insert_with(Default::default).epdma = Some(EpDma::default());
     }
 
-    /// Switches on external-port DMA channel 0 with chain loading (SY1SY2 image, D137).
+    /// Switches on external-port DMA channel 0 with chain loading (SY1SY2 image, D141).
     pub fn enable_epchain(&mut self) {
         self.periph.get_or_insert_with(Default::default).epchain = Some(EpChain::default());
     }

@@ -1,5 +1,5 @@
 //! `epchain [path=FILE] [base=ADDR]`: switches on the external-port DMA chain model
-//! (`nord_sharc::core::periph::epchain`, D137) for the SY1SY2 image and prints its totals.
+//! (`nord_sharc::core::periph::epchain`, D141) for the SY1SY2 image and prints its totals.
 //!
 //! ```text
 //! epchain                      chains run against an empty external memory (reads give 0)
@@ -17,6 +17,10 @@ use nord_sharc::core::periph::epchain::PITCH_WINDOW;
 use nord_sharc::core::Core;
 use std::collections::BTreeMap;
 
+/// Largest external image `path=` accepts (ASSUMED: 64 MiB is enough for a slice of one sample;
+/// the model keeps one map entry per word).
+const MAX_IMAGE_BYTES: u64 = 64 << 20;
+
 /// Transfers listed verbatim at the start of the report.
 const FIRST: usize = 6;
 
@@ -27,8 +31,8 @@ pub fn parse(cmd: &str, opts: &Opts) -> Option<Result<Cmd, String>> {
     }
     let base = match opts.get("base") {
         None => 0,
-        Some(s) => match parse_number(s) {
-            Some(n) => n as u32,
+        Some(s) => match parse_number(s).and_then(|n| u32::try_from(n).ok()) {
+            Some(n) => n,
             None => return Some(Err(format!("epchain: bad base {s:?}"))),
         },
     };
@@ -43,6 +47,19 @@ impl Runner {
     pub fn enable_epchain(&mut self, path: Option<&str>, base: u32) -> Result<(), String> {
         self.core.enable_epchain();
         let Some(path) = path else { return Ok(()) };
+        let len = std::fs::metadata(path)
+            .map_err(|e| format!("epchain: {path}: {e}"))?
+            .len();
+        if len > MAX_IMAGE_BYTES {
+            return Err(format!(
+                "epchain: {path}: {len} bytes exceeds the {MAX_IMAGE_BYTES} byte cap, cut a slice"
+            ));
+        }
+        if len % 4 != 0 {
+            return Err(format!(
+                "epchain: {path}: {len} bytes is not a multiple of 4"
+            ));
+        }
         let bytes = std::fs::read(path).map_err(|e| format!("epchain: {path}: {e}"))?;
         let words: Vec<u32> = (0..bytes.len() / 4)
             .map(|i| {
@@ -100,8 +117,7 @@ pub fn report(core: &mut Core) -> String {
     );
     for t in e.log.iter().take(FIRST) {
         out.push_str(&format!(
-            "
-epchain first tcb=0x{:X} dir={} ext=0x{:X}+{} int=0x{:X}+{} count={}",
+            "\nepchain first tcb=0x{:X} dir={} ext=0x{:X}+{} int=0x{:X}+{} count={}",
             t.tcb,
             if t.to_dm { "ext->dm" } else { "dm->ext" },
             t.ext,
@@ -163,5 +179,21 @@ mod tests {
         assert_eq!(report(&mut c), "");
         c.enable_epchain();
         assert!(report(&mut c).contains("epchain chains=0 tcbs=0"));
+    }
+
+    #[test]
+    fn the_image_loader_rejects_odd_sizes_and_loads_words_little_endian() {
+        let dir = std::env::temp_dir().join("sharc_ref_epchain_tests");
+        std::fs::create_dir_all(&dir).unwrap();
+        let (odd, good) = (dir.join("odd.bin"), dir.join("good.bin"));
+        std::fs::write(&odd, [1u8, 2, 3]).unwrap();
+        std::fs::write(&good, [1u8, 0, 0, 0, 2, 0, 0, 0]).unwrap();
+        let mut r = Runner::new(&[], false);
+        assert!(r.enable_epchain(Some(odd.to_str().unwrap()), 0).is_err());
+        assert!(r.enable_epchain(Some("no/such/file.bin"), 0).is_err());
+        r.enable_epchain(Some(good.to_str().unwrap()), 0x10)
+            .unwrap();
+        let e = r.core.epchain().unwrap();
+        assert_eq!((e.ext.get(&0x10), e.ext.get(&0x11)), (Some(&1), Some(&2)));
     }
 }

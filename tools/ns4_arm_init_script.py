@@ -30,6 +30,8 @@ TCB_SPAN = (0xC050_38BC, 0xC050_38BC + (3 + 1224) * 4)
 TCB_BASE = 0xB6003
 SLOTS = 68
 SLOT_WORDS = 18
+# VERIFIED: the ISR sets the B TCB count `r4 = 8` (sy2.lst 0x1C0AF6); the static table holds 0.
+B_COUNT = 8
 # Pitch table window of the SY audio ISR (docs/research/sy-pitch-entry-writer.md).
 PITCH_WINDOW = (0x93500, 0x935A0)
 
@@ -66,6 +68,8 @@ def sy_records(code: bytes) -> list[tuple[int, list[int]]]:
 def tcb_records(code: bytes) -> list[tuple[int, list[int]]]:
     """The external-port TCB table record (`parse_records` accepts it: 1224 words > 0x400 is
     checked here instead)."""
+    if len(code) < TCB_SPAN[1] - LOAD_BASE:
+        raise ValueError("code image shorter than TCB_SPAN")
     w = read_words(code, *TCB_SPAN)
     if w[0] != 4 or w[2] != TCB_BASE or w[1] != len(w) - 3:
         raise ValueError("TCB record not found at TCB_SPAN")
@@ -99,22 +103,25 @@ def tcb_nodes(vals: list[int]) -> list[dict[str, int]]:
 
 
 def tcb_summary(nodes: list[dict[str, int]]) -> list[str]:
-    """One line per TCB kind: count, internal destination range, how many touch the pitch window."""
+    """One line per TCB kind: count, internal destination range, how many touch the pitch window.
+
+    The B TCBs hold count 0 in the static table (the ISR writes 8), so they are checked with
+    `B_COUNT` words; A reads DM (its internal address is a source, listed for completeness)."""
     lines = []
     for kind in "AXB":
         ns = [n for n in nodes if n["kind"] == ord(kind)]
+        eff = [n["c"] or (B_COUNT if kind == "B" else 0) for n in ns]
         lo = min(n["ii"] for n in ns)
-        hi = max(n["ii"] + n["im"] * (n["c"] - 1) for n in ns)
+        hi = max(n["ii"] + n["im"] * (c - 1) for n, c in zip(ns, eff, strict=True))
         hits = sum(
             1
-            for n in ns
-            for k in range(n["c"])
+            for n, c in zip(ns, eff, strict=True)
+            for k in range(c)
             if PITCH_WINDOW[0] <= n["ii"] + n["im"] * k < PITCH_WINDOW[1]
         )
-        counts = sorted({n["c"] for n in ns})
         lines.append(
-            f"{kind}: {len(ns)} TCBs, internal 0x{lo:X}..0x{hi:X}, counts {counts}, "
-            f"pitch window hits {hits}"
+            f"{kind}: {len(ns)} TCBs, internal 0x{lo:X}..0x{hi:X}, "
+            f"counts {sorted(set(eff))}, pitch window hits {hits}"
         )
     return lines
 

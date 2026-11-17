@@ -1,4 +1,4 @@
-//! External-port DMA channel 0 with chain loading, as the SY1SY2 image uses it (D137, opt-in,
+//! External-port DMA channel 0 with chain loading, as the SY1SY2 image uses it (D141, opt-in,
 //! `Core::enable_epchain`, `sharc-ref` scenario command `epchain`).
 //!
 //! The SY audio ISR (`0x1C0900..0x1C0B2C`) builds a TCB chain in DM and starts it with
@@ -16,7 +16,8 @@
 //!
 //! An external read of an unmapped word leaves the destination unchanged (counted).
 //!
-//! Not modelled (ASSUMED complete at once): bus timing, `DMAC0` status bits, the completion
+//! Not modelled (ASSUMED complete at once): bus timing, `DMAC0` status bits (a `DMAC0` read returns
+//! the last written value, so `DEN` never clears and a program that polls for completion would spin), the completion
 //! interrupt (`PCI`/`CPDR` interrupt reading of table 3-13 is not used by the traced paths), and
 //! any device behind the external bus: external memory is a plain sparse word store.
 use super::Bus;
@@ -27,17 +28,18 @@ pub const DMAC0: u32 = 0x180B;
 pub const CPEP0: u32 = 0x1826;
 /// Control bit that arms the channel (`DEN`, VERIFIED: the ISR sets `0x125` after writing `CPEP0`).
 pub const DEN: u32 = 1;
+/// VERIFIED: bits 18:0 of a chain pointer are the `II` address, bit 19 PCI, bit 20 CPDR (HRM table 3-13).
 const ADDR_MASK: u32 = 0x7_FFFF;
 const CPDR: u32 = 1 << 20;
 /// Normal word DM alias of a TCB IOP address (EMPIRICAL, see the module table).
 pub const TCB_ALIAS: u32 = 0x8_0000;
-/// Longest chain the model follows (the image chain has 204 TCBs).
+/// Longest chain the model follows. ASSUMED limit, only there to cut loops (the image chain has 204 TCBs).
 pub const MAX_TCBS: usize = 1024;
-/// Largest transfer the model accepts per TCB (the image uses 1 and 8 words).
+/// Largest transfer the model accepts per TCB. ASSUMED limit (the image uses 1 and 8 words).
 pub const MAX_COUNT: u32 = 0x1000;
 /// DM window of the SY sample pitch table `DM(0x9354A + index)` (VERIFIED, `sy-pitch-entry-writer.md`).
 pub const PITCH_WINDOW: (u32, u32) = (0x9_3500, 0x9_35A0);
-/// Transfers kept in [`EpChain::log`].
+/// Transfers kept in [`EpChain::log`]. ASSUMED report limit, no hardware meaning.
 pub const LOG_CAP: usize = 8192;
 
 /// One executed TCB.
