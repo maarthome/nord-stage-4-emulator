@@ -2,7 +2,7 @@
 name = "nord-plugin"
 version.workspace = true
 edition.workspace = true
-license = "GPL-3.0-only"
+license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "CLAP and VST3 DAW Plugin and Standalone wrapper for the Nord Stage 4 Emulator"

@@ -252,8 +252,6 @@ jobs:
             - **Windows (x86_64):** `-setup.exe` installer (GUI, CLI, selectable VST3 & CLAP) and portable `.zip`
             - **macOS (arm64):** `.pkg` installer (selectable app, VST3 & CLAP), `.dmg` disk image, and portable `.tar.gz`
             - **Linux (x86_64):** `.deb` package, portable `.AppImage`, and `.tar.gz`
-
-            **License:** `PolyForm-Noncommercial-1.0.0` (emulator, DSP core, GUI, CLI, tools; non-commercial use only) and `GPL-3.0-only` (`nord-plugin` CLAP/VST3 wrapper).
           files: |
             artifacts/*.tar.gz
             artifacts/*.zip

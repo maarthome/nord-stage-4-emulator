@@ -22,15 +22,6 @@ The builds are unsigned. The archive contains no firmware, factory sounds or
 sample data from the hardware; sounds come from the built-in engine and from
 files you load yourself.
 
-License
--------
-
-  LICENSE         PolyForm Noncommercial License 1.0.0 (emulator, DSP core,
-                  GUI, CLI, and tools — non-commercial use only)
-  LICENSE-PLUGIN  GNU General Public License v3.0 (nord-plugin CLAP/VST3;
-                  includes GPL-3.0-only permission for nord-core/nord-gui/
-                  nord-panel solely when compiled into nord-plugin)
-
 Contents
 --------
 
