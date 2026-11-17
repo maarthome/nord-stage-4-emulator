@@ -1572,6 +1572,16 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Impact:** `tools/arm_voice_gate.py` (+ test), `tools/arm_dsp_capture.py` (+ test), `docs/research/sample-voice-gate.md`, `docs/research/data/voice-gate-*.json`; [arm-dsp-capture](research/arm-dsp-capture.md) follow-up 2 answered; [audio-remaining](research/audio-remaining.md) row 2; OQ22 note; no engine change. Limit: the hardware value of the SPI read is ASSUMED neutral (0).
 
 
+### D154. SAMPLE oracle gaps: the 24 dB level gap is a harness omission, the 4 MiB member cap hid the layers, the per-loop poke is replaced by `credit=on`
+
+- **Status:** proposed 2026-11-17
+- **Decided by:** pending the user (task from the parent session; evidence [sample-gaps](research/sample-gaps.md)). D154 chosen: D150 is #506, D151 is #507, D152 is #508, D153 is #509.
+- **Context:** D150 measured oracle SAMPLE audio 20 to 23 dB under native, lost layers in 74 programs, never voiced 18 and voiced 51 only at other keys, and used a per-loop poke, prepare first and a 96-frame refill-ahead.
+- **Decision:** (1) Level: the voice stage gap is 24.0 to 24.3 dB on 3 programs against 2^-6 / 0.25 = 24.08 dB; the oracle runs without the SY gain target, the core 2 receiver, the layer level and the program level, so the gap is a harness omission, not a native error (`smp_stages`, [sample-gaps](research/sample-gaps.md) s2). (2) Replace the per-loop `poke 0x92410 0x200` by `sharc-ref pcm ... credit=on` (bit-identical); `ahead=N` is an option (24 to 120 bit-identical); prepare first is the ARM order. (3) `arm_dsp_capture` serves a member up to `--member-bytes` (16 MiB for `sample_gaps_cap`); voice at key 60 for 110 of 119 programs (50 before), every scene I layer for 86; 6 programs are scene II only. (4) The Finger Bass octave was a key reading error: the ARM picks the zone root 49 (effective key 48), f0 130.7 against 131.1 Hz.
+- **Why:** The per-stage tap and the changed member size are the only variables between the numbers. Nothing measured shows the native render wrong by a margin.
+- **Alternatives:** Scale the native render to the oracle (rejected: the oracle lacks stages); keep the 4 MiB cap (rejected: it hid 60 programs).
+- **Impact:** `smp_stages`, `smp_stream zones`, `sharc-ref pcm ahead= credit=`, `tools/sample_gaps_*.py`, `sample_stream_*` changes, data `sample-gaps-*.json`, docs; no engine, default, golden or `render_hash` change. Open (not found in the paths run): the third bound layer gets no voice (2 voices for 3 layers on 21 programs), 3 single layer programs without a key 60 voice, the SY receiver and gain target.
+
 ### D150. SAMPLE audio comes out of the SY oracle through a decoded-PCM ring feed (`pcm`); the real packed stream still desyncs, pitch entry `e` stays modelled
 
 - **Status:** proposed 2026-11-17
