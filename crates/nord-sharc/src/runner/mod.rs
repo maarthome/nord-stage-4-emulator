@@ -11,6 +11,7 @@ pub mod jit_diff;
 pub mod msg;
 pub mod pass;
 pub mod periph_run;
+pub mod ring_trace;
 pub mod system;
 pub mod system_diff;
 
