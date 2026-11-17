@@ -2,6 +2,7 @@
 
 pub mod band_response;
 pub mod csv_cols;
+pub mod reverb_measure;
 pub mod smp_stream;
 pub mod touch_census;
 pub mod velocity_census;
