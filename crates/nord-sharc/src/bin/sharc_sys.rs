@@ -13,6 +13,8 @@
 //! --msg-script FILE         lines `PASS W1 W2`      --script-at OFFSET:FILE  same, PASS + OFFSET
 //! --script-flat FILE        every message of FILE before pass 0, in file order
 //! --proxy-voices K          poke proxy: stage-A slots 0..K get STAGE_SAW before pass 0
+//! --irq VEC:STATUS          start each pass with that receive interrupt (P4I:0x41) instead of the mailbox
+//! --flag1                   drive FLAG1 high (Core1 sections)
 //! --dev ADDR=V              extra device read (0x282c0380=1 and 0x3108d008=5 are always set)
 //! --probe PC                count the passes that execute PC (untimed second run of each pass)
 //! --state-out FILE          write the final SRAM data words (little-endian u32, local only)
@@ -20,6 +22,9 @@
 //! --pre ADDR=V              data poke after boot, before pass 0 (e.g. the EP DMA count stub)
 //! --dump ADDR:COUNT         print data words after the last pass (same format as `sharc-org --dump`)
 //! --frame-rate HZ           audio frame rate for the pass period (default 43402.34375)
+//! --jit-diff                lockstep interpreter vs Cranelift JIT over the same passes and messages
+//!                           (needs `--features jit`): full state + SRAM every --chunk steps
+//!                           (default 1000), `--strict` adds the PEy/float/STKY/latch state
 //! --epdma                   serve the DM(0x3E000..) range-transfer registers (replaces --pre 0x3e021=1)
 //! --lane SET:PAIR --wav F   record output pointer set SET (0..5) pair PAIR (0..2) of every pass to a
 //!                           float WAV (--rate R, default 48000; untimed extra run)
@@ -29,7 +34,7 @@
 //! Evidence: `docs/research/org-system-run.md`.
 use nord_sharc::core::Core;
 use nord_sharc::runner::audio::wav_bytes;
-use nord_sharc::runner::msg::{deliver, parse_msg, parse_script, Msg};
+use nord_sharc::runner::msg::{deliver, parse_msg, parse_rx_irq, parse_script, Msg};
 use nord_sharc::runner::pass::{fault_text, pc_ranges, run_steps, PassConfig, SRAM_WORDS};
 use nord_sharc::runner::periph_run::{census_run, lane_run, PeriphOpts};
 use nord_sharc::runner::system::{
@@ -74,6 +79,9 @@ struct Options {
     irq: Option<(u8, u32)>,
     flag1: bool,
     ping_pong: Option<(u32, u32, u32)>,
+    jit_diff: bool,
+    chunk: u64,
+    strict: bool,
     periph: PeriphOpts,
     lane: Option<(u32, u32)>,
     wav: Option<String>,
@@ -87,6 +95,7 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
         passes: 300,
         warmup: 16,
         frame_rate: FRAME_RATE,
+        chunk: 1_000,
         rate: 48_000,
         trigger: 0xB_00E2,
         idle_pc: 0x12_5DDF,
@@ -117,6 +126,11 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
                     (0x3108_c00c, 4),
                 ];
             }
+            "--irq" => o.irq = Some(parse_rx_irq(&val()?)?),
+            "--flag1" => o.flag1 = true,
+            "--jit-diff" => o.jit_diff = true,
+            "--strict" => o.strict = true,
+            "--chunk" => o.chunk = u64::from(num(val()?)?),
             "--trigger" => o.trigger = num(val()?)?,
             "--idle-pc" => o.idle_pc = num(val()?)?,
             "--set" => {
@@ -308,6 +322,66 @@ fn compare_state(core: &mut Core, file: &str) -> Result<String, String> {
     Ok(out)
 }
 
+/// Interpreter vs JIT lockstep over `warmup + passes` passes (`--jit-diff`).
+#[cfg(feature = "jit")]
+fn jit_diff(o: &Options, cfg: &PassConfig, data: &[u8]) -> Result<String, String> {
+    use nord_sharc::runner::system_diff::{diff_system, range_len, SysRun};
+    let (mut interp, mut jit) = (boot(o, data)?, boot(o, data)?);
+    let total = o.warmup + o.passes;
+    let run = SysRun {
+        cfg,
+        msgs: &o.msgs,
+        total_passes: total,
+        ping_pong: o.ping_pong,
+        chunk: o.chunk,
+        strict: o.strict,
+    };
+    let r = diff_system(&mut interp, &mut jit, &run)?;
+    let mut out = String::new();
+    let steps = &r.steps;
+    let _ = writeln!(
+        out,
+        "jit-diff: {} of {total} passes matched (chunk {}, strict {}), {} messages",
+        r.passes_ok,
+        o.chunk,
+        o.strict,
+        o.msgs.len()
+    );
+    let _ = writeln!(
+        out,
+        "steps per pass: min {} max {} mean {:.1}",
+        steps.iter().min().copied().unwrap_or(0),
+        steps.iter().max().copied().unwrap_or(0),
+        steps.iter().sum::<u64>() as f64 / steps.len().max(1) as f64
+    );
+    let ranges: Vec<String> = r
+        .coverage
+        .iter()
+        .map(|(a, b)| format!("{a:x}-{b:x}"))
+        .collect();
+    let _ = writeln!(
+        out,
+        "coverage: {} distinct pcs in {} ranges: {}",
+        range_len(&r.coverage),
+        r.coverage.len(),
+        ranges.join(" ")
+    );
+    match &r.first_divergence {
+        Some((p, m)) => {
+            let _ = writeln!(out, "FIRST DIVERGENCE in pass {p}: {m}");
+        }
+        None => {
+            let _ = writeln!(out, "no divergence");
+        }
+    }
+    Ok(out)
+}
+
+#[cfg(not(feature = "jit"))]
+fn jit_diff(_: &Options, _: &PassConfig, _: &[u8]) -> Result<String, String> {
+    Err("--jit-diff needs a build with --features jit".into())
+}
+
 fn run(args: &[String]) -> Result<String, String> {
     let o = parse_args(args)?;
     let data = std::fs::read(&o.image).map_err(|e| format!("{}: {e}", o.image))?;
@@ -317,6 +391,9 @@ fn run(args: &[String]) -> Result<String, String> {
         max_steps: 200_000,
         irq: o.periph.start_status(o.irq),
     };
+    if o.jit_diff {
+        return jit_diff(&o, &cfg, &data);
+    }
     let mut core = boot(&o, &data)?;
     let total = o.warmup + o.passes;
     let before: Vec<Vec<u32>> = REGIONS
@@ -364,6 +441,11 @@ fn run(args: &[String]) -> Result<String, String> {
         period * 1e6,
         mean_total / period,
         worst_total / period
+    );
+    let _ = writeln!(
+        out,
+        "device accesses (unmodelled address space, whole run): {} reads, {} writes",
+        core.device_reads, core.device_writes
     );
     for (k, (name, lo, len)) in REGIONS.into_iter().enumerate() {
         let changed = (lo..lo + len)
@@ -533,6 +615,13 @@ mod tests {
     }
 
     #[test]
+    fn irq_and_flag1_options_parse() {
+        let o = parse_args(&args(&["img", "--irq", "P4I:0x41", "--flag1"])).unwrap();
+        assert_eq!((o.irq, o.flag1), (Some((15, 0x41)), true));
+        assert!(parse_args(&args(&["img", "--irq", "P4I"])).is_err());
+    }
+
+    #[test]
     fn pno_preset_sets_entry_irq_gates_and_ping_pong() {
         let o = parse_args(&args(&["img", "--pno"])).unwrap();
         assert_eq!(
@@ -542,6 +631,37 @@ mod tests {
         assert_eq!((o.irq, o.flag1, o.boot), (Some((15, 1)), true, 3_000_000));
         assert_eq!(o.ping_pong, Some(PNO_PING_PONG));
         assert_eq!(o.devs.len(), 4);
+    }
+
+    #[test]
+    fn jit_diff_options_parse_and_the_tiny_image_matches() {
+        let o = parse_args(&args(&["img", "--jit-diff", "--chunk", "8", "--strict"])).unwrap();
+        assert_eq!((o.jit_diff, o.chunk, o.strict), (true, 8, true));
+        let img = tiny_image("nord_sharc_sys_jitdiff.bin");
+        let r = run(&args(&[
+            &img,
+            "--jit-diff",
+            "--entry",
+            "0x120000",
+            "--boot",
+            "0",
+            "--passes",
+            "1",
+            "--warmup",
+            "0",
+            "--idle-pc",
+            "0x120002",
+            "--set",
+            "I0=0xB00E2",
+        ]));
+        if cfg!(feature = "jit") {
+            let text = r.unwrap();
+            assert!(text.contains("1 of 1 passes matched"), "{text}");
+            assert!(text.contains("no divergence"), "{text}");
+        } else {
+            assert!(r.unwrap_err().contains("--features jit"));
+        }
+        std::fs::remove_file(img).ok();
     }
 
     #[test]

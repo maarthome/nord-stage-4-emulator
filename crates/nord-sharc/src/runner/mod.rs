@@ -10,6 +10,7 @@ pub mod msg;
 pub mod pass;
 pub mod periph_run;
 pub mod system;
+pub mod system_diff;
 
 /// Parses `0x` hex or decimal.
 pub fn parse_number(s: &str) -> Option<u32> {

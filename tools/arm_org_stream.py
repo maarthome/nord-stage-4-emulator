@@ -6,6 +6,7 @@ Boots the full machine (`arm_screens.Session`) with a factory program in the Sto
 (`arm_keydown`), then runs phases of 1 ms ARM ticks and logs, per tick, the wall time and every
 DSP message the firmware sent:
 
+* `boot`  the messages sent before the main loop starts (not ticks);
 * `load`  800 ticks after the boot (the program recall plus the initial push to every DSP);
 * `idle`  300 ticks with nothing pressed;
 * `key1`  one note-on, 40 ticks, note-off, 40 ticks;
@@ -44,8 +45,16 @@ LOAD_TICKS, IDLE_TICKS, KEY_TICKS = 800, 300, 40
 # Eight white keys C4..C5 (MIDI 60, 62, 64, 65, 67, 69, 71, 72).
 KEYS8 = (60, 62, 64, 65, 67, 69, 71, 72)
 CHIP, CORE = "ORG", 2
-# Script targets written per phase: (file prefix, chip, core). PNO core 1 is where the notes land.
-TARGETS = (("org-sys", "ORG", 2), ("pno-sys", "PNO", 1))
+# Script targets written per phase: (file prefix, chip, core). PNO core 1 is where the notes land;
+# every other path-2 receiver is written too, for the other-cores table of the note.
+TARGETS = (
+    ("org-sys", "ORG", 2),
+    ("pno-sys", "PNO", 1),
+    ("org-sys", "ORG", 1),
+    ("pno-sys", "PNO", 2),
+    ("fx-sys", "FX", 1),
+    ("fx-sys", "FX", 2),
+)
 
 
 def pass_period_s(frame_rate: float = FRAME_RATE) -> float:
@@ -137,6 +146,8 @@ def capture(code: Path, sram: Path, eeprom: Path, program: Path):  # pragma: no 
     session.emu.install_dsp_ports()
     print(f"booted, pc {pc:#x}", flush=True)
     out = {}
+    # messages sent while the firmware booted (gains such as DM(0xB44C0) = 1.0, boot tables)
+    out["boot"] = ([(0, m) for m in session.emu.messages], [])
     out["load"] = run_phase(rig, LOAD_TICKS)
     out["idle"] = run_phase(rig, IDLE_TICKS)
 
