@@ -202,6 +202,13 @@ impl FwMod1Rest {
         Some(me)
     }
 
+    /// Parks the stage: the type no longer matches any request, so the next use re-initialises
+    /// it (`ty` 255 has no `spec`).
+    pub(super) fn retire(&mut self) {
+        self.ty = u8::MAX;
+        self.clock_period = None;
+    }
+
     /// The `kFx1Type` this stage was built for.
     pub(super) fn ty(&self) -> u8 {
         self.ty

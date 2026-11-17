@@ -144,3 +144,30 @@ fn the_default_switches_run_the_firmware_pump_in_sync_and_legacy_pump_does_not()
         "RM follows `mod1`, off by default"
     );
 }
+
+#[test]
+fn a_type_change_or_a_pause_reuses_the_allocation_of_the_firmware_stage() {
+    // Control thread: the program load allocates the stage; audio path: type changes and
+    // sync / free-run switches re-initialise the same box (no `Box::new` while rendering).
+    let mut fx = pump(10, Some(1.0), 126.0);
+    fx.prepare_firmware_mod1();
+    let at = |fx: &LayerFxChain| fx.fw_mod1_rest.as_deref().map(|b| b as *const _ as usize);
+    let first = at(&fx);
+    assert!(first.is_some());
+    gains(&mut fx, 100);
+    fx.mod1_type = Mod1Type::Wah;
+    fx.mod1_type_raw = Some(8);
+    gains(&mut fx, 100);
+    fx.mod1_type = Mod1Type::Pump;
+    fx.mod1_type_raw = Some(10);
+    fx.mod1_sync_beats = None;
+    gains(&mut fx, 100);
+    fx.mod1_type = Mod1Type::AutoPan;
+    fx.mod1_type_raw = Some(0);
+    gains(&mut fx, 100); // parked, not freed
+    fx.mod1_type = Mod1Type::Pump;
+    fx.mod1_type_raw = Some(11);
+    gains(&mut fx, 100);
+    assert_eq!(at(&fx), first, "same allocation throughout");
+    assert!(gains(&mut fx, 4_000).iter().any(|g| *g != 0.0));
+}
