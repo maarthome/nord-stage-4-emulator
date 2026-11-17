@@ -1,6 +1,6 @@
 # Audio parity: what is still open (consolidated list)
 
-- **Checked:** 2026-11-15
+- **Checked:** 2026-11-17
 - **Sources:** merged PRs #370 to #440 (decisions D72 to D116 are on `main`), the research notes cited per row, `docs/OPEN-QUESTIONS.md`, `docs/ROADMAP.md`, `docs/TECH_DEBT.md`, [emulation-coverage](emulation-coverage.md) (subsystem table, counts), the Part A demo video comparisons (`docs/research/data/emu_vs_hw_segments.json`, 22 segments) and a listening test of 2026-11-15 (Velvet Grand A:61, Felt Upright A:13).
 - **Question:** which audio items still stand between the emulator and 1:1 parity with the hardware, with what state, difficulty, audible impact and hardware need, and which PRs and decisions touched each?
 
@@ -41,6 +41,30 @@ PR links are `https://github.com/ymatrix1/nord-stage-4-emulator/pull/N`; written
 2. Closed or closed as far as the firmware goes: 1, 7, 8, 9.
 3. Nothing in this list needs bypassing encryption; no firmware image, sample or audio is committed.
 
+## 3. What changed since 2026-11-15 (merged work, D119 to D121)
+
+| Finding | Source | Effect on the list |
+|---|---|---|
+| The oracle runs as the DSP half of a system run; ORG Core2 pass is 6,377 steps, the poke proxy is not the real stream | #468 (D119, proposed) | Rows 2, 9, 18: real ARM to DSP stream available per program |
+| ORG Core2 stays silent for the B3 program; the organ runs on PNO core 1, whose lane is live and follows keys. `DM(0x3E0xx)` is a range start/count block, not a DMA | #470 (D120, proposed) | Row 9 (B3 presence, ring DMA) can now be tested on the PNO lane; row 3 hand-over to FX still open |
+| Filter links measured: `kFltType` is an identity stage table (no per-type factor), settled resonance position `128 knob / 127` (the 47.4 to 80.6 span was the pass-59 transient), 16 stage calls per pass. The measured chain scores 3.36 against 2.18 for the fitted factors | #471 (D121, proposed) | Row 13: the three D108 captures are closed; the gap is not in the links |
+| Real-time execution is not the audio path. Block AOT of the real pass covers 98.5% of steps and makes the pass 3 to 5% slower; JIT lockstep on PNO core 1 matches 316 of 316 passes; the ARM harness alone is 8x to 11x over real time without hooks | #472, #473, [sharc-aot-multi-block](sharc-aot-multi-block.md), [pno-jit-arm-profile](pno-jit-arm-profile.md) | No audio row depends on it. D118 (whole-pass AOT) is on hold by the user's direction (2026-11-17: audio results per hour first) |
+
+## 4. Ranking by audio gained per hour of work (2026-11-17)
+
+Score = programs touched x audible impact, divided by effort; the program counts are the default-path assumed uses from [emulation-coverage](emulation-coverage.md) s5 and the per-row program counts above. The ranking is ASSUMED (no listening test per row).
+
+| Rank | Work | Rows | Programs | Why this position | State |
+|---|---|---|---|---|---|
+| 1 | ARM to DSP capture for all 384 programs, then the sample pitch entry `e` check | 2, 18 | 119 SAMPLE programs, 289 with envelopes | Cheapest test of the open hypothesis (is `e` written by the ARM or DMA'd from flash); the same capture feeds the ARM tick and envelope work | session running (arm-dsp-capture) |
+| 2 | FX stages in the oracle with live PNO output (reverb, mod, chorus) | 6, 7, 14, 3 | 358 reverb, 158 Mod 2 | Largest share of assumed uses after the synth; closes the PNO lane to FX hand-over | session running (fx-oracle-live) |
+| 3 | Synth gap outside the filter stages: envelope, LFO and input gain adding into the cutoff, ARM tick (1 kHz or 24 kHz) | 13, 18, OQ22 | about 988 filter-on layers, 289 envelopes | The per-stage diff showed the Rust port matches the oracle, so the fitted factors absorb something upstream | next, after the capture (tick and timers session) |
+| 4 | Piano extra voices and damper-down voice list | 12, 21 | 250 programs, 276 layers (item 21 reported stale: D23 already plays the extra voice; opt-in pedal voices in progress) | Medium impact, medium effort, no clip needed | session reported, PR pending (piano-extra-voices) |
+| 5 | B3 presence and Leslie on the live PNO lane (ring DMA) | 9 | 27 B3 programs | High impact, but few programs; the lane now exists | not started |
+| 6 | Verified opt-ins that need a hardware clip before a D22 flip: Touch (D117), synth velocity (D104), SUSTPED (D97), slew | 4, 8, 11, 12 | 176 Touch, 213 velocity | Audible, but each flip needs a clip or a missing law | blocked on clips |
+
+Out of the ranking by decision: real-time SHARC and ARM execution (rows 16 and the D118 plan). It is not needed for the native engine to match the hardware; the oracle stays an offline validator.
+
 ## Implications
 
 - The audio is not done: 83 % of default-path uses of the 384 factory programs are still assumed ([emulation-coverage](emulation-coverage.md) s5).
@@ -49,5 +73,5 @@ PR links are `https://github.com/ymatrix1/nord-stage-4-emulator/pull/N`; written
 ## Follow-ups
 
 1. Keep this table current in the same PR that changes an item (docs rule).
-2. D113 to D116 (PRs #437 to #440) are merged; rows 3, 6, 13 and 15 already cite them.
+2. D113 to D121 (PRs #437 to #471) are merged; rows 3, 6, 13 and 15 already cite D113 to D116; section 3 lists D119 to D121.
 3. Regenerate the program sweep so item 21 and the unmodelled rows are counted per program.
