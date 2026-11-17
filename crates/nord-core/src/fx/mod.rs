@@ -158,6 +158,12 @@ mod tests_fw_rvbm_golden;
 #[cfg(test)]
 mod tests_fw_rvbm_golden_data;
 #[cfg(test)]
+mod tests_fw_rvbm_levels;
+#[cfg(test)]
+mod tests_fw_rvbm_long;
+#[cfg(test)]
+mod tests_fw_rvbm_long_data;
+#[cfg(test)]
 mod tests_fw_rvbm_tail;
 #[cfg(test)]
 mod tests_fw_series;
