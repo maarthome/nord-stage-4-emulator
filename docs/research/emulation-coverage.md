@@ -11,7 +11,7 @@ Tags: **VERIFIED** = matches firmware or oracle by a reproducible check, **EMPIR
 | Question | Answer |
 |---|---|
 | Is the emulation complete? | **No.** Every engine family sounds; the oracle runs a large part of the firmware; both have named gaps below. |
-| Oracle instruction level | 8,287 distinct firmware instructions run on the model and on the ADSP-21489 simulator: 49,722 cases, **18 differed** in 6 shapes; closed 2026-11-17 except 2 cases of one shape (MR2F read-back, [sharc-census-diff](sharc-census-diff.md)). The census is not yet run on the 21571 (SHARC+) simulator. |
+| Oracle instruction level | 8,287 distinct firmware instructions run on the model and on the ADSP-21489 simulator: 49,722 cases, **18 differed** in 6 shapes; closed 2026-11-17 except 2 cases of one shape (MR2F read-back, a simulator artefact the firmware does not read, D156; [sharc-census-diff](sharc-census-diff.md)). The census is not yet run on the 21571 (SHARC+) simulator. |
 | Oracle routine level | PNO bank `0x122620` and mix `0x12268F` bit-exact on the 21571 simulator; output stage `0x1229B3` and post stage `0x12272D` DM compared in session notes (PRs #131). SY1SY2 resampler `0x1C10EE` and SMP voice loop bit-exact against the Rust engine. |
 | ARM harness | Boots the real firmware to the main loop in **433 M instructions (36 s)**; full settle 3.0 B instructions in 201 s. The DSP side is absent except for the live chips (D138, D144): PNO core 1, PNO core 2 and ORG core 2 run against the real ARM stream (`tools/arm_dsp_live.py`, one direction); the other chips (FX, ORG core 1, SY, SMP) and every DSP answer are still stubs (`DspAck`). |
 | Factory programs (384) | Path uses classified: default **1,015 verified (15 %), 5,677 assumed (83 %), 119 unmodelled (2 %)**; `--firmware-all` **2,634 / 4,058 / 119** (39 % / 60 % / 2 %). Render health 384 of 384 without panic, NaN or silence. |
@@ -121,7 +121,7 @@ Lane E beans (`ns4-36hw`, `ns4-doy1`, `ns4-vnp2`, `ns4-qll9`, `ns4-ca0i`, `ns4-a
 | Speed | long passes and the 21571 census need a faster step loop before CI use | ROADMAP line 221 | open |
 | Unit tests | 353 `#[test]` functions in `crates/nord-sharc/src` | `grep -c "#\[test\]"` | counted |
 
-Effort to close the 18 census cases: done 2026-11-17 for 16 (5 of 6 shapes), 2 cases (MR2F) open. Effort to run the 21571 census: medium (machine time, no new code). Audible impact: none measured (old and new oracle give identical output on PNO bank/mix/post, PNO and ORG passes; 54 occurrences in 65,343, 15 sites); it only widens the trust base.
+Effort to close the 18 census cases: done 2026-11-17 for 16 (5 of 6 shapes), 2 cases (MR2F) open. Effort to run the 21571 census: medium (machine time, no new code). Audible impact: none measured (old and new oracle give identical output on PNO bank/mix/post, PNO and ORG passes; 54 occurrences in 65,343, 15 sites); it only widens the trust base. D156: of the 15 sites 2 run every PNO pass (MR2F) and 3 run in the FX ENS routine, old and new model bit-identical in both; JIT and AOT share the five semantics (1,580 cases replayed).
 
 ### 3.2 Which images, cores and firmware paths run
 
