@@ -1350,3 +1350,13 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Why:** The ring-DMA copy works as specified by the chain heads, but the active chain in the captured PNO lane does not invoke the Leslie processor; porting an unverified ring change to `nord-core` would have no live oracle backing.
 - **Alternatives:** Port a speculative ring model to `nord-core` anyway (rejected: violates Step 3 and D22); leave `DM(0x310C3000)` unmodelled (rejected: the census and trace show it is the only non-1:1 per-pass peripheral write).
 - **Impact:** `crates/nord-sharc` (`core/periph/ringdma.rs`, `runner/ring_trace.rs`, `bin/sharc_ring.rs`, `core/periph/{glue,mod}.rs`, `runner/{periph_run,mod}.rs`, `Cargo.toml`), `docs/research/b3-leslie-pno-lane.md`, `docs/specs/sharc-core.md` section 7, `docs/research/audio-remaining.md` row 9, `docs/ROADMAP.md` 7b.3. No `nord-core`, golden, `render_hash` or default change.
+
+### D127. The firmware WAVE bank is the default wherever `NS4_WAVE_TABLES` names the user's OS image; the tables are never committed
+
+- **Status:** proposed 2026-11-17
+- **Decided by:** the user asked for the real wavetable as the default without committing it (task from the coordinating session)
+- **Context:** audio-remaining row 20: the engine plays a 64-table placeholder unless `--synth-wave-bank`; stage `0x1247B6` (320 of 320 oracle words) and the 46 tables are decoded, but the tables are firmware rodata and cannot be committed. 12 programs use WAVE.
+- **Decision:** `FirmwareOptions::from_args` loads the tables from the file named by `NS4_WAVE_TABLES` (OS update container or raw `bank0_CODE`) and enables the bank, unless `--synth-wave-tables` is given (it wins) or `--no-synth-wave-bank` is given. Variable unset or empty: placeholder, as before. No path is auto-discovered.
+- **Why:** The user's priority is the closest audio to the hardware (parity over purity); the image stays on the user's disk, so nothing firmware-derived enters git; reading only an explicit variable keeps rendering deterministic and CI unchanged. D22 is not met for audio (no hardware clip of a WAVE program exists): this default is the user's call, ASSUMED better than the placeholder, and the placeholder stays one flag away.
+- **Alternatives:** Auto-discover `.reference/` or `target/fw_unpacked/` (rejected: makes renders depend on local files, breaks determinism); flip `FirmwareOptions::default()` (rejected: the tables are not available to tests and CI); embed the tables (rejected: firmware data, D22 and AGENTS.md rule 6).
+- **Impact:** `crates/nord-core/src/render_opts.rs`, new `render_opts_wave.rs` (+ tests), [synth-engine](specs/synth-engine.md) s4.4, audio-remaining row 20. No `render_hash` or golden change.
