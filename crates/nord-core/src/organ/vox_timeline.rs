@@ -14,10 +14,11 @@ use super::vox_keys::{self, ROWS};
 ///
 /// VERIFIED: Timer0 `PRD34 = 1000` at the 24 MHz input clock is 24 kHz, and the slot delays are
 /// timer driven (the Vox key-down groups arrive at interrupts 3 / 17 / 47 at every interrupt
-/// spacing), so 3 / 17 / 47 ticks are 0.125 / 0.71 / 1.96 ms and the key-up 1 / 7 / 37 ticks are
-/// 0.04 / 0.29 / 1.54 ms. Checked by `arm_tick_probe.py keydelay`
-/// (`docs/research/data/arm-tick-keydelay.json`) and by
-/// `tests::measured_delays_match_the_keydelay_table`. The 24 MHz board clock is ASSUMED
+/// spacing), so 3 / 17 / 47 ticks are 0.125 / 0.71 / 1.96 ms. The key-down counts are checked by
+/// `arm_tick_probe.py keydelay` (`docs/research/data/arm-tick-keydelay.json`) and by
+/// `tests::measured_delays_match_the_keydelay_table`; the key-up 1 / 7 / 37 ticks (0.04 / 0.29 /
+/// 1.54 ms) come from `docs/research/data/keydown-organ-keys.csv` (model 1, 24 notes, checked by
+/// `tests::measured_key_up_follows_the_1_7_37_tick_table`), not from the keydelay json. The 24 MHz board clock is ASSUMED
 /// (`docs/research/arm-tick-timers.md` s5); the ARM may need longer than the timer count, so these
 /// are lower bounds. Default since D131 (owner approved); `--legacy-1khz-tick` restores
 /// [`LEGACY_TICK_SECONDS`].
@@ -88,6 +89,11 @@ impl VoxTimeline {
         } else {
             LEGACY_TICK_SECONDS
         };
+    }
+
+    /// `true` on the measured 24 kHz tick, `false` on the legacy 1 ms tick.
+    pub fn measured_tick(&self) -> bool {
+        self.tick_seconds < LEGACY_TICK_SECONDS
     }
 
     /// Seconds per tick in use.

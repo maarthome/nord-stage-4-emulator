@@ -365,6 +365,11 @@ impl OrganLayer {
         self.vox_timeline.set_measured_tick(on);
     }
 
+    /// `true` when the Vox key timeline runs on the measured 24 kHz tick.
+    pub fn measured_tick(&self) -> bool {
+        self.vox_timeline.measured_tick()
+    }
+
     /// Selects the B3 generator tables with (default) or without the processor tail's frequency
     /// response ([`b3_tail`](self)); setup-time only (rebuilds the wheel tables and phases).
     pub fn set_b3_tail(&mut self, on: bool) {
