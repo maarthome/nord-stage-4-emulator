@@ -97,6 +97,8 @@ pub fn set_ping_pong(core: &mut Core, pp: (u32, u32, u32), p: u32) {
 /// Starts a pass: the receive interrupt (Core1 sections) or the mailbox write.
 fn start(core: &mut Core, cfg: &PassConfig) {
     match cfg.irq {
+        // with the SEC model on (`--sec-id`) the source goes through its CSID/END handshake
+        Some((_, status)) if core.sc57x().is_some() => core.sc57x_raise_source(status),
         Some((vector, status)) => {
             core.preset_device(SEC_CSID, status);
             core.raise_interrupt(vector);

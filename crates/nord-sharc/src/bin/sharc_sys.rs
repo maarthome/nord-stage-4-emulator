@@ -20,11 +20,18 @@
 //! --pre ADDR=V              data poke after boot, before pass 0 (e.g. the EP DMA count stub)
 //! --dump ADDR:COUNT         print data words after the last pass (same format as `sharc-org --dump`)
 //! --frame-rate HZ           audio frame rate for the pass period (default 43402.34375)
+//! --epdma                   serve the DM(0x3E000..) range-transfer registers (replaces --pre 0x3e021=1)
+//! --lane SET:PAIR --wav F   record output pointer set SET (0..5) pair PAIR (0..2) of every pass to a
+//!                           float WAV (--rate R, default 48000; untimed extra run)
+//! --sec-id ID               start Core1-style passes through the SEC model (CSID/END), source ID
+//! --census                  list every register the boot and the passes touch outside SRAM
 //! ```
 //! Evidence: `docs/research/org-system-run.md`.
 use nord_sharc::core::Core;
+use nord_sharc::runner::audio::wav_bytes;
 use nord_sharc::runner::msg::{deliver, parse_msg, parse_script, Msg};
 use nord_sharc::runner::pass::{fault_text, pc_ranges, run_steps, PassConfig, SRAM_WORDS};
+use nord_sharc::runner::periph_run::{census_run, lane_run, PeriphOpts};
 use nord_sharc::runner::system::{
     pass_period_s, probe_pass, region_hash, run_system, series, set_ping_pong, stats, PassTiming,
     FRAME_RATE, PNO_PING_PONG,
@@ -67,6 +74,10 @@ struct Options {
     irq: Option<(u8, u32)>,
     flag1: bool,
     ping_pong: Option<(u32, u32, u32)>,
+    periph: PeriphOpts,
+    lane: Option<(u32, u32)>,
+    wav: Option<String>,
+    rate: u32,
 }
 
 fn parse_args(args: &[String]) -> Result<Options, String> {
@@ -76,6 +87,7 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
         passes: 300,
         warmup: 16,
         frame_rate: FRAME_RATE,
+        rate: 48_000,
         trigger: 0xB_00E2,
         idle_pc: 0x12_5DDF,
         devs: vec![(0x282c_0380, 1), (0x3108_d008, 5)],
@@ -164,11 +176,28 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
                     parse_number(n).ok_or("bad --dump count")?,
                 ));
             }
+            "--sec-id" => o.periph.take_sec_id(&val()?)?,
+            "--lane" => {
+                let s = val()?;
+                let bad = || format!("bad --lane {s:?} (want SET:PAIR)");
+                let (a, b) = s.split_once(':').ok_or_else(bad)?;
+                let (a, b) = (
+                    parse_number(a).ok_or_else(bad)?,
+                    parse_number(b).ok_or_else(bad)?,
+                );
+                if a > 5 || b > 2 {
+                    return Err(bad());
+                }
+                o.lane = Some((a, b));
+            }
+            "--wav" => o.wav = Some(val()?),
+            "--rate" => o.rate = num(val()?)?,
             "--state-out" => o.state_out = Some(val()?),
             "--state-cmp" => o.state_cmp = Some(val()?),
             "--frame-rate" => {
                 o.frame_rate = val()?.parse().map_err(|_| "bad --frame-rate".to_string())?;
             }
+            _ if o.periph.take_flag(a) => {}
             _ if o.image.is_empty() && !a.starts_with("--") => o.image = a.clone(),
             _ => return Err(format!("unknown argument {a:?}")),
         }
@@ -233,6 +262,7 @@ executed pcs (last pass, {} distinct): {}
 
 fn boot(o: &Options, data: &[u8]) -> Result<Core, String> {
     let mut core = Core::new(data);
+    o.periph.attach(&mut core);
     core.pc = o.entry;
     if o.flag1 {
         core.set_flag_input(1, true);
@@ -285,7 +315,7 @@ fn run(args: &[String]) -> Result<String, String> {
         trigger: o.trigger,
         idle_pc: o.idle_pc,
         max_steps: 200_000,
-        irq: o.irq,
+        irq: o.periph.start_status(o.irq),
     };
     let mut core = boot(&o, &data)?;
     let total = o.warmup + o.passes;
@@ -364,6 +394,30 @@ fn run(args: &[String]) -> Result<String, String> {
     }
     if o.probe.is_some() {
         out += &probe_passes(&o, &cfg, &data)?;
+    }
+    if let Some(lane) = o.lane {
+        let mut c = boot(&o, &data)?;
+        let r = lane_run(&mut c, &cfg, &o.msgs, total, o.ping_pong, lane)?;
+        let (peak, rms) = r.level();
+        let _ = writeln!(
+            out,
+            "lane {}:{}: {} passes, {} frames, steps first {} last {}, peak {peak:.6}, rms {rms:.6}",
+            lane.0,
+            lane.1,
+            r.passes,
+            r.left.len(),
+            r.first_steps,
+            r.last_steps
+        );
+        if let Some(f) = &o.wav {
+            std::fs::write(f, wav_bytes(&[r.left, r.right], o.rate))
+                .map_err(|e| format!("{f}: {e}"))?;
+            let _ = writeln!(out, "wrote {f}");
+        }
+    }
+    if o.periph.census {
+        let mut c = boot(&o, &data)?;
+        out += &census_run(&mut c, &cfg, &o.msgs, total, o.ping_pong)?;
     }
     Ok(out)
 }
