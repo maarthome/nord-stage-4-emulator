@@ -11,62 +11,14 @@
 //! | `Q` | end | none |
 //!
 //! Everything is deterministic: no clock, no thread, replies are a pure function of the commands.
+pub use super::live_presets::{boot_core, org_preset, pno_preset, preset_named, Preset};
 use super::msg::{deliver, Msg};
-use super::pass::{fault_text, run_steps, PassConfig};
-use super::periph_run::{lane_words, PeriphOpts};
-use super::system::{lean_pass, probe_pass, set_ping_pong, PNO_PING_PONG};
+use super::pass::PassConfig;
+use super::periph_run::lane_words;
+use super::system::{lean_pass, probe_pass, set_ping_pong};
 use super::{parse_number, parse_value};
 use crate::core::Core;
 use std::fmt::Write as _;
-
-/// Start-up of PNO core 1 (same constants as `sharc-sys --pno`; VERIFIED there, `pno-full-pass.md`).
-#[derive(Clone, Debug)]
-pub struct Preset {
-    pub entry: u32,
-    pub idle_pc: u32,
-    pub trigger: u32,
-    pub boot: u64,
-    pub irq: Option<(u8, u32)>,
-    pub ping_pong: Option<(u32, u32, u32)>,
-    pub devs: Vec<(u32, u32)>,
-    pub flag1: bool,
-}
-
-/// The `--pno` preset: entry `0x121007`, poll loop `0x121091`, mailbox `0xB00E1`, board gates.
-pub fn pno_preset() -> Preset {
-    Preset {
-        entry: 0x12_1007,
-        idle_pc: 0x12_1091,
-        trigger: 0xB_00E1,
-        boot: 3_000_000,
-        irq: Some((15, 1)),
-        ping_pong: Some(PNO_PING_PONG),
-        devs: vec![
-            (0x28ac_0380, 1),
-            (0x3108_d008, 5),
-            (0x3108_c06c, 0x400),
-            (0x3108_c00c, 4),
-        ],
-        flag1: true,
-    }
-}
-
-/// Boots `data` with `preset` (peripheral models attached first, as `sharc-sys` does).
-pub fn boot_core(data: &[u8], preset: &Preset, periph: &PeriphOpts) -> Result<Core, String> {
-    let mut core = Core::new(data);
-    periph.attach(&mut core);
-    core.pc = preset.entry;
-    if preset.flag1 {
-        core.set_flag_input(1, true);
-    }
-    for &(a, v) in &preset.devs {
-        core.preset_device(a, v);
-    }
-    match run_steps(&mut core, preset.boot) {
-        Some(f) => Err(format!("boot faulted: {}", fault_text(&f))),
-        None => Ok(core),
-    }
-}
 
 /// One chip and its pass state.
 pub struct Live {
@@ -74,6 +26,7 @@ pub struct Live {
     cfg: PassConfig,
     ping_pong: Option<(u32, u32, u32)>,
     lane: (u32, u32),
+    window: Option<(u32, u32, u32)>,
     probes: Vec<u32>,
     probing: bool,
     /// Passes run so far (also the ping-pong phase).
@@ -95,12 +48,32 @@ impl Live {
             cfg,
             ping_pong,
             lane,
+            window: None,
             probing: !probes.is_empty(),
             probes,
             pass: 0,
             halted: false,
             error: None,
         }
+    }
+
+    /// Reads the level statistic from `count` words at `addr + k * stride` (float bits) instead of
+    /// an output lane: a synth voice ends in the channel record, not in a lane (`synth-e2e`, D132).
+    pub fn with_window(mut self, addr: u32, count: u32, stride: u32) -> Self {
+        self.window = Some((addr, count, stride));
+        self
+    }
+
+    /// The words the level statistic of one pass reads (lane pair or voice window).
+    fn level_words(&mut self) -> Vec<u32> {
+        if let Some((a, n, st)) = self.window {
+            return (0..n)
+                .map(|k| self.core.dm_read(a.wrapping_add(k * st)).unwrap_or(0))
+                .collect();
+        }
+        let w = lane_words(&mut self.core, self.lane.0);
+        let b = 4 * self.lane.1 as usize;
+        w[b..b + 4].to_vec()
     }
 
     /// Keeps a protocol error for the next `P` reply (no unsolicited output: a client that only
@@ -181,12 +154,9 @@ impl Live {
                 break;
             }
             idle += 1;
-            let (w, b) = (
-                lane_words(&mut self.core, self.lane.0),
-                4 * self.lane.1 as usize,
-            );
-            for k in [0, 1, 2, 3] {
-                let x = f32::from_bits(w[b + k]);
+            let w = self.level_words();
+            for bits in w {
+                let x = f32::from_bits(bits);
                 if x.is_finite() {
                     sumsq += f64::from(x) * f64::from(x);
                     peak = peak.max(x.abs());
@@ -260,6 +230,20 @@ mod tests {
     }
 
     #[test]
+    fn a_voice_window_replaces_the_lane_in_the_level() {
+        let mut l = live(vec![]).with_window(0xB_0300, 2, 2);
+        for (k, v) in [(0, "f0.5"), (1, "f9.0"), (2, "f-0.75"), (3, "f9.0")] {
+            l.exec(&format!("M {} {v}", 0xB_0300 + k)).unwrap();
+        }
+        let r = l.exec("P 1").unwrap().unwrap();
+        // words 0 and 2 only (stride 2): peak 0.75, the 9.0 words are skipped
+        assert!(
+            r.contains("cnt=2") && r.contains("peak=7.500000000e-1"),
+            "{r}"
+        );
+    }
+
+    #[test]
     fn bad_lines_are_errors_and_quit_is_silent() {
         let mut l = live(vec![]);
         assert!(l.exec("X 1").is_err());
@@ -277,16 +261,5 @@ mod tests {
             None,
             "no probes: coverage stays off"
         );
-    }
-
-    #[test]
-    fn pno_preset_matches_the_sharc_sys_constants() {
-        let p = pno_preset();
-        assert_eq!(
-            (p.entry, p.idle_pc, p.trigger),
-            (0x12_1007, 0x12_1091, 0xB_00E1)
-        );
-        assert_eq!(p.irq, Some((15, 1)));
-        assert_eq!(p.devs.len(), 4);
     }
 }

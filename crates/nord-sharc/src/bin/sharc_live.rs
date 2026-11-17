@@ -1,26 +1,54 @@
-//! `sharc-live IMAGE [--pno] [--epdma] [--ring-dma] [--probe PC]... [--lane SET:PAIR]`: one DSP
+//! `sharc-live IMAGE [--pno|--org] [--epdma] [--ring-dma] [--probe PC]... [--lane SET:PAIR]
+//! [--window ADDR:COUNT:STRIDE]`: one DSP
 //! chip as a line-protocol server (D138). The ARM harness (`tools/arm_dsp_link.py`) writes the
 //! messages the firmware sends (`M W1 W2`), asks for passes (`P N`) and reads the summary lines;
 //! the protocol is in `nord_sharc::runner::live`. Prints `READY` once the chip has booted.
 //! Evidence: `docs/research/arm-dsp-live-link.md`.
-use nord_sharc::runner::live::{boot_core, pno_preset, Live};
+use nord_sharc::runner::live::{boot_core, preset_named, Live};
 use nord_sharc::runner::parse_number;
 use nord_sharc::runner::pass::PassConfig;
 use nord_sharc::runner::periph_run::PeriphOpts;
 use std::io::{BufRead, Write};
 use std::process::ExitCode;
 
-/// Parsed command line: image path, peripheral models, probe pcs, lane `(set, pair)`.
-type Parsed = (String, PeriphOpts, Vec<u32>, (u32, u32));
+/// Level window `(address, count, stride)`: float words read after every pass (a synth voice
+/// ends in a channel record, not in a lane).
+type Window = Option<(u32, u32, u32)>;
+
+/// Parsed command line.
+struct Parsed {
+    image: String,
+    periph: PeriphOpts,
+    probes: Vec<u32>,
+    lane: (u32, u32),
+    window: Window,
+    preset: &'static str,
+}
 
 fn parse(args: &[String]) -> Result<Parsed, String> {
-    let (mut image, mut periph, mut probes, mut lane) =
-        (String::new(), PeriphOpts::default(), vec![], (2, 0));
+    let mut p = Parsed {
+        image: String::new(),
+        periph: PeriphOpts::default(),
+        probes: vec![],
+        lane: (2, 0),
+        window: None,
+        preset: "pno",
+    };
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
-            "--pno" => {} // the only preset; the flag keeps the command lines of sharc-sys
-            "--probe" => probes.push(
+            "--pno" => p.preset = "pno",
+            "--org" => p.preset = "org", // ORG core 1/2 and PNO core 2 (organ program, D139)
+            "--window" => {
+                let s = it.next().ok_or("--window needs ADDR:COUNT:STRIDE")?;
+                let bad = || format!("bad --window {s:?} (want ADDR:COUNT:STRIDE)");
+                let f: Vec<u32> = s.split(':').filter_map(parse_number).collect();
+                match f[..] {
+                    [a, n, st] if n > 0 && st > 0 && n <= 64 => p.window = Some((a, n, st)),
+                    _ => return Err(bad()),
+                }
+            }
+            "--probe" => p.probes.push(
                 it.next()
                     .and_then(|s| parse_number(s))
                     .ok_or("bad --probe")?,
@@ -29,29 +57,29 @@ fn parse(args: &[String]) -> Result<Parsed, String> {
                 let s = it.next().ok_or("--lane needs SET:PAIR")?;
                 let bad = || format!("bad --lane {s:?} (want SET:PAIR)");
                 let (a, b) = s.split_once(':').ok_or_else(bad)?;
-                lane = (
+                p.lane = (
                     parse_number(a).ok_or_else(bad)?,
                     parse_number(b).ok_or_else(bad)?,
                 );
-                if lane.0 > 5 || lane.1 > 2 {
+                if p.lane.0 > 5 || p.lane.1 > 2 {
                     return Err(bad());
                 }
             }
-            _ if periph.take_flag(a) => {}
-            _ if image.is_empty() && !a.starts_with("--") => image = a.clone(),
+            _ if p.periph.take_flag(a) => {}
+            _ if p.image.is_empty() && !a.starts_with("--") => p.image = a.clone(),
             _ => return Err(format!("unknown argument {a:?}")),
         }
     }
-    if image.is_empty() {
-        return Err("usage: sharc-live IMAGE [--pno] [--epdma] [--ring-dma] [--probe PC]... [--lane SET:PAIR]".into());
+    if p.image.is_empty() {
+        return Err("usage: sharc-live IMAGE [--pno|--org] [--epdma] [--ring-dma] [--probe PC]... [--lane SET:PAIR] [--window ADDR:COUNT:STRIDE]".into());
     }
-    Ok((image, periph, probes, lane))
+    Ok(p)
 }
 
 fn serve(args: &[String]) -> Result<(), String> {
-    let (image, periph, probes, lane) = parse(args)?;
-    let data = std::fs::read(&image).map_err(|e| format!("{image}: {e}"))?;
-    let p = pno_preset();
+    let a = parse(args)?;
+    let data = std::fs::read(&a.image).map_err(|e| format!("{}: {e}", a.image))?;
+    let (periph, p) = (a.periph, preset_named(a.preset).ok_or("unknown preset")?);
     let core = boot_core(&data, &p, &periph)?;
     let cfg = PassConfig {
         trigger: p.trigger,
@@ -59,7 +87,10 @@ fn serve(args: &[String]) -> Result<(), String> {
         max_steps: 200_000,
         irq: periph.start_status(p.irq),
     };
-    let mut live = Live::new(core, cfg, p.ping_pong, lane, probes);
+    let mut live = Live::new(core, cfg, p.ping_pong, a.lane, a.probes);
+    if let Some((addr, n, st)) = a.window {
+        live = live.with_window(addr, n, st);
+    }
     let (stdin, stdout) = (std::io::stdin(), std::io::stdout());
     let mut out = stdout.lock();
     writeln!(out, "READY").map_err(|e| e.to_string())?;
@@ -102,7 +133,7 @@ mod tests {
 
     #[test]
     fn arguments_select_image_probes_lane_and_models() {
-        let (img, p, probes, lane) = parse(&args(&[
+        let a = parse(&args(&[
             "core1.bin",
             "--pno",
             "--epdma",
@@ -115,15 +146,22 @@ mod tests {
         ]))
         .unwrap();
         assert_eq!(
-            (img.as_str(), probes, lane),
-            ("core1.bin", vec![0x1256AD, 7], (1, 2))
+            (a.image.as_str(), a.probes, a.lane, a.preset),
+            ("core1.bin", vec![0x1256AD, 7], (1, 2), "pno")
         );
-        assert!(p.epdma && !p.ring_dma);
+        assert!(a.periph.epdma && !a.periph.ring_dma);
         assert_eq!(
-            parse(&args(&["a.bin"])).unwrap().3,
+            parse(&args(&["a.bin"])).unwrap().lane,
             (2, 0),
             "default lane 2:0"
         );
+    }
+
+    #[test]
+    fn org_flag_and_voice_window_are_parsed() {
+        let a = parse(&args(&["o.bin", "--org", "--window", "0xC1F83:4:2"])).unwrap();
+        assert_eq!((a.preset, a.window), ("org", Some((0xC_1F83, 4, 2))));
+        assert_eq!(parse(&args(&["o.bin"])).unwrap().window, None);
     }
 
     #[test]
@@ -133,6 +171,9 @@ mod tests {
             &["a.bin", "--bogus"],
             &[],
             &["a", "--probe", "zz"],
+            &["a", "--window", "1:2"],
+            &["a", "--window", "1:0:2"],
+            &["a", "--window", "1:99:2"],
         ] {
             assert!(parse(&args(bad)).is_err(), "{bad:?}");
         }
