@@ -60,4 +60,8 @@ def test_time_to_below_and_band_delta() -> None:
     a = np.array([0.0, -10.0, -300.0])
     b = np.array([-2.0, -10.0, -500.0])
     assert m.band_delta_db(a, b) == pytest.approx(1.0)  # the two far-below bands are ignored
+    assert m.band_delta_db(a, a - 30.0) == 0.0  # a pure level offset is not a shape difference
+    # one band above the floor in one vector only counts as its distance to the floor
+    one, other = np.array([0.0, 0.0]), np.array([0.0, -200.0])
+    assert m.band_delta_db(one, other, 80.0) == pytest.approx(40.0)
     assert m.band_delta_db(np.array([-300.0]), np.array([-300.0]), -1.0) == 0.0

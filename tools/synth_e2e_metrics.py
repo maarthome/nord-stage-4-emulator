@@ -1,4 +1,4 @@
-"""Signal metrics for the synth end-to-end comparison (oracle against native, D131).
+"""Signal metrics for the synth end-to-end comparison (oracle against native, D132).
 
 Pure numpy helpers: levels, windowed RMS envelope, FFT resampling, third-octave band levels,
 fundamental estimate and the null depth of one signal against another after a best-fit gain.
@@ -98,6 +98,14 @@ def time_to_below(env: np.ndarray, hop_s: float, frac: float, steady: float) -> 
 
 
 def band_delta_db(a: np.ndarray, b: np.ndarray, span_db: float = 80.0) -> float:
-    """Mean absolute band level difference over the bands within `span_db` of either peak."""
-    keep = (a > a.max() - span_db) | (b > b.max() - span_db)
-    return float(np.mean(np.abs(a[keep] - b[keep]))) if keep.any() else 0.0
+    """Mean absolute band *shape* difference in dB, independent of the overall level.
+
+    Each band vector is normalised to its own peak (level offset removed), then clipped at
+    `-span_db` (the floor): a band below the floor in both counts as equal, a band above the floor
+    in one and below in the other counts as the distance to the floor. Bands below the floor in
+    both are ignored. Returns 0.0 when no band is above the floor.
+    """
+    an = np.maximum(a - a.max(), -span_db)
+    bn = np.maximum(b - b.max(), -span_db)
+    keep = (an > -span_db) | (bn > -span_db)
+    return float(np.mean(np.abs(an[keep] - bn[keep]))) if keep.any() else 0.0
