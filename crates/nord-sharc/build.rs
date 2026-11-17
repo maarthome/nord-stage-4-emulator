@@ -1,12 +1,13 @@
-//! Build script: embeds the optional generated AOT hot-block module.
+//! Build script: embeds the optional generated AOT block module.
 //!
-//! `NORD_SHARC_AOT_HOT=<file.rs>` (an absolute path to the output of `sharc-aot --hot`) is
-//! copied to `$OUT_DIR/aot_hot_gen.rs` and compiled into `core::aot_hot`. Without it a stub
-//! with no block is written, so ordinary builds (CI, `--all-features`) never need firmware.
+//! `NORD_SHARC_AOT_HOT=<file.rs>` (an absolute path to the output of `sharc-aot --hot` or
+//! `--ranges`) is copied to `$OUT_DIR/aot_hot_gen.rs` and compiled into `core::aot_hot`. Without
+//! it a stub with no blocks is written, so ordinary builds (CI, `--all-features`) never need
+//! firmware.
 use std::{env, fs, path::PathBuf};
 
 const STUB: &str = "use crate::core::aot_hot::AotBlock;\n\
-pub(super) fn block() -> Option<AotBlock> {\n    None\n}\n";
+pub(super) fn blocks() -> &'static [AotBlock] {\n    &[]\n}\n";
 
 fn main() {
     println!("cargo:rerun-if-env-changed=NORD_SHARC_AOT_HOT");
