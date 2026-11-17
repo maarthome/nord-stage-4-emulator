@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Resonance word to stage table position in the ORG core 2 pass (SHARC oracle probe).
 
-**Superseded (D120):** this probe reads `W28` after 60 passes, which is the smoother transient
+**Superseded (D121):** this probe reads `W28` after 60 passes, which is the smoother transient
 (`128 (1 - 0.995^60) = 33.25`), not the settled value `128 knob / 127`; use
 `tools/synth_filter_links.py res`. Kept as the record of the 60 pass reading.
 

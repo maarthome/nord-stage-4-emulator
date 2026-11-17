@@ -222,7 +222,7 @@ The default render is unchanged (D22).
 
 ### 4.6 Derived filter laws (`synth/fw_filter_law.rs`, opt-in `--synth-fw-filter`, `--synth-filter-law`, `--synth-fw-resonance`)
 
-Every stage of the family (`0x1253BD`, `0x12566E`, `0x125913`, `0x125A50`) takes the frame word `R` and has the nominal cutoff `atan(R) / pi` cycles per sample, whatever the type (VERIFIED, [synth-filter-type-corners](../research/synth-filter-type-corners.md), table [synth-filter-type-corners.csv](../research/data/synth-filter-type-corners.csv)). The three links of the chain were measured on the real firmware in [synth-filter-links](../research/synth-filter-links.md) (D120):
+Every stage of the family (`0x1253BD`, `0x12566E`, `0x125913`, `0x125A50`) takes the frame word `R` and has the nominal cutoff `atan(R) / pi` cycles per sample, whatever the type (VERIFIED, [synth-filter-type-corners](../research/synth-filter-type-corners.md), table [synth-filter-type-corners.csv](../research/data/synth-filter-type-corners.csv)). The three links of the chain were measured on the real firmware in [synth-filter-links](../research/synth-filter-links.md) (D121):
 
 | Link | Result | Status |
 |---|---|---|

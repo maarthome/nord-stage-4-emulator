@@ -27,6 +27,6 @@ Default behaviour changes, render_hash changes, the 0x1257B2 stage model, aot/ji
 
 ## Summary of Changes
 
-- Measured the three links (research note `docs/research/synth-filter-links.md`, D120): kFltType is an identity stage table with no factor (18 of 18 layers), settled resonance position is `128 knob / 127`, 16 stage calls per pass.
+- Measured the three links (research note `docs/research/synth-filter-links.md`, D121): kFltType is an identity stage table with no factor (18 of 18 layers), settled resonance position is `128 knob / 127`, 16 stage calls per pass.
 - Opt-in `--synth-fw-filter`; fixed `fw_filter_law` to the settled position. 12 clip mean 3.36 against 2.18 (fitted factors stay).
 - Follow-up: model stage `0x1257B2` (raw type 3, 61 factory layers).
