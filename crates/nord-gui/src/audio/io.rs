@@ -1,13 +1,15 @@
 //! CPAL audio output stream and MIDIR MIDI input listener.
 
+use super::callback::AudioCallback;
 use super::control::ControlLink;
 use super::frame::{render_frame_to_f32, render_frame_to_i16};
+use super::meter::AudioMeter;
 use super::midi_ports::{midi_ports, pick_port, MidiChoice, MidiCtl, MidiPortsWorker};
-use super::{apply_audio_command, standalone_engine, AudioCommand, AudioHandle};
+use super::{standalone_engine, AudioCommand, AudioHandle};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use crossbeam_channel::{Receiver, Sender};
 use midir::{Ignore, MidiInput, MidiInputConnection};
-use nord_core::engine::{Stage4Engine, TelemetryCell};
+use nord_core::engine::TelemetryCell;
 use nord_core::midi::MidiEvent;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -23,8 +25,10 @@ pub fn start_audio_and_midi(active_keys: Arc<[AtomicBool; 128]>) -> AudioHandle 
     let control = handle.control().cloned();
     let to_audio = handle.cmd_sender.clone();
     let telemetry = handle.telemetry().cell();
+    let meter = Arc::clone(handle.meter());
+    let buffer = buffer_frames_from_args(&std::env::args().collect::<Vec<_>>());
     std::thread::spawn(move || {
-        run_cpal_audio(audio_rx, control, to_audio, telemetry);
+        run_cpal_audio(audio_rx, control, to_audio, telemetry, meter, buffer);
     });
 
     // 2. Spawn MIDI In Listener
@@ -42,6 +46,8 @@ fn run_cpal_audio(
     control: Option<Arc<ControlLink>>,
     to_audio: Sender<AudioCommand>,
     telemetry: Arc<TelemetryCell>,
+    meter: Arc<AudioMeter>,
+    buffer_frames: Option<u32>,
 ) {
     let host = cpal::default_host();
     let device = match host.default_output_device() {
@@ -62,6 +68,16 @@ fn run_cpal_audio(
 
     let sample_rate = config.sample_rate().0 as f32;
     let channels = config.channels() as usize;
+    meter.set_sample_rate(sample_rate as u32);
+    eprintln!(
+        "[Audio] {} Hz, {channels} ch, {:?}, device buffer {}",
+        sample_rate as u32,
+        config.sample_format(),
+        match buffer_frames {
+            Some(n) => format!("{n} frames (--audio-buffer)"),
+            None => format!("driver default (supported {:?})", config.buffer_size()),
+        }
+    );
 
     let mut engine = standalone_engine(sample_rate);
     // From here on the control thread keeps a shadow of this engine and runs every allocating
@@ -71,39 +87,23 @@ fn run_cpal_audio(
         link.attach(sample_rate, to_audio);
     }
 
-    let mut master_vol: f32 = 0.85;
-
+    let mut cb = AudioCallback::new(engine, rx, channels, meter);
     let err_fn = |err| eprintln!("[Audio] Stream error: {}", err);
+    let stream_config = stream_config(config.clone().into(), buffer_frames);
 
     let stream = match config.sample_format() {
         cpal::SampleFormat::F32 => device.build_output_stream(
-            &config.into(),
+            &stream_config,
             move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                while let Ok(cmd) = rx.try_recv() {
-                    apply_realtime(cmd, &mut engine, &mut master_vol);
-                }
-
-                for frame in data.chunks_mut(channels) {
-                    let [l, r] = engine.render_frame();
-                    render_frame_to_f32(channels, l * master_vol, r * master_vol, frame);
-                }
-                engine.publish_telemetry();
+                cb.run(data, render_frame_to_f32);
             },
             err_fn,
             None,
         ),
         cpal::SampleFormat::I16 => device.build_output_stream(
-            &config.into(),
+            &stream_config,
             move |data: &mut [i16], _: &cpal::OutputCallbackInfo| {
-                while let Ok(cmd) = rx.try_recv() {
-                    apply_realtime(cmd, &mut engine, &mut master_vol);
-                }
-
-                for frame in data.chunks_mut(channels) {
-                    let [l, r] = engine.render_frame();
-                    render_frame_to_i16(channels, l * master_vol, r * master_vol, frame);
-                }
-                engine.publish_telemetry();
+                cb.run(data, render_frame_to_i16);
             },
             err_fn,
             None,
@@ -126,17 +126,6 @@ fn run_cpal_audio(
             }
         }
     }
-}
-
-/// Applies one command inside the audio callback. A control operation (allocating) that reached
-/// this thread despite the control link is dropped and counted, never executed here.
-fn apply_realtime(cmd: AudioCommand, engine: &mut Stage4Engine, master_vol: &mut f32) {
-    if matches!(&cmd, AudioCommand::Program(e) if e.is_control_op()) {
-        engine.note_retire_overflow();
-        std::mem::forget(cmd);
-        return;
-    }
-    apply_audio_command(cmd, engine, master_vol);
 }
 
 /// MIDI-in thread: owns the `midir` connection, follows the GUI's port choice and rescans on
@@ -249,9 +238,57 @@ pub fn handle_midi_bytes(message: &[u8], handle: &AudioHandle, active_keys: &[At
     }
 }
 
+/// `--audio-buffer <frames>`: fixed device buffer size; `None` keeps the driver default.
+pub fn buffer_frames_from_args(args: &[String]) -> Option<u32> {
+    let i = args.iter().position(|a| a == "--audio-buffer")?;
+    args.get(i + 1)?.parse().ok().filter(|&n| n > 0)
+}
+
+/// `config` with the buffer size the user asked for.
+fn stream_config(mut config: cpal::StreamConfig, frames: Option<u32>) -> cpal::StreamConfig {
+    if let Some(n) = frames {
+        config.buffer_size = cpal::BufferSize::Fixed(n);
+    }
+    config
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn args(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn audio_buffer_flag_parses_positive_frame_counts_only() {
+        assert_eq!(buffer_frames_from_args(&args(&["x"])), None);
+        let ok = args(&["x", "--audio-buffer", "512"]);
+        assert_eq!(buffer_frames_from_args(&ok), Some(512));
+        for bad in ["0", "big"] {
+            assert_eq!(
+                buffer_frames_from_args(&args(&["x", "--audio-buffer", bad])),
+                None
+            );
+        }
+        assert_eq!(
+            buffer_frames_from_args(&args(&["x", "--audio-buffer"])),
+            None
+        );
+    }
+
+    #[test]
+    fn stream_config_applies_the_fixed_buffer() {
+        let base = cpal::StreamConfig {
+            channels: 2,
+            sample_rate: cpal::SampleRate(48_000),
+            buffer_size: cpal::BufferSize::Default,
+        };
+        let kept = stream_config(base.clone(), None);
+        assert!(matches!(kept.buffer_size, cpal::BufferSize::Default));
+        let fixed = stream_config(base, Some(256));
+        assert!(matches!(fixed.buffer_size, cpal::BufferSize::Fixed(256)));
+    }
 
     #[test]
     fn test_handle_midi_bytes_note_on_off() {

@@ -177,6 +177,10 @@ impl Stage4App {
 }
 
 impl eframe::App for Stage4App {
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        eprintln!("[Audio] {}", self.audio_handle.meter().snapshot().summary());
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.frame_count += 1;
         self.library
@@ -256,6 +260,7 @@ impl eframe::App for Stage4App {
                 if let Some(ports) = self.audio_handle.midi_ports() {
                     nord_gui::audio::midi_ports::show(ui, ports);
                 }
+                nord_gui::audio::meter_ui::show(ui, self.audio_handle.meter());
             });
 
             self.library.handle_keys(ctx);
