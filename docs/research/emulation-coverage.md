@@ -96,7 +96,7 @@ Lane E beans (`ns4-36hw`, `ns4-doy1`, `ns4-vnp2`, `ns4-qll9`, `ns4-ca0i`, `ns4-a
 | Reverb tails | 7b.4 "FX wiring ... reverb tables" (open); tail clip: proposed in this PR |
 | Touch default | 7b.5 Touch tick; flip: proposed in this PR |
 | Piano extra voices | closed: already played by default (D23), pedal-down list opt-in (D123, [piano-extra-voices](piano-extra-voices.md)) |
-| DSP to ARM reads (voice mask, note-on peeks) | opt-in return source `tools/arm_dsp_return.py` (D147, [dsp-to-arm-return](dsp-to-arm-return.md)); SY release mask and stealing need a live SY |
+| DSP to ARM reads (voice mask, note-on peeks) | opt-in return source `tools/arm_dsp_return.py` (D147, [dsp-to-arm-return](dsp-to-arm-return.md)); SY chip live and opt-in (`--sy`, D153, [sy-live-chip](sy-live-chip.md)): `go` sent, Choir plays on the synthetic ring; voice free and stealing not shown |
 | Sample pitch entry `e` | 7b.6 "SAMPLES remainder" (open); SY external-port chain model `epchain` (opt-in, D141, [dsp-flash-dma-model](dsp-flash-dma-model.md)): 0 window writes, no SPI flash |
 | B3 processor, Leslie | 7b.3 "B3 / Vox presence", "Real time firmware organ stages", "Organ unit EQ routines, Leslie rotor" (open) |
 | Mod 1 PUMP clock | proposed in this PR |
@@ -208,7 +208,7 @@ Status columns: **Fw** = verified against firmware or oracle, **Clip** = fitted 
 | Unison | 51 / 47 / 72 programs at 1 / 2 / 3 | Asm (SUPER voice spread EMPIRICAL) | default | Super Saw level flat within 1.2 dB over Detune 0 to 10 (hardware flat) | | medium | low |
 | Layer level law | all | Fw `(v / 127)^2` (D87) | **default** | handler `0xC011BB48` run live; Leaky Stabs II 3.19 to 1.95 | Reverb GLOBAL, DSoundman taper | | |
 | Sustain pedal (SUSTPED) | 381 of 384 set | Fw bit decoded (D97) | opt-in `--synth-sustain-pedal` | | ARM hold logic | low | low |
-| Velocity | 213 of 287 synth programs sensitive | Fw laws (D104) | **opt-in** `--firmware-synth-velocity` | 768 of 768 words within 1 ulp | file bits of the three velocity fields, `kOscEnvVel`, a clip | medium | medium |
+| Velocity | 213 of 287 synth programs sensitive | Fw laws (D104) | **default** since D142 (`--legacy-synth-velocity` opts out) | 768 of 768 words within 1 ulp; file bits VERIFIED (27 of 27) | 4 of 16 clips marginally worse at replay v100, multiply in the voice, `kOscEnvVel` | medium | medium |
 | Not modelled | MISC 8, MULTI 43, SHAPE SINE 30, SYNC 16, SUB OSC 1 programs per program-coverage | stale: stage models exist (section 5) | | | regenerate the classification | low | none (bookkeeping) |
 
 ### 4.4 Effects
