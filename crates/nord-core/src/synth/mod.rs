@@ -49,7 +49,7 @@ mod fw_sync6;
 mod fw_sync_table;
 mod fw_velocity;
 mod fw_wave;
-mod fw_wave_tables;
+pub(crate) mod fw_wave_tables;
 mod gain_dezip;
 mod hw_saw;
 mod key_velocity;
