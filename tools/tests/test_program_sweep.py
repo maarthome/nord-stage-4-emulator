@@ -108,7 +108,7 @@ def test_organ_piano_synth_paths():
     assert "organ.model=B3" in paths["organ_a"] and "organ.rotary" in paths["organ_a"]
     assert "organ.vibrato" in paths["organ_a"] and "organ.percussion" in paths["organ_a"]
     assert "piano.class=5" in paths["piano_a"]
-    assert "piano.extra_voice=not_played" in paths["piano_a"]
+    assert "piano.extra_voice=played" in paths["piano_a"]
     assert "synth.analog=PURE" in paths["synth_a"]
     assert "synth.filter=Lp24" in paths["synth_a"]
     assert "routing.split" in paths["program"]
@@ -146,7 +146,7 @@ def test_b3_bass_flag_replaces_the_b3_model_path():
 def test_piano_classes_and_missing_samples():
     rec = record(masks=(0b100, 0))
     rec["sounds"]["piano_a_class"] = 4
-    assert "piano.extra_voice=not_played" not in ps.program_paths(rec)["piano_a"]
+    assert "piano.extra_voice=played" not in ps.program_paths(rec)["piano_a"]
     rec["sounds"]["piano_a_class"] = 9
     assert "piano.class=unchecked" in ps.program_paths(rec)["piano_a"]
     rec["sounds"]["piano_a"]["loaded"] = False
