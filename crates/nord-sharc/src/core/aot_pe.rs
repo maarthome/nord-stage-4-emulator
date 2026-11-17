@@ -14,6 +14,9 @@
 #![allow(dead_code)]
 
 use super::aot_fast::{fast_add, fast_from_int, fast_mul};
+use super::aot_native::{
+    approx_add, approx_from_int, approx_mul, guarded_add, guarded_from_int, guarded_mul, Kern,
+};
 use super::decode_cache::ComputeOp;
 use super::float::{Mode, Out, MODE1_ALUSAT};
 use super::float_misc as misc;
@@ -48,6 +51,7 @@ pub(super) struct Pe {
     sticky: u32,
     mode: Mode,
     sat: bool,
+    kern: Kern,
 }
 
 /// Whether [`Pe::exec`] implements `op`.
@@ -115,7 +119,55 @@ impl Pe {
             sticky: 0,
             mode: Mode::from_mode1(core.mode1),
             sat: core.mode1 & MODE1_ALUSAT != 0,
+            kern: Kern::Exact,
         }
+    }
+
+    /// The same element with the float kernels `kern` (a constant in generated code, so the
+    /// choice folds away).
+    #[inline(always)]
+    pub(super) fn with_kern(mut self, kern: Kern) -> Pe {
+        self.kern = kern;
+        self
+    }
+
+    #[inline(always)]
+    fn k_add(&self, a: u64, b: u64, sub: bool) -> Out {
+        if self.kern == Kern::Approx {
+            return approx_add(a, b, sub);
+        }
+        if self.kern == Kern::Guarded {
+            if let Some(o) = guarded_add(a, b, sub, self.mode) {
+                return o;
+            }
+        }
+        fast_add(a, b, sub, self.mode)
+    }
+
+    #[inline(always)]
+    fn k_mul(&self, a: u64, b: u64) -> Out {
+        if self.kern == Kern::Approx {
+            return approx_mul(a, b);
+        }
+        if self.kern == Kern::Guarded {
+            if let Some(o) = guarded_mul(a, b, self.mode) {
+                return o;
+            }
+        }
+        fast_mul(a, b, self.mode)
+    }
+
+    #[inline(always)]
+    fn k_from_int(&self, x: i32, scale: i32) -> Out {
+        if self.kern == Kern::Approx {
+            return approx_from_int(x, scale);
+        }
+        if self.kern == Kern::Guarded {
+            if let Some(o) = guarded_from_int(x, scale) {
+                return o;
+            }
+        }
+        fast_from_int(x, scale, self.mode)
     }
 
     /// Writes the element back and records the block's arithmetic exceptions.
@@ -199,13 +251,9 @@ impl Pe {
     #[inline(always)]
     fn float_alu(&mut self, op: u8, n: u8, x: u8, y: u8) {
         let o = match op {
-            0x81 => fast_add(self.f40(x), self.f40(y), false, self.mode),
-            0x82 => fast_add(self.f40(x), self.f40(y), true, self.mode),
-            0xDA => fast_from_int(
-                self.r[usize::from(x)] as i32,
-                self.r[usize::from(y)] as i32,
-                self.mode,
-            ),
+            0x81 => self.k_add(self.f40(x), self.f40(y), false),
+            0x82 => self.k_add(self.f40(x), self.f40(y), true),
+            0xDA => self.k_from_int(self.r[usize::from(x)] as i32, self.r[usize::from(y)] as i32),
             0xE0..=0xE3 => misc::select_op(self.f40(x), self.f40(y), op & 3, self.mode),
             0xA2 => misc::sign_op(self.f40(x), 1, self.mode),
             _ => misc::recips(self.f40(x), self.mode),
@@ -221,7 +269,7 @@ impl Pe {
             ComputeOp::Nop => {}
             ComputeOp::FloatAlu { op, n, x, y } => self.float_alu(op, n, x, y),
             ComputeOp::FloatMul { n, x, y } => {
-                let o = fast_mul(self.f40(x), self.f40(y), self.mode);
+                let o = self.k_mul(self.f40(x), self.f40(y));
                 self.mul_result(n, o);
             }
             ComputeOp::FixedAlu { op, n, x, y } => {
@@ -272,7 +320,7 @@ impl Pe {
         let done_flags = (self.az, self.an, self.av, self.ac, self.as_, self.ai);
         (self.r[i], self.tag[i], self.lo[i]) = orig;
         (self.az, self.an, self.av, self.ac, self.as_, self.ai) = orig_flags;
-        let o = fast_mul(self.f40(xm), self.f40(ym), self.mode);
+        let o = self.k_mul(self.f40(xm), self.f40(ym));
         self.mul_result(rm, o);
         (self.r[i], self.tag[i], self.lo[i]) = done;
         (self.az, self.an, self.av, self.ac, self.as_, self.ai) = done_flags;
@@ -333,9 +381,9 @@ mod tests {
     use super::super::support::core_with;
     use super::*;
 
-    fn run_pe(core: &mut Core, ops: &[LoweredOp]) {
+    fn run_pe(core: &mut Core, ops: &[LoweredOp], kern: Kern) {
         for y in [false, true] {
-            let mut pe = Pe::load(core, y);
+            let mut pe = Pe::load(core, y).with_kern(kern);
             for &op in ops {
                 match op {
                     LoweredOp::Compute(c) => pe.exec(c),
@@ -439,6 +487,15 @@ mod tests {
 
     #[test]
     fn pe_ops_equal_interpreter_ops_on_random_simd_state() {
+        check_against_interpreter(Kern::Exact);
+    }
+
+    #[test]
+    fn guarded_pe_ops_equal_interpreter_ops_on_random_simd_state() {
+        check_against_interpreter(Kern::Guarded);
+    }
+
+    fn check_against_interpreter(kern: Kern) {
         let mut r = Rng(0x9E37_79B9_7F4A_7C15);
         let mut tested = 0;
         for case in 0..6000 {
@@ -469,13 +526,13 @@ mod tests {
             }
             let (a0, b0) = (clone_state(&a), clone_state(&b));
             a.run_lowered(&ops);
-            run_pe(&mut b, &ops);
+            run_pe(&mut b, &ops, kern);
             if let Some(m) = a.state_mismatch(&b) {
                 // report the shortest failing prefix of the sequence
                 for k in 1..=ops.len() {
                     let (mut pa, mut pb) = (clone_state(&a0), clone_state(&b0));
                     pa.run_lowered(&ops[..k]);
-                    run_pe(&mut pb, &ops[..k]);
+                    run_pe(&mut pb, &ops[..k], kern);
                     if let Some(mk) = pa.state_mismatch(&pb) {
                         panic!(
                             "case {case}: first failing op {:?} (after {k}): {mk}",

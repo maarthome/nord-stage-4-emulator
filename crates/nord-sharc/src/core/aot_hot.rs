@@ -125,6 +125,7 @@ impl Core {
         if !self.aot_code_matches(&b) {
             return Err("loaded code differs from the code the block was generated from".into());
         }
+        self.aot_pc = b.start;
         self.aot_hot = Some(Box::new(AotHot {
             block: b,
             stats: AotHotStats::default(),
@@ -134,6 +135,7 @@ impl Core {
 
     /// Turns the hook off again.
     pub fn disable_aot_hot(&mut self) {
+        self.aot_pc = u32::MAX;
         self.aot_hot = None;
     }
 
@@ -151,15 +153,20 @@ impl Core {
 
     /// Runs the enabled block when the pc is at its start, `limit` leaves room for all its
     /// steps and the guard holds; returns whether it ran (the pc is then the block's exit).
-    #[inline]
+    ///
+    /// The per-step cost is one compare of `pc` against `aot_pc` (`u32::MAX` while disabled);
+    /// everything else lives in [`Core::aot_enter`].
+    #[inline(always)]
     pub fn aot_try(&mut self, limit: u64) -> bool {
+        self.pc == self.aot_pc && self.aot_enter(limit)
+    }
+
+    #[inline(never)]
+    fn aot_enter(&mut self, limit: u64) -> bool {
         let Some(h) = self.aot_hot.as_deref() else {
             return false;
         };
         let b = h.block;
-        if self.pc != b.start {
-            return false;
-        }
         if self.steps + u64::from(b.steps) > limit || !self.aot_ready(&b) {
             if let Some(h) = self.aot_hot.as_deref_mut() {
                 h.stats.misses += 1;

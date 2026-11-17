@@ -21,6 +21,7 @@ mod aot;
 mod aot_fast;
 pub(crate) mod aot_hot;
 mod aot_lower;
+mod aot_native;
 mod aot_pe;
 mod arith_loop;
 mod banks;
@@ -283,6 +284,8 @@ pub struct Core {
     sram_code_nw_hi: u32,
     /// Optional hot-block AOT hook ([`aot_hot`]); `None` keeps the plain interpreter.
     aot_hot: Option<Box<aot_hot::AotHot>>,
+    /// Entry pc of the enabled hot block, `u32::MAX` when none (one compare per step).
+    aot_pc: u32,
     /// Optional Level-2 Cranelift JIT engine (allocated lazily on first `run_jit`).
     #[cfg(feature = "jit")]
     jit: Option<Box<jit::JitEngine>>,
@@ -358,6 +361,7 @@ impl Core {
             sram_code_nw_lo: u32::MAX,
             sram_code_nw_hi: 0,
             aot_hot: None,
+            aot_pc: u32::MAX,
             #[cfg(feature = "jit")]
             jit: None,
         }

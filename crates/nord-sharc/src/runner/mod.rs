@@ -2,6 +2,7 @@
 //! processing pass started by a mailbox write or by the P4I receive interrupt ([`pass`]), ARM
 //! style `(word 1, word 2)` message injection ([`msg`]) and audio buffer capture with WAV output
 //! ([`audio`]). Moved out of `bin/sharc_org/` so that several binaries use one implementation.
+pub mod aot_audio;
 pub mod aot_hot;
 pub mod audio;
 pub mod jit_diff;
