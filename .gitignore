@@ -30,3 +30,13 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/settings.json
+
+# Firmware artifacts: never track (see docs/research/firmware-derived-data-inventory.md)
+/helper.exe
+/sram.bin
+/sram.asm
+*.exe
+*.dmg
+*.ns4b
+*_sram.bin
+*_code.bin
