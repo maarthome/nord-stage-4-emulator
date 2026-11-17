@@ -73,8 +73,8 @@ So the velocity sensitive content of the three is: Leaky Stabs II and Horizon Wh
 
 ## 5. Implications
 
-- Opt-in: `SynthLayer::firmware_velocity` / `--firmware-synth-velocity` (D104, GUI switch since D142). Off, the render is bit identical (`render_hash`, goldens unchanged). On, the amp gain is `V(setting, g)` and the filter-envelope depth follows `F`.
-- Default stays off (D142, D136 rule): the file bits are now VERIFIED (s7), but four of 16 distinct synth clips score worse at the assumed replay velocity 100 (s9), the multiply of `V` and `F` inside the voice is ASSUMED (s8), and `kOscEnvVel` is not applied by the engine.
+- Default on since D142 (owner approval 2026-11-17): `SynthLayer::firmware_velocity` / `--firmware-synth-velocity`; `--legacy-synth-velocity`, `--legacy-all` and `SynthLayer::legacy` restore the linear blend. The amp gain is `V(setting, g)` and the filter-envelope depth follows `F`. GUI switch `Synth: Firmware velocity`.
+- Why on despite the clips: the law and the file bits are VERIFIED (s7); still open: four of 16 distinct synth clips score worse at the assumed replay velocity 100 (s9), the multiply of `V` and `F` inside the voice is ASSUMED (s8), and `kOscEnvVel` is not applied by the engine.
 
 ## 6. Follow-ups
 
@@ -99,9 +99,9 @@ So the velocity sensitive content of the three is: Leaky Stabs II and Horizon Wh
 
 `sharc-org` on the ORG core 2 image, amp setting 3 and 0, key byte `g` 100 and 10, 500 passes (`tools/synth_adr_oracle.py` framework, no recall oscillator): `DM(0xC10B4) = V` reads 1.1229 and 0.1648 (the table of s2: 1.123 at `g = 100`); `DM(0xC10B6)` reads 0.025242 and 0.003706, ratio 6.81 = `V` ratio 6.81, so `DM(0xC10B6)` is `V x 0.02248` exactly linear in `V` (EMPIRICAL: two points). The channel record `DM(0xC1F89..)` stays 0 and the 64-word envelope frame around `0xC1188` does not move with the setting, because the default image carries no oscillator stage (the recall stream does, [synth-e2e-oracle-vs-native](synth-e2e-oracle-vs-native.md)). So that `V` reaches the voice amplitude is not shown by a level ratio at the channel record; the claim "V multiplies the voice" stays ASSUMED. The kOscEnvVel law is not isolated either.
 
-## 9. Default flip attempt (D142): not flipped, four clips score worse
+## 9. Default flip (D142): on by owner approval, four clips marginally worse
 
-Owner rule of 2026-11-17 (D136): a firmware-validated path becomes the default unless a hardware clip gets worse. The 17 Part A synth rows of `docs/research/data/emu_vs_hw_segments.json` (16 distinct clips; `super_lp24_horizon` repeats `synth_horizon`; plus `organ_pipe` and `pianopad_grand`) were rendered with `tools/emu_vs_hw.py` at the segment's replay velocity (100, ASSUMED: the video does not give it) once with the linear blend (`default`) and once with `--firmware-synth-velocity`. Score = `gap_score` (lower is better). Data: [synth-velocity-clips.json](data/synth-velocity-clips.json) (derived numbers only).
+Owner rule of 2026-11-17 (D136): a firmware-validated path becomes the default unless a hardware clip gets worse. Result below: four clips are worse, and the owner approved the flip anyway (owner approval 2026-11-17, 4 clips marginally worse at replay v100, performance velocity of clips unknown). The 17 Part A synth rows of `docs/research/data/emu_vs_hw_segments.json` (16 distinct clips; `super_lp24_horizon` repeats `synth_horizon`; plus `organ_pipe` and `pianopad_grand`) were rendered with `tools/emu_vs_hw.py` at the segment's replay velocity (100, ASSUMED: the video does not give it) once with the linear blend (`default`) and once with `--firmware-synth-velocity`. Score = `gap_score` (lower is better). Data: [synth-velocity-clips.json](data/synth-velocity-clips.json) (derived numbers only).
 
 | Clip | Default | Firmware velocity | Change |
 |---|---|---|---|
@@ -125,8 +125,8 @@ Replay velocity sweep of the five rows that move (score linear blend / firmware 
 | `synth_sineplk` | 4.92 / 5.08 | 4.82 / 4.93 | 4.78 / 4.83 | 4.73 / 4.75 | 4.70 / 4.68 | 4.64 / 4.64 |
 | `super_lp24_oopad` | 4.71 / 4.83 | 4.79 / 4.77 | 4.83 / 4.85 | 4.86 / 4.89 | 4.88 / 4.95 | 4.90 / 4.96 |
 
-Reading: the sign of the change depends on the replay velocity, and the velocity of the hardware performance is not known (lossy YouTube audio of a live performance, D22 and the clip notes). The firmware law is better at low replay velocity for `synth_horizon` (v60 / v80) and worse at high; for `synth_silkpad` it is better only near v100. So the clips cannot confirm the law, and at the assumed v100 four rows are worse. Under the D136 rule the default stays off.
+Reading: the sign of the change depends on the replay velocity, and the velocity of the hardware performance is not known (lossy YouTube audio of a live performance, D22 and the clip notes). The firmware law is better at low replay velocity for `synth_horizon` (v60 / v80) and worse at high; for `synth_silkpad` it is better only near v100. So the clips cannot confirm the law, and at the assumed v100 four rows are worse. Under the strict D136 rule the default would stay off; the owner overrode it.
 
 Only `synth_horizon` (+0.13) is clearly outside the noise of a lossy-video score; +0.01 and +0.02 are not, but the D136 rule is strict. The cause of the worse rows can be the replay velocity, a level already absorbed in fitted EMPIRICAL constants (synth level, LP24 factor, D81 / D116, tuned at the linear blend), or a wrong application of `V` (ASSUMED); the RMS deltas in the clip data (`default_rms_db`, `fw_rms_db`) are the first thing to compare.
 
-Blockers for the flip, in order: (1) the performance velocity of the clips (the score changes sign with it; a clip with known velocities, or the per-note velocity of the events in `emu_events`, would decide); (2) the multiply of `V` and `F` in the voice (s8, ASSUMED); (3) the `synth_horizon` clip (layers B and C amp setting 1), the largest regression (+0.13 at v100, +0.75 at v127). Not blockers any more: the file bits (s7, VERIFIED) and the GUI switch (added, `Synth: Firmware velocity`).
+Open after the flip (they were the blockers under the strict rule), in order: (1) the performance velocity of the clips (the score changes sign with it; a clip with known velocities, or the per-note velocity of the events in `emu_events`, would decide); (2) the multiply of `V` and `F` in the voice (s8, ASSUMED); (3) the `synth_horizon` clip (layers B and C amp setting 1), the largest regression (+0.13 at v100, +0.75 at v127). Closed: the file bits (s7, VERIFIED) and the GUI switch (added, `Synth: Firmware velocity`).
