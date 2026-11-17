@@ -228,6 +228,25 @@ impl FwCoefs {
         }
     }
 
+    /// Like [`Self::new`], but the `Ladder` kind reads `r` as the strip table value the stage
+    /// takes as its cutoff position (`LadderCoefs::from_strip_r`, VERIFIED word for word against
+    /// the stage, `docs/research/synth-stage-models-10.md` s1) instead of the pole-matching
+    /// `from_r`. Every other kind is the same as [`Self::new`]. Used by the stage-level checks
+    /// (`tools/synth_filter_stage_diff.py`); the voice chain keeps [`Self::new`].
+    #[inline]
+    pub fn new_strip(kind: FwFilterType, r: f32, pos: TablePos) -> Self {
+        if kind == FwFilterType::Ladder {
+            return Self {
+                cin: 1.0,
+                g: 0.0,
+                k: 0.0,
+                h: 1.0,
+                ladder: LadderCoefs::from_strip_r(r, pos),
+            };
+        }
+        Self::new(kind, r, pos)
+    }
+
     /// Coefficients for a cutoff in Hz and a resonance `0..1` (see [`TablePos::from_resonance`]).
     #[inline]
     pub fn from_params(
@@ -555,6 +574,29 @@ mod tests {
             "high pass at 12 kHz removes the body"
         );
         assert_ne!(low, zdf, "firmware engine differs from the ZDF ladder");
+    }
+
+    #[test]
+    fn new_strip_differs_from_new_only_for_the_ladder() {
+        let pos = TablePos { idx: 40, fr: 0.25 };
+        for kind in [
+            FwFilterType::Lp2,
+            FwFilterType::Lp4,
+            FwFilterType::Bp4,
+            FwFilterType::Hp4,
+        ] {
+            assert_eq!(
+                FwCoefs::new_strip(kind, 0.2, pos),
+                FwCoefs::new(kind, 0.2, pos)
+            );
+        }
+        // the strip value is the table position itself: R = 0.5 reads row index 64
+        let strip = FwCoefs::new_strip(FwFilterType::Ladder, 0.5, pos);
+        assert_eq!(strip.ladder, LadderCoefs::from_strip_r(0.5, pos));
+        assert_ne!(
+            strip.ladder,
+            FwCoefs::new(FwFilterType::Ladder, 0.5, pos).ladder
+        );
     }
 
     #[test]
