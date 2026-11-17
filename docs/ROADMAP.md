@@ -376,6 +376,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 
 ---
 - [ ] Proposed 2026-11-15: synth envelope pass (2 SY frames ASSUMED) and ARM tick 1 or 24 kHz (OQ22); arpeggiator gate 2/3 or 1/2 of a step (OQ32); Wavetable default flip (`--synth-wave-bank`); FM level against a hardware clip
+- [x] Synth filter chain links measured (D121, [synth-filter-links](research/synth-filter-links.md)): `kFltType` identity stage table, settled resonance position `128 knob / 127`, 16 stage calls per pass; opt-in `--synth-fw-filter` scores 3.36 against 2.18 so the fitted factors stay; `[ ]` model stage `0x1257B2` (raw type 3)
 
 ## Parallel Lanes & Bean Dependency Graph
 
