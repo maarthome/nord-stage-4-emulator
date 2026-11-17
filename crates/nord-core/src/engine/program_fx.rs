@@ -27,6 +27,17 @@ impl Stage4Engine {
         } else {
             0.0
         };
+        // MST CLK of the PUMP (types 10, 11): the stored MST CLK flag switches the Master Clock
+        // on; the 7 bit rate selects the phase multiplier `N` the ARM writes to `c[-28]`, which
+        // is `N / 32` ducks per beat (`fx::sync_beats`, VERIFIED ARM run, EMPIRICAL on A:25). Only
+        // PUMP is loaded: the other Mod 1 types keep their engine models free running.
+        fx.mod1_sync_beats = (dec.mod1_enabled
+            && dec.mod1_clock_sync
+            && matches!(dec.mod1_type_raw, 10 | 11))
+        .then(|| {
+            let raw = (dec.mod1_rate.clamp(0.0, 1.0) * 127.0).round() as u32;
+            crate::fx::pump_sync_beats(raw)
+        });
         fx.mod2_type_raw = Some(dec.mod2_type_raw);
         fx.mod2_rate_raw = Some((dec.mod2_rate.clamp(0.0, 1.0) * 127.0).round() as u8);
         fx.mod2_type = dec.mod2_type();
@@ -61,6 +72,7 @@ impl Stage4Engine {
             fx.eq_mid_db = 0.0;
             fx.eq_treble_db = 0.0;
         }
+        fx.prepare_firmware_mod1();
         fx.comp_enabled = dec.comp_enabled;
         fx.comp_amount = if dec.comp_enabled {
             dec.comp_amount.clamp(0.0, 1.0)
