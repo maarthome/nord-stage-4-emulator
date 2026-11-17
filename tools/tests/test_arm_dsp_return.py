@@ -118,6 +118,33 @@ def test_read_stub_two_words_and_the_comm_variant() -> None:
     assert log.polls[(3, rt.IDLE_MASK)] == 2
 
 
+def test_readn_falls_back_for_unknown_chip_address_or_count() -> None:
+    src, log, emu = rt.ReturnSource(), rt.ReadLog(), FakeEmu()
+    stub = rt.make_stub(src, log, rt.SPI_READN)
+    emu.mem[rt.COMM_TABLE + 4 + 4 * 3] = 0x9002_0000
+    emu.mem[0x9300_0000] = 0x9200_0000
+    emu.mem[0x9200_0000] = 0x1234
+    emu.regs[13] = 0x9300_0000
+    # unknown comm object, unknown address, count over the cap: return 0, destination untouched
+    for comm, address, count in (
+        (0x1, rt.IDLE_MASK, 2),
+        (0x9002_0000, 0x5000, 2),
+        (0x9002_0000, rt.IDLE_MASK, rt.READN_MAX_COUNT + 1),
+    ):
+        emu.regs[0], emu.regs[2], emu.regs[3] = comm, address, count
+        assert stub(emu) == 0
+    assert emu.mem[0x9200_0000] == 0x1234
+    assert log.fallbacks == 3 and not log.calls
+
+
+def test_shadow_key_uses_the_core_of_the_address() -> None:
+    src = rt.ReturnSource()
+    # a message tagged core 1 that addresses core 2 (bit 23) lands where `read` looks
+    src.observe(1, 1, 2, 0x28B07770, 0x77)
+    assert src.read(1, 0x28B07770, 1) == [0x77]
+    assert src.read(1, 0x28307770, 1) == [0]
+
+
 def test_busy_voice_is_seen_by_the_status_read() -> None:
     src = rt.ReturnSource()
     src.observe(3, 0, 1, 0x92414, rt.STATE_PREPARE)

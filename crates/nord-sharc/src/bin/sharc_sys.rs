@@ -36,6 +36,7 @@
 use nord_sharc::core::Core;
 use nord_sharc::runner::audio::wav_bytes;
 use nord_sharc::runner::live::pno_preset;
+use nord_sharc::runner::live_presets::org_preset;
 use nord_sharc::runner::msg::{deliver, parse_msg, parse_rx_irq, parse_script, Msg};
 use nord_sharc::runner::pass::{fault_text, pc_ranges, run_steps, PassConfig, SRAM_WORDS};
 use nord_sharc::runner::periph_run::{census_run, lane_run, PeriphOpts};
@@ -94,17 +95,18 @@ struct Options {
 }
 
 fn parse_args(args: &[String]) -> Result<Options, String> {
+    let org = org_preset();
     let mut o = Options {
-        entry: 0x12_5C88,
-        boot: 100_000,
+        entry: org.entry,
+        boot: org.boot,
         passes: 300,
         warmup: 16,
         frame_rate: FRAME_RATE,
         chunk: 1_000,
         rate: 48_000,
-        trigger: 0xB_00E2,
-        idle_pc: 0x12_5DDF,
-        devs: vec![(0x282c_0380, 1), (0x3108_d008, 5)],
+        trigger: org.trigger,
+        idle_pc: org.idle_pc,
+        devs: org.devs,
         ..Options::default()
     };
     let mut it = args.iter();

@@ -34,13 +34,18 @@ SPI_READ4, SPI_READ2, SPI_READN = 0xC00119A4, 0xC00117E8, 0xC0066E64
 COMM_TABLE = 0xC053F8A4
 CHIPS = ("FX", "PNO", "ORG", "SY", "SMP")
 SY_CHIP = 3
+# ASSUMED cap: the decoded sites read 1 to 4 words; larger counts are not answered.
+READN_MAX_COUNT = 4
 # VERIFIED (oracle `sharc-ref` run of `sy_isr_refill.scn` with `dump`, and the ARM wait at
 # `0xC01E0694`): the SY keeps a 64 bit mask of idle voices at DM(0x92196), a mask of voices in the
 # release state at DM(0x9219A); voice `k` is bit `k`, the ARM tests bit 0 of word 0 for voice 0.
 IDLE_MASK, RELEASE_MASK, VOICES = 0x92196, 0x9219A, 56
-# VERIFIED (`sy-smp-audio.md` s3 and the scenario): the ARM sends the Stage A state of voice `k`
-# as path 1 message `(0x92414 + 0x38 k, state)`; idle and reset states set the idle bit, the
-# prepare and go states clear it.
+# VERIFIED (`sy-smp-audio.md` s3): the ARM sends the Stage A state of voice `k` as path 1 message
+# `(0x92414 + 0x38 k, state)`. VERIFIED on the oracle: reset `0x1C0794`, prepare `0x1C07CD` and go
+# `0x1C084C`: `sharc-ref target/oracle/sy.bin tools/oracle_scenarios/sy_voice_mask.scn` dumps
+# `DM(0x92196..7)` = `ffffffff 00ffffff` (reset), `fffffffe 00ffffff` (prepare), `fffffffe 00ffffff`
+# (go), `ffffffff 00ffffff` (reset). The idle state `0x1C07B0` is ASSUMED to set the bit as reset
+# does (not dumped separately; same ARM record initialiser).
 STATE_BASE, STATE_STRIDE = 0x92414, 0x38
 STATE_IDLE, STATE_RESET, STATE_PREPARE, STATE_GO = 0x1C07B0, 0x1C0794, 0x1C07CD, 0x1C084C
 IDLE_STATES, BUSY_STATES = (STATE_IDLE, STATE_RESET), (STATE_PREPARE, STATE_GO)
@@ -138,8 +143,9 @@ class ReturnSource:
         if chip == SY_CHIP and path == 1:
             self.sy.observe(word1, value)
         if path == 2:
-            _, dm = resolve(chip, word1)
-            self.shadow[(chip, core, dm)] = value & 0xFFFFFFFF
+            # keyed by the core of the address, as `read` resolves it (not by the message core)
+            addr_core, dm = resolve(chip, word1)
+            self.shadow[(chip, addr_core, dm)] = value & 0xFFFFFFFF
         elif path == 1:
             self.shadow[(chip, 0, word1)] = value & 0xFFFFFFFF
 
@@ -155,6 +161,15 @@ class ReturnSource:
         if image_word(self.images.get((chip, core)), dm):
             return self._hit("image", image_word(self.images[(chip, core)], dm))
         return self._hit("zero", 0)
+
+    def knows(self, chip: int, address: int) -> bool:
+        """True when a layer other than the image or 0 answers `address` (SY mask, live, shadow)."""
+        core, dm = resolve(chip, address)
+        return (
+            (chip == SY_CHIP and self.sy.word(dm) is not None)
+            or (chip, core) in self.live
+            or (chip, core, dm) in self.shadow
+        )
 
     def _hit(self, name: str, value: int) -> int:
         self.layer[name] += 1
@@ -174,6 +189,7 @@ class ReadLog:
     )  # pc, chip, addr, n, tick
     polls: Counter = field(default_factory=Counter)  # (chip, address) -> reads
     tick: int = 0
+    fallbacks: int = 0  # `0xC0066E64` calls left to the old stub
 
 
 def make_stub(source: ReturnSource, log: ReadLog, kind: int) -> Callable:  # noqa: ANN201
@@ -183,6 +199,11 @@ def make_stub(source: ReturnSource, log: ReadLog, kind: int) -> Callable:  # noq
         if kind == SPI_READN:
             chip = chip_of_comm(emu.read32, emu.reg(0))
             address, count, dst = emu.reg(2), emu.reg(3), emu.read32(emu.reg(13))
+            # only the voice update site is decoded: any other chip, address or count keeps the
+            # earlier harness stub (return 0, no write)
+            if chip < 0 or not 0 < count <= READN_MAX_COUNT or not source.knows(chip, address):
+                log.fallbacks += 1
+                return 0
         else:
             chip, address = emu.reg(1), emu.reg(2)
             count, dst = (4 if kind == SPI_READ4 else 2), emu.reg(3)

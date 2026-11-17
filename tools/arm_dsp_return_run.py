@@ -86,20 +86,22 @@ def run_mode(ctx: dict, mode: str, keys: tuple[int, ...]) -> dict[str, object]: 
     handles = rt.install(emu, source, log) if mode == "return" else []
     rows: list[tuple] = []
     notes = {i * KEY_GAP: k for i, k in enumerate(keys)}
-    for n in range(HOLD_TICKS + OFF_TICKS):
-        log.tick = n
-        if n in notes:
-            rig.send(kd.note_on(notes[n], VELOCITY))
-        if n == HOLD_TICKS:
-            for k in keys:
-                rig.send(kd.note_off(k))
-        emu.clear_messages()
-        ast.run_ticking(emu, TICK_INSNS, per_tick=TICK_INSNS)
-        sv.pump(emu)
-        for m in emu.messages:
-            rows.append((n, m.chip, m.path, m.word1, m.word2))
-            source.observe(m.comm, m.core, m.path, m.word1, m.word2)
-    rt.uninstall(emu, handles)
+    try:
+        for n in range(HOLD_TICKS + OFF_TICKS):
+            log.tick = n
+            if n in notes:
+                rig.send(kd.note_on(notes[n], VELOCITY))
+            if n == HOLD_TICKS:
+                for k in keys:
+                    rig.send(kd.note_off(k))
+            emu.clear_messages()
+            ast.run_ticking(emu, TICK_INSNS, per_tick=TICK_INSNS)
+            sv.pump(emu)
+            for m in emu.messages:
+                rows.append((n, m.chip, m.path, m.word1, m.word2))
+                source.observe(m.comm, m.core, m.path, m.word1, m.word2)
+    finally:
+        rt.uninstall(emu, handles)
     out = summarize(rows, list(notes), HOLD_TICKS)
     out.update(
         voice_updates=flags["updates"],
@@ -109,6 +111,7 @@ def run_mode(ctx: dict, mode: str, keys: tuple[int, ...]) -> dict[str, object]: 
         status_reads=sum(1 for c in log.calls if c[0] != rt.SPI_READ4),
         first_calls=[[hex(x) for x in c] for c in log.calls[:8]],
         answer_layers=dict(source.layer),
+        stub_fallbacks=log.fallbacks,
         busy_voices_end=rt.VOICES - bin(source.sy.idle).count("1"),
     )
     return out

@@ -11,9 +11,9 @@ Tags follow `.agents/rules/provenance-in-code.md`: **VERIFIED** = reproduced by 
 | Question | Result | Tag |
 |---|---|---|
 | How does the ARM read the DSP? | Only by **SPI reads of DSP data memory**: request `(chip, DSP address, word count)`, answer = the DSP words. Three routines: `0xC00119A4` (4 words), `0xC00117E8` (2 words), `0xC0066E64` (any count, comm object argument). The device behind `0xC00119A4` that D143 left open is **the DSP SPI slave** (address words `0x28307770` / `0x28B07770` are DM word `0xC1DDC` of core 1 / core 2 in the `0x28000000` alias). | VERIFIED (listing, runs) |
-| Which signals are read in a note? | (1) **SY idle voice mask** `DM(0x92196..7)`, voice `k` = bit `k`: the voice update `0xC01E00AC` waits for bit 0 of word 0 (voice 0) before it sends the prepare state. (2) **Three note-on peeks** of `DM(0xC1DDC..F)` on PNO core 2, ORG core 1, ORG core 2 (table refill `0xC01B1840`), gate `0xC01DEAFC`. Nothing else in 500 ticks of 3 notes. | VERIFIED (run) |
-| Sample ring refill request? | **Not an ARM signal.** The SY refills its ring by its own external-port DMA (D141); no ARM read of ring state, read pointer or refill flag occurs in the sample programs run (reads are only the two items above). The ARM does not refill the ring. | VERIFIED (negative, for these paths); other `0xC0066E64` sites not decoded |
-| Do the answers change the ARM? | **No change in the cases run.** With the return path the three SAMPLE-flagged programs send the same SY words as the stub (17 SY messages, 1 prepare, key-down delay 1 tick); the gate reads 0 (images and shadow are 0) which equals the D143 neutral read. The harness `DspAck` hook is replaced by a real read of the SY mask and the same bit is found set. | EMPIRICAL (section 4) |
+| Which signals are read in a note? | (1) **SY idle voice mask** `DM(0x92196..7)`, voice `k` = bit `k`: the voice update `0xC01E00AC` waits for bit 0 of word 0 (voice 0) before it sends the prepare state. (2) **Three note-on peeks** of `DM(0xC1DDC..F)` on PNO core 2, ORG core 1, ORG core 2 (table refill `0xC01B1840`), gate `0xC01DEAFC`. No other read was found in the paths run (500 ticks, 3 notes). | VERIFIED (run) |
+| Sample ring refill request? | **Not found in the paths run.** The SY refills its ring by its own external-port DMA (D141); no ARM read of ring state, read pointer or refill flag occurred in the 2 SAMPLE programs run (reads are only the two items above). Other `0xC0066E64` sites are not decoded, so this is not proof of absence. | VERIFIED (negative, only for the paths run) |
+| Do the answers change the ARM? | **No change in the cases run.** With the return path the 2 SAMPLE-flagged programs (Acoustic Guitar, String Quintet) send the same SY words as the stub (17 SY messages, 1 prepare, key-down delay 1 tick); the gate reads 0 (images and shadow are 0, no live chip answered) which equals the D143 neutral read. The harness `DspAck` hook is replaced by a real read of the SY mask and the same bit is found set. | EMPIRICAL (section 4) |
 | What does need a DSP answer? | The **voice free** transition: a second note on a held voice waits on the idle bit, which only the DSP sets again (release state `0x1C083C`, a sample position test inside the SY). With the message-driven mask the ARM spins (about 40,000 status reads in 500 ticks). Needs a live SY chip. | EMPIRICAL |
 
 ## 2. Inventory of DSP to ARM reads (evidence)
@@ -38,7 +38,7 @@ Routine dispatch (VERIFIED, `0xC01E06A4..0xC01E0728` and `0xC01B1840`): per devi
 
 Tests (`tools/tests/test_arm_dsp_return.py` 12, `test_arm_dsp_return_run.py` 4, 2 added to `test_arm_dsp_live.py`): address alias to `(core, word)`, comm object to chip, mask update by state message (the oracle values `0xFFFFFFFE`, `0x00FFFFFF`), layer order, the three stubs on a fake emulator (a prepared voice reads bit 0 clear, an idle one set), summary helpers. Without the module the tests do not import.
 
-Limits: in the live link only PNO core 1 is a live chip, but the peeks hit PNO core 2 and ORG, so the live layer answers none of the peeks here (it is wired for the chips of PR #500). SY is not a live chip (no `sharc-live` SY preset), so the mask is message driven, not DSP driven.
+Limits: the live link (D144 Router/Chips) registers every live chip as a layer, `(comm, core)`, so PNO core 2 and ORG chips answer the peeks when they are given with `--chip`; the tables in section 4 were run without live chips (images and shadow only), the live run is in section 4b. SY is not a live chip (no `sharc-live` SY preset), so the mask is message driven, not DSP driven. The `0xC0066E64` stub decodes only the voice update site: an unknown comm object, an address no layer knows, or a count over 4 falls back to the old stub (return 0, no write; counted in `stub_fallbacks`).
 
 ## 4. End to end (key 60, 64, 67 at ticks 0, 20, 40, off at tick 100, 500 ticks, from one saved state)
 
@@ -54,6 +54,10 @@ Limits: in the live link only PNO core 1 is a live chip, but the peeks hit PNO c
 
 Reading: (a) `legacy` String Quintet shows the D143 artefact (test pattern read 3, voices vary); `neutral` and `return` agree. (b) The return path reproduces the neutral result: the images and the shadow are 0 at the peeked words, so the hardware peek is consistent with D143's neutral read (EMPIRICAL; the live PNO core 2 / ORG answers, which could differ after DSP passes, are not measured). (c) Key-down delay 1 tick for the first note in all modes: the real mask read does not slow the first voice. (d) Notes 2 and 3 produce no SY message in `neutral` and `return` (also in `legacy` for the guitar): the ARM stays in the voice update wait, which in `return` is the 40,683 status reads, because bit 0 stays clear after voice 0 was prepared and the model has no DSP release. Voice free timing after the note-off is therefore **not measurable** without a live SY (no `frees`). (e) The two programs without a sample layer read nothing from the DSP in a note (synth-only note path: no SPI reads, no SY message).
 
+### 4b. Live chips answer the peeks (String Quintet, `arm_dsp_live.py --return-path`, PNO core 2 and ORG core 2 live)
+
+Data: `docs/research/data/dsp-to-arm-return-live.json`. Chips `PNO:2=org` and `ORG:2=org` (D144 Router/Chips), 800 load, 100 idle, 1500 key, 300 off ticks. The note-on refill made 3 peek calls (12 words): 8 words answered by the live chips (PNO core 2, ORG core 2), 4 by the zero layer (ORG core 1 is not a live chip here). The live chips received 900 messages each in the load phase and 1 PNO2 message in the key and off phases. 0 busy SY voices at the end (no SY chip; the mask is message driven). The values the live chips returned are not recorded in the JSON, so this run shows the wiring answers from the chips, not what the peek gate does with them: the gate effect is not measured (EMPIRICAL, one program).
+
 ## 5. Implications
 
 - The premise "the DSP consumes a sample ring and requests refill, the ARM must refill" does not hold for SY: no ARM read of ring state exists in the note path. The sample data reach the SY by its own DMA (D141); an ARM return channel for ring refill is not needed. What the SAMPLE path needs from the DSP is the voice-ready mask and the note-on peek words.
@@ -65,7 +69,7 @@ Reading: (a) `legacy` String Quintet shows the D143 artefact (test pattern read 
 
 1. SY preset in `sharc-live` (ISR driven, FIFO pairs as `sy_isr_refill.scn`), then answer the idle and release masks from the chip and measure voice free timing and stealing.
 2. Decode the 52 other `0xC0066E64` sites and the reader of `DM(0x9219A)`.
-3. With PR #500 merged, run `arm_dsp_live.py --return-path --core 2` so the live PNO core 2 / ORG answers the three peeks.
+3. Longer live runs of PNO core 2 / ORG answering the peeks (section 4b is one program).
 4. SMP status word of the piano voice allocation (item 5): address `[object + 0x240]`, value not measured.
 
 ## Reproduce
@@ -77,3 +81,12 @@ PYTHONPATH=tools uv run --with unicorn --with capstone python tools/arm_dsp_retu
   "factory_programs/Program/Bank A/String Quintet.ns4p" --eeprom target/oled/eeprom.bin \
   --ns4b ".reference/Nord Stage 4 Factory Restore RevK v1.66.ns4b" --images <dir with PNO/ ORG/ core<N>_sram.bin> --out run.json
 ```
+
+Oracle check of the SY mask states (VERIFIED reset, prepare, go; idle `0x1C07B0` ASSUMED, not dumped separately):
+
+```bash
+target/release/sharc-ref target/oracle/sy.bin tools/oracle_scenarios/sy_voice_mask.scn --out target/oracle/vm
+# dump 0x92196: ffffffff 00ffffff / fffffffe 00ffffff / fffffffe 00ffffff / ffffffff 00ffffff
+```
+
+Disassembly facts (entry points, argument order, the three call sites): `capstone` over `target/fw_unpacked/bank0_CODE.bin` at `0xC00119A4`, `0xC00117E8`, `0xC0066E64`, `0xC01B1CB4/CD0/CEC`, `0xC01E0694`. The run numbers of section 4 are in `docs/research/data/dsp-to-arm-return.json`.
