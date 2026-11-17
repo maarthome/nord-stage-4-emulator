@@ -1,5 +1,7 @@
 // Declaration-only crate root exposing all Nord Stage 4 Emulator subsystems.
 pub mod bench;
+pub mod bench_gui;
+pub mod bench_gui_cli;
 pub mod cbin;
 pub mod engine;
 pub mod firmware;

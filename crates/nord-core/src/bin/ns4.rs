@@ -217,6 +217,9 @@ fn run_cli(args: &[String]) -> Result<String, String> {
                 other => Err(format!("unknown convert mode '{other}' (expected --to-json or --to-ns4p)")),
             }
         }
+        "bench" if args.iter().any(|a| a == "--gui") => {
+            nord_core::bench_gui_cli::cli(args)
+        }
         "bench" => {
             use nord_core::bench::{format_report, run, BenchConfig};
             let mut cfg = BenchConfig::default();
@@ -478,7 +481,7 @@ Wrote {wav_path} ({} bytes, 32-bit float stereo)", wav.len()));
         "backup-store" => nord_core::store_cli::backup_store(&args[2..]),
         "preset-check" => nord_core::preset_cli::preset_check(&args[2..]),
         other => Err(format!(
-            "unknown command '{other}' (expected: info | inspect <path> [--json] [--verify] [--unpack <dir>] | backup <path.ns4b> [...] | convert <path> ... | store-program <base> <out> | export-live <dir> <slots...> | backup-store <in.ns4b> <out.ns4b> [--program ...] [--live ...] | preset-check <backup.ns4b> [--bits] | render-demo | bench [--blocks N] [--warmup N] [--stereo] [--scenario worst|typical|idle] [--breakdown] | render-patch <path>)"
+            "unknown command '{other}' (expected: info | inspect <path> [--json] [--verify] [--unpack <dir>] | backup <path.ns4b> [...] | convert <path> ... | store-program <base> <out> | export-live <dir> <slots...> | backup-store <in.ns4b> <out.ns4b> [--program ...] [--live ...] | preset-check <backup.ns4b> [--bits] | render-demo | bench [--blocks N] [--warmup N] [--stereo] [--scenario worst|typical|idle] [--breakdown] | bench --gui [--layers 3|7] [--keys N] [--frames N] [--churn N] [--breakdown] [firmware flags] | render-patch <path>)"
         )),
     }
 }
