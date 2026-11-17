@@ -132,7 +132,7 @@ Statements and sources. "No firmware-validated implementation" = the code runs a
 
 ## Implications
 
-- Under the owner's rule, three groups can move: (a) VERIFIED with no clip to measure the effect (piano Touch for `.npno`, FX defaults, `delay_time`, piano layer law after its path is traced): need the owner's explicit OK per D22; synth velocity moved to BLOCKED after PR #498 (4 of 16 clips worse); (b) the resonance flag, which D121 already neutralised and which only needs a re-run; (c) everything else is blocked by a named missing piece or by a clip that gets worse (pedal voices on Velvet, chain+slew on Velvet, sustain pedal on Grand Pad, filter law 3.36 against 2.18, firmware organ levels).
+- Under the owner's rule, three groups can move: (a) VERIFIED with no clip to measure the effect (piano Touch for `.npno`, FX defaults, `delay_time`, piano layer law after its path is traced): need the owner's explicit OK per D22; synth velocity was flipped by owner approval in PR #498 / D142 (4 of 16 clips marginally worse at replay v100, file bits VERIFIED 27 of 27); (b) the resonance flag, which D121 already neutralised and which only needs a re-run; (c) everything else is blocked by a named missing piece or by a clip that gets worse (pedal voices on Velvet, chain+slew on Velvet, sustain pedal on Grand Pad, filter law 3.36 against 2.18, firmware organ levels).
 - The clip set is thin: one performance per program and two piano clips that disagree by about 22 dB under the verified words (D72). That conflict, not the individual flags, is the main reason the piano flags stay blocked. A clip with a known recording level would unblock chain, slew, bus scale and layer law together.
 - Velvet 1.37 to 2.74 is pedal-voices alone; chain+slew on Velvet is 3.74 (piano-extra-voices s5). The two are easy to mix up.
 - Two stale-looking statuses to resolve before any decision: the `--rotary-drive scaled` unit (b3-rotary line 63) and the GUI `FILTER` switch labelled Verified.
@@ -143,7 +143,7 @@ Statements and sources. "No firmware-validated implementation" = the code runs a
 2. Hardware RT60 clip of Reverb Cathedral (and one more type) to settle the `reverb-mix` role; the 2026-11-17 listening note (little audible difference, one program, by ear) is not a verdict.
 3. Owner decision on group (a): which of piano Touch (all sounds, against D117), FX defaults, `delay_time` to flip. D136 records the policy; each flip needs its own PR with the `render_hash` re-baseline (D22 criterion 3).
 4. Re-run the four D116 SUPER clips plus the 12-clip set with `--synth-fw-resonance` on the current build.
-5. File-bit recall check of the three synth velocity fields (`kAmpEnvVel`, `kFltEnvVel`, `kOscEnvVel`), same method as `tools/arm_program_touch.py`.
+5. ~~File-bit recall check of the three synth velocity fields~~ Done (PR #498, D142, `tools/arm_program_synth_velocity.py`, 27 of 27); still open for synth velocity: the performance velocity of the clips, the `V`/`F` multiply in the voice, `kOscEnvVel`.
 6. Add the missing clips named in emulator-vs-hardware-audio (delay, compressor), an init-patch clip (OQ34) and a Heavy and a Light piano clip (D117).
 7. Master limiter: search the ARM and FX images for a master limiter word before calling it absent; record the result here.
 8. Check `--rotary-drive scaled` against the current default drive unit.

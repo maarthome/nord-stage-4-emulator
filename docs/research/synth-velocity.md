@@ -58,7 +58,7 @@ Amp gain change from velocity 40 to 100 (`amp_fw_db_v40_v100` column): setting 1
 
 ### The three programs of the listening check
 
-Whole-program RMS re velocity 100 (`program_sweep`, notes C3 G3 E4 C5, default engine options, `--synth-velocity` = firmware law; organ / piano layers of the program are included):
+Whole-program RMS re velocity 100 (`program_sweep`, notes C3 G3 E4 C5, default engine options, `--synth-velocity` forced the firmware law, a no-op since D142, `--legacy-synth-velocity` forces the linear blend; organ / piano layers of the program are included):
 
 | Program (synth layer) | Velocity 20 | 40 | 70 | 127 | Reading |
 |---|---|---|---|---|---|
@@ -113,7 +113,7 @@ Owner rule of 2026-11-17 (D136): a firmware-validated path becomes the default u
 | `organ_pipe` | 1.74 | 1.70 | better (-0.04) |
 | other 10 rows (`synth_lead`, `synth_crunch`, `synth_megaline`, `super_lp24_sidechain`, `super_lp24_believer`, `synth_12db`, `synth_phat3`, `synth_80s`, `synth_leaky`, `pianopad_grand`) | equal within 0.005 | | equal |
 
-Mean of the 17 rows 2.384 against 2.390. The earlier claim "no clip varies the synth velocity, so none can worsen" (D104, D136 audit) was wrong: every clip replays notes at one velocity, and the law moves the level at that velocity (setting 3 at `g(100)`: +3.1 dB over the linear blend, `V` 1.123 against `98 / 127` = 0.77, s2).
+Mean of the 17 rows 2.384 against 2.390. The earlier claim "no clip varies the synth velocity, so none can worsen" (D104, D136 audit) was wrong: every clip replays notes at one velocity, and the law moves the level at that velocity (setting 3 at `g(100)`: +3.3 dB over the linear blend, `V` 1.123 against `98 / 127` = 0.77, s2).
 
 Replay velocity sweep of the five rows that move (score linear blend / firmware law; `tools/emu_vs_hw.py` variants with `velocity`):
 
@@ -129,4 +129,4 @@ Reading: the sign of the change depends on the replay velocity, and the velocity
 
 Only `synth_horizon` (+0.13) is clearly outside the noise of a lossy-video score; +0.01 and +0.02 are not, but the D136 rule is strict. The cause of the worse rows can be the replay velocity, a level already absorbed in fitted EMPIRICAL constants (synth level, LP24 factor, D81 / D116, tuned at the linear blend), or a wrong application of `V` (ASSUMED); the RMS deltas in the clip data (`default_rms_db`, `fw_rms_db`) are the first thing to compare.
 
-Open after the flip (they were the blockers under the strict rule), in order: (1) the performance velocity of the clips (the score changes sign with it; a clip with known velocities, or the per-note velocity of the events in `emu_events`, would decide); (2) the multiply of `V` and `F` in the voice (s8, ASSUMED); (3) the `synth_horizon` clip (layers B and C amp setting 1), the largest regression (+0.13 at v100, +0.75 at v127). Closed: the file bits (s7, VERIFIED) and the GUI switch (added, `Synth: Firmware velocity`).
+Open after the flip (they were the blockers under the strict rule), in order: (1) the performance velocity of the clips (the score changes sign with it; a clip with known velocities, or the per-note velocity of the events in `emu_events`, would decide); (2) the multiply of `V` and `F` in the voice (s8, ASSUMED); (3) the `synth_horizon` clip (layers B and C amp setting 1), the largest regression (+0.13 at v100, +0.58 at v127). Closed: the file bits (s7, VERIFIED) and the GUI switch (added, `Synth: Firmware velocity`).
