@@ -1512,3 +1512,14 @@ Opt-in `mod2` ENS audio follows knob words; opt-in `mod1` RM A-WAH rate follow o
 - **Why:** The pc traces of a stopped and a voiced program are identical until the scheduler return value; one compare (`cmp r3, #1`) differs and its word comes from a register the harness does not model. Neutralising it makes the voice update run in the stopped program with no other change.
 - **Alternatives:** Model SPI flash or DMA (rejected: the gate is not the sample data path); force `0xC01DEAFC` to return 1 (rejected: skips the deadline logic, the data fix is smaller); leave undiagnosed (rejected).
 - **Impact:** `tools/arm_voice_gate.py` (+ test), `tools/arm_dsp_capture.py` (+ test), `docs/research/sample-voice-gate.md`, `docs/research/data/voice-gate-*.json`; [arm-dsp-capture](research/arm-dsp-capture.md) follow-up 2 answered; [audio-remaining](research/audio-remaining.md) row 2; OQ22 note; no engine change. Limit: the hardware value of the SPI read is ASSUMED neutral (0).
+
+
+### D147. SAMPLE audio comes out of the SY oracle through a decoded-PCM ring feed (`pcm`); the real packed stream still desyncs, pitch entry `e` stays modelled
+
+- **Status:** proposed 2026-11-17
+- **Decided by:** pending the user (task from the parent session; evidence [sample-stream-audio](research/sample-stream-audio.md)). D145 is taken by PRs #502 and #503, D144 by #500; D147 chosen, renumber on merge if needed.
+- **Context:** D143 showed 110 of 119 SAMPLE programs voice; nothing measured the audio. D112 left the real stream stalling after the first block.
+- **Decision:** (1) Add `smp_stream` (resolve, extract packed stream and decoded PCM per program, modelled `e`), the `sharc-ref` `pcm` command (decoded PCM into the source ring ahead of the read position) and `tools/sample_stream_*.py`. (2) Report oracle audio for 10 programs: 5 valid (prepare in the k60 window) are non-silent, pitch within 10 cents of native for 4, Finger Bass +1100 c (octave not in `e`), 20 to 25 dB under native. (3) Coverage of 119: prepare at k60 for 50, only at other keys 51, none 18.
+- **Why:** The SY resampler, step word and ring read run as firmware; only the unpacker is bypassed, so level, spectrum and duration of the resampled voice can be compared to native.
+- **Alternatives:** Wait for the unpacker desync fix (blocks all measurement); synthesise audio natively only (does not touch the oracle).
+- **Impact:** New tools and tests, docs only otherwise. No default, golden or `render_hash` changes; `--sample-pitch fw` stays opt-in. Pitch agreement is by construction of the modelled `e`.
