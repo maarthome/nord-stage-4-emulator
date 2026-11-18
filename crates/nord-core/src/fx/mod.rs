@@ -67,6 +67,7 @@ mod fw_phas1;
 mod fw_pump;
 mod fw_pump_clock;
 mod fw_rate_match;
+mod idle_skip;
 pub(crate) use fw_pump_clock::sync_beats as pump_sync_beats;
 mod fw_reverb;
 mod fw_rm;
@@ -341,6 +342,8 @@ pub struct LayerFxChain {
     fw_reverb_multi: Option<Box<FwReverbMulti>>,
     fw_comp_amount: f32,
     clock_bpm: f32,
+    /// Opt-in skip of the rack while its layer is silent (`set_idle_skip`), default off.
+    idle: idle_skip::IdleSkip,
     dyn1: mod1_dynamic::Mod1Dyn,
     spin: mod2_spin::SpinState,
     mod1_phase: f32,
@@ -455,6 +458,7 @@ impl LayerFxChain {
             fw_reverb_multi: None,
             fw_comp_amount: 0.0,
             clock_bpm: 120.0,
+            idle: idle_skip::IdleSkip::default(),
             dyn1: mod1_dynamic::Mod1Dyn::new(),
             spin: mod2_spin::SpinState::new(),
             mod1_phase: 0.0,
@@ -545,6 +549,17 @@ impl LayerFxChain {
         self.fw_rate_match = on.then(|| Box::new(RateMatch::new(self.sample_rate)));
     }
 
+    /// Switches the idle skip (`--fx-idle-skip`, D158) on or off: a rack whose input has been
+    /// silent for a while and whose output has died away returns silence without running.
+    pub fn set_idle_skip(&mut self, on: bool) {
+        self.idle.set(on, self.sample_rate);
+    }
+
+    /// Whether [`Self::set_idle_skip`] is on.
+    pub fn idle_skip(&self) -> bool {
+        self.idle.enabled()
+    }
+
     /// Whether [`Self::set_fx_rate_match`] is on.
     pub fn fx_rate_match(&self) -> bool {
         self.fw_rate_match.is_some()
@@ -552,6 +567,15 @@ impl LayerFxChain {
 
     /// Processes a single stereo frame `[left, right]` through all 5 layer FX stages at `bpm`.
     pub fn process_frame_with_bpm(&mut self, frame: [f32; 2], bpm: f32) -> [f32; 2] {
+        if self.idle.skips(frame) {
+            return [0.0, 0.0];
+        }
+        let out = self.process_frame_stages(frame, bpm);
+        self.idle.observe(frame, out);
+        out
+    }
+
+    fn process_frame_stages(&mut self, frame: [f32; 2], bpm: f32) -> [f32; 2] {
         let inv_fs = 1.0 / self.sample_rate;
         self.clock_bpm = bpm;
         let [l1, r1] = self.process_mod1(frame[0], frame[1], inv_fs);
