@@ -6,6 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
+| [D162](#d162-a16-arpeggiator-the-arm-step-time-equals-the-native-one-the-gate-23-the-single-note-retrigger-and-the-updown-octave-walk-differ-opt-in-arp_firmware_walk) | 2026-11-17 | A:16 arp: ARM step 150 ms = native = video; gate 2/3, single-note retrigger and UP/DOWN octave walk differ; opt-in `arp_firmware_walk` | proposed |
 | [D160](#d160-program-ranking-native-default-is-ranked-against-the-oracle-verified-firmware-paths-not-against-chain-audio-fx-groups-move-the-worst-20-mod-2-first-the-chain-has-no-piano-tap) | 2026-11-17 | Program ranking: native default is ranked against the oracle-verified firmware paths, not against chain audio; FX groups move the worst 20 (Mod 2 first), the chain has no piano tap | proposed |
 | [D159](#d159-morph-the-arm-weights-wheel-aftertouch-and-pedal-by-v128-clamps-the-sum-and-the-cutoff-sender-drops-a-step-from-frac-05-an-opt-in---firmware-morph-reproduces-both-and-plays-five-more-synth-targets) | 2026-11-17 | Morph: ARM weight `v / 128`, clamp on the sum, cutoff sender drops a step from frac 0.5; opt-in `--firmware-morph` | proposed |
 | [D158](#d158-fx-types-against-the-fx-chip-oracle-every-wired-port-matches-the-engine-paths-differ-4-frame-mod-1-option-opt-in) | 2026-11-17 | FX types against the FX chip oracle: every wired port matches, the engine paths differ; 4-frame Mod 1 option opt-in | proposed |
@@ -1738,3 +1739,12 @@ The rate matches in all three; the score of the clock word is better than flag o
 - **Alternatives:** Chain audio against native per program (rejected: no piano, FX or master tap, the SY ring peak is the stand-in sample, 0.05394 on every voiced run); rank by hardware clips (rejected: 22 segments only); score by the level alone (rejected: 18 of the worst 20 are band shape).
 - **Impact:** [program-ranking](research/program-ranking.md), `docs/research/data/program-ranking.csv`, `program-ranking-ablation.csv`, ROADMAP 7b, OQ40, `crates/nord-tools/src/bin/program_rank.rs`, `rank_metrics.rs`, `sweep_load.rs`, `tools/program_rank*.py`.
 
+
+### D162. A:16 arpeggiator: the ARM step time equals the native one, the gate (2/3), the single-note retrigger and the UP/DOWN octave walk differ; opt-in `arp_firmware_walk`
+
+- **Status:** proposed
+- **Decided by:** the task of the parent session (evidence [arp-fw-vs-native](research/arp-fw-vs-native.md)); owner to confirm.
+- **Context:** The owner hears factory A:16 Horizon Whl far from the Part A video. Layers A and C run the arpeggiator (rate raw 90 / 96, file BPM 266 / 318, tempo 100, MST CLK on); D81 never compared the arp.
+- **Decision:** (1) Capture the ARM note events of the layers with `tools/arm_arp_events.py` (listener `0xC0123A18`, voice lists, 24 kHz ticks) and compare with the new `arp_trace` bin (`synth/voice_edges.rs`) through `tools/arp_fw_compare.py`. (2) Step time: ARM, native and video agree at 150.0 ms (1/4 beat at 100 BPM; the file BPM and the dial table are unused under MST CLK). The ARM step is an input of the capture (the SPI Master Clock position is fed, the scale `2^19` per beat is ASSUMED). (3) Differences: gate 100 ms (2/3 step) against the full step, a single held note retriggers every step in the ARM and not in the native engine, UpDown over 2 octaves walks 7 pool notes (top root included) in the ARM and 60 64 67 76 72 76 in the native engine. (4) New opt-in `SynthLayer::arp_firmware_walk` (`arp_trace --arp-fw-walk`) reproduces the ARM UpDown cycle (EMPIRICAL, one layer). Gate and retrigger stay under OQ32; no default changes.
+- **Why:** The video step equals the engine step, so the audible gap is the gate, the retrigger and the octave order, not the rate law. The walk is cheap to reproduce and testable; the gate needs the OQ32 decision.
+- **Alternatives:** Flip the UpDown walk by default (rejected: one layer of evidence, owner decides); change the gate in the same PR (rejected: OQ32 open, the 1/2 gate of `E` steps interacts with the pattern player); wire the flag into `FirmwareOptions` now (rejected: 17 struct literals, left as a follow-up).
