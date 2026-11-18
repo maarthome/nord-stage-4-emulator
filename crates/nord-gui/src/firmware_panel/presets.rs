@@ -67,6 +67,7 @@ pub fn copy_engine(dst: &mut FirmwareOptions, src: &FirmwareOptions, engine: Eng
             dst.synth_layer_law = src.synth_layer_law;
             dst.measured_tick = src.measured_tick;
             dst.synth_sustain_pedal = src.synth_sustain_pedal;
+            dst.firmware_morph = src.firmware_morph;
         }
         Engine::Fx => {
             dst.fx = src.fx;
