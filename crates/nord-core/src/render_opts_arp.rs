@@ -51,7 +51,10 @@ mod tests {
             "gate is opt-in"
         );
         assert!(FirmwareOptions::firmware_all().arp_firmware);
-        assert!(FirmwareOptions::firmware_all().arp_firmware_gate);
+        assert!(
+            !FirmwareOptions::firmware_all().arp_firmware_gate,
+            "not verified: also opt-in there"
+        );
         assert!(!FirmwareOptions::legacy_all().arp_firmware);
         assert!(!FirmwareOptions::legacy_all().arp_firmware_gate);
         let g = FirmwareOptions::from_args(&args(&["--arp-fw-gate"])).unwrap();

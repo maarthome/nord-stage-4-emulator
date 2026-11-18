@@ -356,7 +356,7 @@ pub struct FirmwareOptions {
     pub arp_firmware: bool,
     /// `--arp-fw-gate`: Arp / Poly `E` steps and the plain arpeggio last 2/3 of a step
     /// (`SynthLayer::arp_firmware_gate`). **Opt-in** (default off, D166): VERIFIED only in the
-    /// replayed boot state, no hardware clip (OQ32, D130). `--firmware-all` turns it on.
+    /// replayed boot state, no hardware clip (OQ32, D130). Not part of `--firmware-all` either.
     pub arp_firmware_gate: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,
@@ -529,7 +529,7 @@ impl FirmwareOptions {
             synth_sustain_pedal: false,
             firmware_morph: true,
             arp_firmware: true,
-            arp_firmware_gate: true,
+            arp_firmware_gate: false,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),

@@ -79,12 +79,14 @@ fn the_stored_range_raw_sets_the_span_while_it_matches_the_engine_range() {
 
 #[test]
 fn apply_arp_modes_stores_the_raw_range_for_the_walk() {
-    let mut dec = SynthLayerDecoded::default();
-    dec.arp_enabled = true;
-    dec.arp = SynthArpDecoded {
-        mode: 0,
-        direction: 0,
-        range: 47,
+    let dec = SynthLayerDecoded {
+        arp_enabled: true,
+        arp: SynthArpDecoded {
+            mode: 0,
+            direction: 0,
+            range: 47,
+            ..Default::default()
+        },
         ..Default::default()
     };
     let mut s = SynthLayer::new(FS);
