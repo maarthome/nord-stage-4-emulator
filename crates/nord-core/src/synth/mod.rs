@@ -180,6 +180,7 @@ mod tests_sample_pitch;
 mod tests_strip;
 mod voice;
 mod voice_alloc;
+pub mod voice_edges;
 
 #[cfg(test)]
 pub(crate) mod test_util {
@@ -424,6 +425,9 @@ pub struct SynthLayer {
     // Arpeggiator & Gate
     pub arp_mode: ArpMode,
     pub arp_octave_range: u8,
+    /// Opt-in: UP/DOWN walks the whole octave pool and back like the ARM pattern player (see
+    /// `arp.rs`, `docs/research/arp-fw-vs-native.md`). Off by default.
+    pub arp_firmware_walk: bool,
     pub arp_rate_bpm: f32,
     arp_step: usize,
     arp_sample_counter: f32,
@@ -556,6 +560,7 @@ impl SynthLayer {
 
             arp_mode: ArpMode::Off,
             arp_octave_range: 1,
+            arp_firmware_walk: false,
             arp_rate_bpm: 120.0,
             arp_step: 0,
             arp_sample_counter: 0.0,
