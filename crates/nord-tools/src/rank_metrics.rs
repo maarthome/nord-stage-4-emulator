@@ -15,9 +15,11 @@ pub const BAND_EDGES_HZ: [f64; 9] = [
 ];
 
 /// Floor of a band share in dB (an empty band reads this, not minus infinity).
+/// ASSUMED: tool convention, far below any band that carries a note.
 pub const BAND_FLOOR_DB: f64 = -90.0;
 
 /// Number of frames analysed (a power of two: 2.73 s at 48 kHz).
+/// ASSUMED: tool convention, same for every program (see `HOLD` in `program_rank`).
 pub const ANALYSIS_FRAMES: usize = 131_072;
 
 /// Metrics of one mono signal.

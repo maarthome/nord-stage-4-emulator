@@ -14,6 +14,8 @@ use std::fs::File;
 use std::sync::Arc;
 
 /// Render sample rate of the sweeps.
+/// ASSUMED: the engine's internal rate (`Stage4Engine::new(FS)`), not a hardware value; the
+/// hardware audio rate is not used by any ranking number.
 pub const FS: f32 = 48_000.0;
 
 /// Loaded `.npno` sound and its class byte (file offset 0x44), `None` when it failed to load.

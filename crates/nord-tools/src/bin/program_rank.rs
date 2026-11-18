@@ -24,6 +24,9 @@ use std::fs::File;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 /// Frames the note is held (2.08 s), the rest of the analysis window is the release.
+/// ASSUMED: a tool convention (long enough for the attack, decay and the FX to settle for every
+/// factory program); nothing in the firmware or a recording fixes it. The ranking only compares two
+/// renders with the same hold, so a different value moves every score alike.
 const HOLD: usize = 100_000;
 
 /// Sections enabled in a scene from `section_enable_*` (bit 2 organ, bit 1 piano, bit 0 synth).

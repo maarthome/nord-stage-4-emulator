@@ -12,7 +12,7 @@ Tags follow `.agents/rules/provenance-in-code.md`: **VERIFIED** = reproduced by 
 |---|---|---|
 | Can the whole chain (ARM + SHARC oracle) render all 384 programs to audio? | **No.** The live link has one audio-like tap per engine and none for the piano: PNO core 1 lane `2:0` (B3 / organ), PNO core 2 voice window `0xC1F89` (synth voice), SY ring peak (SAMPLE, D150). Piano programs: the chain voices nothing (155 programs have a piano layer in scene I). FX, pan, layer mix and master are not in any tap. A per-program level and spectrum comparison against native is therefore only possible at taps that do not exist for most programs. | VERIFIED (runs, s3) |
 | What is the ranked distance then? | **Native default against native with every oracle-verified firmware option** (`--firmware-all --firmware-routing`: firmware tone wheels, firmware filter engine, six FX ports). It measures how far the default path is from the firmware paths that are already verified against the oracle, not from the hardware. Score = `abs(level delta dB) + RMS of band share deltas dB + 6 x abs(centroid delta in octaves)`; median 3.9, p90 12.6, max 22.2; 61 programs above 10, 60 below 1. | EMPIRICAL (numbers), ASSUMED (weights) |
-| What carries the worst 20? | **FX, all 20.** Putting one option group back to the default removes the distance for: Mod 2 12 programs, Mod 1 3, delay 2, EQ 1, reverb 1, compressor 1. Organ tone wheels and the synth filter engine carry none of the worst 20. | EMPIRICAL (ablation, s4) |
+| What carries the worst 20? | **FX is the only group that moves them; one FX group does not always explain them.** Only single-group reverts were run. Reverting the best single FX group leaves a score of at most 2 in 7 programs, 2 to 5 in 7, and **above 5 in 6** (Melody Pad 11.4, PineScape Synth 10.9, Time Warp Saw 8.0, Crackle n Pd Whl 7.6, Bounce Clav 6.3, Roto EP Ondre J 5.0), so those need two or more FX groups together, which was not tested. Best-single-group carriers: Mod 2 12 programs, Mod 1 3, delay 2, EQ, reverb, compressor 1 each. Organ tone wheels and the synth filter engine reduce the score in none of the 20. | EMPIRICAL (ablation, s4) |
 | Which programs does the chain not voice? | At key 60, velocity 100, 1,500 ticks held: **13 synth programs** (PNO core 2 window silent while native plays at -24 .. -40 dB RMS), **5 organ programs** (PNO core 1 lane silent), **3 SAMPLE programs** with no voice prepare (B3 Old Forest, Grand Vibra Bs, Unclocked Pad, as D154). Cause not diagnosed in the paths run. | EMPIRICAL |
 | Which programs lose a layer? | **24 SAMPLE programs** start fewer voices than they have scene I layers (22 have 3 layers and 2 voices, D154: the ARM starts 2 voices for 3 bound layers); native plays all layers. | EMPIRICAL |
 
@@ -68,7 +68,7 @@ Tags follow `.agents/rules/provenance-in-code.md`: **VERIFIED** = reproduced by 
 | 19 | Bank C/Bounce Clav | piano+synth | +8.48 | 5.49 | +0.13 | 14.74 | level | fx_compressor (6.29) |
 | 20 | Bank C/J3 Warm 80s Brs | synth | +2.13 | 12.01 | -0.09 | 14.66 | bands | fx_mod2 (1.51) |
 
-All twenty are carried by FX (s4). Their scores come from band shape (18 of 20 are dominated by `dBands`, 2 by level), not from level.
+In all twenty, only FX groups reduce the score when reverted (s4); for 6 of them a single group leaves more than 5. Their scores come from band shape (18 of 20 are dominated by `dBands`, 2 by level), not from level.
 
 ### 3.3 Chain flags
 
@@ -89,9 +89,9 @@ All twenty are carried by FX (s4). Their scores come from band shape (18 of 20 a
 | `fx_mod1` | 3 | Mod 1 firmware A-PAN / TREM against the engine |
 | `fx_delay` | 2 | delay laws and delay time |
 | `fx_eq`, `fx_reverb`, `fx_compressor` | 1 each | |
-| `organ_tone`, `synth_filter` | 0 | |
+| `organ_tone`, `synth_filter` | 0 | never reduce the score |
 
-Per program values are in [program-ranking-ablation.csv](data/program-ranking-ablation.csv) (score left when each group is reverted). The Mod 2 default (engine biquad / LFO models, D95 `ENS` ASSUMED taps) is the single largest distance to the oracle-verified path in the factory set. Not shown: the carrier of programs ranked 21 to 384 (not ablated).
+Carrier = best single-group revert; **only single-group reverts were run**, no pairs. Residual after the best revert: at most 2 in 7 programs, 2 to 5 in 7, above 5 in 6 (largest: Melody Pad 11.4 of 21.5, PineScape Synth 10.9 of 20.9, Time Warp Saw 8.0 of 17.3). Per program values are in [program-ranking-ablation.csv](data/program-ranking-ablation.csv) (score left when each group is reverted). The Mod 2 default (engine biquad / LFO models, D95 `ENS` ASSUMED taps) is the single largest distance to the oracle-verified path in the factory set. Not shown: the carrier of programs ranked 21 to 384 (not ablated).
 
 ## 5. What this does not say
 
@@ -102,16 +102,20 @@ Per program values are in [program-ranking-ablation.csv](data/program-ranking-ab
 
 ## Implications
 
-- The next audible gain for the factory set lies in **FX flips, not in the engines**: Mod 2 first (12 of the worst 20), then Mod 1, delay. Each default flip stays with the owner (D22, D136).
+- The largest distance to the oracle-verified paths in the factory set sits in **FX, not in the engines**: Mod 2 is the best single carrier of 12 of the worst 20, then Mod 1, delay; for 6 of the 20 a pair of FX groups is needed to explain it. Each default flip stays with the owner (D22, D136).
 - The oracle chain needs a **piano tap** and the 18 flagged organ and synth programs diagnosed before a per-program chain audio comparison is possible.
 - The SY ring peak must not be used as a level (stand-in sample).
 
 ## Follow-ups
 
-1. Ablate programs 21 to 384 (the tool takes `--ablate` and `--only`; about 20 s per program) to get a carrier for every program.
+1. Ablate pairs of FX groups for the 6 programs with a residual above 5, and programs 21 to 384 (the tool takes `--ablate` and `--only`; about 20 s per program) to get a carrier for every program.
 2. Diagnose the 13 `synth_chain_silent` and 5 `organ_chain_silent` programs (arp, split zone, hold length).
 3. A piano tap: PNO core 1 with the SMP stream (OQ in `docs/OPEN-QUESTIONS.md`).
 4. Re-run after any FX default flip: `tools/program_rank.py` regenerates both CSV files.
+
+## Refactor check (`program_sweep` -> `sweep_load.rs`)
+
+`program_sweep` was built from `origin/main` before the change and from this branch after it; `program_sweep <backup> --limit 8 --every 48 --frames 24000` (8 programs: every 48th, both modes, full decoded program JSON) gives byte-identical stdout, md5 `70bfe03dbba1b2f0ac4267cc9de17a0f` on both (VERIFIED, 2026-11-17).
 
 ## Reproduce
 
