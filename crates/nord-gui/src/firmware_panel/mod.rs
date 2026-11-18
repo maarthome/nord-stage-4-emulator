@@ -302,4 +302,22 @@ mod tests {
         assert!(height < 140.0, "bar height {height}");
         assert!(shapes > 0);
     }
+
+    #[test]
+    fn idle_skip_switch_reaches_every_rack_through_the_command_channel_and_reverts() {
+        let (handle, rx) = AudioHandle::new();
+        let mut panel = FirmwarePanelState::new(FirmwareOptions {
+            fx_idle_skip: true,
+            ..FirmwareOptions::default()
+        });
+        panel.push(&handle);
+        let mut engine = Stage4Engine::new(48_000.0);
+        let mut vol = 1.0;
+        apply_audio_command(rx.try_recv().unwrap(), &mut engine, &mut vol);
+        assert!(engine.fx_chains.iter().all(|c| c.idle_skip()));
+        panel.opts = FirmwareOptions::default();
+        panel.push(&handle);
+        apply_audio_command(rx.try_recv().unwrap(), &mut engine, &mut vol);
+        assert!(engine.fx_chains.iter().all(|c| !c.idle_skip()));
+    }
 }
