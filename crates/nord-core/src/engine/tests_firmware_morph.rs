@@ -1,4 +1,4 @@
-//! `Stage4Engine::firmware_morph` (opt-in, D157): ARM controller weights and the extra synth slots.
+//! `Stage4Engine::firmware_morph` (opt-in, D159): ARM controller weights and the extra synth slots.
 
 use super::*;
 

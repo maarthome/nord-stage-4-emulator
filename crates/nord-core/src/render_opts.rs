@@ -344,7 +344,7 @@ pub struct FirmwareOptions {
     pub synth_sustain_pedal: bool,
     /// `--firmware-morph`: Wheel / A.T. / Ctrl Ped weigh `v / 128` (full at 127) like the ARM and
     /// the Synth Osc Ctrl, resonance, LFO and filter-env morphs play (`Stage4Engine::firmware_morph`,
-    /// D157; opt-in).
+    /// D159; opt-in).
     pub firmware_morph: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,

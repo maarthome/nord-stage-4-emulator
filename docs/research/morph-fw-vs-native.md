@@ -1,6 +1,6 @@
 # Morph (Wheel, A.T., Ctrl Ped): firmware law against the native engine
 
-Checked: 2026-11-17 (task `ns4-kq1o`, decision [D157](../DECISIONS.md)).
+Checked: 2026-11-17 (task `ns4-kq1o`, decision [D159](../DECISIONS.md)).
 
 Sources: OS v1.66 ARM image run in the Unicorn harness (`tools/arm_program_morph.py`, Store-record
 recall of a program, MIDI on UART2); factory `Program/Bank A/Horizon Whl.ns4p` from the local

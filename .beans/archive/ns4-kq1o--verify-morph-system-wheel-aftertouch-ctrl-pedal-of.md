@@ -27,5 +27,5 @@ Default flips (owner decides). Arpeggiator.
 - ARM harness `tools/arm_program_morph.py` (recall a program, drive CC1/CC11/D0, log dispatch and DSP words), fit report `tools/morph_law_report.py`, test-program writer `tools/morph_test_program.py`, with tests.
 - Firmware law: weight `v / 128`, clamp on the sum, cutoff sender drops a step from frac 0.5 (245 series; `docs/research/morph-fw-vs-native.md`, data `docs/research/data/morph-*.csv`).
 - Native: opt-in `--firmware-morph` (`MorphControllers::firmware_weighted`, `synth_morph.rs`, sender step drop); default unchanged.
-- D157 (proposed), ROADMAP and OQ30 / OQ31 synced.
+- D159 (proposed), ROADMAP and OQ30 / OQ31 synced.
 - Horizon Whl: nothing differs at wheel 0; with wheel up native lacks the synth B env-amount morph and is up to 0.5 dB off on cutoff. Morph does not explain the owner's gap.

@@ -141,9 +141,9 @@ pub struct Stage4Engine {
     pub layer_levels: [MorphParameter; 7],
     pub synth_cutoff_morph: [MorphParameter; 3],
     /// Osc Ctrl / resonance / LFO / filter-env morph slots of the three Synth layers; they act only
-    /// while `firmware_morph` is on (`synth_morph.rs`, D157).
+    /// while `firmware_morph` is on (`synth_morph.rs`, D159).
     pub synth_morph: [crate::synth_morph::SynthMorphSet; 3],
-    /// Opt-in (`--firmware-morph`, D157): controller weights follow the ARM law `v / 128` (full at
+    /// Opt-in (`--firmware-morph`, D159): controller weights follow the ARM law `v / 128` (full at
     /// 127) and the five extra synth morph targets play. Default off.
     pub firmware_morph: bool,
     pub morph_controllers: MorphControllers,

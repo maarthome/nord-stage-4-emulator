@@ -24,7 +24,7 @@ pub struct MorphControllers {
 }
 
 impl MorphControllers {
-    /// The controllers weighted by the firmware law (opt-in `--firmware-morph`, D157).
+    /// The controllers weighted by the firmware law (opt-in `--firmware-morph`, D159).
     pub fn firmware_weighted(&self) -> Self {
         Self {
             mod_wheel: firmware_weight(self.mod_wheel),

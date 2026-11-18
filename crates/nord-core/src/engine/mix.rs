@@ -17,7 +17,7 @@ impl Stage4Engine {
         self.tick_organ_trigger();
         self.sync_synth_clock();
 
-        // Opt-in firmware weights `v / 128` (D157); the default keeps `v / 127`.
+        // Opt-in firmware weights `v / 128` (D159); the default keeps `v / 127`.
         let ctrl = if self.firmware_morph {
             self.morph_controllers.firmware_weighted()
         } else {

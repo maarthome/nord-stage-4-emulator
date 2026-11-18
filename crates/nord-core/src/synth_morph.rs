@@ -1,4 +1,4 @@
-//! Synth morph targets the engine had no slot for (opt-in `--firmware-morph`, D157): Osc Ctrl,
+//! Synth morph targets the engine had no slot for (opt-in `--firmware-morph`, D159): Osc Ctrl,
 //! filter resonance, LFO rate, LFO amount and filter envelope amount.
 //!
 //! The ARM re-dispatches every morph-assigned edit id with `base + sum(delta_i * w_i)` clamped to
@@ -66,6 +66,10 @@ pub fn sender_norm(norm: f32) -> f32 {
 
 /// LFO rate in Hz at a fractional table position `norm * 127` (geometric between steps, like
 /// `cutoff_norm_to_hz`).
+///
+/// ASSUMED: the firmware dispatch of the LFO rate id is `VERIFIED` only at integer steps (the table
+/// entries); the geometric interpolation between steps is the cutoff convention, not measured for
+/// the LFO. A static dispatch of a fractional LFO rate through the ORG / SY words would confirm it.
 pub fn lfo_norm_to_hz(norm: f32) -> f32 {
     let pos = norm.clamp(0.0, 1.0) * 127.0;
     let lo = (pos.floor() as usize).min(127);
@@ -82,6 +86,9 @@ impl SynthMorphSet {
             pulse_base: crate::synth_params::pulse_base_width(dec),
             ..Self::default()
         };
+        // ASSUMED: Osc Ctrl is stored in `detune` (0..10) and `pulse_base_width`; this inverse of the
+        // preset decode is not checked against the firmware words of a morphed Osc Ctrl. A wheel
+        // run on a program with an Osc Ctrl morph would confirm it.
         s.osc_ctrl.base = (dec.detune / 10.0).clamp(0.0, 1.0);
         s.resonance.base = (dec.filter_resonance / 0.95).clamp(0.0, 1.0);
         s.lfo_rate.base = dec.raw.map_or(0.0, |r| f32::from(r.lfo_rate_idx) / 127.0);
@@ -114,6 +121,9 @@ impl SynthMorphSet {
             crate::synth_params::set_osc_ctrl(synth, self.osc_ctrl.evaluate(ctrl), self.pulse_base);
         }
         if active(&self.resonance) {
+            // ASSUMED: `0.95` is the decode scale of `filter_resonance` (`cbin/synth_preset.rs`);
+            // the DSP word of a morphed resonance was not captured. A knob sweep of the resonance
+            // id through the SY words would confirm the scale.
             synth.resonance = self.resonance.evaluate(ctrl) * 0.95;
         }
         if active(&self.lfo_rate) {
