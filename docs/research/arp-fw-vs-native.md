@@ -62,7 +62,7 @@ Firmware (`arp-fw-events-a16.json`, velocity 100, 1.5 s per key set):
 
 Native default (`arp-native-a16-*.json`, comparison in `arp-cmp-*.json`): first on 150.0 ms, step 150.0 ms (spread 0.02 ms), gate 150.0 ms (1.0); single key A: one note-on. Chord C: 60 64 67 76 72 76 repeating. Single key C: 60 72 60 72.
 
-The firmware starts on the second pool note after a key-on because the capture restarts the master 3 ticks before the key-on; the first record is the pseudo note-off at 99.88 ms (`index 0`), then the first note-on at 149.88 ms. The cycle (not the first note) is the comparable quantity. The phase of a real key-on against the master clock is not sampled (open).
+The root note 60 of the cycle is **inferred, not observed**: the 1.5 s firmware lists show 64 67 72 76 79 84 79 76 72 67 and never the root; the pool is read from the mirror shape. The firmware starts on the second pool note after a key-on because the capture restarts the master 3 ticks before the key-on; the first record is the pseudo note-off at 99.88 ms (`index 0`), then the first note-on at 149.88 ms. The cycle (not the first note) is the comparable quantity. The phase of a real key-on against the master clock is not sampled (open).
 
 Cause of the native chord order (`synth/arp.rs`): UpDown without a fractional range uses `n_idx` mirrored over the chord only and `oct_offset = step / count`, so the octave never mirrors: 60 64 67, then 64+12, 60+12, 64+12. The ARM mirrors over the whole pool (`count * octaves` notes plus the root of the top octave) without repeating the end points.
 
