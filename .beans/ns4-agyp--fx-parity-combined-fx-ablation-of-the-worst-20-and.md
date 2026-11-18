@@ -31,4 +31,4 @@ Piano Touch, silent-program diagnosis, reverb ports (owner hears the firmware re
 - `tools/program_rank_combo.py` (+ tests): best single / pair / exact best set / greedy / smallest explaining set, flip tables, CSVs.
 - `FirmwareFx::PARITY` and `--firmware-fx-ports parity` (opt-in); `nord_tools::fx_parity` null test and `fx_parity_null` tool.
 - Research note `docs/research/program-ranking-fx.md`, data CSVs, D163 (proposed flip), spec s4.0c, ROADMAP 7b.4, OQ38, audio-remaining.
-- Default changed: `FirmwareFx::DEFAULT` = amp + Mod 2 (`LEGACY` = amp only, `--legacy-mod2`). 384 programs mean 5.35 to 3.78, 111 better, 15 worse (listed in the research note s3.4); `render_hash` `eb13063d...ca28` unchanged (golden FX sweep uses no raw Mod 2 words).
+- Default changed: `FirmwareFx::DEFAULT` = amp + Mod 2 (`LEGACY` = amp only, `--legacy-mod2`). 384 programs mean 5.35 to 3.78, 111 better, 15 worse (listed in the research note s3.4); `render_hash` `eb13063d...ca28` unchanged but not exercised by the hash scenario (golden FX sweep uses no raw Mod 2 words). Review fixes: GUI/plugin edits drop the raw words, `FxParams` and group copy carry them, bench scenarios and TD-18.

@@ -24,4 +24,4 @@ Manual p.52: the reverb Dry/Wet control provides a fully wet signal at its maxim
 - Needed: map each candidate release to its program (docs/research/data/video_part_a_programs.json) and to the layers that actually sound (scene masks and section enables, not only layer enable flags).
 
 ## Progress 2026-11-18
-The firmware ports for these FX exist (opt-in `FirmwareFx`). The ranked-distance evidence for flipping them (D163, `docs/research/program-ranking-fx.md`): `FirmwareFx::PARITY` takes the 384-program mean score from 5.35 to 1.66; default flip proposed, owner decision pending.
+Progress (D163, `docs/research/program-ranking-fx.md`): the reverb ports (`reverb_mix`, `reverb`) are left out of `FirmwareFx::PARITY` because the owner hears the firmware reverb worse by ear; Sine Rain Pad (16.6) is the reverb case left above 5 after PARITY. Opt-in, not flipped.

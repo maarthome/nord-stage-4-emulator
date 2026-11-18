@@ -19,4 +19,4 @@ delay_rate morph and Amp mode To Rotary are decoded but not applied.
 Firmware table work.
 
 ## Progress 2026-11-18
-The firmware ports for these FX exist (opt-in `FirmwareFx`). The ranked-distance evidence for flipping them (D163, `docs/research/program-ranking-fx.md`): `FirmwareFx::PARITY` takes the 384-program mean score from 5.35 to 1.66; default flip proposed, owner decision pending.
+Progress (D163, `docs/research/program-ranking-fx.md`): the delay time law (`delay_time`, with `delay_laws`) is in `FirmwareFx::PARITY` (opt-in); the 264 words match the oracle but the delay role has no hardware clip, so it is not flipped.
