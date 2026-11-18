@@ -231,6 +231,11 @@ impl FwLawStage {
         Some(me)
     }
 
+    /// The context, rings and routine (live install export).
+    pub(super) fn state(&self) -> (Routine, &Mod2State) {
+        (spec(self.ty).map_or(Routine::Ens, |s| s.routine), &self.st)
+    }
+
     /// The `kFx2Type` this stage was built for.
     pub(super) fn ty(&self) -> u8 {
         self.ty
