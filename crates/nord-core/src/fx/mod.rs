@@ -155,6 +155,8 @@ mod tests_fw_rvb_golden_data;
 #[cfg(test)]
 mod tests_fw_rvbm_color;
 #[cfg(test)]
+mod tests_fw_rvbm_floor;
+#[cfg(test)]
 mod tests_fw_rvbm_golden;
 #[cfg(test)]
 mod tests_fw_rvbm_golden_data;
