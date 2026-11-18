@@ -90,6 +90,7 @@ impl Stage4Engine {
         }
         if let Some(i) = (layer as usize).checked_sub(LayerId::SynthA as usize) {
             self.synth_cutoff_morph[i] = MorphParameter::new(DEFAULT_CUTOFF_NORM);
+            self.synth_morph[i] = Default::default();
         }
         fx.apply(&mut self.fx_chains[layer as usize]);
         self.layer_levels[layer as usize] = MorphParameter::new(DEFAULT_LEVEL);
