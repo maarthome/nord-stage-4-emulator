@@ -30,6 +30,10 @@ from pathlib import Path
 import program_rank
 
 WINDOW = "0xC1F89:4:2"  # voice record, 4 samples, stride 2 (D144)
+# EMPIRICAL (D164, `silent-programs.md`): the first arp step of Gravity Pattern reaches the DSP
+# about 2,900 ARM ticks after the key, so an arp program is held far longer than the 1,500 ticks of
+# the plain census. 15,000 ticks = 0.625 s = 1.25 beats at 120 bpm.
+ARP_KEY_TICKS = 15_000
 CHAINS = ("PNO1", "PNO2", "ORG2", "SY0")
 SY_FIELDS = ("prepare", "go", "peak", "audio_ticks", "first_audio_tick", "voice0_playing_tick")
 
@@ -66,7 +70,12 @@ def chip_args(ns: argparse.Namespace, chips: list[str]) -> list[str]:
 
 
 def live_command(
-    ns: argparse.Namespace, program: Path, out: Path, audio: bool, chips: list[str] | None = None
+    ns: argparse.Namespace,
+    program: Path,
+    out: Path,
+    audio: bool,
+    chips: list[str] | None = None,
+    key_ticks: int | None = None,
 ) -> list[str]:
     """`arm_dsp_live.py` command line of one run (census, or with the SY return path)."""
     fw = ns.fw_dir
@@ -81,6 +90,8 @@ def live_command(
     cmd += chip_args(ns, chips)
     if "SY0" in chips:
         cmd.append("--sy-timeline")
+    if key_ticks:
+        cmd += ["--key-ticks", str(key_ticks)]
     return [*cmd, "--return-path"] if audio else cmd
 
 
@@ -113,13 +124,13 @@ def finished(path: Path) -> set[str]:
 
 
 def run_live(
-    ns: argparse.Namespace, program: Path, audio: bool, chips: list[str]
+    ns: argparse.Namespace, program: Path, audio: bool, chips: list[str], key_ticks: int | None
 ) -> dict | None:  # pragma: no cover
     """One live run in a temp file; `None` when the harness failed."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "run.json"
         r = subprocess.run(  # noqa: S603
-            live_command(ns, program, out, audio, chips),
+            live_command(ns, program, out, audio, chips, key_ticks),
             capture_output=True,
             text=True,
             check=False,
@@ -130,13 +141,20 @@ def run_live(
 
 
 def record(
-    ns: argparse.Namespace, program: Path, audio: bool, chips: list[str]
+    ns: argparse.Namespace, program: Path, audio: bool, chips: list[str], key_ticks: int | None
 ) -> dict:  # pragma: no cover
     """Census record, plus the return-path run for the programs listed in `--audio-for`."""
-    rec = {"entry": entry_of(program), "census": run_live(ns, program, False, chips)}
-    rec["audio"] = run_live(ns, program, True, chips) if audio else None
+    rec = {"entry": entry_of(program), "census": run_live(ns, program, False, chips, key_ticks)}
+    rec["audio"] = run_live(ns, program, True, chips, key_ticks) if audio else None
     rec["chips"] = chips
+    rec["key_ticks"] = key_ticks
     return rec
+
+
+def key_ticks_for(expect: dict | None) -> int | None:
+    """Hold length of a program: `ARP_KEY_TICKS` when a scene I synth layer has its arpeggiator on
+    (line of `tools/program_expect.py`), else the census default (`None`)."""
+    return ARP_KEY_TICKS if expect and expect.get("arp") else None
 
 
 def programs_of(root: Path, only: str | None, every: int, limit: int) -> list[Path]:
@@ -154,6 +172,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
         ap.add_argument(f"--{name}", type=Path, required=True)
     ap.add_argument("--audio-for", type=Path, help="file with one backup entry name per line")
     ap.add_argument("--native", type=Path, required=True, help="program_rank lines (engines)")
+    ap.add_argument("--expect", type=Path, help="program_expect.py lines (arp: longer hold)")
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--only")
     ap.add_argument("--every", type=int, default=1)
@@ -163,13 +182,21 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     target = ns.out / "chain.jsonl"
     engine_of = {r["entry"]: program_rank.engines(r) for r in program_rank.load_jsonl(ns.native)}
     audio = set(ns.audio_for.read_text("utf-8").split("\n")) if ns.audio_for else set()
+    expect = {r["entry"]: r for r in program_rank.load_jsonl(ns.expect)} if ns.expect else {}
     todo = [
         p for p in programs_of(ns.programs, ns.only, ns.every, ns.limit)
         if entry_of(p) not in finished(target)
     ]  # fmt: skip
     with ThreadPoolExecutor(ns.workers) as pool, target.open("a", encoding="utf-8") as fh:
         jobs = [
-            pool.submit(record, ns, p, entry_of(p) in audio, chips_for(engine_of[entry_of(p)]))
+            pool.submit(
+                record,
+                ns,
+                p,
+                entry_of(p) in audio,
+                chips_for(engine_of[entry_of(p)]),
+                key_ticks_for(expect.get(entry_of(p))),
+            )
             for p in todo
         ]
         for job in as_completed(jobs):

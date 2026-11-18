@@ -75,8 +75,8 @@ In all twenty, only FX groups reduce the score when reverted (s4); for 6 of them
 | Flag | Programs | Notes |
 |---|---|---|
 | `piano_no_chain_tap` | 155 | piano layer in scene I; PNO core 1 lane stays 0 for every piano program run (B3 control: lane peak 0.0746). No verdict possible. |
-| `synth_chain_silent` | 13 | Dance Lead, Gravity Pattern, 70s CP Strings, Broken Chip, Calling Whl, Super Org Punch, 90s Organ, Dreamy Syn Tines, Gravity Whl, Moving Chords, Scream Lead AT, Shiny Synth Keys, Synth Engine. Native plays them at -21.8 .. -39.6 dB RMS. Not diagnosed (candidates: arpeggiator or aftertouch driven, split zone, hold shorter than the attack; none tested). |
-| `organ_chain_silent` | 5 | Ballad Layer Whl, Wormhole Organ (Pipe 1), Nox Split (Pipe 2), 24 Frames J3, J3 Grand Layers. The other 33 organ programs (B3 20 of 23, Vox 7 of 7, Farfisa 2 of 2, Pipe 1 2 of 3, Pipe 2 2 of 3) voice on PNO core 1. Not diagnosed. |
+| `synth_chain_silent` | 13 | Dance Lead, Gravity Pattern, 70s CP Strings, Broken Chip, Calling Whl, Super Org Punch, 90s Organ, Dreamy Syn Tines, Gravity Whl, Moving Chords, Scream Lead AT, Shiny Synth Keys, Synth Engine. Native plays them at -21.8 .. -39.6 dB RMS. Diagnosed in [silent-programs](silent-programs.md) (D164): 10 lost the per-program wavetable (L2 stores dropped by the Router, fixed), 4 are arp programs held too short (2 overlap), 1 (Synth Engine) is open. Native is not wrong. The numbers in this table are from the first census; rerun pending. |
+| `organ_chain_silent` | 5 | Ballad Layer Whl, Wormhole Organ (Pipe 1), Nox Split (Pipe 2), 24 Frames J3, J3 Grand Layers. The other 33 organ programs (B3 20 of 23, Vox 7 of 7, Farfisa 2 of 2, Pipe 1 2 of 3, Pipe 2 2 of 3) voice on PNO core 1. Diagnosed in [silent-programs](silent-programs.md) (D164): all 5 are legitimate firmware silences at key 60 (zone ends below the key, or stored level 0). |
 | `sample_layer_lost` | 24 | 22 with 3 layers (2 voices), Momentum Whl (2 layers, 1 voice), Quintet Bass Spl and Pizz Quintet Spl (1 voice). Same cause as D154 section 4.3: the third layer gets no voice in the harness. |
 | `sample_no_voice` | 3 | B3 Old Forest, Grand Vibra Bs, Unclocked Pad (D154 follow-up 3). |
 | `sample_voiced_no_audio` | 19 | of the 31 programs with a return-path run, 19 prepare a voice and the SY ring peak is 0 (the desync of D112 / D150); the 12 with audio all read 0.05394 (5 digits, identical across programs): that is the stand-in sample bound by `--ns4b`, **not** a program level. The SY ring peak carries no per-program level information. |
@@ -109,7 +109,7 @@ Carrier = best single-group revert; **only single-group reverts were run**, no p
 ## Follow-ups
 
 1. ~~Ablate pairs of FX groups for the 6 programs with a residual above 5~~ Done in [program-ranking-fx](program-ranking-fx.md) (D163): all 63 FX combinations for the worst 20 (Mod 2 plus EQ explain most; the six residual programs need three or four groups), and the before / after of an FX default flip on all 384. Still open: programs 21 to 384 have no carrier (`--ablate-fx`, about 15 s per program with `--jobs 20`).
-2. Diagnose the 13 `synth_chain_silent` and 5 `organ_chain_silent` programs (arp, split zone, hold length).
+2. ~~Diagnose the 13 `synth_chain_silent` and 5 `organ_chain_silent` programs~~ done in [silent-programs](silent-programs.md) (D164); rerun the census with `--expect`; Synth Engine open.
 3. A piano tap: PNO core 1 with the SMP stream (OQ in `docs/OPEN-QUESTIONS.md`).
 4. Re-run after any FX default flip: `tools/program_rank.py` regenerates both CSV files.
 
