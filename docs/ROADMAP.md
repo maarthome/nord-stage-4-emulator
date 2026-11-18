@@ -411,6 +411,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [x] Measured 24 kHz tick is the default for the Vox key timeline and the synth gain de-zipper ([D131](DECISIONS.md), `--legacy-1khz-tick` opts out; arp gate and PUMP unchanged; `render_hash` and the 384-program sweep byte-identical, the effect is in the opt-in Vox source and mid-note gain changes)
 - [x] Synth oscillator level per wave measured against the oracle ([D140](DECISIONS.md), [synth-osc-gain-oracle](research/synth-osc-gain-oracle.md)): stages and voice constant `0.25` equal the oracle within 0.1 dB; opt-in `--synth-p oracle` (idle rows `Other` / `Fm` / SHAPE square at 0.4, `synth_12db` RMS `+6.65 -> +0.21 dB`); fitted MULTI / SUPER / SHAPE triangle rows and native analog unison level open
 - [ ] Confirm the Vox key delays (now the 24 kHz default, D131, lower bounds in time) against a Vox attack clip or the measured ARM key-down work time, then drop or keep `--legacy-1khz-tick`; arp gate 2/3 and staccato plain arpeggio as an opt-in flag
+- [x] Program ranking of the 384 factory programs ([D158](DECISIONS.md), [program-ranking](research/program-ranking.md)): native default against the firmware-verified options, chain census flags, ablation of the worst 20 (all FX, Mod 2 first); open: ablate the other 364, diagnose 18 silent chain programs, piano tap (OQ38)
 
 ## Parallel Lanes & Bean Dependency Graph
 
