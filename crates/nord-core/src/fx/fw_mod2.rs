@@ -80,6 +80,11 @@ impl FwMod2Stage {
         self.core.ring()
     }
 
+    /// The chorus core (context and ring words, for the live install export).
+    pub(super) fn core(&self) -> &FwChorus {
+        &self.core
+    }
+
     /// Whether the stage runs the variation routine.
     pub(super) fn variation(&self) -> bool {
         self.core.kind() == ChorusKind::Variation
