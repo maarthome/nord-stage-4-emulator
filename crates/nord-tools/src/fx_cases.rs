@@ -9,8 +9,12 @@ use nord_core::engine::Stage4Engine;
 use nord_core::fx::{FirmwareFx, LayerFxChain};
 
 /// DSP frame rate (Hz): no rate scaling in the ports.
+/// VERIFIED: equals `FIRMWARE_FRAME_RATE_HZ` (`crates/nord-core/src/organ/lane_mix.rs`, 43,402.34375 Hz, the
+/// rate the live FX oracle runs at; `fx_live_native` and `tools/fx_vs_oracle.py` use the same value).
 pub const FS: f32 = 43_402.344;
 /// Octave bands of the band gains (Hz).
+/// ASSUMED: plain octave edges 31 .. 16,000 Hz chosen as a reporting grid, not a firmware quantity;
+/// they only label where a level or response difference sits.
 pub const BANDS: [(f64, f64); 9] = [
     (31.0, 63.0),
     (63.0, 125.0),

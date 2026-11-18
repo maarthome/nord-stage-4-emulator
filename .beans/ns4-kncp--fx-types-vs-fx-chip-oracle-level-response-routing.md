@@ -27,5 +27,5 @@ Default flips; Leslie gate install (D148/D155, record only).
 - `fx/fw_live.rs`: `live_install` exports port contexts (Mod 1, Mod 2, compressor) for the oracle; `tools/fx_vs_oracle.py` runs oracle and port on the same stimuli.
 - Opt-in `LayerFxChain::mod1_rest_frames` (default 2, 4 matches the live pass: null -100 dB).
 - `fx_engine_vs_fw` + `fx_cases.rs`: engine against port for every family; data in `docs/research/data/fx-*.csv`.
-- `docs/research/fx-vs-oracle.md`, D157, OQ38, ROADMAP 7b.4.
+- `docs/research/fx-vs-oracle.md`, D158, OQ38, ROADMAP 7b.4.
 - Result: every runnable port matches the oracle; engine paths differ (up to 17 dB reverb, 5.9 dB Mod 2). Not runnable: Leslie, amp drive live, EQ live, Stage reverb, delay feedback FX.
