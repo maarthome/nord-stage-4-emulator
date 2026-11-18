@@ -126,7 +126,7 @@ fn pack(neg: bool, r: u128, lsb: i32) -> E40 {
 }
 
 /// [`pack`] of a product of two 32-bit mantissas that both have their top bit set: `r` is in
-/// `[2^62, 2^64)`, so the shift is 30..=32 and no 128-bit arithmetic is needed. Same rounding
+/// `[2^62, 2^64)`, so the shift is 31..=32 and no 128-bit arithmetic is needed. Same rounding
 /// (ties to even) and flush as [`pack`]; `tests::product_pack_equals_the_generic_pack`.
 fn pack_product(neg: bool, r: u64, lsb: i32) -> E40 {
     let n = 64 - r.leading_zeros();

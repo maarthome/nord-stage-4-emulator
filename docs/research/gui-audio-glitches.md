@@ -51,6 +51,10 @@ Horizon Whl, Scene I, 480 frames, 6 keys + arpeggiator, `--firmware-fx`, min of 
 
 The `E40` change is a bit-identical 4 to 5 percent. The idle skip is a factor of 4 on a Scene I program because four of the seven racks (Organ B, Piano B, Synth B, Synth C) never get input. A Scene II program that plays all seven layers gets nothing from it (not measured: `--layers 7` only switches the scene flag, the loaded program decides which layers sound). Engine (non firmware) FX of the same program: 0.64 ms.
 
+## 4b. Why the GUI said `load 34%, 5% late` and the bench says 12 to 15 ms
+
+Both cannot describe the same render. Not verified (no GUI trace of the owner's session exists): the GUI run most likely did not have Horizon Whl's seven firmware Cathedral reverbs active. Evidence: the same bench **without** a loaded program (default racks: engine reverb `Stage` mix 0.15, `--firmware-fx` on, Scene II, 10 keys, 480 frames) gave mean 5.9 ms (59 percent) in a single run on this host, p99 14.7, 149 of 3000 late (5 percent), no keys held 3.4 ms (34 percent). That matches the GUI numbers (34 to 59 percent load, 5 percent late, one worst block far above the mean) and is host jitter on a render that is itself 30 to 60 percent of the budget. Loading Horizon Whl through the bench (`apply_program` with its FX words) takes the same flags to 12 to 15 ms. So the possible causes of the gap are: a different FX state in the GUI (the program's FX not applied, or applied later through another path), a faster host at the time, or both. What to check on the GUI machine: run `nord-stage4` with `--fx-idle-skip` off and on and compare the `load` figure after loading A:16; if load stays near 34 percent with the program loaded, the GUI program-load path does not enable the program's reverb racks and the bench overstates it.
+
 ## 5. Guidance
 
 - Scene II programs that play all seven layers with firmware reverbs need the reverb itself to get cheaper; the idle skip does not help them. `--audio-buffer 960` or 1440 gives the callback 20 to 30 ms and hides over-budget blocks at the price of latency (device buffer size, not the render block).
