@@ -6,6 +6,7 @@ Each decision records **Context, Decision, Why, Alternatives, Impact**, plus **S
 
 | # | Date | Decision | Status |
 |---|---|---|---|
+| [D157](#d157-fx-types-against-the-fx-chip-oracle-every-wired-port-matches-the-engine-paths-differ-4-frame-mod-1-option-opt-in) | 2026-11-17 | FX types against the FX chip oracle: every wired port matches, the engine paths differ; 4-frame Mod 1 option opt-in | proposed |
 | [D153](#d153-the-sy-chip-runs-live-behind-sharc-live-interrupt-driven-opt-in-the-stub-never-sent-go-because-the-arm-polls-inside-one-tick-with-the-poll-fed-go-is-sent-choir-reaches-playing-past-first-ring-is-not-shown) | 2026-11-17 | SY chip live on the ARM-DSP link, opt-in `--sy`; wait at `0xC01E26FC` explained | proposed |
 | [D154](#d154-sample-oracle-gaps-the-24-db-level-gap-is-a-harness-omission-the-4-mib-member-cap-hid-the-layers-the-per-loop-poke-is-replaced-by-crediton) | 2026-11-17 | SAMPLE oracle gaps: the 24 dB level gap is a harness omission (ring scale 24.08 dB), the 4 MiB member cap hid the layers (110 of 119 programs voice at key 60 with the whole member), the per-loop poke is replaced by `credit=on` | proposed |
 | [D152](#d152-pump-clock-word-dm0xc0230-is-not-in-the-smp-frame-no-arm-or-smp-writer-found-in-the-paths-run-span-and-zero-point-stay-assumed) | 2026-11-17 | PUMP clock word `DM(0xC0230)` is outside the SMP frame; no ARM or SMP writer found in the paths run; span and zero point stay ASSUMED | proposed |
@@ -1664,3 +1665,13 @@ The rate matches in all three; the score of the clock word is better than flag o
 - **Why:** The writer was not found, so a firmware-derived span does not exist; claiming one would be a guess.
 - **Alternatives:** Derive the span from 2.10 Hz (rejected: circular). Flip the default (rejected: open writer, one clip).
 - **Impact:** [pump-dsp-source](research/pump-dsp-source.md), [fx-mod-types](research/fx-mod-types.md) s7.2, OQ36, ROADMAP 7b, `fx/tests_fw_pump_sync.rs`.
+
+### D157. FX types against the FX chip oracle: every wired port matches, the engine paths differ; 4-frame Mod 1 option opt-in
+
+- **Status:** proposed 2026-11-17
+- **Decided by:** the parent session's task (compare every FX type of the engine with the FX chip; fixes only behind opt-in flags; no default flips)
+- **Context:** Only reverb type 0 and chorus had been compared with the FX chip (D125, D145). The engine paths of the other types had no firmware reference, and the live chain pass (4 frames) differs from the 2-frame call of the Mod 1 rest port.
+- **Decision:** (1) Export the port contexts (`fx/fw_live.rs`, `live_install`) so the SHARC oracle runs the same routine on the same stimulus; compare Mod 1, Mod 2, reverb types 0 and 2 to 11 (not 6) and the compressor with `tools/fx_vs_oracle.py`: all match (level delta 0.00 dB, null -72 dB or better). (2) Add `LayerFxChain::mod1_rest_frames` (default 2, opt-in 4) because RM / A-WAH / WAH / PUMP null only to -16 .. -26 dB at 2 frames and to -100 dB or better at 4. (3) Report engine against port per type in `fx_engine_vs_fw` and `docs/research/fx-vs-oracle.md`: the engine differs in level (up to 17 dB for reverb at amount 127, 5.9 dB for Mod 2) and response. (4) Record, not fix: amp drive 127 silent in the port, EQ and amp drive not run live, Leslie not installable, Stage reverb and delay feedback FX have no port. No default changes.
+- **Why:** A port that nulls the oracle is firmware-accurate, so engine against port is engine against firmware. The 4-frame mode matches the live pass exactly; whether the instrument calls the routines with 2 or 4 frames is unknown, so the default stays.
+- **Alternatives:** Flip defaults to the ports (rejected: needs the owner's OK, D22). Change the Mod 1 default to 4 frames (rejected: call count unverified). Fix the amp 127 silence (rejected: unchecked against the oracle).
+- **Impact:** `crates/nord-core/src/fx/{fw_live,fw_mod1_rest,mod}.rs` and the port stages (context export), `crates/nord-tools/src/{fx_cases,bin/fx_engine_vs_fw,bin/fx_live_install,bin/fx_live_native}.rs`, `tools/fx_vs_oracle.py`, `docs/research/fx-vs-oracle.md`, `docs/research/data/fx-*.csv`, OQ38, ROADMAP 7b.4.

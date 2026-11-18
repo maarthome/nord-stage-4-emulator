@@ -159,9 +159,12 @@ pub(super) struct FwMod1Rest {
     ty: u8,
     st: Mod2State,
     phase_scale: f64,
-    input: [[f32; 2]; 2],
-    output: [[f32; 2]; 2],
+    input: [[f32; 2]; 4],
+    output: [[f32; 2]; 4],
     pos: usize,
+    /// Frames per routine call: 2 (one block, the piano unit's boot word) or 4 (two blocks,
+    /// the live pass of the oracle harness, `docs/research/fx-vs-oracle.md`).
+    frames: usize,
     /// PUMP only: Master Clock division period in engine frames (`None`: free run).
     clock_period: Option<f64>,
     /// Phase multiplier `N` written to `c[-28]` under the clock (`fw_pump_clock`).
@@ -195,15 +198,31 @@ impl FwMod1Rest {
             ty,
             st,
             phase_scale: crate::organ::FIRMWARE_FRAME_RATE_HZ / f64::from(fs),
-            input: [[0.0; 2]; 2],
-            output: [[0.0; 2]; 2],
+            input: [[0.0; 2]; 4],
+            output: [[0.0; 2]; 4],
             pos: 0,
+            frames: 2,
             clock_period: None,
             clock_n: 1,
             clock: ClockWord::default(),
         };
         me.set_params(rate, amount);
         Some(me)
+    }
+
+    /// The context, rings and routine (live install export).
+    pub(super) fn state(&self) -> (Routine, &Mod2State) {
+        (spec(self.ty).map_or(Routine::Rm, |s| s.routine), &self.st)
+    }
+
+    /// Frames per routine call: 2 (default, one block) or 4 (two blocks); anything else is 2.
+    /// A change drops the collected frames.
+    pub(super) fn set_frames_per_call(&mut self, frames: usize) {
+        let frames = if frames == 4 { 4 } else { 2 };
+        if frames != self.frames {
+            self.frames = frames;
+            self.pos = 0;
+        }
     }
 
     /// Parks the stage: the type no longer matches any request, so the next use re-initialises
@@ -266,16 +285,17 @@ impl FwMod1Rest {
         let out = self.output[self.pos];
         self.input[self.pos] = frame;
         self.pos += 1;
-        if self.pos == 2 {
+        if self.pos == self.frames {
             self.pos = 0;
             let routine = spec(self.ty).map_or(Routine::Rm, |s| s.routine);
             if let Some(period) = self.clock_period {
                 // The clock word wraps every `N` divisions; one call is two frames.
-                self.st.ctx[index(CLOCK_WORD)] =
-                    self.clock.advance(2.0, period * f64::from(self.clock_n));
+                self.st.ctx[index(CLOCK_WORD)] = self
+                    .clock
+                    .advance(self.frames as f64, period * f64::from(self.clock_n));
             }
-            let mut block: [f32; 4] = std::array::from_fn(|i| self.input[i / 2][i % 2]);
-            process(routine, &mut self.st, &mut block);
+            let mut block: [f32; 8] = std::array::from_fn(|i| self.input[i / 2][i % 2]);
+            process(routine, &mut self.st, &mut block[..2 * self.frames]);
             self.output = std::array::from_fn(|k| [block[2 * k], block[2 * k + 1]]);
         }
         out
@@ -364,6 +384,21 @@ mod tests {
             let ratio = at(86_804.69) / at(43_402.34);
             assert!((ratio - 0.5).abs() < 1.0e-3, "type {ty}: {ratio}");
         }
+    }
+
+    #[test]
+    fn four_frames_per_call_gives_a_four_frame_latency_and_the_default_stays_two() {
+        let first_live = |frames: usize| {
+            let mut st = FwMod1Rest::new(4, 64, 64, 48_000.0).unwrap();
+            st.set_frames_per_call(frames);
+            (0..16)
+                .map(|i| st.process_frame([0.1 + 0.01 * i as f32, 0.2]))
+                .position(|f| f != [0.0, 0.0])
+                .unwrap()
+        };
+        assert_eq!(first_live(2), 2);
+        assert_eq!(first_live(4), 4);
+        assert_eq!(first_live(3), 2, "anything but 4 is the default");
     }
 
     #[test]
