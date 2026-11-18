@@ -92,8 +92,18 @@ impl Default for FirmwareFx {
 }
 
 impl FirmwareFx {
-    /// The engine default: only the verified firmware amp (`amp`, see its doc) is on.
+    /// The engine default: the verified firmware amp (`amp`, see its doc) and, since D163, the
+    /// firmware Mod 2 (`mod2`; `--legacy-mod2` turns it off). Mod 2 is the one family whose live
+    /// FX-chip null covers all 12 types (null -72 dB or better, level delta 0.00 dB,
+    /// `docs/research/fx-vs-oracle.md` s3.1) with the laws VERIFIED on a dense ARM grid (D90, D100).
     pub const DEFAULT: Self = Self {
+        amp: true,
+        mod2: true,
+        ..Self::OFF
+    };
+
+    /// The default before D163 (only `amp`), what `--legacy-all` and `--legacy-mod2` restore.
+    pub const LEGACY: Self = Self {
         amp: true,
         ..Self::OFF
     };
@@ -147,6 +157,9 @@ mod tests {
         assert_eq!(FirmwareFx::default(), FirmwareFx::DEFAULT);
         let d = std::hint::black_box(FirmwareFx::DEFAULT);
         assert!(d.amp && !d.delay_laws && !d.compressor);
+        assert!(d.mod2, "the firmware Mod 2 is the default since D163");
+        let legacy = std::hint::black_box(FirmwareFx::LEGACY);
+        assert!(!legacy.mod2 && legacy.amp);
         let all = std::hint::black_box(FirmwareFx::ALL);
         assert!(
             all.delay_laws
@@ -161,7 +174,7 @@ mod tests {
         );
         assert!(!d.reverb, "the firmware reverb is opt-in");
         assert!(!d.mod1 && all.mod1, "the firmware Mod 1 is opt-in");
-        assert!(!d.mod2 && all.mod2, "the firmware Mod 2 is opt-in");
+        assert!(all.mod2, "the firmware Mod 2 is part of ALL");
         assert!(!d.eq && all.eq, "the firmware EQ is opt-in");
         assert_ne!(all, FirmwareFx::OFF);
     }

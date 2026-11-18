@@ -482,6 +482,7 @@ impl FirmwareOptions {
             firmware_morph: false,
             sample_kernel_key: false,
             firmware_routing: false,
+            fx: FirmwareFx::LEGACY,
             ..Self::default()
         }
     }
@@ -577,6 +578,9 @@ impl FirmwareOptions {
         }
         if let Some(v) = value("--firmware-fx-ports") {
             o.fx.enable_ports(v)?;
+        }
+        if has("--legacy-mod2") {
+            o.fx.mod2 = false;
         }
         o.piano_firmware_level |= has("--firmware-piano-level");
         if has("--legacy-piano-level") {
@@ -725,6 +729,8 @@ impl FirmwareOptions {
         apply_firmware_options(engine, self.tone_source, self.filter_engine, false);
         for c in engine.fx_chains.iter_mut() {
             c.firmware_fx.merge_on(&self.fx);
+            // Mod 2 is on in the engine default (D163), so `--legacy-mod2` has to switch it off.
+            c.firmware_fx.mod2 = self.fx.mod2;
         }
         apply_piano_level(engine, self.piano_firmware_level);
         engine.piano_a.firmware_bus_scale = self.piano_bus_scale;
@@ -975,7 +981,16 @@ impl FirmwareOptions {
         if ports.len() == crate::fx::FX_PORT_NAMES.len() {
             parts.push("fx".into());
         } else {
-            parts.extend(ports.iter().map(|p| (*p).to_string()));
+            // Ports that are on by default (`mod2`, D163) are not an option; their absence is.
+            parts.extend(
+                ports
+                    .iter()
+                    .filter(|p| !FirmwareFx::DEFAULT.port(p))
+                    .map(|p| (*p).to_string()),
+            );
+            if FirmwareFx::DEFAULT.mod2 && !self.fx.mod2 {
+                parts.push("legacy-mod2".into());
+            }
         }
         if !self.piano_firmware_level {
             parts.push("legacy-piano".into());
@@ -1520,7 +1535,7 @@ mod tests {
     #[test]
     fn firmware_reverb_flag_switches_only_the_reverb() {
         let o = FirmwareOptions::from_args(&args(&["--firmware-reverb"])).unwrap();
-        assert!(o.fx.reverb && o.fx.ports_on() == ["reverb"]);
+        assert!(o.fx.reverb && o.fx.ports_on() == ["reverb", "mod2"]);
         let mut e = Stage4Engine::new(48_000.0);
         o.apply_to(&mut e);
         assert!(e.fx_chains.iter().all(|c| c.firmware_fx.reverb));

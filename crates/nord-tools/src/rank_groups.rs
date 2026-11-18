@@ -51,20 +51,40 @@ pub fn firmware_options() -> FirmwareOptions {
     }
 }
 
-/// `firmware` with the groups in `set` (indices into [`GROUPS`]) put back to the default.
-pub fn reverted_set(firmware: &FirmwareOptions, set: &[usize]) -> FirmwareOptions {
-    let mut o = *firmware;
-    for &g in set {
-        GROUPS[g].1(&mut o, &FirmwareOptions::default());
+/// The engine default the ranking compares against: `FirmwareOptions::default()`, or with
+/// `legacy_mod2` the default before D163 (firmware Mod 2 off), which reproduces the committed
+/// ranking data (`docs/research/data/program-ranking*.csv`). Since D163 the `fx_mod2` group is a
+/// no-op against the current default.
+pub fn baseline(legacy_mod2: bool) -> FirmwareOptions {
+    let mut o = FirmwareOptions::default();
+    if legacy_mod2 {
+        o.fx.mod2 = false;
     }
     o
 }
 
-/// The engine default with the groups in `set` switched to the firmware value (what a default flip
-/// of those groups would render); the other groups keep the default.
-pub fn flipped_set(firmware: &FirmwareOptions, set: &[usize]) -> FirmwareOptions {
+/// `firmware` with the groups in `set` (indices into [`GROUPS`]) put back to `base`.
+pub fn reverted_set(
+    firmware: &FirmwareOptions,
+    base: &FirmwareOptions,
+    set: &[usize],
+) -> FirmwareOptions {
+    let mut o = *firmware;
+    for &g in set {
+        GROUPS[g].1(&mut o, base);
+    }
+    o
+}
+
+/// `base` with the groups in `set` switched to the firmware value (what a default flip of those
+/// groups would render); the other groups keep `base`.
+pub fn flipped_set(
+    firmware: &FirmwareOptions,
+    base: &FirmwareOptions,
+    set: &[usize],
+) -> FirmwareOptions {
     let keep: Vec<usize> = (0..GROUP_COUNT).filter(|g| !set.contains(g)).collect();
-    reverted_set(firmware, &keep)
+    reverted_set(firmware, base, &keep)
 }
 
 /// Parses `fx_mod1+fx_mod2,fx_eq` (sets separated by `,`, groups by `+`) into group indices;
@@ -88,9 +108,13 @@ pub fn parse_sets(list: &str) -> Result<Vec<Vec<usize>>, String> {
         .collect()
 }
 
-/// `firmware` with one group put back to the default.
-pub fn reverted(firmware: &FirmwareOptions, group: usize) -> FirmwareOptions {
-    reverted_set(firmware, &[group])
+/// `firmware` with one group put back to `base`.
+pub fn reverted(
+    firmware: &FirmwareOptions,
+    base: &FirmwareOptions,
+    group: usize,
+) -> FirmwareOptions {
+    reverted_set(firmware, base, &[group])
 }
 
 /// Key of a combination: the group names joined by `+` in [`GROUPS`] order.
@@ -115,24 +139,45 @@ pub fn fx_subsets() -> Vec<Vec<usize>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nord_core::fx::FirmwareFx;
+
+    /// The default before D163: every group differs from the firmware options.
+    fn pre() -> FirmwareOptions {
+        baseline(true)
+    }
 
     #[test]
     fn groups_cover_every_difference() {
-        let firmware = firmware_options();
+        let (firmware, base) = (firmware_options(), pre());
         let all: Vec<usize> = (0..GROUP_COUNT).collect();
         assert_eq!(
-            reverted_set(&firmware, &all),
-            FirmwareOptions::default(),
+            reverted_set(&firmware, &base, &all),
+            base,
             "a group is missing"
         );
-        assert_ne!(firmware, FirmwareOptions::default());
+        assert_ne!(firmware, base);
         for g in 0..GROUP_COUNT {
             assert_ne!(
-                reverted(&firmware, g),
+                reverted(&firmware, &base, g),
                 firmware,
                 "group {g} changes nothing"
             );
         }
+    }
+
+    #[test]
+    fn mod2_group_is_a_no_op_against_the_current_default() {
+        let (firmware, now) = (firmware_options(), baseline(false));
+        assert_eq!(GROUPS[7].0, "fx_mod2");
+        assert_eq!(
+            reverted(&firmware, &now, 7),
+            firmware,
+            "Mod 2 is the default (D163)"
+        );
+        for g in (0..GROUP_COUNT).filter(|g| *g != 7) {
+            assert_ne!(reverted(&firmware, &now, g), firmware, "group {g}");
+        }
+        assert!(baseline(false).fx.mod2 && !baseline(true).fx.mod2);
     }
 
     #[test]
@@ -157,35 +202,35 @@ mod tests {
 
     #[test]
     fn reverting_all_fx_groups_leaves_only_engine_groups_different() {
-        let firmware = firmware_options();
+        let (firmware, base) = (firmware_options(), pre());
         let all_fx: Vec<usize> = (FIRST_FX..GROUP_COUNT).collect();
-        let o = reverted_set(&firmware, &all_fx);
-        assert_eq!(o.fx, FirmwareOptions::default().fx);
-        assert_ne!(o.tone_source, FirmwareOptions::default().tone_source);
+        let o = reverted_set(&firmware, &base, &all_fx);
+        assert_eq!(o.fx, base.fx);
+        assert_ne!(o.tone_source, base.tone_source);
     }
 
     #[test]
-    fn flipping_every_group_is_the_firmware_and_none_is_the_default() {
-        let firmware = firmware_options();
+    fn flipping_every_group_is_the_firmware_and_none_is_the_base() {
+        let (firmware, base) = (firmware_options(), pre());
         let all: Vec<usize> = (0..GROUP_COUNT).collect();
-        assert_eq!(flipped_set(&firmware, &all), firmware);
-        let none = flipped_set(&firmware, &[]);
-        assert_eq!(none.fx, FirmwareOptions::default().fx);
-        assert_eq!(none.tone_source, FirmwareOptions::default().tone_source);
+        assert_eq!(flipped_set(&firmware, &base, &all), firmware);
+        let none = flipped_set(&firmware, &base, &[]);
+        assert_eq!(none.fx, base.fx);
+        assert_eq!(none.tone_source, base.tone_source);
     }
 
     #[test]
     fn parity_groups_are_the_fx_ports_of_the_parity_preset() {
-        let o = flipped_set(&firmware_options(), &PARITY_GROUPS);
-        assert_eq!(o.fx, nord_core::fx::FirmwareFx::PARITY);
+        let o = flipped_set(&firmware_options(), &pre(), &PARITY_GROUPS);
+        assert_eq!(o.fx, FirmwareFx::PARITY);
         assert_eq!(GROUPS[4].0, "fx_reverb", "the one FX group left out");
         assert!(!PARITY_GROUPS.contains(&4));
     }
 
     #[test]
     fn flipping_one_group_changes_only_that_group() {
-        let (firmware, def) = (firmware_options(), FirmwareOptions::default());
-        let o = flipped_set(&firmware, &[7]);
+        let (firmware, def) = (firmware_options(), pre());
+        let o = flipped_set(&firmware, &def, &[7]);
         assert_eq!(o.fx.mod2, firmware.fx.mod2);
         assert_ne!(o.fx.mod2, def.fx.mod2);
         assert_eq!(o.fx.eq, def.fx.eq);

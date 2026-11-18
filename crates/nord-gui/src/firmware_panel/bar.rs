@@ -293,7 +293,8 @@ mod tests {
             assert!(fx.port_mut(n).is_some(), "{n}");
         }
         fx = FirmwareFx::DEFAULT;
-        assert_eq!(fx.ports_on().len(), 0);
+        assert_eq!(fx.ports_on(), ["mod2"], "Mod 2 is the default since D163");
+        assert!(FirmwareFx::LEGACY.ports_on().is_empty());
     }
 
     #[test]

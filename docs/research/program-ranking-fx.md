@@ -15,7 +15,7 @@ Tags follow `.agents/rules/provenance-in-code.md`: **VERIFIED** = reproduced by 
 | Is it only FX? | Reverting all six FX groups leaves 0.00 in all 20: organ tone wheels and the synth filter engine move none of them. | EMPIRICAL |
 | What does the firmware FX path buy? | Switching on every port but reverb (`FirmwareFx::PARITY`: delay laws and time, compressor, EQ, Mod 1, Mod 2) takes the **worst 20 from mean 18.14 to 2.19** (median 18.03 to 0.98, 2 of 20 above 5) and **all 384 programs from mean 5.35 to 1.66** (median 3.92 to 1.04, p90 12.72 to 3.84, max 22.15 to 16.61; programs above 5: 162 to 22; above 10: 61 to 3). 251 programs improve by more than 0.5, 127 stay within 0.5, 6 rise by more than 0.5 (largest +1.87, J3 80 Underscore 2.91 to 4.78). | EMPIRICAL |
 | Does the firmware path null against the oracle? | The stages do: every port that runs on the chip matches the oracle (D158: level delta 0.00 dB, null -72 dB or better; golden vectors per routine). The new test `nord_tools::fx_parity` shows the PARITY chain nulls against the single-port firmware model for every Mod 1, Mod 2, EQ and compressor case (-314 dB or better, compressor -86 dB) while the engine path does not (Mod 1 -10.7 to +3.7 dB, Mod 2 -7.3 to +3.1 dB at amounts 64 and 127, EQ -27.4 to -7.7 dB, compressor -15.1 to -2.9 dB). The PARITY null is the same stage code, so it proves the wiring, not the stage. | VERIFIED (wiring); stages VERIFIED by D158 |
-| Default flipped? | **No.** `FirmwareFx::PARITY` is a new opt-in preset (`--firmware-fx-ports parity`); the default is unchanged and `render_hash` is unchanged (`eb13063d4fca837a613670168a005b564c7f235a1578136d03955fa968d2ca28`, equal to `WHOLE` in `golden_render`). The flip is proposed in D163 for the owner. | VERIFIED |
+| Default flipped? | **Mod 2 only** (D163, owner approval relayed 2026-11-18): `FirmwareFx::DEFAULT` is amp + Mod 2, `--legacy-mod2` (and `--legacy-all`) turn it off. It is the one family whose live FX-chip null covers all 12 types (null -72 dB or better, level delta 0.00 dB, D158) and the default chain nulls against the port for all 36 Mod 2 cases (`nord_tools::fx_parity`; the legacy chain does not). All 384 programs, score before / after, against the all-firmware render: mean 5.35 to 3.78, median 3.92 to 2.76, p90 12.72 to 8.24, above 5 162 to 106, above 10 61 to 24; 111 programs improve by more than 0.5, 15 get worse (s3.4). `render_hash` unchanged (`eb13063d4fca837a613670168a005b564c7f235a1578136d03955fa968d2ca28`: the golden FX sweep sets Mod 2 by type without the raw words, so it stays on the engine path). EQ, Mod 1, compressor, delay and reverb stay opt-in (s4). | VERIFIED |
 
 ## 2. Method
 
@@ -95,13 +95,17 @@ After the PARITY set 22 programs stay above 5: 10 organ programs, 8 synth progra
 
 At amount 0 the engine and the port are identical (modulation off); the engine differs as soon as the effect is on. Amp rows are not part of the preset (the amp port is already the default). The drive 127 rows read silent in the port, as D158 and OQ38 record.
 
-## 4. Why it stays opt-in
+### 3.4 The Mod 2 default flip
 
-D22 needs the algorithm and the ARM to engine mapping VERIFIED and `render_hash` re-baselined; D136 adds the owner's rule that no hardware clip may get worse and that a missing clip needs the owner's OK. Per group of the PARITY set:
+`program_rank --flip fx_mod2` on the pre-flip default (`--legacy-mod2` reproduces it): 384 programs 5.35 to 3.78 mean, worst 20 18.14 to 9.67. 111 programs improve by more than 0.5, 258 stay within 0.5, 15 get worse by more than 0.5: Wah EP Ondre J 6.78 to 12.93, TapePiano AT 10.04 to 14.79, Stereo Wah Clav 10.37 to 15.07, Melody Pearls 5.40 to 9.43, Gravity Whl 2.92 to 5.79, Taped Wurly 0.81 to 3.54, Aerial Gaze 4.63 to 7.15, Long EP Ondre J 7.65 to 9.98, J3 80 Underscore 2.91 to 4.79, Breath Pad 5.60 to 6.86, Jazz Guitar II 12.50 to 13.54, Frozen Time Whl 1.26 to 2.30, Boxxx 6.23 to 7.10, 24 Frames J3 12.76 to 13.33, Ostinato Whl 1.64 to 2.16. Cause: a firmware Mod 2 after an engine Mod 1, EQ or compressor sees a different signal than in the all-firmware chain (the pairing result of s3.1: Mod 2 needs EQ), so those programs need the next flips, not a revert. Data: `docs/research/data/program-ranking-fx-flips-384.csv` (`after_flip_fx_mod2`). After the flip the ranking tool scores against the new default, where the `fx_mod2` group is a no-op; `--legacy-mod2` reproduces the committed pre-D163 numbers.
+
+## 4. Why the rest stays opt-in
+
+Mod 2 passed on the owner's rule for this PR (oracle null for every type, ranked distance and `render_hash` shown, opt-out kept; the chorus clip stays an open item). D22 needs the algorithm and the ARM to engine mapping VERIFIED and `render_hash` re-baselined; D136 adds the owner's rule that no hardware clip may get worse and that a missing clip needs the owner's OK. Per group of the PARITY set:
 
 | Group | VERIFIED | Open (blocks a default flip) |
 |---|---|---|
-| Mod 2 | routines (oracle 500/500 per type), laws on the dense ARM grid (D90, D100) | chorus delay 1.7 times the clip (fx-chorus-hw-clip s5, scope calibration ASSUMED); ENS and SPIN have no clip; the D22 bar "no side worse than 3 dB" is unmet for CHOR |
+| Mod 2 (**flipped**) | routines (oracle 500/500 per type), laws on the dense ARM grid (D90, D100) | not blocking after the flip; open: chorus delay 1.7 times the clip (fx-chorus-hw-clip s5, scope calibration ASSUMED); ENS and SPIN have no clip; the D22 bar "no side worse than 3 dB" is unmet for CHOR |
 | EQ | tone stack routine, gain law, bass and treble words | joint mid words, interpolation between captured indices and the organ unit routine layout ASSUMED; the recurrence runs at the engine rate (frequency factor 1.106, `--fx-rate-match`, D137) |
 | Mod 1 | A-PAN, TREM, RM, A-WAH, WAH (oracle) | RM / A-WAH / WAH / PUMP run at 2 frames per call (OQ38: the live pass is 4); PUMP free-runs at 6.11 Hz against 2.11 Hz on the hardware (OQ36) |
 | Delay | time law (oracle, 264 words) | `delay_laws` role EMPIRICAL, no delay clip |
@@ -121,12 +125,12 @@ This restates the audit of [firmware-flag-audit](firmware-flag-audit.md) per gro
 ## Implications
 
 - The FX path, not an engine, carries the largest distance of the factory set to the oracle-verified model; **Mod 2 plus EQ** is the pair behind most of the worst programs, and Mod 1, the compressor and the delay carry the ones that remain.
-- `--firmware-fx-ports parity` is the one switch that applies this evidence; D163 proposes making it the default once the owner has decided the open items of s4. What stays high after it is reverb (Sine Rain Pad, DistantGrand) and the organ programs.
+- Mod 2 is the default since D163; `--firmware-fx-ports parity` applies the rest of this evidence in one switch, and D163 proposes making it the default once the owner has decided the open items of s4. What stays high after it is reverb (Sine Rain Pad, DistantGrand) and the organ programs.
 - The cheapest items that would let the flip pass D136: a dry-reference Mod 2 clip (chorus delay), the EQ joint mid words, the Mod 1 call count.
 
 ## Follow-ups
 
-1. Owner decision on D163 (flip `FirmwareFx::DEFAULT` to `PARITY`, re-baseline `render_hash`, GUI default), or a smaller flip: `eq` + `mod1` + `mod2` takes the worst 20 from 18.14 to 4.74 and all 384 from 5.35 to 2.70 (the tables above).
+1. Owner decision on the rest of D163 (flip `FirmwareFx::DEFAULT` from amp + Mod 2 to `PARITY`, GUI default); `eq` + `mod1` + `mod2` is the smaller step: `eq` + `mod1` + `mod2` takes the worst 20 from 18.14 to 4.74 and all 384 from 5.35 to 2.70 (the tables above).
 2. Ablate the other 364 programs with `--ablate-fx` for a carrier per program (about 15 s each with `--jobs 20`).
 3. After the owner decides the reverb ports, re-run with `all-fx` and look at the 22 programs above 5 (organ tone and Leslie).
 4. Amp drive 127 reads silent in the port (OQ38); the amp port is on by default, so count the factory programs that set the drive to maximum.

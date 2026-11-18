@@ -125,6 +125,27 @@ mod tests {
         assert!(e > -30.0 && p < -120.0, "engine {e:.1} parity {p:.1}");
     }
 
+    /// D163: the default chain runs the firmware Mod 2, so it nulls against the oracle-checked port
+    /// for every Mod 2 type and amount, and `--legacy-mod2` (the `LEGACY` ports) does not.
+    #[test]
+    fn the_default_mod2_nulls_against_the_firmware_port_and_legacy_does_not() {
+        let mut n = 0;
+        for c in cases().iter().filter(|c| c.family == "mod2") {
+            let (x, _) = stimulus("noise", 4096);
+            let model = render(&mut chain(c, true), &x);
+            let default = render(&mut chain_with(c, FirmwareFx::DEFAULT), &x);
+            let legacy = render(&mut chain_with(c, FirmwareFx::LEGACY), &x);
+            let d = aligned_null_db(&default, &model);
+            assert!(d < -120.0, "{}: default null {d:.1} dB", c.label);
+            if c.label.ends_with("amt64") || c.label.ends_with("amt127") {
+                let l = aligned_null_db(&legacy, &model);
+                assert!(l > -40.0, "{}: legacy null {l:.1} dB", c.label);
+            }
+            n += 1;
+        }
+        assert_eq!(n, 36);
+    }
+
     #[test]
     fn the_reverb_ports_are_not_in_the_preset() {
         let reverb = cases().into_iter().find(|c| c.family == "reverb").unwrap();

@@ -12,10 +12,14 @@ fn args(v: &[&str]) -> Vec<String> {
 fn fx_ports_flag_selects_exactly_the_listed_ports() {
     let o =
         FirmwareOptions::from_args(&args(&["--firmware-fx-ports", "mod1,eq,compressor"])).unwrap();
-    assert_eq!(o.fx.ports_on(), ["compressor", "mod1", "eq"]);
+    assert_eq!(o.fx.ports_on(), ["compressor", "mod1", "mod2", "eq"]);
     let s = o.summary();
     assert!(s.contains("compressor") && s.contains("mod1") && s.contains("eq"));
     assert!(!s.contains("fx "), "not every port: {s}");
+    assert!(
+        !s.contains("mod2"),
+        "Mod 2 is a default, not an option: {s}"
+    );
     assert!(FirmwareOptions::from_args(&args(&["--firmware-fx-ports", "x"])).is_err());
     let all = FirmwareOptions::from_args(&args(&["--firmware-fx"])).unwrap();
     assert_eq!(all.fx, FirmwareFx::ALL);
@@ -178,4 +182,23 @@ fn fx_defaults_flag_is_opt_in_and_sets_the_firmware_words() {
     let mut plain = Stage4Engine::new(48_000.0);
     FirmwareOptions::default().apply_to(&mut plain);
     assert_eq!(plain.fx_chains[0].delay_time_ms, before);
+}
+
+#[test]
+fn mod2_is_the_default_and_legacy_mod2_turns_it_off() {
+    let d = FirmwareOptions::default();
+    assert!(d.fx.mod2 && d.summary() == "defaults", "{}", d.summary());
+    let l = FirmwareOptions::from_args(&args(&["--legacy-mod2"])).unwrap();
+    assert!(!l.fx.mod2 && l.fx == FirmwareFx::LEGACY);
+    assert!(l.summary().contains("legacy-mod2"), "{}", l.summary());
+    // `--legacy-mod2` wins over a port list given before it, and `--legacy-all` restores the old FX default.
+    let w = FirmwareOptions::from_args(&args(&["--firmware-fx-ports", "mod2,eq", "--legacy-mod2"]))
+        .unwrap();
+    assert!(!w.fx.mod2 && w.fx.eq);
+    assert_eq!(FirmwareOptions::legacy_all().fx, FirmwareFx::LEGACY);
+    let mut e = Stage4Engine::new(48_000.0);
+    l.apply_to(&mut e);
+    assert!(e.fx_chains.iter().all(|c| !c.firmware_fx.mod2));
+    d.apply_to(&mut e);
+    assert!(e.fx_chains.iter().all(|c| c.firmware_fx.mod2));
 }

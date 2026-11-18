@@ -7,20 +7,21 @@
 //! to the engine default), which says which group carries the distance. `--ablate-fx` renders every
 //! non-empty combination of the six FX groups put back to the default (63 renders, `--jobs N`
 //! threads), for the pairs and the best set that `tools/program_rank_combo.py` derives. Numbers only; no audio,
-//! firmware or sample content. `--flip SETS` (`fx_mod1+fx_mod2,fx_eq`, `all-fx`, or `every-fx` for
+//! firmware or sample content. `--legacy-mod2` ranks against the engine default before D163 (firmware
+//! Mod 2 off), which reproduces the committed ranking data. `--flip SETS` (`fx_mod1+fx_mod2,fx_eq`, `all-fx`, or `every-fx` for
 //! all 63 combinations) renders the engine default with those groups switched to the firmware value:
 //! what a default flip of the group would sound like, to compare against the firmware render.
 //!
 //! Usage: `cargo run --release -p nord-tools --bin program_rank -- <backup.ns4b> [--note 60]
-//! [--velocity 100] [--limit N] [--only S] [--every K] [--ablate] [--ablate-fx] [--flip SETS|every-fx] [--jobs N]`. Release build only (stack depth in the FX
+//! [--velocity 100] [--limit N] [--only S] [--every K] [--ablate] [--ablate-fx] [--flip SETS|every-fx] [--legacy-mod2] [--jobs N]`. Release build only (stack depth in the FX
 //! chains). `tools/program_rank.py` joins the lines with the chain census.
 
 use nord_core::cbin::{CbinFile, Ns4BackupArchive, ProgramDecoded, ProgramSoundRefs};
 use nord_core::render::render_timeline;
 use nord_core::render_opts::FirmwareOptions;
 use nord_tools::rank_groups::{
-    firmware_options, flipped_set, fx_subsets, parse_sets, reverted, reverted_set, subset_key,
-    GROUPS,
+    baseline, firmware_options, flipped_set, fx_subsets, parse_sets, reverted, reverted_set,
+    subset_key, GROUPS,
 };
 use nord_tools::rank_metrics::{mono, note_metrics, NoteMetrics, ANALYSIS_FRAMES};
 use nord_tools::sweep_load::{
@@ -149,6 +150,7 @@ fn main() -> Result<(), String> {
         .collect();
     std::panic::set_hook(Box::new(|_| {}));
     let firmware = firmware_options();
+    let base = baseline(args.iter().any(|a| a == "--legacy-mod2"));
     for name in names {
         let bytes = archive
             .read_entry(&mut file, &name)
@@ -159,7 +161,7 @@ fn main() -> Result<(), String> {
         let refs = archive.resolve_program_sounds(&prog);
         load_sounds(&archive, &mut file, &refs, &mut pianos, &mut synths);
         let run = |o: &FirmwareOptions| measure(&prog, &refs, &pianos, &synths, o, note, velocity);
-        let default = run(&FirmwareOptions::default());
+        let default = run(&base);
         let fw = run(&firmware);
         let mut line = json!({
             "entry": name,
@@ -174,7 +176,7 @@ fn main() -> Result<(), String> {
         });
         if !flips.is_empty() {
             let results = run_parallel(&flips, jobs, |set| {
-                metrics_json(&run(&flipped_set(&firmware, set)))
+                metrics_json(&run(&flipped_set(&firmware, &base, set)))
             });
             let map: serde_json::Map<String, Value> = flips
                 .iter()
@@ -186,7 +188,7 @@ fn main() -> Result<(), String> {
         if ablate_fx {
             let sets = fx_subsets();
             let results = run_parallel(&sets, jobs, |set| {
-                metrics_json(&run(&reverted_set(&firmware, set)))
+                metrics_json(&run(&reverted_set(&firmware, &base, set)))
             });
             let map: serde_json::Map<String, Value> = sets
                 .iter()
@@ -200,7 +202,7 @@ fn main() -> Result<(), String> {
                 .map(|g| {
                     (
                         GROUPS[g].0.to_string(),
-                        metrics_json(&run(&reverted(&firmware, g))),
+                        metrics_json(&run(&reverted(&firmware, &base, g))),
                     )
                 })
                 .collect();

@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn list_parsing_merges_and_rejects_unknown() {
-        let mut f = FirmwareFx::DEFAULT;
+        let mut f = FirmwareFx::LEGACY;
         f.enable_ports("reverb, mod2").unwrap();
         assert_eq!(f.ports_on(), ["reverb", "mod2"]);
         assert!(f.amp, "amp untouched");
@@ -110,6 +110,12 @@ mod tests {
         assert!(off.enable_ports("nope").is_err());
         let mut g = FirmwareFx::OFF;
         g.merge_on(&FirmwareFx::DEFAULT);
-        assert!(g.amp && g.ports_on().is_empty());
+        assert!(
+            g.amp && g.ports_on() == ["mod2"],
+            "the default is amp and Mod 2 (D163)"
+        );
+        let mut l = FirmwareFx::OFF;
+        l.merge_on(&FirmwareFx::LEGACY);
+        assert!(l.amp && l.ports_on().is_empty());
     }
 }
