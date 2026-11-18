@@ -169,7 +169,15 @@ pub const ARP: SwitchInfo = sw(
     "--legacy-arp",
     "Firmware arpeggiator",
     Mixed,
-    "UP/DOWN walks the whole octave pool and the plain arpeggio / E step ends at 2/3 of the step, as the ARM pattern player does (A:16 replay: step, gate 0.667, note cycle); on by default since D166 (owner approval 2026-11-18); the grid flag writer is unknown and no hardware clip exists (OQ32), so the real gate is the replayed boot state. --legacy-arp restores the engine walk and the note held to the next step.",
+    "Up / Down / Up-Down walk the whole octave pool and a single held key retriggers every step, as the ARM pattern player does (30 A:16 replays, range law fitted to 14 raw values); on by default since D166 (owner approval 2026-11-18). --legacy-arp restores the engine walk (and turns the gate switch off).",
+);
+/// Synth arpeggiator gate (`--arp-fw-gate`, opt-in).
+pub const ARP_GATE: SwitchInfo = sw(
+    "Synth",
+    "--arp-fw-gate",
+    "Arp gate 2/3 step",
+    Assumed,
+    "E steps and the plain arpeggio end at 2/3 of the step (A:16 replay: gate 100 of 150 ms in 30 of 30 captures). Opt-in: the 2/3 is the replayed boot state of the pattern grid, the flag writer is unknown and no hardware clip exists (OQ32, D130), so it is not verified on the instrument. Off keeps the engine gate (E = 4/8 of a step, a plain arpeggio note held to the next step)."
 );
 /// Synth morph (`--firmware-morph` / `--legacy-morph`).
 pub const MORPH: SwitchInfo = sw(
@@ -391,7 +399,7 @@ pub const IDLE_SKIP: SwitchInfo = sw(
 );
 
 /// All switches in bar order.
-pub const ALL: [SwitchInfo; 40] = [
+pub const ALL: [SwitchInfo; 41] = [
     TONE,
     B3_TAIL,
     FARFISA,
@@ -412,6 +420,7 @@ pub const ALL: [SwitchInfo; 40] = [
     KNOB_LAWS,
     SYNTH_VELOCITY,
     ARP,
+    ARP_GATE,
     MORPH,
     P_TABLE,
     FILTER,

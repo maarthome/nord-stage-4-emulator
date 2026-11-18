@@ -5,7 +5,7 @@
 //! Usage: `cargo run --release -p nord-tools --bin program_sweep -- <backup.ns4b>
 //! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V]
 //! [--synth-velocity] [--legacy-synth-velocity] [--legacy-arp]
-//! [--legacy-morph] [--wheel V] [--aftertouch V] [--pedal V]`
+//! [--arp-fw-gate] [--legacy-morph] [--wheel V] [--aftertouch V] [--pedal V]`
 //! (`--synth-velocity` is a no-op since D142 made the firmware synth velocity law the default;
 //! `--legacy-synth-velocity` renders both modes with the linear blend; `--legacy-arp` and
 //! `--legacy-morph` restore the pre-D166 arpeggiator and morph law in both modes; `--wheel`,
@@ -24,6 +24,7 @@ use nord_core::render_opts::FirmwareOptions;
 use nord_core::sinc::key_rule::kernel_for_key;
 use nord_core::sweep::{analyze, rms_delta_db};
 use nord_core::synth::SynthSampleSound;
+use nord_tools::sweep_flags::{apply_legacy_flags, controller_events};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs::File;
@@ -76,34 +77,6 @@ fn events(notes: &[u8], velocity: u8, hold: usize) -> Vec<TimedEvent> {
             },
         });
     }
-    v
-}
-
-/// Controller messages sent before the notes: Mod Wheel (CC 1), the Control Pedal (CC 11) and
-/// channel aftertouch, each only when its value is given.
-fn controller_events(
-    wheel: Option<u8>,
-    aftertouch: Option<u8>,
-    pedal: Option<u8>,
-) -> Vec<TimedEvent> {
-    let cc = |controller, value: u8| TimedEvent {
-        frame: 0,
-        event: MidiEvent::ControlChange {
-            channel: 0,
-            controller,
-            value: value.min(127),
-        },
-    };
-    let mut v = Vec::new();
-    v.extend(wheel.map(|x| cc(1, x)));
-    v.extend(pedal.map(|x| cc(11, x)));
-    v.extend(aftertouch.map(|x| TimedEvent {
-        frame: 0,
-        event: MidiEvent::ChannelAftertouch {
-            channel: 0,
-            pressure: x.min(127),
-        },
-    }));
     v
 }
 
@@ -165,16 +138,6 @@ fn apply_synth_velocity_flags(o: &mut FirmwareOptions, args: &[String]) {
     }
     if args.iter().any(|a| a == "--legacy-synth-velocity") {
         o.synth_velocity_fw = false;
-    }
-}
-
-/// `--legacy-arp` / `--legacy-morph` restore the pre-D166 arpeggiator and morph law.
-fn apply_legacy_flags(o: &mut FirmwareOptions, args: &[String]) {
-    if args.iter().any(|a| a == "--legacy-arp") {
-        o.arp_firmware = false;
-    }
-    if args.iter().any(|a| a == "--legacy-morph") {
-        o.firmware_morph = false;
     }
 }
 
@@ -356,45 +319,6 @@ mod tests {
             &args(&["--synth-velocity", "--legacy-synth-velocity"]),
         );
         assert!(!o.synth_velocity_fw);
-    }
-
-    #[test]
-    fn legacy_flags_turn_the_arp_and_morph_defaults_off_in_both_modes() {
-        let mut o = FirmwareOptions::default();
-        apply_legacy_flags(&mut o, &args(&[]));
-        assert!(o.arp_firmware && o.firmware_morph);
-        apply_legacy_flags(&mut o, &args(&["--legacy-arp"]));
-        assert!(!o.arp_firmware && o.firmware_morph);
-        apply_legacy_flags(&mut o, &args(&["--legacy-morph"]));
-        assert!(!o.firmware_morph);
-    }
-
-    #[test]
-    fn controller_events_send_only_the_given_controllers() {
-        assert!(controller_events(None, None, None).is_empty());
-        let ev = controller_events(Some(127), Some(64), Some(200));
-        assert_eq!(ev.len(), 3);
-        assert!(ev.iter().all(|e| e.frame == 0));
-        assert!(matches!(
-            ev[0].event,
-            MidiEvent::ControlChange {
-                controller: 1,
-                value: 127,
-                ..
-            }
-        ));
-        assert!(matches!(
-            ev[1].event,
-            MidiEvent::ControlChange {
-                controller: 11,
-                value: 127,
-                ..
-            }
-        ));
-        assert!(matches!(
-            ev[2].event,
-            MidiEvent::ChannelAftertouch { pressure: 64, .. }
-        ));
     }
 
     #[test]

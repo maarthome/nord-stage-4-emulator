@@ -337,8 +337,8 @@ pub struct FirmwareOptions {
     pub synth_layer_law: bool,
     /// The Vox key timeline and the synth gain de-zipper run on the measured 24 kHz ARM timer tick
     /// (default on, VERIFIED: `docs/research/arm-tick-timers.md`, D131);
-    /// `--legacy-1khz-tick` restores the 1 ms tick. The arp gate (OQ32) and PUMP (OQ36) are not
-    /// part of this switch.
+    /// `--legacy-1khz-tick` restores the 1 ms tick. The arp gate (`--arp-fw-gate`, OQ32) and PUMP
+    /// (OQ36) are not part of this switch.
     pub measured_tick: bool,
     /// `--synth-sustain-pedal`: the sustain pedal (CC 64) also holds the three synth layers
     /// (`PedalState::sustped`, opt-in; ASSUMED, the SUSTPED default of the hardware synth layers
@@ -349,11 +349,15 @@ pub struct FirmwareOptions {
     /// (`Stage4Engine::firmware_morph`, D159). VERIFIED by ARM run on 245 series; on by default
     /// since D166 (owner approval 2026-11-18); `--legacy-morph` and `--legacy-all` turn it off.
     pub firmware_morph: bool,
-    /// `--legacy-arp`: the firmware arpeggiator walk (UP/DOWN over the whole octave pool) and the
-    /// 2/3-step gate (`SynthLayer::arp_firmware_walk`, `arp_firmware_gate`; D162, D166). On by
+    /// `--legacy-arp`: the firmware arpeggiator walk (Up / Down / Up-Down over the whole octave
+    /// pool, a single held key retriggers; `SynthLayer::arp_firmware_walk`; D162, D166). On by
     /// default since D166 (owner approval 2026-11-18); `--legacy-arp` and `--legacy-all` turn it
-    /// off. `--arp-fw-walk` and `--arp-firmware` stay accepted.
+    /// off (and the gate with it). `--arp-fw-walk` and `--arp-firmware` stay accepted.
     pub arp_firmware: bool,
+    /// `--arp-fw-gate`: Arp / Poly `E` steps and the plain arpeggio last 2/3 of a step
+    /// (`SynthLayer::arp_firmware_gate`). **Opt-in** (default off, D166): VERIFIED only in the
+    /// replayed boot state, no hardware clip (OQ32, D130). `--firmware-all` turns it on.
+    pub arp_firmware_gate: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,
     /// `--synth-shape <0..1>`: strip shape word of the SHAPE oscillator (`fw_shape.rs`) in
@@ -449,6 +453,7 @@ impl Default for FirmwareOptions {
             synth_sustain_pedal: false,
             firmware_morph: true,
             arp_firmware: true,
+            arp_firmware_gate: false,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -491,6 +496,7 @@ impl FirmwareOptions {
             synth_sustain_pedal: false,
             firmware_morph: false,
             arp_firmware: false,
+            arp_firmware_gate: false,
             sample_kernel_key: false,
             firmware_routing: false,
             ..Self::default()
@@ -523,6 +529,7 @@ impl FirmwareOptions {
             synth_sustain_pedal: false,
             firmware_morph: true,
             arp_firmware: true,
+            arp_firmware_gate: true,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -615,8 +622,10 @@ impl FirmwareOptions {
             o.firmware_morph = false;
         }
         o.arp_firmware |= has("--arp-firmware") || has("--arp-fw-walk");
+        o.arp_firmware_gate |= has("--arp-fw-gate");
         if has("--legacy-arp") {
             o.arp_firmware = false;
+            o.arp_firmware_gate = false;
         }
         if has("--legacy-1khz-tick") {
             o.measured_tick = false;
@@ -764,7 +773,11 @@ impl FirmwareOptions {
         crate::render_opts_tick::apply_measured_tick(engine, self.measured_tick);
         apply_synth_sustain(engine, self.synth_sustain_pedal);
         engine.firmware_morph = self.firmware_morph;
-        crate::render_opts_arp::apply_arp_firmware(engine, self.arp_firmware);
+        crate::render_opts_arp::apply_arp_firmware(
+            engine,
+            self.arp_firmware,
+            self.arp_firmware_gate,
+        );
         if self.fx_defaults {
             for c in engine.fx_chains.iter_mut() {
                 c.apply_firmware_defaults();
@@ -842,7 +855,11 @@ impl FirmwareOptions {
         crate::render_opts_tick::apply_measured_tick(engine, self.measured_tick);
         apply_synth_sustain(engine, self.synth_sustain_pedal);
         engine.firmware_morph = self.firmware_morph;
-        crate::render_opts_arp::apply_arp_firmware(engine, self.arp_firmware);
+        crate::render_opts_arp::apply_arp_firmware(
+            engine,
+            self.arp_firmware,
+            self.arp_firmware_gate,
+        );
         if self.fx_defaults {
             for c in engine.fx_chains.iter_mut() {
                 c.apply_firmware_defaults();
@@ -1055,6 +1072,9 @@ impl FirmwareOptions {
         }
         if !self.arp_firmware {
             parts.push("legacy-arp".into());
+        }
+        if self.arp_firmware_gate {
+            parts.push("arp-fw-gate".into());
         }
         if let Some(m) = self.synth_shape_milli {
             parts.push(format!("shape={:.2}", f32::from(m) / 1000.0));

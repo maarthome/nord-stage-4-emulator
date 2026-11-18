@@ -139,5 +139,6 @@ it explains the video.
   targets: nothing differs between a morphed and a static dispatch of the same edit value.
 - With `--firmware-morph` the native synth morph acts on the engine fields (`resonance`,
   `osc_ctrl`, `lfo_*`, `filter_env_amount`); the strip knob words of the firmware synth path
-  (`strip_knobs`) are not re-sent. Layer clipboard copy and paste do not carry the five new
-  slots.
+  (`strip_knobs`) are not re-sent. Copy, Paste and Clear Morph carry the five new slots since D166
+  (`engine/morph_clip.rs`); a live edit of one of the five fields becomes the new base
+  (`SynthMorphSet::apply`), and cleared depths put the base back once.

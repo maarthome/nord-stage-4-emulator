@@ -4,7 +4,7 @@
 //! (`docs/research/arp-fw-vs-native.md`).
 //!
 //! Usage: `cargo run --release -p nord-tools --bin arp_trace -- <program.ns4p> [--keys 60,64,67]
-//! [--seconds 3] [--velocity 100] [--tempo 100] [--legacy-arp] [--hold] [firmware option flags]`.
+//! [--seconds 3] [--velocity 100] [--tempo 100] [--legacy-arp] [--arp-fw-gate] [--hold] [firmware option flags]`.
 //! `--tempo` overrides the program's Master Clock tempo; `--hold` keeps the keys down for the
 //! whole run (the default), `--release-at S` sends the note-offs at second `S`.
 
@@ -127,7 +127,7 @@ fn run(args: &[String]) -> Result<(), String> {
     ];
     println!(
         "{}",
-        json!({"program": file_name(path), "arp_firmware": opts.arp_firmware, "keys": keys, "seconds": seconds, "layers": layers})
+        json!({"program": file_name(path), "arp_firmware": opts.arp_firmware, "arp_firmware_gate": opts.arp_firmware_gate, "keys": keys, "seconds": seconds, "layers": layers})
     );
     Ok(())
 }

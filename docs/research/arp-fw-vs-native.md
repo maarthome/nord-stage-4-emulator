@@ -16,7 +16,7 @@ python tools/arp_video_onsets.py <horizon_285_345.wav> --t0 285 --window 287:300
 
 ## 1. Short answer
 
-| Item | ARM firmware | Native (default) | Native `--arp-fw-walk` |
+| Item | ARM firmware | Native before D166 (= `--legacy-arp`) | Native with the firmware walk (default since D166; the gate row needs `--arp-fw-gate`) |
 |---|---|---|---|
 | Step (A and C, 100 BPM) | 150.0 ms (input, see s3) | 150.0 ms | 150.0 ms |
 | Video step | 150.0 ms (comb fit 0.859) | | |
@@ -92,7 +92,7 @@ Method: the original `.ns4p` bits of A:16 were patched (direction and RANGE of l
 
 Span brackets (semitones, pool holds offsets below the span): raw 0 and 7 (7, 12]; 14 (12, 15]; 16 (16, 19]; 28 and 32 (19, 24]; 42 (24, 27]; 47 (24, 28]; 57 and 63 (31, 36]; 95 and 126 (43, 48]; 127 above 36 and at most 48. The knots sit inside every bracket; between the captured raw values the law is interpolated (ASSUMED). The decoded step of the knob (4 semitones per detent) was not seen.
 
-Gate source: constant 2/3 in every capture is the replayed boot grid (s1 and `arm-tick-timers.md` s6). Not seen on hardware; the flag writer is unknown (OQ32).
+Gate source: constant 2/3 in every capture is the replayed boot grid (s1 and `arm-tick-timers.md` s6): the 30 captures are one observation of one replayed state, not 30 independent ones. Not seen on hardware; the flag writer is unknown (OQ32). So the gate is opt-in (`--arp-fw-gate`, D166) while the walk and the retrigger are the default.
 
 Video envelope fold (the gate against the 150 ms comb of the Part A clip): inconclusive, the arp sits under the wheel and other material, so the clip cannot separate 1/2 from 2/3. It is not evidence either way.
 

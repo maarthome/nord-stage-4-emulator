@@ -6,6 +6,7 @@ pub mod fx_cases;
 pub mod leslie_probe;
 pub mod reverb_measure;
 pub mod smp_stream;
+pub mod sweep_flags;
 pub mod touch_census;
 pub mod velocity_census;
 pub mod wav_io;
