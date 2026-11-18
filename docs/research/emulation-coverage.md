@@ -231,7 +231,7 @@ Status columns: **Fw** = verified against firmware or oracle, **Clip** = fitted 
 |---|---|---|---|---|---|---|
 | Layer routing, zones | Fw: zone code to key range map equals the ARM zone objects for 384 of 384; empty layer mask reads as layer A | **default** since D73; splits in 48 programs | [zone-key-ranges](zone-key-ranges.md), [engine-routing](engine-routing.md) | OQ33 (organ heard in piano programs): audit finds no routing cause | low | medium |
 | Morph slots, split crossfade | Asm / partial | default | [morph-and-zones](../specs/morph-and-zones.md) | morph slots unmodelled | medium | low |
-| Piano Touch curves | Fw curves (D88, D99) | **opt-in** `--firmware-piano-touch` | ARM run | default stays off: the program file bits are not verified | low | high (key force changes the piano a lot) |
+| Piano Touch curves | Fw curves (D88, D99) | **default** since D165 (`--legacy-piano-touch` opts out) | ARM run; file bits recalled for 384 of 384 programs | no Heavy or Light hardware clip, System-menu MIDI velocity curves, ASSUMED fallback for sounds without a level model | low | high (key force changes the piano a lot) |
 | Mouse velocity | position along the key, 20 to 127, ASSUMED (D84) | default in the GUI | none | listening check | low | low |
 | MIDI | note, CC, pedals, bend; queue `bounded(1024)` | default | [midi-and-control](../specs/midi-and-control.md) | | | |
 | GUI | 6 panel bays partly drawn; ROADMAP section B items open | | [ROADMAP](../ROADMAP.md) | panel renderer B6 to B13 | high | none for audio |

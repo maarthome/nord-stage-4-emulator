@@ -3,9 +3,11 @@
 //! program, the resolved sounds, the routing facts and the output-health statistics.
 //!
 //! Usage: `cargo run --release -p nord-tools --bin program_sweep -- <backup.ns4b>
-//! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V] [--synth-velocity] [--legacy-synth-velocity]`
+//! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V] [--synth-velocity] [--legacy-synth-velocity]
+//! [--piano-touch] [--legacy-piano-touch]`
 //! (`--synth-velocity` is a no-op since D142 made the firmware synth velocity law the default;
-//! `--legacy-synth-velocity` renders both modes with the linear blend);
+//! `--legacy-synth-velocity` renders both modes with the linear blend; `--piano-touch` /
+//! `--legacy-piano-touch` force the firmware Touch curves on / off in both modes);
 //! `tools/program_sweep.py` drives it. Output
 //! holds derived numbers only (no audio, no firmware or sample content). Release build only: a
 //! debug build overflows the stack in the FX chains.
@@ -135,6 +137,18 @@ fn apply_synth_velocity_flags(o: &mut FirmwareOptions, args: &[String]) {
     }
 }
 
+/// `--piano-touch` forces the firmware Touch curves on, `--legacy-piano-touch` forces the
+/// Medium curve with the ASSUMED power curves for the other sounds (the pre-flip default); the
+/// legacy flag wins. Lets one build print the sweep before and after the Touch default flip.
+fn apply_piano_touch_flags(o: &mut FirmwareOptions, args: &[String]) {
+    if args.iter().any(|a| a == "--piano-touch") {
+        o.piano_touch = true;
+    }
+    if args.iter().any(|a| a == "--legacy-piano-touch") {
+        o.piano_touch = false;
+    }
+}
+
 fn panic_message(p: Box<dyn std::any::Any + Send>) -> String {
     p.downcast_ref::<String>()
         .cloned()
@@ -192,6 +206,7 @@ fn main() -> Result<(), String> {
     ];
     for (_, o) in &mut modes {
         apply_synth_velocity_flags(o, &args);
+        apply_piano_touch_flags(o, &args);
     }
     if args.iter().any(|a| a == "--legacy-1khz-tick") {
         // the pre-D131 1 ms ARM tick, to compare a sweep before and after the flip
@@ -308,6 +323,17 @@ mod tests {
             &args(&["--synth-velocity", "--legacy-synth-velocity"]),
         );
         assert!(!o.synth_velocity_fw);
+    }
+
+    #[test]
+    fn piano_touch_flags_force_either_way_and_legacy_wins() {
+        let mut o = FirmwareOptions::default();
+        apply_piano_touch_flags(&mut o, &args(&["--legacy-piano-touch"]));
+        assert!(!o.piano_touch);
+        apply_piano_touch_flags(&mut o, &args(&["--piano-touch"]));
+        assert!(o.piano_touch);
+        apply_piano_touch_flags(&mut o, &args(&["--piano-touch", "--legacy-piano-touch"]));
+        assert!(!o.piano_touch);
     }
 
     #[test]

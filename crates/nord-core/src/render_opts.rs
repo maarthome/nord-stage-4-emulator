@@ -311,8 +311,10 @@ pub struct FirmwareOptions {
     pub piano_firmware_level: bool,
     /// `--firmware-piano-bus`: `PianoLayer::firmware_bus_scale` (opt-in, ASSUMED receiver scale).
     pub piano_bus_scale: bool,
-    /// `--firmware-piano-touch`: `PianoLayer::firmware_touch` (program Touch from the firmware
-    /// velocity curves, VERIFIED against the ARM; opt-in because the program file bits are not).
+    /// `--firmware-piano-touch` / `--legacy-piano-touch`: `PianoLayer::firmware_touch` (program
+    /// Touch from the firmware velocity curves, VERIFIED against the ARM; the program file bits
+    /// VERIFIED by recall of every factory program). On by default since D165;
+    /// `--legacy-piano-touch` and `--legacy-all` play the Medium curve for every `.npno` note.
     pub piano_touch: bool,
     /// `--piano-slew-fw`: `PianoLayer::firmware_slew` (SMP voice-gain slew, opt-in; D22).
     pub piano_slew: bool,
@@ -428,7 +430,7 @@ impl Default for FirmwareOptions {
             fx: FirmwareFx::DEFAULT,
             piano_firmware_level: true,
             piano_bus_scale: false,
-            piano_touch: false,
+            piano_touch: true,
             piano_slew: false,
             piano_pedal_voices: false,
             piano_chain_scale: false,
@@ -476,6 +478,7 @@ impl FirmwareOptions {
             synth_knob_laws: false,
             synth_velocity_fw: false,
             piano_firmware_level: false,
+            piano_touch: false,
             synth_layer_law: false,
             measured_tick: false,
             synth_sustain_pedal: false,
@@ -499,7 +502,7 @@ impl FirmwareOptions {
             fx: FirmwareFx::ALL,
             piano_firmware_level: true,
             piano_bus_scale: false,
-            piano_touch: false,
+            piano_touch: true,
             piano_slew: false,
             piano_pedal_voices: false,
             piano_chain_scale: false,
@@ -584,6 +587,9 @@ impl FirmwareOptions {
         }
         o.piano_bus_scale |= has("--firmware-piano-bus");
         o.piano_touch |= has("--firmware-piano-touch");
+        if has("--legacy-piano-touch") {
+            o.piano_touch = false;
+        }
         o.synth_velocity_fw |= has("--firmware-synth-velocity");
         if has("--legacy-synth-velocity") {
             o.synth_velocity_fw = false;
@@ -989,8 +995,8 @@ impl FirmwareOptions {
         if self.piano_bus_scale {
             parts.push("piano-bus".into());
         }
-        if self.piano_touch {
-            parts.push("piano-touch".into());
+        if !self.piano_touch {
+            parts.push("legacy-piano-touch".into());
         }
         if !self.synth_velocity_fw {
             parts.push("legacy-synth-velocity".into());
@@ -1166,11 +1172,12 @@ mod tests {
         assert!(!o.piano_bus_scale, "the bus scale is opt-in");
         let bus = FirmwareOptions::from_args(&args(&["--firmware-piano-bus"])).unwrap();
         assert!(bus.piano_bus_scale);
-        assert!(!o.piano_touch, "the program Touch curves are opt-in");
-        let touch = FirmwareOptions::from_args(&args(&["--firmware-piano-touch"])).unwrap();
-        assert!(touch.piano_touch && touch.summary().contains("piano-touch"));
+        assert!(
+            o.piano_touch,
+            "the program Touch curves are the default since D165"
+        );
         let mut e = Stage4Engine::new(48_000.0);
-        touch.apply_to(&mut e);
+        o.apply_to(&mut e);
         assert!(e.piano_a.firmware_touch && e.piano_b.firmware_touch);
         assert!(
             !o.piano_pedal_voices,
@@ -1278,6 +1285,31 @@ mod tests {
         assert!(!FirmwareOptions::legacy_all().sample_kernel_key);
         assert!(FirmwareOptions::firmware_all().sample_kernel_key);
         assert!(parse_sample_kernel("bogus").is_err());
+    }
+
+    #[test]
+    fn piano_touch_is_the_default_and_legacy_opts_out() {
+        assert!(FirmwareOptions::default().piano_touch);
+        assert!(FirmwareOptions::firmware_all().piano_touch);
+        assert!(!FirmwareOptions::legacy_all().piano_touch);
+        assert!(!FirmwareOptions::default()
+            .summary()
+            .contains("legacy-piano-touch"));
+        let off = FirmwareOptions::from_args(&["--legacy-piano-touch".into()]).unwrap();
+        assert!(!off.piano_touch && off.summary().contains("legacy-piano-touch"));
+        let mut e = Stage4Engine::new(48_000.0);
+        off.apply_to(&mut e);
+        assert!(!e.piano_a.firmware_touch && !e.piano_b.firmware_touch);
+        let on =
+            FirmwareOptions::from_args(&["--legacy-all".into(), "--firmware-piano-touch".into()])
+                .unwrap();
+        assert!(on.piano_touch, "the explicit opt-in flag stays accepted");
+        let wins = FirmwareOptions::from_args(&[
+            "--firmware-piano-touch".into(),
+            "--legacy-piano-touch".into(),
+        ])
+        .unwrap();
+        assert!(!wins.piano_touch, "the legacy flag wins");
     }
 
     #[test]
