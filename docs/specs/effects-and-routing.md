@@ -297,6 +297,8 @@ slope and log gain are `ASSUMED`. There is no hardware recording to compare agai
 Stability tests (`tests_firmware_fx.rs`, `master.rs`): silence in gives exact silence out, loud (1.5) and quiet (1e-3) alternating input
 stays finite, bounded by the makeup and free of denormals, for amounts 0, 0.3, 1.
 
+**`FirmwareFx::PARITY` (opt-in, `--firmware-fx-ports parity`, ns4-agyp, D163 proposed):** every port but the two reverb ports (`delay_laws`, `delay_time`, `compressor`, `mod1`, `eq`, `mod2`, plus `amp`). It is the set the combined ablation of the worst 20 programs found to carry the distance of the default FX path to the oracle-verified one ([program-ranking-fx](../research/program-ranking-fx.md)): mean ranked score of the worst 20 18.14 to 2.19. EMPIRICAL as a set (chosen by the ranking), VERIFIED per stage (oracle null, D158); not the default (D22, D136: the Mod 1 rest routines run at 2 frames per call, PUMP free-runs, the joint EQ mid words, the chorus delay against the clip and the delay and compressor roles are open). Test `nord_tools::fx_parity`: for every Mod 1, Mod 2, EQ and compressor case of `fx_cases` the PARITY chain nulls against the single-port firmware model up to the chain latency (Mod 1, Mod 2, EQ -314 dB or better, compressor -86 dB: the same stage code, so this proves the wiring, not the stage; the stage itself is the oracle null of D158), while the engine path does not (noise, 65,536 frames: Mod 1 -10.7 to +3.7 dB, Mod 2 -7.3 to +3.1 dB at amounts 64 and 127, EQ -27.4 to -7.7 dB, compressor -15.1 to -2.9 dB; at amount 0 the engine equals the port).
+
 ### 4.1 EQ gain per count
 
 `EQ_GAIN_DB_PER_COUNT = 0.25 dB` (`fx/tables.rs`, `ASSUMED`) is the single place that decodes and encodes the

@@ -111,6 +111,19 @@ impl FirmwareFx {
         mod2: false,
     };
 
+    /// Every firmware port except the two reverb ports: delay laws and time, compressor, Mod 1,
+    /// EQ, Mod 2 and the amp. Opt-in (`--firmware-fx-ports parity`), not the default.
+    ///
+    /// EMPIRICAL: the set `docs/research/program-ranking-fx.md` found to explain the ranked
+    /// distance of the worst 20 programs (mean score 18.14 to 2.19 with this set switched on,
+    /// against 0 for `ALL`); the reverb ports are left out because the owner hears the firmware
+    /// reverb worse than the engine reverb on A:21 (`docs/research/firmware-flag-audit.md`).
+    pub const PARITY: Self = Self {
+        reverb_mix: false,
+        reverb: false,
+        ..Self::ALL
+    };
+
     /// Every switch on.
     pub const ALL: Self = Self {
         delay_laws: true,
@@ -151,5 +164,14 @@ mod tests {
         assert!(!d.mod2 && all.mod2, "the firmware Mod 2 is opt-in");
         assert!(!d.eq && all.eq, "the firmware EQ is opt-in");
         assert_ne!(all, FirmwareFx::OFF);
+    }
+
+    #[test]
+    fn parity_is_all_without_the_reverb_ports_and_is_not_the_default() {
+        let p = std::hint::black_box(FirmwareFx::PARITY);
+        assert!(p.delay_laws && p.delay_time && p.compressor && p.mod1 && p.eq && p.mod2 && p.amp);
+        assert!(!p.reverb && !p.reverb_mix);
+        assert_ne!(p, FirmwareFx::DEFAULT);
+        assert_ne!(p, FirmwareFx::ALL);
     }
 }

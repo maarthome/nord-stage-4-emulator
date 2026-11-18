@@ -38,6 +38,10 @@ pub const GROUPS: [(&str, Revert); GROUP_COUNT] = [
     ("fx_mod2", |o, d| o.fx.mod2 = d.fx.mod2),
 ];
 
+/// The groups of `FirmwareFx::PARITY` (every FX group but `fx_reverb`): delay, compressor, EQ,
+/// Mod 1, Mod 2.
+pub const PARITY_GROUPS: [usize; 5] = [2, 3, 5, 6, 7];
+
 /// The firmware-derived options the ranking compares against the default (the oracle-verified
 /// model): `--firmware-all` plus `--firmware-routing`.
 pub fn firmware_options() -> FirmwareOptions {
@@ -54,6 +58,34 @@ pub fn reverted_set(firmware: &FirmwareOptions, set: &[usize]) -> FirmwareOption
         GROUPS[g].1(&mut o, &FirmwareOptions::default());
     }
     o
+}
+
+/// The engine default with the groups in `set` switched to the firmware value (what a default flip
+/// of those groups would render); the other groups keep the default.
+pub fn flipped_set(firmware: &FirmwareOptions, set: &[usize]) -> FirmwareOptions {
+    let keep: Vec<usize> = (0..GROUP_COUNT).filter(|g| !set.contains(g)).collect();
+    reverted_set(firmware, &keep)
+}
+
+/// Parses `fx_mod1+fx_mod2,fx_eq` (sets separated by `,`, groups by `+`) into group indices;
+/// `all-fx` is the six FX groups.
+pub fn parse_sets(list: &str) -> Result<Vec<Vec<usize>>, String> {
+    list.split(',')
+        .filter(|s| !s.trim().is_empty())
+        .map(|item| {
+            if item.trim() == "all-fx" {
+                return Ok((FIRST_FX..GROUP_COUNT).collect());
+            }
+            item.split('+')
+                .map(|n| {
+                    GROUPS
+                        .iter()
+                        .position(|(g, _)| *g == n.trim())
+                        .ok_or_else(|| format!("unknown group '{n}'"))
+                })
+                .collect()
+        })
+        .collect()
 }
 
 /// `firmware` with one group put back to the default.
@@ -130,6 +162,45 @@ mod tests {
         let o = reverted_set(&firmware, &all_fx);
         assert_eq!(o.fx, FirmwareOptions::default().fx);
         assert_ne!(o.tone_source, FirmwareOptions::default().tone_source);
+    }
+
+    #[test]
+    fn flipping_every_group_is_the_firmware_and_none_is_the_default() {
+        let firmware = firmware_options();
+        let all: Vec<usize> = (0..GROUP_COUNT).collect();
+        assert_eq!(flipped_set(&firmware, &all), firmware);
+        let none = flipped_set(&firmware, &[]);
+        assert_eq!(none.fx, FirmwareOptions::default().fx);
+        assert_eq!(none.tone_source, FirmwareOptions::default().tone_source);
+    }
+
+    #[test]
+    fn parity_groups_are_the_fx_ports_of_the_parity_preset() {
+        let o = flipped_set(&firmware_options(), &PARITY_GROUPS);
+        assert_eq!(o.fx, nord_core::fx::FirmwareFx::PARITY);
+        assert_eq!(GROUPS[4].0, "fx_reverb", "the one FX group left out");
+        assert!(!PARITY_GROUPS.contains(&4));
+    }
+
+    #[test]
+    fn flipping_one_group_changes_only_that_group() {
+        let (firmware, def) = (firmware_options(), FirmwareOptions::default());
+        let o = flipped_set(&firmware, &[7]);
+        assert_eq!(o.fx.mod2, firmware.fx.mod2);
+        assert_ne!(o.fx.mod2, def.fx.mod2);
+        assert_eq!(o.fx.eq, def.fx.eq);
+        assert_eq!(o.fx.mod1, def.fx.mod1);
+    }
+
+    #[test]
+    fn parse_sets_reads_names_and_all_fx() {
+        assert_eq!(
+            parse_sets("fx_mod2+fx_eq,fx_delay").unwrap(),
+            [vec![7, 5], vec![2]]
+        );
+        assert_eq!(parse_sets("all-fx").unwrap()[0].len(), 6);
+        assert!(parse_sets("fx_bogus").is_err());
+        assert!(parse_sets("").unwrap().is_empty());
     }
 
     #[test]

@@ -7,17 +7,20 @@
 //! to the engine default), which says which group carries the distance. `--ablate-fx` renders every
 //! non-empty combination of the six FX groups put back to the default (63 renders, `--jobs N`
 //! threads), for the pairs and the best set that `tools/program_rank_combo.py` derives. Numbers only; no audio,
-//! firmware or sample content.
+//! firmware or sample content. `--flip SETS` (`fx_mod1+fx_mod2,fx_eq`, `all-fx`, or `every-fx` for
+//! all 63 combinations) renders the engine default with those groups switched to the firmware value:
+//! what a default flip of the group would sound like, to compare against the firmware render.
 //!
 //! Usage: `cargo run --release -p nord-tools --bin program_rank -- <backup.ns4b> [--note 60]
-//! [--velocity 100] [--limit N] [--only S] [--every K] [--ablate] [--ablate-fx [--jobs N]]`. Release build only (stack depth in the FX
+//! [--velocity 100] [--limit N] [--only S] [--every K] [--ablate] [--ablate-fx] [--flip SETS|every-fx] [--jobs N]`. Release build only (stack depth in the FX
 //! chains). `tools/program_rank.py` joins the lines with the chain census.
 
 use nord_core::cbin::{CbinFile, Ns4BackupArchive, ProgramDecoded, ProgramSoundRefs};
 use nord_core::render::render_timeline;
 use nord_core::render_opts::FirmwareOptions;
 use nord_tools::rank_groups::{
-    firmware_options, fx_subsets, reverted, reverted_set, subset_key, GROUPS,
+    firmware_options, flipped_set, fx_subsets, parse_sets, reverted, reverted_set, subset_key,
+    GROUPS,
 };
 use nord_tools::rank_metrics::{mono, note_metrics, NoteMetrics, ANALYSIS_FRAMES};
 use nord_tools::sweep_load::{
@@ -128,6 +131,11 @@ fn main() -> Result<(), String> {
     let ablate = args.iter().any(|a| a == "--ablate");
     let ablate_fx = args.iter().any(|a| a == "--ablate-fx");
     let jobs = num("--jobs", 1).max(1);
+    let flips: Vec<Vec<usize>> = match flag(&args, "--flip") {
+        Some(list) if list == "every-fx" => fx_subsets(),
+        Some(list) => parse_sets(list)?,
+        None => Vec::new(),
+    };
     let archive = Ns4BackupArchive::open(path).map_err(|e| e.to_string())?;
     let mut file = File::open(path).map_err(|e| e.to_string())?;
     let (mut pianos, mut synths): (PianoCache, SynthCache) = (HashMap::new(), HashMap::new());
@@ -164,6 +172,17 @@ fn main() -> Result<(), String> {
             "default": metrics_json(&default),
             "firmware": metrics_json(&fw),
         });
+        if !flips.is_empty() {
+            let results = run_parallel(&flips, jobs, |set| {
+                metrics_json(&run(&flipped_set(&firmware, set)))
+            });
+            let map: serde_json::Map<String, Value> = flips
+                .iter()
+                .zip(results)
+                .map(|(set, m)| (subset_key(set), m))
+                .collect();
+            line["flip"] = Value::Object(map);
+        }
         if ablate_fx {
             let sets = fx_subsets();
             let results = run_parallel(&sets, jobs, |set| {
