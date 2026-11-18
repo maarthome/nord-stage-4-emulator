@@ -152,3 +152,20 @@ def test_cause_row_names_the_group_whose_revert_removes_the_distance(tmp_path: P
     )
     same = {**row, "firmware": base}
     assert pr.cause_row(same)["carrier"] == "none"
+
+
+def test_expected_silence_is_not_a_chain_defect() -> None:
+    silent = {"audible": {"organ": False, "piano": False, "synth": False}}
+    sounds = {"audible": {"organ": True, "piano": False, "synth": True}}
+    n = native(organ=True, synth=True)
+    assert pr.chain_flags(n, chain(), silent)["flags"] == [
+        "organ_expected_silent",
+        "synth_expected_silent",
+    ]
+    assert pr.chain_flags(n, chain(), sounds)["flags"] == [
+        "organ_chain_silent",
+        "synth_chain_silent",
+    ]
+    assert pr.chain_flags(n, chain())["flags"] == ["organ_chain_silent", "synth_chain_silent"]
+    rows = pr.build_rows([n], [chain()], [{"entry": n["entry"], **silent}])
+    assert rows[0]["chain"]["flags"] == ["organ_expected_silent", "synth_expected_silent"]

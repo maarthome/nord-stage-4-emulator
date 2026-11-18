@@ -81,7 +81,15 @@ def dominant(d: dict) -> str:
     return max(terms, key=lambda k: terms[k])
 
 
-def chain_flags(row: dict, chain: dict | None) -> dict:
+def silent_flag(engine: str, expect: dict | None) -> str:
+    """`<engine>_chain_silent` (a defect) unless `expect` (`tools/program_expect.py`) says the
+    firmware itself plays nothing of that engine at the key: then `<engine>_expected_silent`."""
+    if expect is not None and not expect["audible"][engine]:
+        return f"{engine}_expected_silent"
+    return f"{engine}_chain_silent"
+
+
+def chain_flags(row: dict, chain: dict | None, expect: dict | None = None) -> dict:
     """Chain voicing facts and flags for one program (see the doc s3 for what each tap means)."""
     eng = engines(row)
     out = {
@@ -101,9 +109,9 @@ def chain_flags(row: dict, chain: dict | None) -> dict:
     out["sy_audio_peak"] = audio["sy"]["peak"] if audio else None
     flags = out["flags"]
     if "organ" in eng and not out["pno1_peak"]:
-        flags.append("organ_chain_silent")
+        flags.append(silent_flag("organ", expect))
     if "synth" in eng and not (out["pno2_peak"] or out["org2_peak"]):
-        flags.append("synth_chain_silent")
+        flags.append(silent_flag("synth", expect))
     if "sample" in eng:
         layers = row["layers"]["synth_sample"]
         if not out["sy_prepare"]:
@@ -122,13 +130,16 @@ def bank_of(entry: str) -> str:
     return entry.split("/")[1].removeprefix("Bank ")
 
 
-def build_rows(native: list[dict], chain: list[dict]) -> list[dict]:
-    """One flat row per program, sorted by entry."""
+def build_rows(
+    native: list[dict], chain: list[dict], expect: list[dict] | None = None
+) -> list[dict]:
+    """One flat row per program, sorted by entry (`expect`: `program_expect.py` lines, optional)."""
     by_chain = {c["entry"]: c for c in chain}
+    by_expect = {e["entry"]: e for e in expect or []}
     rows = []
     for n in sorted(native, key=lambda r: r["entry"]):
         d = distance(n["default"], n["firmware"])
-        ch = chain_flags(n, by_chain.get(n["entry"]))
+        ch = chain_flags(n, by_chain.get(n["entry"]), by_expect.get(n["entry"]))
         rows.append({"entry": n["entry"], "engines": "+".join(engines(n)), "native": n,
                      "dist": d, "dominant": dominant(d), "chain": ch})  # fmt: skip
     return rows
@@ -296,12 +307,14 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--native", type=Path, required=True)
     ap.add_argument("--chain", type=Path, required=True)
+    ap.add_argument("--expect", type=Path, help="program_expect.py lines (silent by program)")
     ap.add_argument("--csv", type=Path)
     ap.add_argument("--md-tables", action="store_true")
     ap.add_argument("--ablate", type=Path, help="program_rank --ablate lines of the worst programs")
     ap.add_argument("--cause-csv", type=Path)
     ns = ap.parse_args(argv)
-    rows = build_rows(load_jsonl(ns.native), load_jsonl(ns.chain))
+    expect = load_jsonl(ns.expect) if ns.expect else None
+    rows = build_rows(load_jsonl(ns.native), load_jsonl(ns.chain), expect)
     if ns.csv:
         write_csv(rows, ns.csv)
     if ns.md_tables:
