@@ -29,5 +29,5 @@ Default flips, native DSP changes, committing firmware/sample/audio content.
 ## Summary of Changes
 - `crates/nord-tools`: `sweep_load.rs` (loading code moved out of `program_sweep`), `rank_metrics.rs`, bin `program_rank` (`--ablate`), tests.
 - `tools/program_rank_chain.py` (live-link census of all 384), `tools/program_rank.py` (score, flags, tables), tests.
-- Data `program-ranking.csv`, `program-ranking-ablation.csv`; note `program-ranking.md`; D158, OQ38, ROADMAP 7b.
-- Finding: all of the worst 20 are FX (Mod 2 12); the chain has no piano tap; 13 synth and 5 organ programs are silent in the chain at key 60 (OQ38).
+- Data `program-ranking.csv`, `program-ranking-ablation.csv`; note `program-ranking.md`; D160, OQ40, ROADMAP 7b.
+- Finding: all of the worst 20 are FX (Mod 2 12); the chain has no piano tap; 13 synth and 5 organ programs are silent in the chain at key 60 (OQ40).
