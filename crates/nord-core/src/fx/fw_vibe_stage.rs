@@ -59,6 +59,13 @@ fn index(offset: i32) -> usize {
     (offset + 0x20) as usize
 }
 
+impl FwVibeStage {
+    /// The context and rings (live install export).
+    pub(super) fn state(&self) -> &Mod2State {
+        &self.st
+    }
+}
+
 /// `c[-2]`, the depth: `v / 128`, the captured word `0x3F7FFFFE` at `v = 127` (VERIFIED at the 11
 /// samples of `fx-param-fits.csv`).
 fn depth_word(amount: u32) -> u32 {
