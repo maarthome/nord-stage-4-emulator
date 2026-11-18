@@ -4,6 +4,7 @@ pub mod band_response;
 pub mod csv_cols;
 pub mod fx_cases;
 pub mod leslie_probe;
+pub mod rank_groups;
 pub mod rank_metrics;
 pub mod reverb_measure;
 pub mod smp_stream;
