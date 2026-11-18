@@ -122,7 +122,8 @@ Statements and sources. "No firmware-validated implementation" = the code runs a
 | Organ output level `K = 2.8` | EMPIRICAL; no `1 / 0.21875` lane word found in the images or ARM code; K per engine Vox 1.7 to 1.8, Pipe 3.6 to 6.2, B3 4.9 to 8.4 | audio-remaining row 3, D85, D106, D113 |
 | MIDI velocity curves (System menu) | not modelled; the firmware Touch curves exist (D88) but "the System-menu MIDI velocity curves" are named as an unverified link in D117 | D117, piano-touch-curves s6 |
 | Mouse velocity in the GUI | ASSUMED linear 20 to 127 | audio-remaining row 5 (D84) |
-| Arpeggiator gate | firmware reads 2/3 of a step; engine keeps 1/2; no clip | audio-remaining row 19 (D130, OQ32) |
+| Arpeggiator gate and octave walk | **default since D166** (`--legacy-arp` opts out): 2/3 of a step and the firmware pool walk; VERIFIED in the replayed boot state, no hardware clip | audio-remaining row 19 (D130, D166, OQ32) |
+| Morph law (`--firmware-morph`) | **default since D166** (`--legacy-morph` opts out): weight `v / 128`, clamp on the sum, cutoff sender step drop, five extra synth targets; VERIFIED against the ARM | [morph-fw-vs-native](morph-fw-vs-native.md), D159, D166 |
 | PUMP clock | engine free-runs; firmware PUMP follows the Master Clock (#490, open) | audio-remaining row 17, D134 PR |
 | Real-time Bass and Farfisa organ stages | bit exact but offline only | audio-remaining row 16, D71, D74 |
 | SAMPLES pitch entry `e` | writer not found | audio-remaining row 2 |

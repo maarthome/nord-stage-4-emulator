@@ -72,9 +72,31 @@ Cause of the native chord order (`synth/arp.rs`): UpDown without a fractional ra
 - Horizon Whl is on screen from **287 s**; the `synth_horizon` clip of `emu_vs_hw_segments.json` is 290 to 320 s. The arp period is audible in 287 to 345 s: windows 287-300 and 300-315 s (peak strength 0.77 / 0.75, mostly the arp on its own with the wheel), windows 315-330 and 330-345 s weaker (0.47 to 0.54, more material on top).
 - 150.0 ms per step = 1/4 beat at 100 BPM, as in the ARM capture and the native engine. Tags: video EMPIRICAL (lossy audio, one take).
 
-## 6. Opt-in fix
+## 6. Opt-in fix (superseded by s7: default since D166, `--legacy-arp` opts out)
 
-`SynthLayer::arp_firmware_walk` (default off; `arp_trace --arp-fw-walk`): UP/DOWN walks the whole pool (chord notes of every octave plus the root of the top octave) mirrored without repeating the end points. Matches the ARM cycle of layer C for the triad and the single key (tests `firmware_walk_*` in `synth/arp.rs`). Tag: **EMPIRICAL** (one program, one layer, range 2 octaves). The top-root rule is ASSUMED for other ranges (layer A shows no top root for Up at 1 octave; whether that is the direction or the range is not separated). Not wired into `FirmwareOptions` or the GUI yet (the struct is built literally in 17 places).
+`SynthLayer::arp_firmware_walk` (was opt-in; `arp_trace --arp-fw-walk` is still accepted): UP/DOWN walks the whole pool (chord notes of every octave plus the root of the top octave) mirrored without repeating the end points. Matches the ARM cycle of layer C for the triad and the single key (tests `firmware_walk_*` in `synth/arp.rs`). Tag: **EMPIRICAL** (one program, one layer, range 2 octaves). The top-root rule is ASSUMED for other ranges (layer A shows no top root for Up at 1 octave; whether that is the direction or the range is not separated). Not wired into `FirmwareOptions` or the GUI yet (the struct is built literally in 17 places).
+
+## 7. Direction, range and gate captures (2026-11-18, D166)
+
+Question: do the gate (2/3) and the octave walk hold beyond the one A:16 setting of s4, so that the firmware arpeggiator can be the default?
+
+Method: the original `.ns4p` bits of A:16 were patched (direction and RANGE of layers A and C; the `ns4 convert` JSON round trip is lossy and silenced the patched copies) and replayed with `tools/arm_arp_events.py` (tempo 100, MST CLK, velocity 100, 2.5 s). Layer A sounds for keys 40 43 47 and layer C for 60 64 67 (key zones). Result table: `docs/research/data/arp-fw-range.json` (30 rows: layer, keys, direction, raw RANGE, step, gate fraction, playing order; derived numbers only).
+
+| Finding | Evidence |
+|---|---|
+| Gate fraction 0.667 and step 150.0 ms in **all 30 captures** (both layers, Up, Down, Up/Down, raw 0 to 127) | `docs/research/data/arp-fw-range.json`, `gate_fraction`, `step_ms` |
+| Up, Down and Up/Down all walk the octave pool, not only Up/Down (D162 said Up/Down only) | Up C raw 47 triad: 64 67 72 76 79 84 60 ...; Down: 79 76 72 67 64 60 84 ... |
+| Single key, pool size by raw: 0 gives 1, 16 and 32 give 2, 47 gives 3, 85 and 127 give 4 notes | rows `C [60]` |
+| Pool = chord notes + 12 k whose offset from the lowest key is below a span; Up/Down mirrors without repeating the end points | all rows; unit tests `synth/arp_pool.rs` replay the 13 bracketed raw values |
+| A straight span `12 + raw / 3` fails raw 7, 14 and 57; the fitted law is piecewise (`SPAN_KNOTS`) | brackets in `arp_pool.rs` |
+
+Span brackets (semitones, pool holds offsets below the span): raw 0 and 7 (7, 12]; 14 (12, 15]; 16 (16, 19]; 28 and 32 (19, 24]; 42 (24, 27]; 47 (24, 28]; 57 and 63 (31, 36]; 95 and 126 (43, 48]; 127 above 36 and at most 48. The knots sit inside every bracket; between the captured raw values the law is interpolated (ASSUMED). The decoded step of the knob (4 semitones per detent) was not seen.
+
+Gate source: constant 2/3 in every capture is the replayed boot grid (s1 and `arm-tick-timers.md` s6). Not seen on hardware; the flag writer is unknown (OQ32).
+
+Video envelope fold (the gate against the 150 ms comb of the Part A clip): inconclusive, the arp sits under the wheel and other material, so the clip cannot separate 1/2 from 2/3. It is not evidence either way.
+
+Zig zag and Random keep the engine walk (no ARM capture); Poly and Gate modes do not use the walk.
 
 ## Implications
 
@@ -83,7 +105,6 @@ Cause of the native chord order (`synth/arp.rs`): UpDown without a fractional ra
 
 ## Follow-ups
 
-- Wire `arp_firmware_walk` into `FirmwareOptions` and the GUI panel; sample the key-on phase and KB sync on layers that use it.
-- Opt-in firmware gate (2/3 step) and single-note retrigger behind OQ32.
+- Done in D166: `arp_firmware` in `FirmwareOptions` and the GUI panel, gate 2/3 and single-note retrigger. Open: sample the key-on phase and KB sync on layers that use it, Zig zag and Random walks, a hardware clip of an arp note against its step (OQ32).
 - Find the SPI position source or the `0xDA` tempo store to measure the ARM step instead of feeding it.
 - HOLD: decode the global bit and run the release.

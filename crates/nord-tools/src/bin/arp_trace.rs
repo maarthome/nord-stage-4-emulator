@@ -4,7 +4,7 @@
 //! (`docs/research/arp-fw-vs-native.md`).
 //!
 //! Usage: `cargo run --release -p nord-tools --bin arp_trace -- <program.ns4p> [--keys 60,64,67]
-//! [--seconds 3] [--velocity 100] [--tempo 100] [--arp-fw-walk] [--hold] [firmware option flags]`.
+//! [--seconds 3] [--velocity 100] [--tempo 100] [--legacy-arp] [--hold] [firmware option flags]`.
 //! `--tempo` overrides the program's Master Clock tempo; `--hold` keeps the keys down for the
 //! whole run (the default), `--release-at S` sends the note-offs at second `S`.
 
@@ -84,15 +84,6 @@ fn run(args: &[String]) -> Result<(), String> {
     let mut engine = Stage4Engine::new(FS);
     engine.apply_program(&prog);
     opts.apply_to(&mut engine);
-    if args.iter().any(|a| a == "--arp-fw-walk") {
-        for synth in [
-            &mut engine.synth_a,
-            &mut engine.synth_b,
-            &mut engine.synth_c,
-        ] {
-            synth.arp_firmware_walk = true;
-        }
-    }
     if let Some(t) = flag(args, "--tempo") {
         engine.master_clock.bpm = t.parse().map_err(|_| "bad --tempo")?;
     }
@@ -136,7 +127,7 @@ fn run(args: &[String]) -> Result<(), String> {
     ];
     println!(
         "{}",
-        json!({"program": file_name(path), "arp_fw_walk": args.iter().any(|a| a == "--arp-fw-walk"), "keys": keys, "seconds": seconds, "layers": layers})
+        json!({"program": file_name(path), "arp_firmware": opts.arp_firmware, "keys": keys, "seconds": seconds, "layers": layers})
     );
     Ok(())
 }

@@ -342,10 +342,16 @@ pub struct FirmwareOptions {
     /// (`PedalState::sustped`, opt-in; ASSUMED, the SUSTPED default of the hardware synth layers
     /// is not decoded, `docs/research/grand-pad-leftovers.md`).
     pub synth_sustain_pedal: bool,
-    /// `--firmware-morph`: Wheel / A.T. / Ctrl Ped weigh `v / 128` (full at 127) like the ARM and
-    /// the Synth Osc Ctrl, resonance, LFO and filter-env morphs play (`Stage4Engine::firmware_morph`,
-    /// D159; opt-in).
+    /// `--firmware-morph` / `--legacy-morph`: Wheel / A.T. / Ctrl Ped weigh `v / 128` (full at 127)
+    /// like the ARM and the Synth Osc Ctrl, resonance, LFO and filter-env morphs play
+    /// (`Stage4Engine::firmware_morph`, D159). VERIFIED by ARM run on 245 series; on by default
+    /// since D166 (owner approval 2026-11-18); `--legacy-morph` and `--legacy-all` turn it off.
     pub firmware_morph: bool,
+    /// `--legacy-arp`: the firmware arpeggiator walk (UP/DOWN over the whole octave pool) and the
+    /// 2/3-step gate (`SynthLayer::arp_firmware_walk`, `arp_firmware_gate`; D162, D166). On by
+    /// default since D166 (owner approval 2026-11-18); `--legacy-arp` and `--legacy-all` turn it
+    /// off. `--arp-fw-walk` and `--arp-firmware` stay accepted.
+    pub arp_firmware: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,
     /// `--synth-shape <0..1>`: strip shape word of the SHAPE oscillator (`fw_shape.rs`) in
@@ -438,7 +444,8 @@ impl Default for FirmwareOptions {
             synth_layer_law: true,
             measured_tick: true,
             synth_sustain_pedal: false,
-            firmware_morph: false,
+            firmware_morph: true,
+            arp_firmware: true,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -480,6 +487,7 @@ impl FirmwareOptions {
             measured_tick: false,
             synth_sustain_pedal: false,
             firmware_morph: false,
+            arp_firmware: false,
             sample_kernel_key: false,
             firmware_routing: false,
             ..Self::default()
@@ -509,7 +517,8 @@ impl FirmwareOptions {
             synth_layer_law: true,
             measured_tick: true,
             synth_sustain_pedal: false,
-            firmware_morph: false,
+            firmware_morph: true,
+            arp_firmware: true,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -597,6 +606,13 @@ impl FirmwareOptions {
         o.synth_layer_law |= has("--firmware-synth-layer-law");
         o.synth_sustain_pedal |= has("--synth-sustain-pedal");
         o.firmware_morph |= has("--firmware-morph");
+        if has("--legacy-morph") {
+            o.firmware_morph = false;
+        }
+        o.arp_firmware |= has("--arp-firmware") || has("--arp-fw-walk");
+        if has("--legacy-arp") {
+            o.arp_firmware = false;
+        }
         if has("--legacy-1khz-tick") {
             o.measured_tick = false;
         }
@@ -743,6 +759,7 @@ impl FirmwareOptions {
         crate::render_opts_tick::apply_measured_tick(engine, self.measured_tick);
         apply_synth_sustain(engine, self.synth_sustain_pedal);
         engine.firmware_morph = self.firmware_morph;
+        crate::render_opts_arp::apply_arp_firmware(engine, self.arp_firmware);
         if self.fx_defaults {
             for c in engine.fx_chains.iter_mut() {
                 c.apply_firmware_defaults();
@@ -819,6 +836,7 @@ impl FirmwareOptions {
         crate::render_opts_tick::apply_measured_tick(engine, self.measured_tick);
         apply_synth_sustain(engine, self.synth_sustain_pedal);
         engine.firmware_morph = self.firmware_morph;
+        crate::render_opts_arp::apply_arp_firmware(engine, self.arp_firmware);
         if self.fx_defaults {
             for c in engine.fx_chains.iter_mut() {
                 c.apply_firmware_defaults();
@@ -1022,8 +1040,11 @@ impl FirmwareOptions {
         if self.synth_sustain_pedal {
             parts.push("synth-sustain-pedal".into());
         }
-        if self.firmware_morph {
-            parts.push("firmware-morph".into());
+        if !self.firmware_morph {
+            parts.push("legacy-morph".into());
+        }
+        if !self.arp_firmware {
+            parts.push("legacy-arp".into());
         }
         if let Some(m) = self.synth_shape_milli {
             parts.push(format!("shape={:.2}", f32::from(m) / 1000.0));
@@ -1083,13 +1104,19 @@ impl FirmwareOptions {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn firmware_morph_is_opt_in_and_reaches_the_engine() {
+    fn firmware_morph_is_the_default_and_legacy_morph_opts_out() {
         let o = FirmwareOptions::from_args(&args(&[])).unwrap();
-        assert!(!o.firmware_morph && !o.summary().contains("firmware-morph"));
+        assert!(o.firmware_morph && !o.summary().contains("legacy-morph"));
+        assert!(FirmwareOptions::firmware_all().firmware_morph);
         assert!(!FirmwareOptions::legacy_all().firmware_morph);
+        let off = FirmwareOptions::from_args(&args(&["--legacy-morph"])).unwrap();
+        assert!(!off.firmware_morph && off.summary().contains("legacy-morph"));
+        // the older spelling stays accepted
         let on = FirmwareOptions::from_args(&args(&["--firmware-morph"])).unwrap();
-        assert!(on.firmware_morph && on.summary().contains("firmware-morph"));
+        assert!(on.firmware_morph);
         let mut e = Stage4Engine::new(48_000.0);
+        assert!(e.firmware_morph, "the engine default is the firmware law");
+        off.apply_to(&mut e);
         assert!(!e.firmware_morph);
         on.apply_to(&mut e);
         assert!(e.firmware_morph);

@@ -163,6 +163,22 @@ pub const SYNTH_VELOCITY: SwitchInfo = sw(
     Mixed,
     "Amp gain V and filter-envelope factor F from the ORG core 2 pass (768 of 768 oracle words within 1 ulp, file bits recalled); the multiply inside the voice is ASSUMED; on by default since D142 (owner approval; 4 of 16 distinct synth clips marginally worse at replay velocity 100); --legacy-synth-velocity restores the linear blend.",
 );
+/// Synth arpeggiator (`--legacy-arp`).
+pub const ARP: SwitchInfo = sw(
+    "Synth",
+    "--legacy-arp",
+    "Firmware arpeggiator",
+    Mixed,
+    "UP/DOWN walks the whole octave pool and the plain arpeggio / E step ends at 2/3 of the step, as the ARM pattern player does (A:16 replay: step, gate 0.667, note cycle); on by default since D166 (owner approval 2026-11-18); the grid flag writer is unknown and no hardware clip exists (OQ32), so the real gate is the replayed boot state. --legacy-arp restores the engine walk and the note held to the next step.",
+);
+/// Synth morph (`--firmware-morph` / `--legacy-morph`).
+pub const MORPH: SwitchInfo = sw(
+    "Synth",
+    "--legacy-morph",
+    "Firmware morph",
+    Verified,
+    "Wheel, A.T. and Control Pedal weigh v / 128 (full at 127), the sum clamps like the ARM, the cutoff sender drops a step from frac 0.5 and five more synth targets play (245 ARM series, fit residual 0.0001 steps); on by default since D166 (owner approval 2026-11-18); --legacy-morph restores v / 127.",
+);
 /// Piano level (`--firmware-piano-level` / `--legacy-piano-level`).
 pub const PIANO_LEVEL: SwitchInfo = sw(
     "Piano",
@@ -366,7 +382,7 @@ pub const TICK: SwitchInfo = sw(
 );
 
 /// All switches in bar order.
-pub const ALL: [SwitchInfo; 37] = [
+pub const ALL: [SwitchInfo; 39] = [
     TONE,
     B3_TAIL,
     FARFISA,
@@ -386,6 +402,8 @@ pub const ALL: [SwitchInfo; 37] = [
     STAGES,
     KNOB_LAWS,
     SYNTH_VELOCITY,
+    ARP,
+    MORPH,
     P_TABLE,
     FILTER,
     MEASURED,

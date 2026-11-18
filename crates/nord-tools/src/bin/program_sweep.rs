@@ -3,9 +3,14 @@
 //! program, the resolved sounds, the routing facts and the output-health statistics.
 //!
 //! Usage: `cargo run --release -p nord-tools --bin program_sweep -- <backup.ns4b>
-//! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V] [--synth-velocity] [--legacy-synth-velocity]`
+//! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V]
+//! [--synth-velocity] [--legacy-synth-velocity] [--legacy-arp]
+//! [--legacy-morph] [--wheel V] [--aftertouch V] [--pedal V]`
 //! (`--synth-velocity` is a no-op since D142 made the firmware synth velocity law the default;
-//! `--legacy-synth-velocity` renders both modes with the linear blend);
+//! `--legacy-synth-velocity` renders both modes with the linear blend; `--legacy-arp` and
+//! `--legacy-morph` restore the pre-D166 arpeggiator and morph law in both modes; `--wheel`,
+//! `--aftertouch` and `--pedal` send that controller value (0..127) before the notes, so the
+//! morph law is exercised);
 //! `tools/program_sweep.py` drives it. Output
 //! holds derived numbers only (no audio, no firmware or sample content). Release build only: a
 //! debug build overflows the stack in the FX chains.
@@ -74,6 +79,34 @@ fn events(notes: &[u8], velocity: u8, hold: usize) -> Vec<TimedEvent> {
     v
 }
 
+/// Controller messages sent before the notes: Mod Wheel (CC 1), the Control Pedal (CC 11) and
+/// channel aftertouch, each only when its value is given.
+fn controller_events(
+    wheel: Option<u8>,
+    aftertouch: Option<u8>,
+    pedal: Option<u8>,
+) -> Vec<TimedEvent> {
+    let cc = |controller, value: u8| TimedEvent {
+        frame: 0,
+        event: MidiEvent::ControlChange {
+            channel: 0,
+            controller,
+            value: value.min(127),
+        },
+    };
+    let mut v = Vec::new();
+    v.extend(wheel.map(|x| cc(1, x)));
+    v.extend(pedal.map(|x| cc(11, x)));
+    v.extend(aftertouch.map(|x| TimedEvent {
+        frame: 0,
+        event: MidiEvent::ChannelAftertouch {
+            channel: 0,
+            pressure: x.min(127),
+        },
+    }));
+    v
+}
+
 fn piano_of<'a>(c: &'a PianoCache, r: &Option<String>) -> Option<&'a (Arc<NpnoSound>, u8)> {
     r.as_ref().and_then(|r| c.get(r)).and_then(Option::as_ref)
 }
@@ -135,6 +168,16 @@ fn apply_synth_velocity_flags(o: &mut FirmwareOptions, args: &[String]) {
     }
 }
 
+/// `--legacy-arp` / `--legacy-morph` restore the pre-D166 arpeggiator and morph law.
+fn apply_legacy_flags(o: &mut FirmwareOptions, args: &[String]) {
+    if args.iter().any(|a| a == "--legacy-arp") {
+        o.arp_firmware = false;
+    }
+    if args.iter().any(|a| a == "--legacy-morph") {
+        o.firmware_morph = false;
+    }
+}
+
 fn panic_message(p: Box<dyn std::any::Any + Send>) -> String {
     p.downcast_ref::<String>()
         .cloned()
@@ -192,7 +235,10 @@ fn main() -> Result<(), String> {
     ];
     for (_, o) in &mut modes {
         apply_synth_velocity_flags(o, &args);
+        apply_legacy_flags(o, &args);
     }
+    let byte = |name: &str| flag(&args, name).and_then(|v| v.parse::<u8>().ok());
+    let controls = controller_events(byte("--wheel"), byte("--aftertouch"), byte("--pedal"));
     if args.iter().any(|a| a == "--legacy-1khz-tick") {
         // the pre-D131 1 ms ARM tick, to compare a sweep before and after the flip
         for (_, o) in &mut modes {
@@ -234,7 +280,9 @@ fn main() -> Result<(), String> {
         for (label, opts) in &modes {
             let result = catch_unwind(AssertUnwindSafe(|| {
                 let mut engine = build_engine(&prog, &refs, &pianos, &synths, opts);
-                let (l, r) = render_timeline(&mut engine, &events(&notes, velocity, hold), frames);
+                let mut timeline = controls.clone();
+                timeline.extend(events(&notes, velocity, hold));
+                let (l, r) = render_timeline(&mut engine, &timeline, frames);
                 analyze(&l, &r)
             }));
             let value = match result {
@@ -308,6 +356,45 @@ mod tests {
             &args(&["--synth-velocity", "--legacy-synth-velocity"]),
         );
         assert!(!o.synth_velocity_fw);
+    }
+
+    #[test]
+    fn legacy_flags_turn_the_arp_and_morph_defaults_off_in_both_modes() {
+        let mut o = FirmwareOptions::default();
+        apply_legacy_flags(&mut o, &args(&[]));
+        assert!(o.arp_firmware && o.firmware_morph);
+        apply_legacy_flags(&mut o, &args(&["--legacy-arp"]));
+        assert!(!o.arp_firmware && o.firmware_morph);
+        apply_legacy_flags(&mut o, &args(&["--legacy-morph"]));
+        assert!(!o.firmware_morph);
+    }
+
+    #[test]
+    fn controller_events_send_only_the_given_controllers() {
+        assert!(controller_events(None, None, None).is_empty());
+        let ev = controller_events(Some(127), Some(64), Some(200));
+        assert_eq!(ev.len(), 3);
+        assert!(ev.iter().all(|e| e.frame == 0));
+        assert!(matches!(
+            ev[0].event,
+            MidiEvent::ControlChange {
+                controller: 1,
+                value: 127,
+                ..
+            }
+        ));
+        assert!(matches!(
+            ev[1].event,
+            MidiEvent::ControlChange {
+                controller: 11,
+                value: 127,
+                ..
+            }
+        ));
+        assert!(matches!(
+            ev[2].event,
+            MidiEvent::ChannelAftertouch { pressure: 64, .. }
+        ));
     }
 
     #[test]
