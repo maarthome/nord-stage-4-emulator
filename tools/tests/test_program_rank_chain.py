@@ -90,3 +90,12 @@ def test_programs_listing_filters_and_orders(tmp_path: Path) -> None:
     assert [p.stem for p in pc.programs_of(tmp_path, "y", 1, 10)] == ["y"]
     assert [p.stem for p in pc.programs_of(tmp_path, None, 2, 10)] == ["x", "z"]
     assert len(pc.programs_of(tmp_path, None, 1, 2)) == 2
+
+
+def test_arp_programs_are_held_longer_and_the_command_carries_it() -> None:
+    assert pc.key_ticks_for({"arp": True}) == pc.ARP_KEY_TICKS == 15_000
+    assert pc.key_ticks_for({"arp": False}) is None
+    assert pc.key_ticks_for(None) is None
+    cmd = pc.live_command(ns(), Path("P.ns4p"), Path("o.json"), False, ["PNO2"], 15_000)
+    assert cmd[cmd.index("--key-ticks") + 1] == "15000"
+    assert "--key-ticks" not in pc.live_command(ns(), Path("P.ns4p"), Path("o.json"), False)
