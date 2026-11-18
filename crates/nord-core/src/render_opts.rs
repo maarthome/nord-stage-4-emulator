@@ -344,6 +344,10 @@ pub struct FirmwareOptions {
     /// (`PedalState::sustped`, opt-in; ASSUMED, the SUSTPED default of the hardware synth layers
     /// is not decoded, `docs/research/grand-pad-leftovers.md`).
     pub synth_sustain_pedal: bool,
+    /// `--firmware-morph`: Wheel / A.T. / Ctrl Ped weigh `v / 128` (full at 127) like the ARM and
+    /// the Synth Osc Ctrl, resonance, LFO and filter-env morphs play (`Stage4Engine::firmware_morph`,
+    /// D159; opt-in).
+    pub firmware_morph: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
     pub measured_laws: bool,
     /// `--synth-shape <0..1>`: strip shape word of the SHAPE oscillator (`fw_shape.rs`) in
@@ -437,6 +441,7 @@ impl Default for FirmwareOptions {
             synth_layer_law: true,
             measured_tick: true,
             synth_sustain_pedal: false,
+            firmware_morph: false,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -477,6 +482,7 @@ impl FirmwareOptions {
             synth_layer_law: false,
             measured_tick: false,
             synth_sustain_pedal: false,
+            firmware_morph: false,
             sample_kernel_key: false,
             firmware_routing: false,
             ..Self::default()
@@ -507,6 +513,7 @@ impl FirmwareOptions {
             synth_layer_law: true,
             measured_tick: true,
             synth_sustain_pedal: false,
+            firmware_morph: false,
             measured_laws: false,
             synth_shape_milli: None,
             synth_p: Some(PSpec::Table(PTableSpec::BUILTIN)),
@@ -594,6 +601,7 @@ impl FirmwareOptions {
         o.fx_idle_skip |= has("--fx-idle-skip");
         o.synth_layer_law |= has("--firmware-synth-layer-law");
         o.synth_sustain_pedal |= has("--synth-sustain-pedal");
+        o.firmware_morph |= has("--firmware-morph");
         if has("--legacy-1khz-tick") {
             o.measured_tick = false;
         }
@@ -739,6 +747,7 @@ impl FirmwareOptions {
         engine.synth_layer_law = self.synth_layer_law;
         crate::render_opts_tick::apply_measured_tick(engine, self.measured_tick);
         apply_synth_sustain(engine, self.synth_sustain_pedal);
+        engine.firmware_morph = self.firmware_morph;
         if self.fx_defaults {
             for c in engine.fx_chains.iter_mut() {
                 c.apply_firmware_defaults();
@@ -815,6 +824,7 @@ impl FirmwareOptions {
         engine.synth_layer_law = self.synth_layer_law;
         crate::render_opts_tick::apply_measured_tick(engine, self.measured_tick);
         apply_synth_sustain(engine, self.synth_sustain_pedal);
+        engine.firmware_morph = self.firmware_morph;
         if self.fx_defaults {
             for c in engine.fx_chains.iter_mut() {
                 c.apply_firmware_defaults();
@@ -1022,6 +1032,9 @@ impl FirmwareOptions {
         if self.synth_sustain_pedal {
             parts.push("synth-sustain-pedal".into());
         }
+        if self.firmware_morph {
+            parts.push("firmware-morph".into());
+        }
         if let Some(m) = self.synth_shape_milli {
             parts.push(format!("shape={:.2}", f32::from(m) / 1000.0));
         }
@@ -1079,6 +1092,19 @@ impl FirmwareOptions {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn firmware_morph_is_opt_in_and_reaches_the_engine() {
+        let o = FirmwareOptions::from_args(&args(&[])).unwrap();
+        assert!(!o.firmware_morph && !o.summary().contains("firmware-morph"));
+        assert!(!FirmwareOptions::legacy_all().firmware_morph);
+        let on = FirmwareOptions::from_args(&args(&["--firmware-morph"])).unwrap();
+        assert!(on.firmware_morph && on.summary().contains("firmware-morph"));
+        let mut e = Stage4Engine::new(48_000.0);
+        assert!(!e.firmware_morph);
+        on.apply_to(&mut e);
+        assert!(e.firmware_morph);
+    }
+
     #[test]
     fn synth_sustain_pedal_is_opt_in_and_only_touches_the_synth_layers() {
         let o = FirmwareOptions::default();
