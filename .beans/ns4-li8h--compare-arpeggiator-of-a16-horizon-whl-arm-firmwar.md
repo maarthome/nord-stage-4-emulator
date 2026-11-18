@@ -28,4 +28,4 @@ Default flips (owner decides). Committing firmware, samples or audio.
 ## Summary of Changes
 - `tools/arm_arp_events.py` records the ARM arp listener and voice events; `tools/arp_fw_compare.py` compares them with the native `arp_trace` bin; `tools/arp_video_onsets.py` measures the video step (150.0 ms).
 - `docs/research/arp-fw-vs-native.md` and `docs/research/data/arp-*.json`: step equal (150 ms), gate 2/3 vs full step, single-note retrigger and UpDown octave walk differ.
-- Opt-in `SynthLayer::arp_firmware_walk` (`arp_trace --arp-fw-walk`) with tests. D159, OQ39, ROADMAP 7b.6 synced. No default changes.
+- Opt-in `SynthLayer::arp_firmware_walk` (`arp_trace --arp-fw-walk`) with tests. D162, OQ39, ROADMAP 7b.6 synced. No default changes.
