@@ -34,7 +34,7 @@ The bench prints what each rack runs (`FX racks:`). Horizon Whl: **all seven rac
 | Change | Output | Default |
 |---|---|---|
 | `E40::add` takes an exact-f64 fast path (two-sum error term zero, then round to 32 bits by integer ops), `mul` uses a 64 bit pack | bit-identical: the oracle goldens (`tests_fw_rvbm_golden`, `tests_fw_rvb_golden`, Leslie) pass and a 200 000 pair random test compares against the old integer path; `render_hash` of the bench identical before and after (`0x47576812a4ed6e44` Scene I, `0x1685b873c8315384` 150 blocks) | on |
-| `--fx-idle-skip` (GUI "Skip idle FX racks"): a rack whose input has been exactly 0 and whose output stayed under 1e-7 (-140 dBFS) for 4 s returns silence until input returns | the hash of a render in which every sounding layer keeps playing is identical (test); a rack that wakes up resumes from frozen state, so a later wake is not bit-identical to the always-run path | off (D158) |
+| `--fx-idle-skip` (GUI "Skip idle FX racks"): a rack whose input has been exactly 0 and whose output stayed under 1e-7 (-140 dBFS) for 4 s returns silence until input returns | the hash of a render in which every sounding layer keeps playing is identical (test); a rack that wakes up resumes from frozen state, so a later wake is not bit-identical to the always-run path | off (D161) |
 | `ns4 bench --gui`: `--backup/--program/--arp/--repeat`, `FX racks:` line, `breakdown` on the loaded program | tool only | |
 
 ## 4. Results

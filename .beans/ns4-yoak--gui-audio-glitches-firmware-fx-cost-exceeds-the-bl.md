@@ -28,4 +28,4 @@ Default flips, firmware or audio contents in git, ARM/SHARC port rewrites.
 ## Summary of Changes
 - `ns4 bench --gui` loads a real program (`--backup/--program`), forces the arpeggiator (`--arp`), keeps each block's fastest of N runs (`--repeat`) and prints what each FX rack runs.
 - Finding: the tail spikes are host noise; the render is over budget because every one of the seven racks runs a firmware Cathedral reverb (about 1 ms per rack and 480 frame block) on Horizon Whl; the master bus hard clamps at 1.0 (follow-up).
-- `E40` bit-identical fast path (4 to 5 percent) and opt-in `--fx-idle-skip` (Scene I 12 to 15 ms to 2.7 to 3.8 ms, same hash), GUI switch, D158, research note, specs, TD-14, ROADMAP.
+- `E40` bit-identical fast path (4 to 5 percent) and opt-in `--fx-idle-skip` (Scene I 12 to 15 ms to 2.7 to 3.8 ms, same hash), GUI switch, D161, research note, specs, TD-14, ROADMAP.

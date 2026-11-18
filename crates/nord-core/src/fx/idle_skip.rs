@@ -9,7 +9,7 @@
 //!
 //! Not bit-identical to the always-run path once a skipped rack wakes up (its modulation phases
 //! and reverb read pointers stand still while it sleeps), so it is a switch and off by default
-//! (D158). A rack that was never fed is silent in both paths, so a render in which every sounding
+//! (D161). A rack that was never fed is silent in both paths, so a render in which every sounding
 //! layer keeps playing hashes identically (`bench_gui_prog::tests::idle_skip_keeps_the_hash_of_a_scene`).
 //! Allocation free, plain field reads and writes.
 

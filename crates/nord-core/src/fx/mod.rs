@@ -551,7 +551,7 @@ impl LayerFxChain {
         self.fw_rate_match = on.then(|| Box::new(RateMatch::new(self.sample_rate)));
     }
 
-    /// Switches the idle skip (`--fx-idle-skip`, D158) on or off: a rack whose input has been
+    /// Switches the idle skip (`--fx-idle-skip`, D161) on or off: a rack whose input has been
     /// silent for a while and whose output has died away returns silence without running.
     pub fn set_idle_skip(&mut self, on: bool) {
         self.idle.set(on, self.sample_rate);

@@ -16,7 +16,7 @@ pub fn apply_fx_rate_match(engine: &mut Stage4Engine, on: bool) {
     }
 }
 
-/// Switches the idle skip on or off on all seven FX chains (D158). Plain field writes, so it is
+/// Switches the idle skip on or off on all seven FX chains (D161). Plain field writes, so it is
 /// safe between audio blocks; a changed state restarts each rack's quiet count.
 pub fn apply_fx_idle_skip(engine: &mut Stage4Engine, on: bool) {
     for c in engine.fx_chains.iter_mut() {

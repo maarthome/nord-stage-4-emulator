@@ -330,7 +330,7 @@ pub struct FirmwareOptions {
     /// `--fx-rate-match`: the firmware Amp drive and cabinet run at the DSP frame rate 43,402 Hz
     /// (`LayerFxChain::set_fx_rate_match`, D137; opt-in).
     pub fx_rate_match: bool,
-    /// Skips the FX racks of silent layers (`--fx-idle-skip`, D158; opt-in).
+    /// Skips the FX racks of silent layers (`--fx-idle-skip`, D161; opt-in).
     pub fx_idle_skip: bool,
     /// The synth layer faders follow `(v / 127)^2` (default on, VERIFIED: the handler `0xC011BB48`
     /// run in the ARM harness, D87); `--legacy-synth-layer-law` turns it off.
