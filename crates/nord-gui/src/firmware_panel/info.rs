@@ -381,8 +381,17 @@ pub const TICK: SwitchInfo = sw(
     "Vox key timeline and synth gain de-zipper on the measured 24 kHz ARM timer (on by default since D131; --legacy-1khz-tick turns it off and restores 1 ms). Timer rate VERIFIED, the delays are lower bounds in real time (ASSUMED).",
 );
 
+/// Idle skip of the FX racks (D161), not a firmware path: a CPU saving.
+pub const IDLE_SKIP: SwitchInfo = sw(
+    "Global",
+    "--fx-idle-skip",
+    "Skip idle FX racks",
+    Assumed,
+    "Stops the FX rack of a layer that has been silent for 4 s (the other scene, an unused layer) until it gets input again; saves most of the firmware FX CPU when a scene uses few layers (D161). Not firmware-derived: a woken rack resumes from frozen state; 4 s and -140 dBFS are ASSUMED.",
+);
+
 /// All switches in bar order.
-pub const ALL: [SwitchInfo; 39] = [
+pub const ALL: [SwitchInfo; 40] = [
     TONE,
     B3_TAIL,
     FARFISA,
@@ -422,6 +431,7 @@ pub const ALL: [SwitchInfo; 39] = [
     FX_EQ,
     ROUTING,
     TICK,
+    IDLE_SKIP,
 ];
 
 #[cfg(test)]
