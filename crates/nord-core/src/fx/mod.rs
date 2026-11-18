@@ -48,6 +48,7 @@ mod fw_leslie_main_d;
 mod fw_leslie_main_e;
 mod fw_leslie_ops;
 mod fw_leslie_ring;
+mod fw_live;
 pub mod fw_map;
 mod fw_mod1;
 mod fw_mod1_data;
@@ -197,6 +198,7 @@ pub use fw_delay::{ctx as fw_delay_ctx, DelayIo, FwDelay};
 pub use fw_ext40::{Fp, E40};
 pub use fw_leslie::{FwLeslie, FwLeslieE40};
 pub use fw_leslie_ring::RingAdvance;
+pub use fw_live::{live_install, LiveInstall};
 pub use fw_map::AllpassType;
 pub use fw_params::{
     compressor_for_amount, set_allpass, set_amp_drive, set_compressor_amount, set_delay,
@@ -326,6 +328,9 @@ pub struct LayerFxChain {
     /// The firmware RM / A-WAH / WAH / PUMP stages (`firmware_fx.mod1`, types 4 to 11), boxed:
     /// the context, ring and scratch arrays are several KB.
     fw_mod1_rest: Option<Box<fw_mod1_rest::FwMod1Rest>>,
+    /// Frames per call of the firmware RM / A-WAH / WAH / PUMP stage: 2 (default) or 4 (the live
+    /// oracle pass, `fx_live_native --pass-frames 4`).
+    pub mod1_rest_frames: usize,
     /// The firmware chorus (`firmware_fx.mod2`), boxed: the ring is 4 KB.
     fw_mod2: Option<Box<fw_mod2::FwMod2Stage>>,
     fw_vibe: Option<Box<fw_vibe_stage::FwVibeStage>>,
@@ -449,6 +454,7 @@ impl LayerFxChain {
             mod2_type_raw: None,
             fw_mod1: None,
             fw_mod1_rest: None,
+            mod1_rest_frames: 2,
             fw_mod2: None,
             fw_vibe: None,
             fw_law: None,
