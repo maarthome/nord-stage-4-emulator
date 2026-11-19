@@ -175,7 +175,7 @@ Flip of one more group on top of the current default, all 384 programs (score ag
 | fx_eq+fx_mod1 | 2.70 | 1.71 | 6.30 | 16.61 | 54 | 15 | 24 |
 | fx_delay+fx_compressor+fx_eq+fx_mod1 | 1.66 | 1.04 | 3.84 | 16.61 | 22 | 3 | 8 |
 
-The delay gain sits in the mix law (`delay_laws`, role EMPIRICAL, no delay clip); the time law alone (oracle verified) moves nothing and makes PineScape Synth worse (21.03 to 22.35).
+The `fx_delay_laws only` and `fx_delay_time only` rows come from a run of `program_rank --flip fx_delay_time,fx_delay_laws,fx_delay` whose per-program lines were **not committed** (only the summary is kept; rerun with the command in s6 header to reproduce, about 8 min with six per-bank shards). The delay gain sits in the mix law (`delay_laws`, role EMPIRICAL, no delay clip); the time law alone (oracle verified) moves nothing and makes PineScape Synth worse (21.03 to 22.35).
 
 ### 6.1 Why no further group is flipped in this change
 
@@ -203,4 +203,4 @@ Compressor instance of FX core 1 (`I1 = 0xB0168`, attack pair at `DM(0xB0148)` a
 | SMOOTH | -0x09 | 0.99078 | 0.9908 |
 | MANT_SCALE, FIX_SCALE | -0x0D, -0x0C | -31, 31 | -31, 31 |
 
-So the port, which nulls the oracle for its own words, does not reproduce the firmware gain law: `fx-vs-oracle` s3.4 proves the routine, not the words. Following change (not in this PR): take SLOPE, REDUCTION_SCALE, TABLE1, LOG_GAIN from the image in `compressor_for_amount`, rerun `fx_vs_oracle.py --only COMP`, then ranked before/after and the default flip decision (opt-out `--legacy-compressor`), with an `ns4 bench` number and the apply_program, edit, render tests. Tracked in `docs/OPEN-QUESTIONS.md` OQ38 note and bean follow-up.
+So the port, which nulls the oracle for its own words, does not reproduce the firmware gain law: `fx-vs-oracle` s3.4 proves the routine, not the words. Caveat: these are the static-image words; they are not confirmed unmodified at runtime (the ARM boot log writes only the attack, release, makeup and threshold words, and the DSP code could still rewrite the others). Following change (not in this PR): take SLOPE, REDUCTION_SCALE, TABLE1, LOG_GAIN from the image in `compressor_for_amount`, rerun `fx_vs_oracle.py --only COMP`, then ranked before/after and the default flip decision (opt-out `--legacy-compressor`), with an `ns4 bench` number and the apply_program, edit, render tests. Tracked in `docs/OPEN-QUESTIONS.md` OQ38 note and bean follow-up.

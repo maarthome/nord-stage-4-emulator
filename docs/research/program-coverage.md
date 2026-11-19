@@ -1,6 +1,6 @@
 # Research: factory program coverage and render health
 
-- **Checked:** unset
+- **Checked:** 2026-11-19
 - **Sources (local, never committed):** the factory restore backup `Nord Stage 4 Factory Restore RevK v1.66.ns4b` (384 `.ns4p` programs, its `.npno` and `.nsmp4` entries), `tools/program_sweep.py` driving `crates/nord-tools/src/bin/program_sweep.rs` (release build), the classification of paths from `docs/specs/*.md` and `docs/research/*.md` cited per row.
 - **Question:** how much of the factory program space does the emulator cover, which engine paths do the 384 programs rely on, and which of them are firmware-verified, assumed or not modelled; does any program panic, go non-finite, fall silent or clip.
 
