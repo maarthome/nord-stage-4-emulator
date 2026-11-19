@@ -1,6 +1,6 @@
 # Morph (Wheel, A.T., Ctrl Ped): firmware law against the native engine
 
-Checked: 2026-11-17 (task `ns4-kq1o`, decision [D159](../DECISIONS.md)).
+Checked: 2026-11-17 (task `ns4-kq1o`, decision [D159](../DECISIONS.md)). **2026-11-18 (D166): the firmware law is the default; `--legacy-morph` restores the native law described as "default" below.**
 
 Sources: OS v1.66 ARM image run in the Unicorn harness (`tools/arm_program_morph.py`, Store-record
 recall of a program, MIDI on UART2); factory `Program/Bank A/Horizon Whl.ns4p` from the local
@@ -48,7 +48,7 @@ The Morph group ids `Morph_Grp_kOne..Five` have range `0..128`, which is the wei
 
 ## 3. Native law and what is wired
 
-| Target | Native default | `--firmware-morph` |
+| Target | Legacy (`--legacy-morph`, the engine law before D166) | Firmware law (default since D166, `--firmware-morph` is still accepted) |
 |---|---|---|
 | Weight | `v / 127` (`MorphControllers`) | `v / 128`, full at 127 (`firmware_weight`) |
 | Sum and clamp | `clamp(base + sum d w, 0, 1)` per parameter (same as firmware) | same |
@@ -97,7 +97,7 @@ fractional word, `ASSUMED` for the DSP side):
 Two sources of difference: the weight (above, at most 0.8 % of a depth) and the sender dropping a
 whole step once the fraction of the dispatched knob is 0.5 or more. The sender term dominates:
 up to about 0.5 dB of cutoff where it fires, 0 at rest and at full wheel. `--firmware-morph`
-reproduces both terms; the default keeps `v / 127` and no drop.
+reproduces both terms (the default since D166); `--legacy-morph` keeps `v / 127` and no drop.
 
 ## 5. Horizon Whl (A:16)
 
@@ -108,7 +108,7 @@ are 0):
 |---|---|---|---|---|
 | Piano A level | 0 | +127 | 127 | played (piano A is silent at rest, in both) |
 | Synth A cutoff | 52 (277 Hz) | +10 | 62 (494 Hz) | played |
-| Synth B filter env amount | 32 | +23 | 55 | **not played by default**; played by `--firmware-morph` |
+| Synth B filter env amount | 32 | +23 | 55 | **not played with `--legacy-morph`**; played by default since D166 |
 | Synth C level | 60 | +30 | 90 | played |
 | Synth C cutoff | 34 (98 Hz) | +13 | 47 (208 Hz) | played |
 | Delay mix of two FX chains | 0 | +38 | 38 | played |
@@ -139,5 +139,6 @@ it explains the video.
   targets: nothing differs between a morphed and a static dispatch of the same edit value.
 - With `--firmware-morph` the native synth morph acts on the engine fields (`resonance`,
   `osc_ctrl`, `lfo_*`, `filter_env_amount`); the strip knob words of the firmware synth path
-  (`strip_knobs`) are not re-sent. Layer clipboard copy and paste do not carry the five new
-  slots.
+  (`strip_knobs`) are not re-sent. Copy, Paste and Clear Morph carry the five new slots since D166
+  (`engine/morph_clip.rs`); a live edit of one of the five fields becomes the new base
+  (`SynthMorphSet::apply`), and cleared depths put the base back once.

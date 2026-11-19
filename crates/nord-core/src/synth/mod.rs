@@ -17,7 +17,9 @@ pub use crate::synth_wavetable::NUM_WAVETABLES;
 use crate::synth_wavetable::{sample_wavetable, wavetable_bank};
 
 mod arp;
+mod arp_gate;
 mod arp_order;
+mod arp_pool;
 pub mod arp_rate;
 mod dsp;
 mod fw_adr_chain;
@@ -127,6 +129,8 @@ pub use strip_map::{
 use strip_path::StripKey;
 pub use strip_path::{StripEnvRecords, StripParams, StripVoice, SynthChain};
 pub use voice::SynthVoice;
+#[cfg(test)]
+mod tests_arp_walk;
 #[cfg(test)]
 mod tests_envelope;
 #[cfg(test)]
@@ -425,9 +429,18 @@ pub struct SynthLayer {
     // Arpeggiator & Gate
     pub arp_mode: ArpMode,
     pub arp_octave_range: u8,
-    /// Opt-in: UP/DOWN walks the whole octave pool and back like the ARM pattern player (see
-    /// `arp.rs`, `docs/research/arp-fw-vs-native.md`). Off by default.
+    /// UP/DOWN walks the whole octave pool and back like the ARM pattern player (see `arp.rs`,
+    /// `docs/research/arp-fw-vs-native.md`). On by default since D166; `SynthLayer::legacy` and
+    /// `--legacy-arp` turn it off.
     pub arp_firmware_walk: bool,
+    /// Stored RANGE value `0..=127` of the program (`apply_arp_modes`); the firmware walk reads its
+    /// span while it still projects onto `arp_octave_range` and `perf.range_extra_thirds`.
+    pub arp_range_raw: u8,
+    /// Arp / Poly notes end after the firmware gate (2/3 of a step for the plain arpeggio and an
+    /// `E` step, see `arp_gate.rs`) instead of lasting to the next step. **Opt-in** (default off,
+    /// D166): the 2/3 is VERIFIED only in the replayed boot state, the grid flag writer is unknown
+    /// and there is no hardware clip (OQ32, D130).
+    pub arp_firmware_gate: bool,
     pub arp_rate_bpm: f32,
     arp_step: usize,
     arp_sample_counter: f32,
@@ -461,6 +474,8 @@ impl SynthLayer {
             super_lp24_scale: None,
             fw_resonance: false,
             firmware_velocity: false,
+            arp_firmware_walk: false,
+            arp_firmware_gate: false,
             ..Self::new(sample_rate)
         }
     }
@@ -560,7 +575,9 @@ impl SynthLayer {
 
             arp_mode: ArpMode::Off,
             arp_octave_range: 1,
-            arp_firmware_walk: false,
+            arp_firmware_walk: true,
+            arp_range_raw: 0,
+            arp_firmware_gate: false,
             arp_rate_bpm: 120.0,
             arp_step: 0,
             arp_sample_counter: 0.0,

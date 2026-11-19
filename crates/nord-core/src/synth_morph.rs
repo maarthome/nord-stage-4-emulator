@@ -1,5 +1,5 @@
-//! Synth morph targets the engine had no slot for (opt-in `--firmware-morph`, D159): Osc Ctrl,
-//! filter resonance, LFO rate, LFO amount and filter envelope amount.
+//! Synth morph targets the engine had no slot for (firmware morph law, the default since D166):
+//! Osc Ctrl, filter resonance, LFO rate, LFO amount and filter envelope amount.
 //!
 //! The ARM re-dispatches every morph-assigned edit id with `base + sum(delta_i * w_i)` clamped to
 //! `0..127` (VERIFIED, `docs/research/morph-fw-vs-native.md`), so each slot here is a
@@ -20,7 +20,15 @@ pub struct SynthMorphSet {
     pub env_amount: MorphParameter,
     /// Base pulse width of the loaded wave (`pulse_base_width`), needed to redo Osc Ctrl.
     pub pulse_base: f32,
+    /// Value of each slot field after the last `apply` (`None` before the first one): a different
+    /// value in the field means a live edit, which becomes the new base.
+    seen: [Option<f32>; SLOTS],
+    /// Slot has been written by the morph, so it is put back to its base when its depths clear.
+    written: [bool; SLOTS],
 }
+
+/// Number of slots of [`SynthMorphSet`].
+pub const SLOTS: usize = 5;
 
 impl Default for SynthMorphSet {
     fn default() -> Self {
@@ -31,6 +39,8 @@ impl Default for SynthMorphSet {
             lfo_amount: MorphParameter::new(0.0),
             env_amount: MorphParameter::new(0.0),
             pulse_base: 0.5,
+            seen: [None; SLOTS],
+            written: [false; SLOTS],
         }
     }
 }
@@ -115,25 +125,101 @@ impl SynthMorphSet {
         .any(active)
     }
 
-    /// Writes the morphed values into `synth` (allocation free; untouched slots stay as loaded).
-    pub fn apply(&self, ctrl: &MorphControllers, synth: &mut SynthLayer) {
-        if active(&self.osc_ctrl) {
-            crate::synth_params::set_osc_ctrl(synth, self.osc_ctrl.evaluate(ctrl), self.pulse_base);
+    /// Slot `k` (0 Osc Ctrl, 1 resonance, 2 LFO rate, 3 LFO amount, 4 filter envelope amount).
+    pub fn slot(&self, k: usize) -> &MorphParameter {
+        [
+            &self.osc_ctrl,
+            &self.resonance,
+            &self.lfo_rate,
+            &self.lfo_amount,
+            &self.env_amount,
+        ][k]
+    }
+
+    /// Mutable slot `k`, same order as [`Self::slot`].
+    pub fn slot_mut(&mut self, k: usize) -> &mut MorphParameter {
+        [
+            &mut self.osc_ctrl,
+            &mut self.resonance,
+            &mut self.lfo_rate,
+            &mut self.lfo_amount,
+            &mut self.env_amount,
+        ][k]
+    }
+
+    /// Forgets the field values seen so far (after the layer was replaced under the set).
+    pub fn forget_fields(&mut self) {
+        self.seen = [None; SLOTS];
+    }
+
+    /// Writes the morphed values into `synth` (allocation free). A slot without depths leaves the
+    /// field alone, except that it puts the base back once when its depths were just cleared; an
+    /// edit of the field between two calls (the GUI, a host parameter) becomes the new base, so a
+    /// live edit sticks instead of being overwritten every frame.
+    pub fn apply(&mut self, ctrl: &MorphControllers, synth: &mut SynthLayer) {
+        for k in 0..SLOTS {
+            if let Some(seen) = self.seen[k] {
+                let now = field(synth, k);
+                if now != seen {
+                    self.slot_mut(k).base = field_to_norm(k, now);
+                }
+            }
+            let p = *self.slot(k);
+            if active(&p) {
+                write_field(synth, k, p.evaluate(ctrl), self.pulse_base);
+                self.written[k] = true;
+            } else if self.written[k] {
+                write_field(synth, k, p.base, self.pulse_base);
+                self.written[k] = false;
+            }
+            self.seen[k] = Some(field(synth, k));
         }
-        if active(&self.resonance) {
-            // ASSUMED: `0.95` is the decode scale of `filter_resonance` (`cbin/synth_preset.rs`);
-            // the DSP word of a morphed resonance was not captured. A knob sweep of the resonance
-            // id through the SY words would confirm the scale.
-            synth.resonance = self.resonance.evaluate(ctrl) * 0.95;
-        }
-        if active(&self.lfo_rate) {
-            synth.lfo_rate_hz = lfo_norm_to_hz(self.lfo_rate.evaluate(ctrl));
-        }
-        if active(&self.lfo_amount) {
-            synth.lfo_amount = self.lfo_amount.evaluate(ctrl);
-        }
-        if active(&self.env_amount) {
-            synth.filter_env_amount = self.env_amount.evaluate(ctrl);
+    }
+}
+
+/// Engine field a slot drives, read back to spot live edits. Osc Ctrl is read through the
+/// supersaw detune; an edit of only the FM amount or the pulse width is not seen.
+fn field(synth: &SynthLayer, k: usize) -> f32 {
+    match k {
+        0 => synth.supersaw_detune,
+        1 => synth.resonance,
+        2 => synth.lfo_rate_hz,
+        3 => synth.lfo_amount,
+        _ => synth.filter_env_amount,
+    }
+}
+
+/// Writes knob position `norm` (`0..=1`) of slot `k` into the engine fields.
+fn write_field(synth: &mut SynthLayer, k: usize, norm: f32, pulse_base: f32) {
+    match k {
+        0 => crate::synth_params::set_osc_ctrl(synth, norm, pulse_base),
+        // ASSUMED: `0.95` is the decode scale of `filter_resonance` (`cbin/synth_preset.rs`);
+        // the DSP word of a morphed resonance was not captured. A knob sweep of the resonance
+        // id through the SY words would confirm the scale.
+        1 => synth.resonance = norm * 0.95,
+        2 => synth.lfo_rate_hz = lfo_norm_to_hz(norm),
+        3 => synth.lfo_amount = norm,
+        _ => synth.filter_env_amount = norm,
+    }
+}
+
+/// Knob position of an engine field value (inverse of [`write_field`]).
+fn field_to_norm(k: usize, value: f32) -> f32 {
+    match k {
+        0 | 3 | 4 => value.clamp(0.0, 1.0),
+        1 => (value / 0.95).clamp(0.0, 1.0),
+        _ => {
+            // LFO rate: bisection on the monotonic table interpolation.
+            let (mut lo, mut hi) = (0.0_f32, 1.0_f32);
+            for _ in 0..24 {
+                let mid = 0.5 * (lo + hi);
+                if lfo_norm_to_hz(mid) < value {
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            }
+            0.5 * (lo + hi)
         }
     }
 }
@@ -171,7 +257,7 @@ mod tests {
     fn inactive_set_leaves_the_voice_alone() {
         let mut synth = SynthLayer::new(48_000.0);
         synth.resonance = 0.3;
-        let s = SynthMorphSet::default();
+        let mut s = SynthMorphSet::default();
         assert!(!s.is_active());
         s.apply(&wheel_full(), &mut synth);
         assert_eq!(synth.resonance, 0.3);
@@ -181,7 +267,7 @@ mod tests {
     fn env_amount_morph_adds_the_knob_steps() {
         // Horizon Whl layer B: base 32 steps, wheel +23 steps -> 55 steps (ARM run, 0x138 = 55).
         let mut synth = SynthLayer::new(48_000.0);
-        let s = SynthMorphSet {
+        let mut s = SynthMorphSet {
             env_amount: set(32.0 / 127.0, 23.0 / 127.0),
             ..SynthMorphSet::default()
         };
@@ -195,7 +281,7 @@ mod tests {
     #[test]
     fn resonance_maps_to_the_decoded_scale() {
         let mut synth = SynthLayer::new(48_000.0);
-        let s = SynthMorphSet {
+        let mut s = SynthMorphSet {
             resonance: set(0.0, 1.0),
             ..SynthMorphSet::default()
         };
@@ -211,7 +297,7 @@ mod tests {
         let (a, b) = (LFO_RATE_HZ_TABLE[63], LFO_RATE_HZ_TABLE[64]);
         assert!(mid > a && mid < b);
         let mut synth = SynthLayer::new(48_000.0);
-        let s = SynthMorphSet {
+        let mut s = SynthMorphSet {
             lfo_rate: set(0.0, 64.0 / 127.0),
             ..SynthMorphSet::default()
         };
@@ -220,9 +306,66 @@ mod tests {
     }
 
     #[test]
+    fn a_live_edit_becomes_the_base_and_is_not_overwritten() {
+        let mut synth = SynthLayer::new(48_000.0);
+        let mut s = SynthMorphSet {
+            env_amount: set(0.25, 0.5),
+            resonance: set(0.2, 0.4),
+            lfo_rate: set(0.3, 0.2),
+            ..SynthMorphSet::default()
+        };
+        s.apply(&MorphControllers::default(), &mut synth);
+        assert!((synth.filter_env_amount - 0.25).abs() < 1e-6);
+        // the player turns the knobs
+        synth.filter_env_amount = 0.6;
+        synth.resonance = 0.9 * 0.95;
+        synth.lfo_rate_hz = lfo_norm_to_hz(0.5);
+        s.apply(&MorphControllers::default(), &mut synth);
+        assert!(
+            (synth.filter_env_amount - 0.6).abs() < 1e-6,
+            "stays at the edit"
+        );
+        assert!((synth.resonance - 0.9 * 0.95).abs() < 1e-5);
+        assert!((s.env_amount.base - 0.6).abs() < 1e-6);
+        assert!((s.lfo_rate.base - 0.5).abs() < 1e-3);
+        // the wheel adds its depth on top of the new base
+        s.apply(&wheel_full(), &mut synth);
+        assert!((synth.filter_env_amount - 1.0).abs() < 1e-6);
+        assert!(synth.lfo_amount.abs() < 1e-6, "untouched slot stays");
+    }
+
+    #[test]
+    fn cleared_depths_put_the_base_back_once_and_stop_following_the_wheel() {
+        let mut synth = SynthLayer::new(48_000.0);
+        let mut s = SynthMorphSet {
+            env_amount: set(0.25, 0.5),
+            ..SynthMorphSet::default()
+        };
+        s.apply(&wheel_full(), &mut synth);
+        assert!((synth.filter_env_amount - 0.75).abs() < 1e-6);
+        s.env_amount.delta_wheel = 0.0;
+        s.apply(&wheel_full(), &mut synth);
+        assert!(
+            (synth.filter_env_amount - 0.25).abs() < 1e-6,
+            "base restored"
+        );
+        synth.filter_env_amount = 0.4; // an edit afterwards is kept
+        s.apply(&wheel_full(), &mut synth);
+        assert!((synth.filter_env_amount - 0.4).abs() < 1e-6);
+    }
+
+    #[test]
+    fn lfo_inverse_round_trips_the_table_positions() {
+        for pos in [0.0_f32, 0.2, 0.5, 63.5 / 127.0, 1.0] {
+            let hz = lfo_norm_to_hz(pos);
+            assert!((lfo_norm_to_hz(field_to_norm(2, hz)) - hz).abs() / hz < 1e-3);
+        }
+    }
+
+    #[test]
     fn lfo_amount_and_osc_ctrl_follow_the_sum() {
         let mut synth = SynthLayer::new(48_000.0);
-        let s = SynthMorphSet {
+        let mut s = SynthMorphSet {
             lfo_amount: set(0.25, 0.5),
             osc_ctrl: set(0.0, 1.0),
             pulse_base: 0.5,
