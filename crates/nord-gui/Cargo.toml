@@ -20,7 +20,11 @@ required-features = ["app"]
 # `app` pulls the native window, audio output and MIDI input. The DAW plugin editor depends on
 # this crate with `default-features = false` to reuse the panel without cpal/midir/eframe.
 default = ["app"]
-app = ["dep:eframe", "dep:cpal", "dep:midir"]
+app = ["dep:eframe", "dep:cpal", "dep:midir", "dep:windows-sys"]
+
+[target.'cfg(windows)'.dependencies]
+# Audio thread priority (MMCSS "Pro Audio" + THREAD_PRIORITY_TIME_CRITICAL), `audio/priority.rs`.
+windows-sys = { version = "0.59", optional = true, features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [dependencies]
 nord-core = { path = "../nord-core" }
