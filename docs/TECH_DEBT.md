@@ -26,6 +26,7 @@ This document tracks deliberate trade-offs, structural compromises, temporary wo
 | **TD-18** | `crates/nord-core/src/fx/` (`modulation.rs`, `fw_mod2*.rs`, `fw_vibe_stage.rs`) | Low | The firmware Mod 2 (default since D163) allocates its stage with `Box::new` inside `process_frame` on first use and on every type change, has a fixed 4 frame (83 us) latency, and costs 0.05 to 0.17 ms per active chain and block | Phase 7b.4 | Partly resolved |
 | **TD-19** | `crates/nord-gui/src/panel` (`organ_strip.rs`, `bay_synth/strip.rs`) | Low | Organ and Synth SOLO (ON held) only flip a panel flag and its LED; no engine command. Piano SOLO works (scene mask) | Phase 6b | Open |
 | **TD-20** | `crates/nord-gui/src/panel/ui_state/fx` | Low | `StateEcho` / `ChainUi` do not mirror `mod2_variation` (and the firmware Mod 2 words), so after a program load the Mod 2 VAR legend shows off and the first Shift+click on the type selector writes `true`/`false` from a stale view | Phase 6b | Open |
+| **TD-21** | `crates/nord-plugin/` (`program_overrides.rs`, `lib.rs`, `editor/readback.rs`) | Medium | The plugin has no user path to load a `.ns4p`; only piano Touch and firmware Mod 2 survive the block sync of a loaded program (D169), every other host parameter still overwrites it; the panel shows the global Touch, not the program's per-layer one | Phase 7 | Open |
 
 ---
 
@@ -161,6 +162,15 @@ This document tracks deliberate trade-offs, structural compromises, temporary wo
 
 - **Description:** `ui_state/fx/echo.rs` `StateEcho` has no `mod2_variation` (nor the raw Mod 2 words); `Stage4PanelState` has no such legacy field, so `apply_program` cannot reach `ChainUi::mod2_variation`. Every Mod 1 / Mod 2 control now sends only its own edit (`bay_effects/mod_touch.rs`; tests `every_mod_control_sends_only_its_own_edits`, `mod_amount_knob_sends_only_the_amount_and_keeps_a_loaded_mod2`), so a loaded variation is no longer overwritten by an unrelated knob. Still open: the VAR legend of a loaded CHOR variation shows off, and a Shift + selector toggle writes `true` from that stale view (the engine flag is then inverted relative to what is printed); a type or rate edit legitimately clears the Mod 2 firmware raw words (by design: the edit must be audible).
 - **Remediation Plan:** read the loaded chain's variation flag into `ChainUi` on program load (telemetry or a `StateEcho` field), with a test that a loaded variation shows lit and survives a rate edit.
+- **Status:** Open.
+
+---
+
+### TD-21: Plugin Has No Program Loader; Other Host Parameters Still Overwrite a Loaded Program
+
+- **Description:** D169 lets a loaded program's piano Touch and firmware Mod 2 survive the per-block sync. The plugin still has no user path to load a `.ns4p` (no file dialog or background task; `NordStage4Plugin::load_program` is an API used by tests), and every other host parameter without override tracking (levels, FX knobs, organ, synth, ...) writes its value over the program on each block, as before.
+- **Impact:** A loaded program is only partly audible in the plugin until the remaining parameters are tracked or written into the host parameters. The editor panel reads `piano_touch` and the Mod 2 values from the host parameters (`editor/readback.rs`), so it shows the global value (Medium by default) while a program's per-layer Touch plays; the GUI global KB TOUCH edit writes one value for both layers (a `nord-gui` panel limit).
+- **Remediation Plan:** (1) add a loader (file dialog on the GUI thread, parse off the audio thread, hand over through a lock-free slot like the keybed queue); (2) extend `ProgramOverrides` to the FX, organ, piano and synth parameter groups, or have the loader push program values into the host parameters with a `ParamSetter`; (3) give the read-back an engine view so the panel shows the playing Touch.
 - **Status:** Open.
 
 ---
