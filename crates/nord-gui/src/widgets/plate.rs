@@ -25,6 +25,14 @@ pub fn plate_frame(p: &Painter, section: Rect, top: f32, rim: f32, tab: Option<R
         0.0,
         MODULE_HEADER_BAR,
     );
+    // Outline before the tab: the raised tab covers the outline's top edge (a line through the
+    // title and the ON button otherwise).
+    p.rect_stroke(
+        body,
+        5.0,
+        Stroke::new(1.0_f32, MODULE_SLATE_DARK),
+        StrokeKind::Inside,
+    );
     let ink = Color32::from_rgb(20, 24, 30);
     match tab {
         Some(t) => {
@@ -61,12 +69,6 @@ pub fn plate_frame(p: &Painter, section: Rect, top: f32, rim: f32, tab: Option<R
             );
         }
     }
-    p.rect_stroke(
-        body,
-        5.0,
-        Stroke::new(1.0_f32, MODULE_SLATE_DARK),
-        StrokeKind::Inside,
-    );
 }
 
 #[cfg(test)]
@@ -86,5 +88,37 @@ mod tests {
             plate_frame(&p, sec, 74.0, 10.0, None, "SYNTH");
             assert!(n0 >= 0.0);
         });
+    }
+
+    /// Regression: the body outline used to be painted last, so its top edge ran through the
+    /// header tab (a line struck through "ORGAN" and behind the ON button).
+    #[test]
+    fn tab_is_painted_over_the_body_outline() {
+        let ctx = egui::Context::default();
+        let sec = Rect::from_min_size(pos2(0.0, 60.0), vec2(300.0, 300.0));
+        let tab = Rect::from_min_size(sec.min, vec2(120.0, 24.0));
+        let out = ctx.run(Default::default(), |ctx| {
+            let p = ctx.layer_painter(egui::LayerId::background());
+            plate_frame(&p, sec, 74.0, 10.0, Some(tab), "ORGAN");
+        });
+        let body = Rect::from_min_max(pos2(0.0, 74.0), sec.max);
+        let rects: Vec<(usize, Rect, bool)> = out
+            .shapes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| match &s.shape {
+                egui::Shape::Rect(r) => Some((i, r.rect, !r.stroke.is_empty())),
+                _ => None,
+            })
+            .collect();
+        let outline = rects.iter().position(|(_, r, st)| *st && *r == body);
+        let tab_fill = rects.iter().position(|(_, r, st)| !*st && *r == tab);
+        let (Some(o), Some(t)) = (outline, tab_fill) else {
+            panic!("outline {outline:?} / tab fill {tab_fill:?} not painted");
+        };
+        assert!(
+            o < t,
+            "body outline ({o}) must be painted before the tab ({t})"
+        );
     }
 }

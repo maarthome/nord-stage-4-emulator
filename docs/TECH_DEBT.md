@@ -24,6 +24,8 @@ This document tracks deliberate trade-offs, structural compromises, temporary wo
 | **TD-14** | `crates/nord-core` (engine, `organ/`, `piano`, `synth/`, `fx/`) | Low | Block render cost vs the PRD budget (0.8 ms): typical program 0.67 to 0.70 ms (met), worst case (7 layers, 88 keys, all FX) 2.2 to 2.5 ms (was 3.9 to 4.4 ms, real time but over budget) | Phase 6b B13 (`ns4-4ok5`), perf bean `ns4-c882` | Partly resolved |
 | **TD-15** | `crates/nord-core::organ` (`b3_bass_fw`, `b3_bass_stage.rs`) | Low | Opt-in B3 Bass and Farfisa firmware stages (D71, D74) are not real time: Bass 3.3 to 3.6 s, Farfisa about 2 s of CPU per second of audio in a release build (row interpreter, 40 bit float); offline rendering only | Bean `ns4-4wzo`, [organ-farfisa-bass](research/organ-farfisa-bass.md) s15 | Open |
 | **TD-18** | `crates/nord-core/src/fx/` (`modulation.rs`, `fw_mod2*.rs`, `fw_vibe_stage.rs`) | Low | The firmware Mod 2 (default since D163) allocates its stage with `Box::new` inside `process_frame` on first use and on every type change, has a fixed 4 frame (83 us) latency, and costs 0.05 to 0.17 ms per active chain and block | Phase 7b.4 | Open |
+| **TD-19** | `crates/nord-gui/src/panel` (`organ_strip.rs`, `bay_synth/strip.rs`) | Low | Organ and Synth SOLO (ON held) only flip a panel flag and its LED; no engine command. Piano SOLO works (scene mask) | Phase 6b | Open |
+| **TD-20** | `crates/nord-gui/src/panel/ui_state/fx` | Low | `StateEcho` / `ChainUi` do not mirror `mod2_variation` (and the firmware Mod 2 words), so after a program load the Mod 2 VAR legend shows off and the first Shift+click on the type selector writes `true`/`false` from a stale view | Phase 6b | Open |
 
 ---
 
@@ -144,6 +146,19 @@ This document tracks deliberate trade-offs, structural compromises, temporary wo
 - **Description:** Since D163 the firmware Mod 2 (`FirmwareFx::DEFAULT.mod2`) runs for every program that carries the raw `kFx2Type` / `kFx2RateClkDiv` words. `LayerFxChain::process_fw_mod2` (`fx/modulation.rs`) creates its stage (`FwMod2Stage`, `FwLawStage`, `FwVibeStage`, several KB each) with `Box::new` inside `process_frame` the first time a type is used and again whenever the type changes; the stage latency is fixed at 4 frames (83 us at 48 kHz) and the cost is 0.05 to 0.17 ms per active chain and 128 frame block (TD-14, D163).
 - **Impact:** A program load (`LoadProgram`, listed under TD-12 as still outside the strict rule) or a Live slot recall that changes the Mod 2 type allocates on the audio thread once per chain; the stage then runs allocation free (`tests/no_alloc_audio_path.rs` covers the steady state). GUI edits of type, rate and variation drop the words (`clear_mod2_firmware_words`) and fall back to the engine Mod 2, so they do not allocate. The 4 frame latency is part of the firmware routine and is not compensated against the dry path. The panel's Mod 2 AMOUNT knob sends the whole Mod 2 edit set (type, rate, amount, variation, `FxEdit` of `Unit::Mod2`), which clears the firmware words, so the first touch of a loaded program's Mod 2 switches that chain from the firmware stage to the engine model with an audible jump (the panel state maps the raw type and rate to the engine's, which are not the same sound). The plugin runs the engine Mod 2 for the same reason (`sync_to_engine` clears the words every block). Fix idea: send only the edited control (amount is read live) or keep the words until type, rate or variation actually changes.
 - **Remediation Plan:** (1) build the stage in `prepare` / `apply_program` on the control thread (the shadow engine of TD-12) and hand it over with `SwapState`; (2) keep all four stage kinds preallocated per chain only if the memory is acceptable (about 4 stages x 7 chains), or pool them; (3) measure the per-frame cost again after (1) and decide whether CHOR and SPIN need a faster executor (TD-15 has the same option for the B3 stage).
+- **Status:** Open.
+
+### TD-19: Organ and Synth SOLO Do Nothing in the Engine
+
+- **Description:** Holding the Organ ON button toggles `organ_ui.solo` and the SOLO legend LED (`panel/organ_strip.rs`, test `hold_on_on_button_toggles_solo` only checks the flag); the Synth strip's SOLO legend (`bay_synth/strip.rs`) is likewise cosmetic. Piano SOLO sends `PianoEdit::SceneMask` (`piano_logic::solo_start` / `solo_end`: only that section sounds while ON is held, the previous scene returns on release).
+- **Reproduction:** `cargo test -p nord-gui --lib hold_on_on_button_toggles_solo`; in the GUI hold Organ ON for 0.7 s with a Piano layer playing: the SOLO LED lights, the Piano keeps sounding. The Organ flag also latches (toggle) where Piano SOLO lasts only while held.
+- **Remediation Plan:** reuse `PianoEdit::SceneMask` (organ layers are bits 0..1, Piano 2..3, Synth 4..6): `solo_start` / `solo_end` per section driven by the held state of the ON button, with tests that the mask is `organ_bits` while held and the saved scene returns on release.
+- **Status:** Open.
+
+### TD-20: Panel Fx View Does Not Mirror Mod 2 Variation After a Program Load
+
+- **Description:** `ui_state/fx/echo.rs` `StateEcho` has no `mod2_variation` (nor the raw Mod 2 words); `Stage4PanelState` has no such legacy field, so `apply_program` cannot reach `ChainUi::mod2_variation`. The amount knob no longer resends it (`bay_effects/modulation.rs`, test `mod_amount_knob_sends_only_the_amount_and_keeps_a_loaded_mod2`), but the VAR legend of a loaded CHOR variation shows off and a type or rate edit still writes the stale `false`.
+- **Remediation Plan:** read the loaded chain's variation flag into `ChainUi` on program load (telemetry or a `StateEcho` field), with a test that a loaded variation shows lit and survives a rate edit.
 - **Status:** Open.
 
 ---
