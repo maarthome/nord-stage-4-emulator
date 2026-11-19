@@ -35,6 +35,7 @@ mod legibility_caps;
 mod legibility_leds;
 #[cfg(test)]
 mod legibility_rules;
+#[cfg(test)]
 mod legibility_tests;
 mod organ_drawbars;
 mod organ_layer;
