@@ -241,7 +241,7 @@ mod tests {
             leslie_ring: RingAdvance::FROZEN,
             farfisa_processor: Some(true),
             piano_layer_law: true,
-            piano_touch: true,
+            piano_touch: false,
             sample_kernel_key: false,
             sample_pitch_fw: true,
             ..FirmwareOptions::default()
@@ -254,7 +254,7 @@ mod tests {
         assert!(f.reverb && f.mod1 && f.mod2 && f.eq && f.compressor && !f.delay_laws);
         assert!(engine.organ_a.leslie_fw.is_some() && engine.organ_b.farfisa_processor);
         assert!(engine.piano_a.firmware_layer_law && !engine.synth_b.sample_kernel_by_key);
-        assert!(engine.piano_a.firmware_touch && engine.piano_b.firmware_touch);
+        assert!(!engine.piano_a.firmware_touch && !engine.piano_b.firmware_touch);
         assert!(engine.synth_c.sample_pitch_fw);
         panel.opts = FirmwareOptions::default();
         panel.push(&handle);
@@ -265,6 +265,10 @@ mod tests {
         );
         assert!(engine.organ_a.leslie_fw.is_none() && !engine.organ_b.farfisa_processor);
         assert!(!engine.piano_a.firmware_layer_law && engine.synth_b.sample_kernel_by_key);
+        assert!(
+            engine.piano_a.firmware_touch && engine.piano_b.firmware_touch,
+            "reverting to the defaults turns the Touch curves back on (D165)"
+        );
     }
 
     #[test]

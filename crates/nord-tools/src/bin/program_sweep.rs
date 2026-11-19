@@ -5,10 +5,12 @@
 //! Usage: `cargo run --release -p nord-tools --bin program_sweep -- <backup.ns4b>
 //! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V]
 //! [--synth-velocity] [--legacy-synth-velocity] [--legacy-arp]
-//! [--arp-fw-gate] [--legacy-morph] [--wheel V] [--aftertouch V] [--pedal V]`
+//! [--arp-fw-gate] [--legacy-morph] [--piano-touch] [--legacy-piano-touch] [--wheel V] [--aftertouch V]
+//! [--pedal V]`
 //! (`--synth-velocity` is a no-op since D142 made the firmware synth velocity law the default;
 //! `--legacy-synth-velocity` renders both modes with the linear blend; `--legacy-arp` and
-//! `--legacy-morph` restore the pre-D166 arpeggiator and morph law in both modes; `--wheel`,
+//! `--legacy-morph` restore the pre-D166 arpeggiator and morph law in both modes; `--piano-touch` /
+//! `--legacy-piano-touch` force the firmware Touch curves on / off in both modes; `--wheel`,
 //! `--aftertouch` and `--pedal` send that controller value (0..127) before the notes, so the
 //! morph law is exercised);
 //! `tools/program_sweep.py` drives it. Output
@@ -55,6 +57,18 @@ fn apply_synth_velocity_flags(o: &mut FirmwareOptions, args: &[String]) {
     }
     if args.iter().any(|a| a == "--legacy-synth-velocity") {
         o.synth_velocity_fw = false;
+    }
+}
+
+/// `--piano-touch` forces the firmware Touch curves on, `--legacy-piano-touch` forces the
+/// Medium curve with the ASSUMED power curves for the other sounds (the pre-flip default); the
+/// legacy flag wins. Lets one build print the sweep before and after the Touch default flip.
+fn apply_piano_touch_flags(o: &mut FirmwareOptions, args: &[String]) {
+    if args.iter().any(|a| a == "--piano-touch") {
+        o.piano_touch = true;
+    }
+    if args.iter().any(|a| a == "--legacy-piano-touch") {
+        o.piano_touch = false;
     }
 }
 
@@ -108,6 +122,7 @@ fn main() -> Result<(), String> {
     ];
     for (_, o) in &mut modes {
         apply_synth_velocity_flags(o, &args);
+        apply_piano_touch_flags(o, &args);
         apply_legacy_flags(o, &args);
     }
     let byte = |name: &str| flag(&args, name).and_then(|v| v.parse::<u8>().ok());
@@ -207,6 +222,17 @@ mod tests {
             &args(&["--synth-velocity", "--legacy-synth-velocity"]),
         );
         assert!(!o.synth_velocity_fw);
+    }
+
+    #[test]
+    fn piano_touch_flags_force_either_way_and_legacy_wins() {
+        let mut o = FirmwareOptions::default();
+        apply_piano_touch_flags(&mut o, &args(&["--legacy-piano-touch"]));
+        assert!(!o.piano_touch);
+        apply_piano_touch_flags(&mut o, &args(&["--piano-touch"]));
+        assert!(o.piano_touch);
+        apply_piano_touch_flags(&mut o, &args(&["--piano-touch", "--legacy-piano-touch"]));
+        assert!(!o.piano_touch);
     }
 
     #[test]

@@ -103,6 +103,21 @@ mod tests {
     }
 
     #[test]
+    fn classic_restores_every_default_flip() {
+        // D142 synth velocity, D165 piano Touch, D166 arpeggiator walk and morph law
+        let c = classic();
+        assert!(!c.synth_velocity_fw && !c.piano_touch);
+        assert!(!c.arp_firmware && !c.arp_firmware_gate && !c.firmware_morph);
+        let f = firmware();
+        assert!(f.synth_velocity_fw && f.piano_touch && f.arp_firmware && f.firmware_morph);
+        let mut o = f;
+        for e in ENGINES {
+            apply_engine(&mut o, e, false);
+        }
+        assert!(!o.synth_velocity_fw && !o.piano_touch && !o.arp_firmware && !o.firmware_morph);
+    }
+
+    #[test]
     fn an_engine_preset_leaves_the_other_engines_alone() {
         let mut o = FirmwareOptions {
             leslie_firmware: true,

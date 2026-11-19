@@ -203,13 +203,13 @@ pub const PIANO_BUS: SwitchInfo = sw(
     Assumed,
     "Sample path scaled by the SMP bus convention 0.5 instead of 0.55 (Q31 receiver ASSUMED).",
 );
-/// Piano program Touch curves (`--firmware-piano-touch`).
+/// Piano program Touch curves (`--firmware-piano-touch` / `--legacy-piano-touch`).
 pub const PIANO_TOUCH: SwitchInfo = sw(
     "Piano",
-    "--firmware-piano-touch",
+    "--legacy-piano-touch",
     "Touch curves",
     Mixed,
-    "KB TOUCH plays the firmware velocity curves (curve ids 10 / 11 / 13, verified against the ARM); the program file bits are not verified.",
+    "KB TOUCH plays the firmware velocity curves (curve ids 10 / 11 / 13, verified against the ARM; the Touch bits of every factory program equal the firmware recall, 384 of 384); on by default since D165, no hardware clip of Heavy or Light exists, sounds without a level model scale the Medium response (ASSUMED); --legacy-piano-touch plays Medium for every .npno note.",
 );
 /// Piano SMP voice-gain slew (`--piano-slew-fw`).
 pub const PIANO_SLEW: SwitchInfo = sw(
