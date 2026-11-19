@@ -13,7 +13,7 @@ use nord_core::engine::Stage4Engine;
 /// Firmware-law switches.
 ///
 /// ASSUMED: the four defaults mirror the engine defaults (`SynthLayer::new`, `Stage4Engine::new`,
-/// `PianoLayer::new`: walk, morph law and Touch curves on, gate off per D166); nothing here is a
+/// `PianoLayer::new`: walk, gate, morph law and Touch curves on, D166 and D168); nothing here is a
 /// measured value. `defaults_equal_the_engine_defaults` fails if an engine default moves.
 #[derive(Params)]
 pub struct FirmwareFlagParams {
@@ -21,8 +21,8 @@ pub struct FirmwareFlagParams {
     /// (`SynthLayer::arp_firmware_walk`, D162, D166). Off = legacy arp (`--legacy-arp`).
     #[id = "fwx_arp_walk"]
     pub arp_walk: BoolParam,
-    /// 2/3 step gate of Arp / Poly notes (`SynthLayer::arp_firmware_gate`). Opt-in: default off
-    /// (D166, OQ32).
+    /// 2/3 step gate of Arp / Poly notes (`SynthLayer::arp_firmware_gate`). Default on (D168);
+    /// off = the engine gate (`--no-arp-gate`).
     #[id = "fwx_arp_gate"]
     pub arp_gate: BoolParam,
     /// Firmware morph law, `v / 128` weights (`Stage4Engine::firmware_morph`, D159, D166).
@@ -39,7 +39,7 @@ impl Default for FirmwareFlagParams {
     fn default() -> Self {
         Self {
             arp_walk: BoolParam::new("Firmware Arp Walk", true),
-            arp_gate: BoolParam::new("Firmware Arp Gate (2/3)", false),
+            arp_gate: BoolParam::new("Firmware Arp Gate (2/3)", true),
             morph_law: BoolParam::new("Firmware Morph Law", true),
             touch_curves: BoolParam::new("Firmware Piano Touch Curves", true),
         }
@@ -76,7 +76,7 @@ mod tests {
         // Perturb first so the test fails if sync writes nothing.
         e.firmware_morph = false;
         e.synth_b.arp_firmware_walk = false;
-        e.synth_c.arp_firmware_gate = true;
+        e.synth_c.arp_firmware_gate = false;
         e.piano_a.firmware_touch = false;
         FirmwareFlagParams::default().sync_to_engine(&mut e);
         assert_eq!(e.firmware_morph, reference.firmware_morph);
@@ -96,7 +96,7 @@ mod tests {
     fn host_switches_reach_the_engine() {
         let p = FirmwareFlagParams {
             arp_walk: BoolParam::new("w", false),
-            arp_gate: BoolParam::new("g", true),
+            arp_gate: BoolParam::new("g", false),
             morph_law: BoolParam::new("m", false),
             touch_curves: BoolParam::new("t", false),
         };
@@ -105,7 +105,7 @@ mod tests {
         assert!(!e.firmware_morph);
         assert!(!e.piano_a.firmware_touch && !e.piano_b.firmware_touch);
         for s in [&e.synth_a, &e.synth_b, &e.synth_c] {
-            assert!(!s.arp_firmware_walk && s.arp_firmware_gate);
+            assert!(!s.arp_firmware_walk && !s.arp_firmware_gate);
         }
     }
 
