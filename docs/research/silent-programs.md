@@ -101,6 +101,21 @@ target/release/arp_trace "Synth Engine.ns4p" --keys 60 --seconds 2 --tempo 120  
 
 `docs/research/data/silent-programs.csv` holds the 18 rows: class, cause, native RMS, before and after peaks, hold length, expectation, flags.
 
+## 7. Census rerun (2026-11-19, D170)
+
+All 384 programs through the chain with the L2 forwarding, `--expect` and the arp hold, native rendered on the current defaults (D163 to D166); the scoring columns of `program-ranking.csv` are byte-identical to `main` (0 of 384 differ), only the chain columns changed. `program_rank_chain.py` now retries failed entries (41 census failures of an interrupted first pass, 4 missing return-path runs; the old resume skipped them). EMPIRICAL.
+
+| Change | Programs |
+|---|---|
+| Flag `synth_chain_silent` gone, now voiced | 12: Dance Lead, Gravity Pattern, 70s CP Strings, Broken Chip, Calling Whl, Super Org Punch, 90s Organ, Dreamy Syn Tines, Gravity Whl, Moving Chords, Scream Lead AT, Shiny Synth Keys |
+| Still `synth_chain_silent` | 1: Synth Engine (section 6) |
+| `organ_chain_silent` becomes `organ_expected_silent` | 5 |
+| Window peak 0.0 to above 0 without a flag | 1: Bell Strings (1.349), not flagged in the first census |
+| Window peak level change, both runs voiced | 13 programs: above 1 dB 7 (Night Gaunts Whl +19.7 dB, Boxxx +14.1, Mirror Image Pad +3.5, Unclocked Pad +3.6, Dual Gates +3.0, FM Cloud Whl +2.4, Horizon Whl +1.6), below 1 dB 6 |
+| Other flags (`sample_*`, `piano_no_chain_tap`) | unchanged (`sample_layer_lost` 24, `sample_no_voice` 3, `sample_voiced_no_audio` 19, `piano_no_chain_tap` 155) |
+
+The level changes come from the wavetable (L2 forwarding) and the longer hold of arp programs. 144 peak cells (of the three peak columns) are empty now where the first census had a `0.0`: the chip of that column is not run for the engines of the program (`chips_for`), so `0.0` always means a run that read silence. Programs in the piano sample (12 of 155, every 13th): no SMP key message, [piano-chain-tap](piano-chain-tap.md).
+
 ## Implications
 
 - OQ40 is answered for 17 of 18 programs; the native engine is not wrong for any of them. The ranking in [program-ranking](program-ranking.md) stands; only its chain columns for wavetable programs were wrong.

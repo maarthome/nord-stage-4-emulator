@@ -124,20 +124,26 @@ def read_records(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text("utf-8").splitlines() if line]
 
 
-def finished(path: Path) -> set[str]:
-    """Entries with a successful census run in the output file (resume).
+def is_complete(rec: dict, need_audio: set[str]) -> bool:
+    """Complete: the census ran and, for an `--audio-for` entry, the return-path run too."""
+    return bool(rec.get("census")) and (rec["entry"] not in need_audio or bool(rec.get("audio")))
 
-    A failed entry (`census` is `null`, the harness crashed or timed out) is not finished: a rerun
-    runs it again (D170; the earlier code skipped it and kept the failure for good).
+
+def finished(path: Path, need_audio: set[str] | None = None) -> set[str]:
+    """Entries with a complete record in the output file (resume).
+
+    A failed entry (`census` is `null`, or a missing return-path run of an `--audio-for` entry: the
+    harness crashed or timed out) is not finished: a rerun runs it again (D170; the earlier code
+    skipped it and kept the failure for good).
     """
-    return {r["entry"] for r in read_records(path) if r.get("census")}
+    return {r["entry"] for r in read_records(path) if is_complete(r, need_audio or set())}
 
 
-def drop_failed(path: Path) -> int:
-    """Rewrites the output file without the failed records, so a retry leaves one line per entry;
-    returns how many were dropped."""
+def drop_failed(path: Path, need_audio: set[str] | None = None) -> int:
+    """Rewrites the output file without the incomplete records, so a retry leaves one line per
+    entry; returns how many were dropped."""
     records = read_records(path)
-    kept = [r for r in records if r.get("census")]
+    kept = [r for r in records if is_complete(r, need_audio or set())]
     if len(kept) != len(records):
         text = "".join(json.dumps(r, sort_keys=True) + chr(10) for r in kept)
         path.write_text(text, encoding="utf-8")
@@ -207,14 +213,14 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs the 
     ns = ap.parse_args(argv)
     ns.out.mkdir(parents=True, exist_ok=True)
     target = ns.out / "chain.jsonl"
-    dropped = drop_failed(target)
+    audio = audio_entries(ns.audio_for) if ns.audio_for else set()
+    dropped = drop_failed(target, audio)
     if dropped:
         print(f"retrying {dropped} failed entries", flush=True)
     engine_of = {r["entry"]: program_rank.engines(r) for r in program_rank.load_jsonl(ns.native)}
-    audio = audio_entries(ns.audio_for) if ns.audio_for else set()
     only_entries = audio_entries(ns.entries) if ns.entries else None
     expect = {r["entry"]: r for r in program_rank.load_jsonl(ns.expect)} if ns.expect else {}
-    done = finished(target)
+    done = finished(target, audio)
     todo = [
         p for p in programs_of(ns.programs, ns.only, ns.every, ns.limit)
         if entry_of(p) not in done and (only_entries is None or entry_of(p) in only_entries)

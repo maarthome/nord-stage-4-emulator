@@ -123,3 +123,16 @@ def test_extract_keeps_the_messages_of_the_key_phase() -> None:
     assert pc.extract(r)["key_arm_messages"] == {}
     r["phases"] = {"key": {"arm_messages": {"SMP0p1": 0, "PNO1p2": 4}}}
     assert pc.extract(r)["key_arm_messages"] == {"SMP0p1": 0, "PNO1p2": 4}
+
+
+def test_missing_audio_run_of_an_audio_entry_is_retried(tmp_path: Path) -> None:
+    f = tmp_path / "chain.jsonl"
+    rows = [
+        {"entry": "a", "census": {"chips": {}}, "audio": None},
+        {"entry": "b", "census": {"chips": {}}, "audio": {"sy": {}}},
+        {"entry": "c", "census": {"chips": {}}, "audio": None},
+    ]
+    f.write_text("".join(json.dumps(r) + chr(10) for r in rows), "utf-8")
+    assert pc.finished(f, {"a", "b"}) == {"b", "c"}
+    assert pc.drop_failed(f, {"a", "b"}) == 1
+    assert [r["entry"] for r in pc.read_records(f)] == ["b", "c"]
