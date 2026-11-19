@@ -82,6 +82,9 @@ impl Stage4Engine {
         self.layer_levels = s.layer_levels;
         self.synth_cutoff_morph = s.synth_cutoff_morph;
         self.synth_morph = s.synth_morph;
+        for set in &mut self.synth_morph {
+            set.forget_fields();
+        }
         self.scene = s.scene;
         self.split_router = s.split_router;
         self.set_transpose(s.transpose);

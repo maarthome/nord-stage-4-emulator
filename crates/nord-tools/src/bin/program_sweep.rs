@@ -3,11 +3,16 @@
 //! program, the resolved sounds, the routing facts and the output-health statistics.
 //!
 //! Usage: `cargo run --release -p nord-tools --bin program_sweep -- <backup.ns4b>
-//! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V] [--synth-velocity] [--legacy-synth-velocity]
-//! [--piano-touch] [--legacy-piano-touch]`
+//! [--frames N] [--limit N] [--only <substring>] [--every K] [--notes a,b,..] [--velocity V]
+//! [--synth-velocity] [--legacy-synth-velocity] [--legacy-arp]
+//! [--arp-fw-gate] [--legacy-morph] [--piano-touch] [--legacy-piano-touch] [--wheel V] [--aftertouch V]
+//! [--pedal V]`
 //! (`--synth-velocity` is a no-op since D142 made the firmware synth velocity law the default;
-//! `--legacy-synth-velocity` renders both modes with the linear blend; `--piano-touch` /
-//! `--legacy-piano-touch` force the firmware Touch curves on / off in both modes);
+//! `--legacy-synth-velocity` renders both modes with the linear blend; `--legacy-arp` and
+//! `--legacy-morph` restore the pre-D166 arpeggiator and morph law in both modes; `--piano-touch` /
+//! `--legacy-piano-touch` force the firmware Touch curves on / off in both modes; `--wheel`,
+//! `--aftertouch` and `--pedal` send that controller value (0..127) before the notes, so the
+//! morph law is exercised);
 //! `tools/program_sweep.py` drives it. Output
 //! holds derived numbers only (no audio, no firmware or sample content). Release build only: a
 //! debug build overflows the stack in the FX chains.
@@ -19,6 +24,7 @@ use nord_core::render_opts::FirmwareOptions;
 use nord_core::sinc::key_rule::kernel_for_key;
 use nord_core::sweep::{analyze, rms_delta_db};
 use nord_core::synth::SynthSampleSound;
+use nord_tools::sweep_flags::{apply_legacy_flags, controller_events};
 use nord_tools::sweep_load::{
     build_engine, events, flag, load_sounds, panic_message, piano_of, synth_of, PianoCache,
     SynthCache, FS,
@@ -117,7 +123,10 @@ fn main() -> Result<(), String> {
     for (_, o) in &mut modes {
         apply_synth_velocity_flags(o, &args);
         apply_piano_touch_flags(o, &args);
+        apply_legacy_flags(o, &args);
     }
+    let byte = |name: &str| flag(&args, name).and_then(|v| v.parse::<u8>().ok());
+    let controls = controller_events(byte("--wheel"), byte("--aftertouch"), byte("--pedal"));
     if args.iter().any(|a| a == "--legacy-1khz-tick") {
         // the pre-D131 1 ms ARM tick, to compare a sweep before and after the flip
         for (_, o) in &mut modes {
@@ -137,7 +146,9 @@ fn main() -> Result<(), String> {
         for (label, opts) in &modes {
             let result = catch_unwind(AssertUnwindSafe(|| {
                 let mut engine = build_engine(&prog, &refs, &pianos, &synths, opts);
-                let (l, r) = render_timeline(&mut engine, &events(&notes, velocity, hold), frames);
+                let mut timeline = controls.clone();
+                timeline.extend(events(&notes, velocity, hold));
+                let (l, r) = render_timeline(&mut engine, &timeline, frames);
                 analyze(&l, &r)
             }));
             let value = match result {

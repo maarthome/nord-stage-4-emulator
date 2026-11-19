@@ -55,7 +55,7 @@ pub(crate) fn vibrato_amount_from_cents(cents: f32) -> f32 {
 }
 
 /// Osc Ctrl `0..=1` (knob `/ 127`) into the fields it drives; shared by the preset load and the
-/// opt-in synth morph (`synth_morph.rs`).
+/// synth morph (`synth_morph.rs`).
 pub(crate) fn set_osc_ctrl(synth: &mut SynthLayer, ctrl_norm: f32, base_pw: f32) {
     synth.fm_amount = ctrl_norm;
     synth.supersaw_detune = ctrl_norm;
