@@ -202,3 +202,22 @@ fn mod2_is_the_default_and_legacy_mod2_turns_it_off() {
     d.apply_to(&mut e);
     assert!(e.fx_chains.iter().all(|c| c.firmware_fx.mod2));
 }
+
+#[test]
+fn legacy_all_and_the_opt_out_flags_restore_every_default_flip() {
+    // Mod 2 (D163), the firmware arpeggiator walk and the firmware morph (D166) are on by default.
+    let d = FirmwareOptions::default();
+    assert!(d.fx.mod2 && d.arp_firmware && d.firmware_morph);
+    let l = FirmwareOptions::legacy_all();
+    assert!(!l.fx.mod2 && !l.arp_firmware && !l.firmware_morph);
+    assert_eq!(
+        FirmwareOptions::from_args(&args(&["--legacy-all"])).unwrap(),
+        l
+    );
+    let s = FirmwareOptions::from_args(&args(&["--legacy-mod2", "--legacy-arp", "--legacy-morph"]))
+        .unwrap()
+        .summary();
+    for flag in ["legacy-mod2", "legacy-arp", "legacy-morph"] {
+        assert!(s.contains(flag), "{flag} missing from {s}");
+    }
+}

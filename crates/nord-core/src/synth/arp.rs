@@ -1,6 +1,7 @@
 //! Arpeggiator / gate engine for `SynthLayer`.
 
 use super::arp_order::pool_position;
+use super::arp_pool::{firmware_pool, firmware_span, PoolNote, POOL_MAX};
 use super::*;
 
 impl SynthLayer {
@@ -41,6 +42,8 @@ impl SynthLayer {
         if self.arp_sample_counter < step_sec {
             if self.perf.pattern_on {
                 self.pattern_release(step_sec);
+            } else {
+                self.plain_gate_release(step_sec);
             }
         } else {
             self.arp_sample_counter -= step_sec;
@@ -73,22 +76,17 @@ impl SynthLayer {
                 return;
             }
 
+            let zig = self.perf.zigzag;
+            if self.firmware_walk_applies() {
+                self.trigger_firmware_walk(&held_list[..count]);
+                return;
+            }
+
             // Pick next note
             let oct_range = self.arp_octave_range.clamp(1, 4) as usize;
             let extra = extra_notes(&held_list[..count], self.perf.range_extra_thirds);
-            // EMPIRICAL (one capture, `docs/research/arp-fw-vs-native.md`): the ARM walks UP/DOWN
-            // over the chord notes of every octave plus the root of the top octave and mirrors
-            // without repeating the end points (triad, 2 octaves: 60 64 67 72 76 79 84 79 76 72
-            // 67 64). Opt-in; ZIG ZAG and the fractional RANGE keep the engine walk.
-            let zig = self.perf.zigzag;
-            let fw_walk =
-                self.arp_firmware_walk && self.arp_mode == ArpMode::UpDown && extra == 0 && !zig;
-            let pool = count * oct_range + extra + usize::from(fw_walk);
-            let cycle = if fw_walk {
-                (pool * 2).saturating_sub(2).max(1)
-            } else {
-                pool
-            };
+            let pool = count * oct_range + extra;
+            let cycle = pool;
             // ZIG ZAG walks the pool two forward, one back; the step counter then runs over
             // two periods.
             let step = if zig {
@@ -104,9 +102,6 @@ impl SynthLayer {
                     (count - 1) - (step % count),
                     (oct_range - 1 - (step / count)) as u8,
                 ),
-                ArpMode::UpDown if fw_walk => {
-                    pool_position(if step < pool { step } else { cycle - step }, count)
-                }
                 ArpMode::UpDown if extra > 0 => {
                     let cycle_len = (pool * 2).saturating_sub(2).max(1);
                     let sub_step = step % cycle_len;
@@ -154,6 +149,52 @@ impl SynthLayer {
             self.trigger_voice(next_note, velocity, self.held_gains[source_note]);
             self.perf.voice_pan = 0.0;
         }
+    }
+
+    /// The firmware walk plays this step: UP, DOWN or UP/DOWN without ZIG ZAG (RANDOM, ZIG ZAG and
+    /// Poly were not captured and keep the engine walk).
+    fn firmware_walk_applies(&self) -> bool {
+        self.arp_firmware_walk
+            && !self.perf.zigzag
+            && matches!(self.arp_mode, ArpMode::Up | ArpMode::Down | ArpMode::UpDown)
+    }
+
+    /// Stored RANGE value the firmware span rule reads: the decoded raw while it still projects
+    /// onto the engine's range (octaves and thirds), else the raw of the nearest detent.
+    fn firmware_range_raw(&self) -> f32 {
+        let thirds = u32::from(self.arp_octave_range.clamp(1, 4) - 1) * 3
+            + u32::from(self.perf.range_extra_thirds);
+        let stored = (f32::from(self.arp_range_raw) / 127.0 * 9.0).round() as u32;
+        if stored == thirds {
+            f32::from(self.arp_range_raw)
+        } else {
+            thirds as f32 * 127.0 / 9.0
+        }
+    }
+
+    /// Plays the next note of the firmware walk over the pool of `held` (ascending keys).
+    fn trigger_firmware_walk(&mut self, held: &[u8]) {
+        let mut buf = [PoolNote::default(); POOL_MAX];
+        let span = firmware_span(self.firmware_range_raw());
+        let len = firmware_pool(held, span, &mut buf).max(1);
+        let cycle = if self.arp_mode == ArpMode::UpDown {
+            (len * 2).saturating_sub(2).max(1)
+        } else {
+            len
+        };
+        let step = self.arp_step % cycle;
+        let index = match self.arp_mode {
+            ArpMode::Down => len - 1 - step,
+            ArpMode::UpDown if step >= len => cycle - step,
+            _ => step,
+        };
+        let PoolNote { note, source } = buf[index.min(len - 1)];
+        self.arp_active_notes[0] = Some(note);
+        self.arp_step = (self.arp_step + 1) % cycle;
+        let velocity = self.accent_velocity(self.held_velocities[source as usize]);
+        self.perf.voice_pan = self.step_pan();
+        self.trigger_voice(note, velocity, self.held_gains[source as usize]);
+        self.perf.voice_pan = 0.0;
     }
 
     pub(super) fn release_arp_notes(&mut self) {

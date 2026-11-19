@@ -68,6 +68,8 @@ pub fn copy_engine(dst: &mut FirmwareOptions, src: &FirmwareOptions, engine: Eng
             dst.measured_tick = src.measured_tick;
             dst.synth_sustain_pedal = src.synth_sustain_pedal;
             dst.firmware_morph = src.firmware_morph;
+            dst.arp_firmware = src.arp_firmware;
+            dst.arp_firmware_gate = src.arp_firmware_gate;
         }
         Engine::Fx => {
             dst.fx = src.fx;
