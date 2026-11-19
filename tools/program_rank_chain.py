@@ -128,7 +128,7 @@ def finished(path: Path) -> set[str]:
     """Entries with a successful census run in the output file (resume).
 
     A failed entry (`census` is `null`, the harness crashed or timed out) is not finished: a rerun
-    runs it again (D167; the earlier code skipped it and kept the failure for good).
+    runs it again (D170; the earlier code skipped it and kept the failure for good).
     """
     return {r["entry"] for r in read_records(path) if r.get("census")}
 

@@ -166,7 +166,7 @@ def drive(ns, chips: Chips, router: rt.Router, source=None, before=None) -> dict
             )
         now = {s.name: snapshot(link, t0) for s, link in chips.items}
         phases[name] = {"ticks": ticks, **{n: phase_delta(prev[n], now[n]) for n in now}}
-        phases[name]["arm_messages"] = seen_delta(seen_prev, router.seen)  # every comm, D167
+        phases[name]["arm_messages"] = seen_delta(seen_prev, router.seen)  # every comm, D170
         seen_prev, prev = dict(router.seen), now
     if timeline:
         notes = [marks["key"] + i * ns.key_gap for i in range(len(keys))]
