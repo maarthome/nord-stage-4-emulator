@@ -91,6 +91,10 @@ impl Fp for f32 {
 pub struct E40(f64);
 
 const MANT: u64 = (1 << 52) - 1;
+/// The 21 low mantissa bits an `f64` holding a 32-bit value must show as zero, and the pattern
+/// `1000...0` of a tie between two 32-bit neighbours.
+const TIE_MASK: u64 = (1 << 21) - 1;
+const TIE: u64 = 1 << 20;
 
 /// `(negative, 32-bit mantissa with its top bit set, exponent of the mantissa's lsb)`.
 fn unpack(x: f64) -> (bool, u64, i32) {
@@ -150,6 +154,7 @@ fn pack_product(neg: bool, r: u64, lsb: i32) -> E40 {
 /// ties to even, flushing a result below the smallest normal single; the same result as
 /// [`pack`] on the sum's integer mantissa. A carry out of the mantissa increments the exponent
 /// field, which is the renormalisation `pack` does by hand.
+#[inline(always)]
 fn round_exact(x: f64) -> E40 {
     const LOW: u64 = (1 << 21) - 1;
     let bits = x.to_bits();
@@ -181,6 +186,7 @@ impl Fp for E40 {
         let t = f64::from_bits(self.0.to_bits() & !((1u64 << 29) - 1));
         flush32((t as f32).to_bits())
     }
+    #[inline(always)]
     fn add(self, o: Self) -> Self {
         if self.0 == 0.0 {
             return o;
@@ -188,23 +194,32 @@ impl Fp for E40 {
         if o.0 == 0.0 {
             return self;
         }
-        // Fast path: when the f64 sum is exact (error term zero) only the 32-bit rounding is left.
-        let s = self.0 + o.0;
-        let bb = s - self.0;
-        if (self.0 - (s - bb)) + (o.0 - bb) == 0.0 {
+        // Fast path 1: operands within 20 binades of each other: both have at most 32 significant
+        // bits, so the sum spans at most 20 + 33 = 53 bits and the f64 sum is exact.
+        let d = ((self.0.to_bits() >> 52) & 0x7FF).wrapping_sub((o.0.to_bits() >> 52) & 0x7FF);
+        if d.wrapping_add(20) <= 40 {
+            let s = self.0 + o.0;
             return if s == 0.0 { E40(0.0) } else { round_exact(s) };
         }
-        self.add_wide(o)
+        self.add_far(o)
     }
+    #[inline(always)]
     fn sub(self, o: Self) -> Self {
         self.add(E40(-o.0))
     }
+    #[inline(always)]
     fn mul(self, o: Self) -> Self {
         if self.0 == 0.0 || o.0 == 0.0 {
             return E40(0.0);
         }
-        let (a, b) = (unpack(self.0), unpack(o.0));
-        pack_product(a.0 != b.0, a.1 * b.1, a.2 + b.2)
+        // Fast path: the f64 product has one rounding (to 53 bits); rounding that to 32 bits is
+        // the exact 32-bit result unless the f64 value sits exactly on a 32-bit tie, where the
+        // lost low part decides. That case (about 2^-21 of the products) takes the integer path.
+        let p = self.0 * o.0;
+        if p.to_bits() & TIE_MASK != TIE {
+            return round_exact(p);
+        }
+        self.mul_tie(o)
     }
     fn avg(self, o: Self) -> Self {
         let s = self.add(o);
@@ -219,6 +234,25 @@ impl Fp for E40 {
 }
 
 impl E40 {
+    /// Product on the integer mantissas (the f64 product sits on a 32-bit tie).
+    #[cold]
+    #[inline(never)]
+    fn mul_tie(self, o: Self) -> Self {
+        let (a, b) = (unpack(self.0), unpack(o.0));
+        pack_product(a.0 != b.0, a.1 * b.1, a.2 + b.2)
+    }
+
+    /// Sum of operands more than 20 binades apart: exact in f64 only when the error term is zero.
+    #[inline(never)]
+    fn add_far(self, o: Self) -> Self {
+        let s = self.0 + o.0;
+        let bb = s - self.0;
+        if (self.0 - (s - bb)) + (o.0 - bb) == 0.0 {
+            return if s == 0.0 { E40(0.0) } else { round_exact(s) };
+        }
+        self.add_wide(o)
+    }
+
     /// Both operands non-zero: the sum from the integer mantissas (any exponent distance).
     fn add_wide(self, o: Self) -> Self {
         let (a, b) = (unpack(self.0), unpack(o.0));
@@ -371,3 +405,6 @@ mod tests {
         assert_eq!(E40::from_f32(0.25).to_f32(), 0.25);
     }
 }
+
+#[cfg(test)]
+mod fast_tests;
