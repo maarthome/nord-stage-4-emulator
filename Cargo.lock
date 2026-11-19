@@ -2476,6 +2476,7 @@ dependencies = [
  "nord-core",
  "nord-panel",
  "serde",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

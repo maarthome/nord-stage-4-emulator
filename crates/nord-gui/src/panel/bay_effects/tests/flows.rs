@@ -384,3 +384,163 @@ fn unit_enum_covers_every_unit_with_edits() {
         assert!(!c.edits(u, 0).is_empty());
     }
 }
+
+#[test]
+fn mod_amount_knob_sends_only_the_amount_and_keeps_a_loaded_mod2() {
+    use nord_core::engine::Stage4Engine;
+    use nord_core::fx::Mod2Type;
+    for (id, param) in [
+        ("mod2.amount", FxFloat::Mod2Amount),
+        ("mod1.amount", FxFloat::Mod1Amount),
+    ] {
+        let mut s = Session::new();
+        // A loaded program: firmware CHOR with its variation on and the firmware words set.
+        // The panel's `ChainUi` / `StateEcho` do not mirror `mod2_variation` (TECH_DEBT), so the
+        // chain view still says "variation off"; a full Mod 2 edit set would write that over the
+        // loaded flag and clear the words.
+        let mut e = Stage4Engine::new(48_000.0);
+        e.fx_chains[0].mod2_type = Mod2Type::Chorus;
+        e.fx_chains[0].mod2_variation = true;
+        e.fx_chains[0].mod2_type_raw = Some(4);
+        e.fx_chains[0].mod2_rate_raw = Some(77);
+        s.state.fx_ui.chains[0].mod2_on = true;
+        s.drag_up(id, 20.0);
+        let edits = s.fx_edits();
+        assert!(
+            edits
+                .iter()
+                .any(|x| matches!(x, FxEdit::Float { param: p, .. } if *p == param)),
+            "{id}: no amount edit in {edits:?}"
+        );
+        assert!(
+            edits
+                .iter()
+                .all(|x| matches!(x, FxEdit::Float { param: p, .. } if *p == param)),
+            "{id}: only the amount may be sent, got {edits:?}"
+        );
+        for x in &edits {
+            x.apply(&mut e);
+        }
+        let c = &e.fx_chains[0];
+        assert_eq!(c.mod2_type, Mod2Type::Chorus, "{id}");
+        assert!(c.mod2_variation, "{id}: loaded CHOR variation survives");
+        assert_eq!(
+            (c.mod2_type_raw, c.mod2_rate_raw),
+            (Some(4), Some(77)),
+            "{id}: firmware words survive"
+        );
+    }
+}
+
+#[test]
+fn every_mod_control_sends_only_its_own_edits() {
+    // Each touch must leave the other parameters of the unit alone: the full set would resend a
+    // stale view (a loaded variation) and, for Mod 2, clear the firmware raw words.
+    type Pick = fn(&FxEdit) -> bool;
+    let is_type: Pick = |e| matches!(e, FxEdit::Mod1Type { .. } | FxEdit::Mod2Type { .. });
+    let is_var: Pick = |e| {
+        matches!(
+            e,
+            FxEdit::Flag {
+                param: FxFlag::Mod1Variation | FxFlag::Mod2Variation,
+                ..
+            }
+        )
+    };
+    let is_rate = |e: &FxEdit, p: FxFloat| matches!(e, FxEdit::Float { param, .. } if *param == p);
+    for unit in ["mod1", "mod2"] {
+        let rate_p = if unit == "mod1" {
+            FxFloat::Mod1Rate
+        } else {
+            FxFloat::Mod2Rate
+        };
+        let amt_p = if unit == "mod1" {
+            FxFloat::Mod1Amount
+        } else {
+            FxFloat::Mod2Amount
+        };
+        let (on, sel, rate, amt) = (
+            format!("{unit}.on"),
+            format!("{unit}.selector"),
+            format!("{unit}.rate"),
+            format!("{unit}.amount"),
+        );
+        // ON: type edit only.
+        let mut s = Session::new();
+        s.click(&on);
+        let e = s.fx_edits();
+        assert!(e.iter().any(is_type), "{unit} ON sends the type");
+        assert!(
+            e.iter().all(|x| is_type(x)
+                || matches!(
+                    x,
+                    FxEdit::Mod1Sync { .. }
+                        | FxEdit::Flag {
+                            param: FxFlag::Mod1Ped,
+                            ..
+                        }
+                )),
+            "{unit} ON: {e:?}"
+        );
+        // Type selector: same.
+        let mut s = Session::new();
+        s.click(&sel);
+        let e = s.fx_edits();
+        assert!(e.iter().any(is_type));
+        assert!(
+            e.iter()
+                .all(|x| !is_var(x) && !matches!(x, FxEdit::Float { .. })),
+            "{unit} type: {e:?}"
+        );
+        // Shift+selector: variation only (Mod 1 type 0 has no PED).
+        let mut s = Session::new();
+        s.shift_click(&sel);
+        let e = s.fx_edits();
+        assert!(e.iter().any(is_var), "{unit} shift sends the variation");
+        assert!(e.iter().all(is_var), "{unit} shift: {e:?}");
+        // RATE: the rate only.
+        let mut s = Session::new();
+        s.drag_up(&rate, 20.0);
+        let e = s.fx_edits();
+        assert!(e.iter().any(|x| is_rate(x, rate_p)));
+        assert!(e.iter().all(|x| is_rate(x, rate_p)), "{unit} rate: {e:?}");
+        // AMOUNT: the amount only.
+        let mut s = Session::new();
+        s.drag_up(&amt, 20.0);
+        let e = s.fx_edits();
+        assert!(e.iter().all(|x| is_rate(x, amt_p)), "{unit} amount: {e:?}");
+    }
+}
+
+#[test]
+fn mod1_ped_knob_and_ped_toggle_send_only_their_edit() {
+    let mut s = Session::new();
+    s.state.fx_ui.chains[0].mod1_on = true;
+    s.state.fx_ui.chains[0].mod1_sel = 4; // WAH has PED
+    s.shift_click("mod1.selector");
+    let e = s.fx_edits();
+    assert!(
+        e.iter().all(|x| matches!(
+            x,
+            FxEdit::Flag {
+                param: FxFlag::Mod1Ped,
+                ..
+            }
+        )),
+        "PED toggle: {e:?}"
+    );
+    assert!(!e.is_empty());
+    s.drag_up("mod1.rate", 20.0);
+    let e = s.fx_edits();
+    assert!(
+        e.iter().all(|x| matches!(
+            x,
+            FxEdit::Float {
+                param: FxFloat::Mod1PedPos,
+                ..
+            }
+        )),
+        "PED position: {e:?}"
+    );
+    assert!(!e.is_empty());
+}

@@ -100,9 +100,21 @@ pub(super) fn render_strip(
         false,
         Face {
             led: Some(section_on),
+            led_left: true,
             tip: "ON: tap switches every Organ layer off, or back on. Hold: SOLO",
             ..Face::black()
         },
+    );
+    // Printed on the button like the Piano and Synth ON buttons.
+    let on_rect = rc("organ.on");
+    crate::widgets::label_fit(
+        ui.painter(),
+        on_rect.center(),
+        "ON",
+        crate::widgets::MIN_FONT_PX,
+        on_rect.width() - 4.0,
+        Color32::from_gray(235),
+        egui::Align2::CENTER_CENTER,
     );
     match t {
         Some(Trigger::Primary) => {
@@ -321,5 +333,23 @@ mod tests {
             rx.try_recv(),
             Ok(AudioCommand::SetLayerActive(1, false))
         ));
+    }
+
+    /// Regression (owner screenshot, ORGAN header): the ON LED printed above the button, outside
+    /// the header tab on the red panel. SOLO's width is checked on the painted text in
+    /// `header_tab_tests`.
+    #[test]
+    fn on_button_led_stays_inside_the_header_tab() {
+        use crate::panel::layout_px::to_px;
+        let o = egui::pos2(0.0, 0.0);
+        let tab = to_px(
+            nord_panel::layout::plate_of(nord_panel::Section::Organ)
+                .and_then(|p| p.tab)
+                .expect("organ has a tab"),
+            o,
+        );
+        let on = rect_or_empty("organ.on", o);
+        let led = crate::panel::ctl::led_left_of(on);
+        assert!(tab.contains(led), "ON LED {led:?} outside tab {tab:?}");
     }
 }
