@@ -150,6 +150,8 @@ mod tests_fw_reverb_chain;
 #[cfg(test)]
 mod tests_fw_reverb_mix;
 #[cfg(test)]
+mod tests_fw_reverb_pinned;
+#[cfg(test)]
 mod tests_fw_rvb_golden;
 #[cfg(test)]
 mod tests_fw_rvb_golden_data;

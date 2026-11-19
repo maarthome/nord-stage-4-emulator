@@ -199,6 +199,8 @@ impl AudioMeter {
         self.worst_drain_ns.fetch_max(b.drain_ns, Relaxed);
         self.worst_publish_ns.fetch_max(b.publish_ns, Relaxed);
         self.worst_gap_ns.fetch_max(b.gap_ns, Relaxed);
+        // ASSUMED: 1.5 periods. The device paces callbacks one period apart, so 1.5 separates a
+        // missed slot from jitter; unvalidated against driver behaviour, only against the probe.
         if b.gap_ns > deadline_ns + deadline_ns / 2 {
             self.slow_gaps.fetch_add(1, Relaxed);
         }

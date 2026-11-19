@@ -184,6 +184,10 @@ live in `panel/layout_tweaks.rs`, never in the `ASSUMED` photo tables (one excep
 | Round 6 content added (VIB/CHORUS type names, Rotary tab) | yes | 10 first run, 4 then 0 |
 | After round 4 (names below numerals, 3 px smaller knobs, frame pads, nudges) | yes | 0 |
 
+## Header tab checks (Organ, Layer Effects)
+
+The raised header tab carries the title, FX FOCUS, ON and SOLO. Rules kept by tests: the plate outline is painted before the tab so no line runs through the title or the ON button (`widgets/plate.rs`, `tab_is_painted_over_the_body_outline`); the ON LED sits left of its button, inside the tab, never above it on the red panel (`Face::led_left`, `bay_effects/focus.rs`); the SOLO legend ends at least 3 px inside the tab edge (`organ_strip.rs`, `on_button_led_and_solo_legend_stay_inside_the_header_tab`, with the `organ.on` / `organ.solo` nudge in `layout_tweaks.rs`). Look at it with `python tools/gui_shots.py --sections organ,effects` (top 90 px of each PNG). Mod 1 / Mod 2 AMOUNT knobs send only the amount (`mod_amount_knob_sends_only_the_amount_and_keeps_a_loaded_mod2`). Known unfixed panel bugs: TD-19 (Organ / Synth SOLO), TD-20 (Mod 2 variation not mirrored).
+
 ## What each switch changes
 
 | Switch (flag / bar control) | Changes | Status |

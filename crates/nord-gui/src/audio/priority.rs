@@ -65,6 +65,8 @@ pub fn boost_current_thread() -> ThreadBoost {
         AvSetMmThreadCharacteristicsW, GetCurrentThread, GetThreadPriority, SetThreadPriority,
         THREAD_PRIORITY_TIME_CRITICAL,
     };
+    // ASSUMED: "Pro Audio" is the stock MMCSS task of the audio class (HKLM\SOFTWARE\Microsoft\n    // Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks); it is the name audio APIs commonly
+    // use. Confirmed per run by the `mmcss` flag in the meter summary, not by a firmware source.
     // SAFETY: `GetCurrentThread` returns a pseudo handle valid for the calling thread; the other
     // calls take that handle and plain integers, and the MMCSS task name is a static NUL terminated
     // UTF-16 literal (`w!`, no allocation).

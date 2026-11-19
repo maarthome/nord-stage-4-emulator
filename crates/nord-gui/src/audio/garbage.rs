@@ -14,6 +14,10 @@ use nord_core::synth::SynthSampleSound;
 use std::sync::Arc;
 
 /// Items the queue holds before the audio thread leaks instead of freeing.
+///
+/// ASSUMED: 64 = several times the largest burst seen (a program load puts one item, a piano or
+/// synth sample load one each, and the reaper drains within a scheduler tick). Confirm by counting
+/// leaks (none expected) under `ns4 bench --gui --reload N`; raise if a leak is ever reported.
 pub const CAPACITY: usize = 64;
 
 /// A value the audio thread is done with.
