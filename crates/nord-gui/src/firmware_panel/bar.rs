@@ -297,7 +297,8 @@ mod tests {
             assert!(fx.port_mut(n).is_some(), "{n}");
         }
         fx = FirmwareFx::DEFAULT;
-        assert_eq!(fx.ports_on().len(), 0);
+        assert_eq!(fx.ports_on(), ["mod2"], "Mod 2 is the default since D163");
+        assert!(FirmwareFx::LEGACY.ports_on().is_empty());
     }
 
     #[test]
@@ -305,6 +306,15 @@ mod tests {
         let p = presets::classic();
         assert_eq!(p.amp_path, Some(false));
         assert!(!p.piano_firmware_level && p.tone_source.is_none());
+    }
+
+    #[test]
+    fn classic_preset_restores_every_default_flip() {
+        // Mod 2 (D163), the arpeggiator walk and the morph weights (D166) are on by default.
+        let d = FirmwareOptions::default();
+        assert!(d.fx.mod2 && d.arp_firmware && d.firmware_morph);
+        let p = presets::classic();
+        assert!(!p.fx.mod2 && !p.arp_firmware && !p.firmware_morph);
     }
 
     #[test]

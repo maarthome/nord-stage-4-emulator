@@ -309,7 +309,8 @@ pub struct LayerFxChain {
     /// Skips this chain's reverb (the engine sets it while Reverb GLOBAL mode is active, manual p.52).
     pub bypass_reverb: bool,
     pub morph: FxMorphSet,
-    /// Opt-in firmware closed forms (delay mix law, firmware compressor). Default all off.
+    /// Firmware stages of the chain (`FirmwareFx::DEFAULT`: amp and Mod 2; the delay, compressor,
+    /// reverb, Mod 1 and EQ ports are opt-in). Mod 2 runs only for chains with the raw words.
     pub firmware_fx: FirmwareFx,
     /// 14 bit `kDlyRateClkDiv` value (`0..=16383`) of the program; read only with
     /// `firmware_fx.delay_time` (the engine sets it from the preset). `None`: engine time.
@@ -526,7 +527,12 @@ impl LayerFxChain {
             self.mod1_amount = m.mod1_amount.evaluate(ctrl);
         }
         if morph_active(&m.mod2_rate) {
-            self.mod2_rate_hz = 0.1 + m.mod2_rate.evaluate(ctrl) * 9.9;
+            let v = m.mod2_rate.evaluate(ctrl);
+            self.mod2_rate_hz = 0.1 + v * 9.9;
+            // The firmware Mod 2 reads the 7 bit rate word, not `mod2_rate_hz` (D163).
+            if self.mod2_rate_raw.is_some() {
+                self.mod2_rate_raw = Some((v.clamp(0.0, 1.0) * 127.0).round() as u8);
+            }
         }
         if morph_active(&m.mod2_amount) {
             self.mod2_amount = m.mod2_amount.evaluate(ctrl);

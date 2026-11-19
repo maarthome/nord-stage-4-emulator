@@ -108,7 +108,7 @@ Carrier = best single-group revert; **only single-group reverts were run**, no p
 
 ## Follow-ups
 
-1. Ablate pairs of FX groups for the 6 programs with a residual above 5, and programs 21 to 384 (the tool takes `--ablate` and `--only`; about 20 s per program) to get a carrier for every program.
+1. ~~Ablate pairs of FX groups for the 6 programs with a residual above 5~~ Done in [program-ranking-fx](program-ranking-fx.md) (D163): all 63 FX combinations for the worst 20 (Mod 2 plus EQ explain most; the six residual programs need three or four groups), and the before / after of an FX default flip on all 384. Still open: programs 21 to 384 have no carrier (`--ablate-fx`, about 15 s per program with `--jobs 20`).
 2. ~~Diagnose the 13 `synth_chain_silent` and 5 `organ_chain_silent` programs~~ done in [silent-programs](silent-programs.md) (D164); rerun the census with `--expect`; Synth Engine open.
 3. A piano tap: PNO core 1 with the SMP stream (OQ in `docs/OPEN-QUESTIONS.md`).
 4. Re-run after any FX default flip: `tools/program_rank.py` regenerates both CSV files.

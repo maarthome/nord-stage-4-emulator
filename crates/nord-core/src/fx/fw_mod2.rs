@@ -1,6 +1,6 @@
 //! Frame-by-frame adapter around the firmware Mod 2 chorus routines (`kFx2Type` 4 `CHOR` and 5
 //! `CHOR` variation: [`super::fw_chorus4`], [`super::fw_chorus5`]) with the words of the FX image
-//! and the laws of `kFx2Amt` / `kFx2Rate` (opt-in, `FirmwareFx::mod2`).
+//! and the laws of `kFx2Amt` / `kFx2Rate` (`FirmwareFx::mod2`, the default since D163).
 //!
 //! The routines run once per pass on 2 blocks of two stereo frames, so the stage collects 4
 //! frames and releases them one call later: **latency 4 frames (83 us at 48 kHz)**. The phase

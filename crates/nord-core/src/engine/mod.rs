@@ -76,6 +76,8 @@ mod tests_firmware_routing;
 #[cfg(test)]
 mod tests_midix;
 #[cfg(test)]
+mod tests_mod2_default;
+#[cfg(test)]
 mod tests_pedals;
 #[cfg(test)]
 mod tests_program;
