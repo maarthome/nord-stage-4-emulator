@@ -157,7 +157,7 @@ This document tracks deliberate trade-offs, structural compromises, temporary wo
 
 ### TD-20: Panel Fx View Does Not Mirror Mod 2 Variation After a Program Load
 
-- **Description:** `ui_state/fx/echo.rs` `StateEcho` has no `mod2_variation` (nor the raw Mod 2 words); `Stage4PanelState` has no such legacy field, so `apply_program` cannot reach `ChainUi::mod2_variation`. The amount knob no longer resends it (`bay_effects/modulation.rs`, test `mod_amount_knob_sends_only_the_amount_and_keeps_a_loaded_mod2`), but the VAR legend of a loaded CHOR variation shows off and a type or rate edit still writes the stale `false`.
+- **Description:** `ui_state/fx/echo.rs` `StateEcho` has no `mod2_variation` (nor the raw Mod 2 words); `Stage4PanelState` has no such legacy field, so `apply_program` cannot reach `ChainUi::mod2_variation`. Every Mod 1 / Mod 2 control now sends only its own edit (`bay_effects/mod_touch.rs`; tests `every_mod_control_sends_only_its_own_edits`, `mod_amount_knob_sends_only_the_amount_and_keeps_a_loaded_mod2`), so a loaded variation is no longer overwritten by an unrelated knob. Still open: the VAR legend of a loaded CHOR variation shows off, and a Shift + selector toggle writes `true` from that stale view (the engine flag is then inverted relative to what is printed); a type or rate edit legitimately clears the Mod 2 firmware raw words (by design: the edit must be audible).
 - **Remediation Plan:** read the loaded chain's variation flag into `ChainUi` on program load (telemetry or a `StateEcho` field), with a test that a loaded variation shows lit and survives a rate edit.
 - **Status:** Open.
 

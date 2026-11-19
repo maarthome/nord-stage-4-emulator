@@ -22,6 +22,8 @@ mod ctl_legend;
 #[cfg(test)]
 mod frame_cost_tests;
 mod frames;
+#[cfg(test)]
+mod header_tab_tests;
 mod kb_zone;
 mod keybed;
 mod keybed_velocity;
@@ -33,7 +35,6 @@ mod legibility_caps;
 mod legibility_leds;
 #[cfg(test)]
 mod legibility_rules;
-#[cfg(test)]
 mod legibility_tests;
 mod organ_drawbars;
 mod organ_layer;
