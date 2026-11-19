@@ -420,6 +420,7 @@ The ticks below mean the model exists and is tested. Which parts match the firmw
 - [ ] Confirm the Vox key delays (now the 24 kHz default, D131, lower bounds in time) against a Vox attack clip or the measured ARM key-down work time, then drop or keep `--legacy-1khz-tick`; arp gate 2/3 and staccato plain arpeggio as an opt-in flag
 - [x] Program ranking of the 384 factory programs ([D160](DECISIONS.md), [program-ranking](research/program-ranking.md)): native default against the firmware-verified options, chain census flags, single-group ablation of the worst 20 (only FX groups move them, Mod 2 first; pairs and sets in D163); open: ablate the other 364, diagnose 18 silent chain programs, piano tap (OQ40)
 - [x] Silent chain programs diagnosed ([D164](DECISIONS.md), [silent-programs](research/silent-programs.md), OQ40): 5 organ programs are legitimate silences (zone or level 0), 10 synth programs lost their wavetable (Router now forwards the L2 stores), 2 more only needed a longer arp hold; native is not wrong and unchanged; open: Synth Engine (zigzag custom pattern) and the piano tap
+- [x] Chain census rerun, review fixes, Synth Engine key word and piano tap feasibility ([D170](DECISIONS.md), [silent-programs](research/silent-programs.md) s6 and s7, [piano-chain-tap](research/piano-chain-tap.md)): 12 synth programs voice, 5 organ programs expected silent, Synth Engine open as an ARM bank bit (OQ40); piano tap blocked (OQ41, bean ns4-pnoc)
 
 ## Parallel Lanes & Bean Dependency Graph
 
