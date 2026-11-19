@@ -598,10 +598,18 @@ impl SynthLayer {
     /// Loads or clears a pre-decoded multisample instrument for `SynthOscMode::Sample`.
     /// Call outside the audio thread; playback reads the shared immutable buffer without locking or allocating.
     pub fn load_sample(&mut self, sound: Option<Arc<SynthSampleSound>>) {
+        drop(self.replace_sample(sound));
+    }
+
+    /// [`Self::load_sample`] that returns the previous bank (see `PianoLayer::replace_sound`).
+    pub fn replace_sample(
+        &mut self,
+        sound: Option<Arc<SynthSampleSound>>,
+    ) -> Option<Arc<SynthSampleSound>> {
         for v in &mut self.voices {
             v.active = false;
         }
-        self.sample_sound = sound;
+        std::mem::replace(&mut self.sample_sound, sound)
     }
 
     /// Returns the name of the currently loaded multisample sound, if any.
