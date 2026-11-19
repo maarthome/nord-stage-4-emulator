@@ -22,7 +22,7 @@ uv run pytest tools/tests/test_arm_arp_flag_trace.py tools/tests/test_arp_flag_c
 
 ## 1. Answer
 
-**The flag is written by the pattern constructor only, and the constructor runs only in boot.** In 41 runs (32 programs, 9 variants) the flag of all six pattern objects stays 1 through boot, program recall, idle, key-on, held arpeggio and release; the write hook saw **0 stores** to `[obj + 0xC]` after boot; the constructor `0xC00FD7B8` ran 6 times in boot (six objects) and **0 times** afterwards. In that state the 53 ARM-played arp layers of 30 of the 32 arpeggiator programs have a gate of **2/3 of the grid step**; Shoreline Whl and Memory Glitch produced no ARM arp note in the 1 s window (silent in the harness; their flags are 1 like the others).
+**The flag is written by the pattern constructor only, and the constructor runs only in boot.** In 41 runs (32 programs, 9 variants) the flag of all six pattern objects stays 1 through boot, program recall, idle, key-on, held arpeggio and release; the write hook saw **0 stores** to `[obj + 0xC]` after boot; the constructor `0xC00FD7B8` ran 6 times in boot (six objects) and **0 times** afterwards. In that state the 53 ARM-played arp layers (48 with a measured fraction, 5 are single notes) of 30 of the 32 arpeggiator programs have a gate of **2/3 of the grid step**; Shoreline Whl and Memory Glitch produced no ARM arp note in the 1 s window (silent in the harness; their flags are 1 like the others).
 
 | Check | Result | Source |
 |---|---|---|
@@ -44,15 +44,39 @@ What the flag does (Glue update `0xC011A51C`, disassembly): free-run branch: fla
 | Every ARM layer that played has `gate_ms` = 2/3 of its grid step. Fraction of the played step: 0.665 to 0.669 for plain steps (the spread is the 24 kHz tick), 0.444 / 0.333 / 0.222 on 9 layers whose notes sit 1.5, 2 or 3 grid steps apart (pattern rests: `step_ms / (1.5 gate_ms)` = 1.5, 2.0, 3.0 exactly) | `gate_fractions`, rows |
 | Arp, Poly and Gate mode layers are all 2/3 (Gate mode: Dual Gates, Time Warp Saw, Calling Whl C; Poly: Momentum, Gradient, Unity, Calling, 24 Frames, Helium, 5th Poly Arp, Moving Chords, Synth Engine, Unclocked Pad, Mirror Image Pad, FM Harpies C) | rows; the `poly` and `gatemode` variants of A:16 give 100 ms of 150 ms |
 | Free run (`mst_clk = 0`), Pattern on, rate 20, KB sync, Poly, Gate: gate 2/3 of the step | `arp-flag-census-variants.json` |
-| Native engine, gate on, against the ARM on the 15 layers where both report the same step (within 1 ms): gate within 1 ms on **12** (gate off: see `native_off`) | `native_on` / `native_off` of the rows |
+| Native engine, gate on, against the ARM on the 16 layers where both report the same step (within 1 ms): gate within 1 ms on **13** (gate off: 1 of 16). The 3 that differ: Momentum Whl B, FM Harpies C, Ostinato Whl A (below) | `native_on` / `native_off` of the rows |
 
 Not covered by the gate switch (separate differences the census shows, not changed here): the native `ArpMode::Gate` holds the chord (`tick_gate`, 4/8 duty) while the ARM retriggers it every step with a 2/3 gate (Dual Gates, Time Warp Saw); on Momentum Whl B, FM Harpies C and Ostinato Whl A the native step is 300 ms with gate 150 where the ARM has 300 ms with gate 200; on FM Harpies A, Gravity Whl C and ScissorSplit Whl B the step itself differs. These are rate / pattern differences, not the flag.
 
-## 4. Before / after (384 factory programs)
+`python tools/arp_flag_census.py target/arpflag --out ...` summary of the 32 program runs (`arp-flag-census.json`; the 9 variants of `arp-flag-census-variants.json` add 0 flag writes, 0 flags not 1, 0 constructor calls after boot, 4,664 site hits, 0 on a pattern object; 32 + 9 = 41 runs):
+
+```json
+{
+ "runs": 32,
+ "natural_runs": 32,
+ "flag_writes": 0,
+ "flags_not_one": 0,
+ "constructor_calls_after_boot": 0,
+ "site_hits": 21908,
+ "site_hits_on_pattern_object": 0,
+ "gate_fractions": {
+  "0.222": 2,
+  "0.333": 5,
+  "0.444": 2,
+  "0.665": 4,
+  "0.666": 1,
+  "0.667": 31,
+  "0.668": 2,
+  "0.669": 1
+ }
+}
+```
+
+## 3. Before / after (384 factory programs)
 
 `program_sweep <backup> --notes 60,64,67 --no-arp-gate` (before) against the same command without the flag (after), compared with `tools/sweep_flip_compare.py` (`docs/research/data/arp-gate-flip-sweep.csv`, derived numbers only): **25 of the 32 arpeggiator programs change** the default render, **0 of the other 352**. The 7 that do not change are Gate-mode layers (Dual Gates, Time Warp Saw, Memory Glitch: the native Gate duty is not the flag) and programs whose arp layers do not sound for these keys (Shoreline Whl, Sidechain Whl II, Night Gaunts Whl, ScissorSplit Whl). `render_hash` (`cargo run --release -p nord-tools --bin render_hash`) is unchanged (`eb13063d...ca28` = `WHOLE` of `tests/golden_render.rs`): the golden segments contain no arpeggiator (`render_segments.rs` has no arp), so it proves only that nothing else moved.
 
-## 3. What is still not proven
+## 4. What is still not proven
 
 - **No hardware recording** of an arp note against its step. The result is the firmware's own state from execution; a path that only a real panel or the unmodelled Master Clock SPI device reaches would not show in the harness. The static reading of the 8 unreached stores and of the table users argues that none sets the flag to 0, but it is not a data-flow proof.
 - **Hold, scene change and MIDI clock start** were not driven (Hold is a global bit that is not decoded; scene recall needs the panel path).

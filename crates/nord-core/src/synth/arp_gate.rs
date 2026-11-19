@@ -17,8 +17,8 @@ use super::*;
 /// (`tools/ns4_arp_player.py gates`, `docs/research/arm-tick-timers.md` s6). Not seen on
 /// hardware. D168 ([arp-gate-flag-trace](../../../../docs/research/arp-gate-flag-trace.md),
 /// `tools/arm_arp_flag_trace.py`, `tools/arp_flag_census.py`): the flag `[obj + 0xC]` is written
-/// only by the constructor (6 calls in boot, 0 after, 0 stores in 40 runs), and 31 ARM-played
-/// layers of the 32 arpeggiator programs give 2/3 of their grid step.
+/// only by the constructor (6 calls in boot, 0 after, 0 stores in 41 runs), and 53 ARM-played
+/// layers of 30 of the 32 arpeggiator programs give 2/3 of their grid step.
 pub(super) const FIRMWARE_E_FRACTION: f32 = 2.0 / 3.0;
 
 /// The `E` gate in eighths of a step (`pattern_presets::gate_eighths(b'E')`).

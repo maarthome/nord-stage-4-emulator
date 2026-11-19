@@ -359,7 +359,7 @@ pub struct FirmwareOptions {
     /// Arp / Poly `E` steps and the plain arpeggio last 2/3 of a step
     /// (`SynthLayer::arp_firmware_gate`). On by default since D168: the ARM never writes the
     /// pattern object flag after its constructor (`docs/research/arp-gate-flag-trace.md`), 2/3 in
-    /// 31 ARM-played layers of the 32 arpeggiator programs. `--no-arp-gate` and `--legacy-arp`
+    /// 53 ARM-played layers of 30 of the 32 arpeggiator programs. `--no-arp-gate` and `--legacy-arp`
     /// turn it off; `--arp-fw-gate` stays accepted. No hardware clip (OQ32).
     pub arp_firmware_gate: bool,
     /// `--measured-laws`: `SynthLayer::measured_laws` (EMPIRICAL, Audible Genius clips).
