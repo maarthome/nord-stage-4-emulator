@@ -83,10 +83,10 @@ impl ProgramOverrides {
         if touch != self.touch_last.swap(touch, Relaxed) {
             self.armed.fetch_or(TOUCH_BIT, Relaxed);
         }
-        for layer in 0..FX_LAYERS {
+        for (layer, slots) in self.mod2_last.iter().enumerate() {
             let now = mod2_values(params, layer);
             let mut moved = false;
-            for (last, v) in self.mod2_last[layer].iter().zip(now) {
+            for (last, v) in slots.iter().zip(now) {
                 moved |= last.swap(v, Relaxed) != v;
             }
             if moved {
@@ -119,8 +119,8 @@ impl ProgramOverrides {
         self.armed.store(0, Relaxed);
         self.touch_last
             .store(params.piano_touch.value() as u32, Relaxed);
-        for layer in 0..FX_LAYERS {
-            for (last, v) in self.mod2_last[layer].iter().zip(mod2_values(params, layer)) {
+        for (layer, slots) in self.mod2_last.iter().enumerate() {
+            for (last, v) in slots.iter().zip(mod2_values(params, layer)) {
                 last.store(v, Relaxed);
             }
         }
