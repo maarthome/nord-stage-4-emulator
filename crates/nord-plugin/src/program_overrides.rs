@@ -1,7 +1,7 @@
 //! Who wins per block: the loaded program or the host parameter (D167).
 //!
 //! `Stage4Params::sync_to_engine` runs every block. Most host parameters have no program
-//! counterpart that matters, so the host value simply wins (documented, TD-19). Two control groups have
+//! counterpart that matters, so the host value simply wins (documented, TD-21). Two control groups have
 //! one, and an untouched host default must not erase it:
 //!
 //! | Host parameter | Program state it would overwrite |
