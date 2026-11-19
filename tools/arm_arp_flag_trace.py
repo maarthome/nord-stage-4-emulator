@@ -14,8 +14,8 @@ Program variants are made by patching the layer block of the original `.ns4p` bi
 round trip is lossy, D166): `--patch A.mode=2 --patch C.pattern_on=1 --patch A.rate=12`. Fields
 are the ones of `ns4_arp_modes.FIELDS` plus `gate`, `accent`, `length` of `ns4_arp_patterns`.
 
-    uv run --with unicorn python tools/arm_arp_flag_trace.py CODE SRAM --eeprom target/oled/eeprom.bin \
-        --out docs/research/data/arp-flag-trace-a16.json "factory_programs/Program/Bank A/Horizon Whl.ns4p"
+    uv run --with unicorn python tools/arm_arp_flag_trace.py CODE SRAM \
+        --eeprom target/oled/eeprom.bin --out run.json PROGRAM.ns4p
 
 Only numbers are written. Needs the unpacked firmware and `unicorn` (about 70 s boot, then about
 100 s CPU per second of ARM time at 25,000 instructions per timer interrupt).
@@ -90,7 +90,7 @@ def store_base_register(word: int) -> int:
 
 
 def load_sites(path: Path = FLAGSCAN) -> list[int]:
-    """The candidate `str [rN, #0xC]` addresses of the D130 static scan (`arm_tick_probe flagscan`)."""
+    """Candidate `str [rN, #0xC]` addresses of the D130 scan (`arm_tick_probe flagscan`)."""
     return [int(row["address"], 16) if isinstance(row["address"], str) else row["address"]
             for row in json.loads(path.read_text(encoding="utf-8"))]  # fmt: skip
 
@@ -106,9 +106,7 @@ class FlagWatch:  # pragma: no cover - needs the local firmware
     def __init__(self, emu, rec: ev.Recorder) -> None:  # noqa: ANN001
         self.emu, self.rec = emu, rec
         self.phase = "boot"
-        self.table = {
-            pos: emu.read32(ev.PATTERN_TABLE + 4 * pos) for pos in TABLE_POSITIONS
-        }
+        self.table = {pos: emu.read32(ev.PATTERN_TABLE + 4 * pos) for pos in TABLE_POSITIONS}
         self.flag_writes: list[dict] = []
         self.offset_pcs: dict[str, set[str]] = {}
         for pos, obj in self.table.items():
@@ -124,7 +122,8 @@ class FlagWatch:  # pragma: no cover - needs the local firmware
         if off <= FLAG_OFFSET < off + size:
             self.flag_writes.append(
                 {"phase": self.phase, "t": self.rec.now(), "pos": pos, "size": size,
-                 "value": value & ((1 << (8 * size)) - 1), "pc": hex(pc), "lr": hex(self.emu.reg(14))}
+                 "value": value & ((1 << (8 * size)) - 1), "pc": hex(pc),
+                 "lr": hex(self.emu.reg(14))}
             )  # fmt: skip
         self.offset_pcs.setdefault(f"{pos}:{off:#x}", set()).add(hex(pc))
 
@@ -137,7 +136,7 @@ class FlagWatch:  # pragma: no cover - needs the local firmware
 
 
 class SiteWatch:  # pragma: no cover - needs the local firmware
-    """Code hooks on the candidate stores and the constructor: hits, and hits on a pattern object."""
+    """Code hooks on the candidate stores and the constructor: hits and pattern-object hits."""
 
     def __init__(self, emu, sites: list[int]) -> None:  # noqa: ANN001
         self.emu, self.objects = emu, set()
@@ -189,8 +188,10 @@ def run_trace(ns, raw: bytes) -> dict:  # noqa: ANN001  # pragma: no cover - nee
     if ns.force_flag is not None:  # counterfactual: what does the flag select?
         for obj in watch.table.values():
             emu.write32(obj + FLAG_OFFSET, ns.force_flag)
-    out: dict = {"force_flag": ns.force_flag, "program": ns.program.stem, "patches": ns.patch, "table": {
-        str(k): hex(v) for k, v in watch.table.items()}, "flags": {}, "grid": {}}  # fmt: skip
+    out: dict = {
+        "force_flag": ns.force_flag, "program": ns.program.stem, "patches": ns.patch,
+        "table": {str(k): hex(v) for k, v in watch.table.items()}, "flags": {}, "grid": {},
+    }  # fmt: skip
     out["flags"]["boot"] = watch.flags()
     watch.phase = "load"
     dc.run_phase(rig, dc.LOAD_TICKS, "load")
@@ -239,7 +240,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI
     ap.add_argument("--lead", type=int, default=3)
     ap.add_argument("--release-at", type=float, default=None)
     ap.add_argument("--keys", default="40,43,47,60,64,67", help="held together, comma separated")
-    ap.add_argument("--force-flag", type=int, default=None, help="write this to every flag after boot")
+    ap.add_argument(
+        "--force-flag", type=int, default=None, help="write this to every flag after boot"
+    )
     ap.add_argument("--patch", action="append", default=[], help="LAYER.field=value, repeatable")
     ap.add_argument("program", type=Path)
     ns = ap.parse_args(argv)
