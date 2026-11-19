@@ -132,7 +132,7 @@ impl LayerFxSelectors {
     /// Writes host values into one engine FX chain (no allocation; plain field stores).
     ///
     /// `mod2_host_wins`: write the Mod 2 type and rate and drop the loaded program's firmware
-    /// words. When false the program's Mod 2 (and its raw words, D163) stays (D167).
+    /// words. When false the program's Mod 2 (and its raw words, D163) stays (D169).
     pub fn apply_to(&self, fx: &mut LayerFxChain, mod2_host_wins: bool) {
         fx.mod1_type = self.mod1_type.value().into();
         fx.mod1_rate_hz = self.mod1_rate_hz.value();

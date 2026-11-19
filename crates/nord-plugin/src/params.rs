@@ -158,11 +158,11 @@ pub struct Stage4Params {
     #[nested(id_prefix = "menx", group = "Menu Extras")]
     pub menu_extra: crate::menu_extra_params::MenuExtraParams,
 
-    /// Firmware-law switches (`fwx_*`, D167).
+    /// Firmware-law switches (`fwx_*`, D169).
     #[nested(group = "Firmware")]
     pub firmware: crate::firmware_params::FirmwareFlagParams,
 
-    /// Which of Touch / Mod 2 the host overrides over a loaded program (D167). Not persisted:
+    /// Which of Touch / Mod 2 the host overrides over a loaded program (D169). Not persisted:
     /// derived from the restored values, see `program_overrides.rs`.
     pub program_overrides: crate::program_overrides::ProgramOverrides,
 
@@ -668,7 +668,7 @@ impl Stage4Params {
             };
         }
 
-        // Host changes since the program load decide who wins for Touch and Mod 2 (D167).
+        // Host changes since the program load decide who wins for Touch and Mod 2 (D169).
         self.program_overrides.observe(self);
         self.firmware.sync_to_engine(engine);
 
@@ -691,7 +691,8 @@ impl Stage4Params {
         self.synth_gate.sync_to_engine(engine);
         self.synth_pattern.sync_to_engine(engine);
         self.organ_layers.sync_to_engine(engine);
-        self.layer_fx_extra.sync_to_engine(engine);
+        self.layer_fx_extra
+            .sync_to_engine(engine, &self.program_overrides);
         self.layer_fx_sharing
             .sync_to_engine(engine, &self.program_overrides);
         self.layer_fx_variation.sync_to_engine(engine);
@@ -779,7 +780,7 @@ impl Stage4Params {
             _ => PianoTimbre::Mid,
         };
         // The one global parameter replaces both layers' Touch only once the host moved it from
-        // its value at the program load (D167); until then the per-layer program Touch plays.
+        // its value at the program load (D169); until then the per-layer program Touch plays.
         let touch = match self.piano_touch.value() {
             1 => VelocityTouch::Light,
             2 => VelocityTouch::Heavy,

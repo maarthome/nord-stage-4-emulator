@@ -1,4 +1,4 @@
-//! Loaded program versus host parameters (D167): the program's piano Touch and firmware Mod 2 play
+//! Loaded program versus host parameters (D169): the program's piano Touch and firmware Mod 2 play
 //! in the plugin until the host moves the matching parameter; old sessions render as before.
 //!
 //! Own test binary: drives `process()` the way the wrappers do and restores old state through
@@ -274,7 +274,7 @@ fn an_untouched_host_without_a_program_equals_the_engine_defaults() {
 }
 
 /// Old saved session (fixture, display strings by id): restored values count as host changes, so
-/// they play exactly as before D167.
+/// they play exactly as before D169.
 #[test]
 fn an_old_session_restores_its_touch_and_mod2_as_before() {
     let fixture: serde_json::Value =

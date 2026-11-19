@@ -1,4 +1,4 @@
-//! Who wins per block: the loaded program or the host parameter (D167).
+//! Who wins per block: the loaded program or the host parameter (D169).
 //!
 //! `Stage4Params::sync_to_engine` runs every block. Most host parameters have no program
 //! counterpart that matters, so the host value simply wins (documented, TD-21). Two control groups have
@@ -7,7 +7,7 @@
 //! | Host parameter | Program state it would overwrite |
 //! |---|---|
 //! | `piano_touch` (one global) | `PianoLayer::touch` of Piano A and B (D99, D165) |
-//! | `fxsel_mod2_type_n`, `fxsel_mod2_rate_n`, `fxy_mod2_var_n` | the firmware Mod 2 raw words and Mod 2 settings of layer n (D163) |
+//! | `fxsel_mod2_type_n`, `fxsel_mod2_rate_n`, `fxy_mod2_var_n`, `fxx_mod2_amount_n` | the firmware Mod 2 raw words and Mod 2 settings of layer n (D163) |
 //!
 //! Rule: a tracked control **overrides** the program only after the host changed it from the
 //! value it had when the program was loaded (or, before any load, from its default). Until
@@ -30,8 +30,17 @@ use nih_plug::prelude::Enum;
 use crate::fx_params::FX_LAYERS;
 use crate::params::Stage4Params;
 
-/// Default of `fxsel_mod2_rate_n` in Hz (equals `LayerFxChain::new`, checked in `fx_selectors`).
+/// Default of `fxsel_mod2_rate_n` in Hz.
+///
+/// ASSUMED: mirrors `LayerFxChain::new` (`mod2_rate_hz`), not a firmware value; confirmed only by
+/// `fx_selectors::defaults_match_engine_defaults`, which fails if the engine default moves.
 pub const MOD2_RATE_DEFAULT_HZ: f32 = 0.8;
+
+/// Default of `fxx_mod2_amount_n`.
+///
+/// ASSUMED: mirrors the shipped host default (`unit("Mod 2 Amount", 0.35)` in `fx_extra_params`),
+/// checked by `program_overrides::tests::default_params_arm_nothing`.
+pub const MOD2_AMOUNT_DEFAULT: f32 = 0.35;
 
 const TOUCH_BIT: u32 = 1;
 
@@ -39,8 +48,8 @@ fn mod2_bit(layer: usize) -> u32 {
     1 << (1 + layer)
 }
 
-/// Tracked per-layer Mod 2 values: type index, rate bits, variation flag.
-type Mod2Values = [u32; 3];
+/// Tracked per-layer Mod 2 values: type index, rate bits, variation flag, amount bits.
+type Mod2Values = [u32; 4];
 
 fn mod2_values(params: &Stage4Params, layer: usize) -> Mod2Values {
     let sel = &params.layer_fx_selectors.layers[layer];
@@ -48,6 +57,10 @@ fn mod2_values(params: &Stage4Params, layer: usize) -> Mod2Values {
         sel.mod2_type.value().to_index() as u32,
         sel.mod2_rate_hz.value().to_bits(),
         u32::from(params.layer_fx_sharing.layers[layer].mod2_variation.value()),
+        params.layer_fx_extra.layers[layer]
+            .mod2_amount
+            .value()
+            .to_bits(),
     ]
 }
 
@@ -55,7 +68,7 @@ fn mod2_values(params: &Stage4Params, layer: usize) -> Mod2Values {
 pub struct ProgramOverrides {
     armed: AtomicU32,
     touch_last: AtomicU32,
-    mod2_last: [[AtomicU32; 3]; FX_LAYERS],
+    mod2_last: [[AtomicU32; 4]; FX_LAYERS],
 }
 
 impl Default for ProgramOverrides {
@@ -69,6 +82,7 @@ impl Default for ProgramOverrides {
                     AtomicU32::new(0),
                     AtomicU32::new(MOD2_RATE_DEFAULT_HZ.to_bits()),
                     AtomicU32::new(0),
+                    AtomicU32::new(MOD2_AMOUNT_DEFAULT.to_bits()),
                 ]
             }),
         }

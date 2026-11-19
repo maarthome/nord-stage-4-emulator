@@ -150,7 +150,7 @@ impl LayerFxSharingBank {
     ///
     /// The engine applies the sharing copies itself at the start of `process_block`.
     ///
-    /// Mod 2 VARIATION follows the host only where it overrides the loaded program (D167).
+    /// Mod 2 VARIATION follows the host only where it overrides the loaded program (D169).
     pub fn sync_to_engine(&self, engine: &mut Stage4Engine, overrides: &ProgramOverrides) {
         for (i, (p, fx)) in self
             .layers

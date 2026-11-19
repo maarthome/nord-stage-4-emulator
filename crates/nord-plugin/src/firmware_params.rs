@@ -1,4 +1,4 @@
-//! Host switches for the firmware-law defaults of the engine (D167).
+//! Host switches for the firmware-law defaults of the engine (D169).
 //!
 //! The engine runs the firmware arpeggiator walk and morph law and the piano Touch curves by
 //! default (D165, D166); the offline tools can opt out (`--legacy-arp`, `--legacy-morph`,
@@ -11,6 +11,10 @@ use nih_plug::prelude::*;
 use nord_core::engine::Stage4Engine;
 
 /// Firmware-law switches.
+///
+/// ASSUMED: the four defaults mirror the engine defaults (`SynthLayer::new`, `Stage4Engine::new`,
+/// `PianoLayer::new`: walk, morph law and Touch curves on, gate off per D166); nothing here is a
+/// measured value. `defaults_equal_the_engine_defaults` fails if an engine default moves.
 #[derive(Params)]
 pub struct FirmwareFlagParams {
     /// Arpeggiator UP / DOWN walk over the whole octave pool, a single key retriggers

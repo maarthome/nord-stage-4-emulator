@@ -75,7 +75,7 @@ impl Default for NordStage4Plugin {
 
 impl NordStage4Plugin {
     /// Fresh engine at the current sample rate with the loaded program (if any) applied, then the
-    /// host parameters synced on top (D167: only overridden Touch / Mod 2 replace the program).
+    /// host parameters synced on top (D169: only overridden Touch / Mod 2 replace the program).
     fn rebuild_engine(&mut self) {
         self.engine = Stage4Engine::new(self.sample_rate);
         if let Some(prog) = &self.program {
@@ -85,7 +85,7 @@ impl NordStage4Plugin {
     }
 
     /// Applies a decoded program to the engine and makes it win over every host parameter that
-    /// still sits at the value it had now (D167). Not real-time safe: call it from the thread that
+    /// still sits at the value it had now (D169). Not real-time safe: call it from the thread that
     /// owns the plugin while it is not processing (tests, a future loader task).
     pub fn load_program(&mut self, prog: ProgramDecoded) {
         self.engine.apply_program(&prog);
