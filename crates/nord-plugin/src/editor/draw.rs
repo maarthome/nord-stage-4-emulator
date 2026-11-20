@@ -29,7 +29,7 @@ use nih_plug_egui::egui::{
 use nih_plug_egui::resizable_window::ResizableWindow;
 use nih_plug_egui::EguiState;
 use nord_gui::audio::{AudioCommand, AudioHandle};
-use nord_gui::panel::view::focus_region;
+use nord_gui::panel::view::{focus_region, region_origin, ViewState};
 use nord_gui::panel::{layout_px, render_stage4_panel, Stage4PanelState};
 use nord_gui::style::CHASSIS_DARK;
 use nord_panel::Section;
@@ -113,19 +113,34 @@ pub fn view_region() -> Rect {
         .fold(Rect::NOTHING, |a, r| a.union(r))
 }
 
-/// Scale that makes [`view_region`] fit a window of `size` logical px.
-pub fn scale_for(size: (u32, u32)) -> f32 {
-    let r = view_region();
-    let (w, h) = (size.0 as f32, size.1 as f32);
-    (w / r.width()).min(h / r.height()).max(MIN_SCALE)
+/// What the editor shows, in panel-layer px. A focused section (click its header, keys 1-5, Esc
+/// back) or the panorama: the shared panel then draws itself shifted so that region starts at
+/// 0,0. Otherwise the control strip [`view_region`].
+pub fn shown_region(view: &ViewState) -> Rect {
+    match view.region() {
+        Some(r) => Rect::from_min_size(Pos2::ZERO, r.size()),
+        None => view_region(),
+    }
 }
 
-/// Panel-layer → window transform: [`view_region`] scaled to fit `avail`, centred.
-pub fn panel_transform(avail: Rect) -> TSTransform {
-    let r = view_region();
-    let s = scale_for((avail.width() as u32, avail.height() as u32));
-    let offset = ((avail.size() - r.size() * s) * 0.5).max(Vec2::ZERO);
-    TSTransform::new((avail.min + offset).to_vec2() - r.min.to_vec2() * s, s)
+/// Scale that makes `region` fit `avail` (both logical px).
+pub fn fit_scale(region: Vec2, avail: Vec2) -> f32 {
+    (avail.x / region.x).min(avail.y / region.y).max(MIN_SCALE)
+}
+
+/// Scale that makes [`view_region`] fit a window of `size` logical px.
+pub fn scale_for(size: (u32, u32)) -> f32 {
+    fit_scale(
+        view_region().size(),
+        Vec2::new(size.0 as f32, size.1 as f32),
+    )
+}
+
+/// Panel-layer → window transform: `region` scaled to fit `avail`, centred.
+pub fn panel_transform(region: Rect, avail: Rect) -> TSTransform {
+    let s = fit_scale(region.size(), avail.size());
+    let offset = ((avail.size() - region.size() * s) * 0.5).max(Vec2::ZERO);
+    TSTransform::new((avail.min + offset).to_vec2() - region.min.to_vec2() * s, s)
 }
 
 /// Translucent overlay with a tooltip over every dimmed control; returns how many were drawn.
@@ -180,16 +195,20 @@ pub fn draw_editor<W: ParamWriter>(
             ui.ctx()
                 .layer_painter(LayerId::background())
                 .rect_filled(avail, 0.0_f32, CHASSIS_DARK);
-            let to_global = panel_transform(avail);
+            let region = shown_region(&st.panel.view);
+            let to_global = panel_transform(region, avail);
             // The panel gets its own layer on top of the window's, as egui's `Scene` does.
             let layer = LayerId::new(ui.layer_id().order, ui.id().with("nord-panel-layer"));
             ui.ctx().set_sublayer(ui.layer_id(), layer);
             let panel_rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(PANEL_W, PANEL_H));
             let mut local = ui.new_child(UiBuilder::new().layer_id(layer).max_rect(panel_rect));
-            // Only the shown region: the keybed and the wheels stay hidden and unclickable.
-            local.set_clip_rect(view_region().intersect(to_global.inverse() * avail));
+            // Only the shown region: the rest (keybed, wheels, other sections) stays hidden and
+            // unclickable.
+            local.set_clip_rect(region.intersect(to_global.inverse() * avail));
             render_stage4_panel(&mut local, &mut st.panel, &st.handle);
-            st.last_overlays = draw_dim_overlay(&mut local, panel_rect.min, &st.coverage);
+            // The panel origin moves with a focused section (`ViewState::origin`).
+            let origin = region_origin(st.panel.view.region(), Pos2::ZERO);
+            st.last_overlays = draw_dim_overlay(&mut local, origin, &st.coverage);
             ui.ctx().set_transform_layer(layer, to_global);
             st.last_scale = to_global.scaling;
         });
@@ -247,10 +266,26 @@ mod tests {
     }
 
     #[test]
+    fn a_focused_section_fills_the_window() {
+        let mut view = ViewState::default();
+        assert_eq!(shown_region(&view), view_region());
+        view.toggle(Section::Effects);
+        let fx = focus_region(Some(Section::Effects)).unwrap();
+        let shown = shown_region(&view);
+        assert_eq!(shown.min, Pos2::ZERO);
+        assert!((shown.size() - fx.size()).length() < 1e-3);
+        // Layer Effects is much taller for its width than the strip: it gets a larger scale.
+        let window = Vec2::new(2540.0, 380.0);
+        assert!(fit_scale(shown.size(), window) > fit_scale(view_region().size(), window));
+        view.exit();
+        assert_eq!(shown_region(&view), view_region());
+    }
+
+    #[test]
     fn panel_transform_centres_the_region_in_the_window() {
         let r = view_region();
         let avail = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(r.width() * 2.0, 4000.0));
-        let t = panel_transform(avail);
+        let t = panel_transform(r, avail);
         assert!((t.scaling - 2.0).abs() < 0.01);
         let (tl, br) = (t * r.min, t * r.max);
         assert!((tl.x - 10.0).abs() < 1.0 && (br.x - avail.max.x).abs() < 1.0);
