@@ -1,15 +1,17 @@
 //! One editor frame: read-back, the shared front panel, dimmed-control overlay, sink pump.
 //!
-//! The panel is the same `render_stage4_panel` the standalone app draws (`nord-gui`), at its
-//! native 1560 x 420 logical px, centred and letterboxed in the chassis colour. The host's DPI
-//! scale still applies through `nih_plug_egui`.
+//! The panel is the same `render_stage4_panel` the standalone app draws (`nord-gui`), laid out
+//! at its full logical size (`layout_px`, 3120 x 840 with `LAYOUT_SCALE` 2). It is drawn into its
+//! own egui layer, and that layer is scaled and centred to fit the window with
+//! `Context::set_transform_layer`; egui applies the transform to shapes before tessellation and to
+//! pointer input (the mechanism of egui's own `Scene` container), letterboxed in the chassis colour.
 //!
 //! The editor does not use egui's zoom factor: `egui-baseview` (rev ec70c3f, the version
 //! `nih_plug_egui` pins) tessellates every frame with the window's native `pixels_per_point`
 //! (`src/renderer/opengl/renderer.rs:109`) and ignores the zoom. Text laid out at the zoomed
 //! scale was drawn at the native one: an `epaint` "pixels_per_point changed" warning every frame
-//! and a doubled, cropped panel (seen on a Raspberry Pi 5, standalone, X11). The window therefore
-//! opens at the native panel size; a smaller window crops instead of scaling.
+//! and a doubled, cropped panel (seen on a Raspberry Pi 5, standalone, X11). The zoom is kept at
+//! 1, and so is the shared panel's own fit (`view::apply_zoom`, via `fixed_zoom`).
 
 use super::coverage::{Coverage, DIM_TOOLTIP};
 use super::index::ParamIndex;
@@ -19,7 +21,8 @@ use super::sink::{pump, ParamSink};
 use super::write::ParamWriter;
 use crossbeam_channel::Receiver;
 use nih_plug_egui::egui::{
-    self, Color32, Context, Id, Rect, Sense, Stroke, StrokeKind, Ui, UiBuilder, Vec2,
+    self, emath::TSTransform, Color32, Context, Id, LayerId, Pos2, Rect, Sense, Stroke, StrokeKind,
+    Ui, UiBuilder, Vec2,
 };
 use nih_plug_egui::resizable_window::ResizableWindow;
 use nih_plug_egui::EguiState;
@@ -28,13 +31,13 @@ use nord_gui::panel::{layout_px, render_stage4_panel, Stage4PanelState};
 use nord_gui::style::CHASSIS_DARK;
 use std::sync::Arc;
 
-/// Logical panel size the shared drawing code is laid out for.
-pub const PANEL_W: f32 = 1560.0;
-pub const PANEL_H: f32 = 420.0;
-/// Default editor window size: the native panel size, so no zoom is needed (see module docs).
-pub const DEFAULT_SIZE: (u32, u32) = (PANEL_W as u32, PANEL_H as u32);
+/// Logical panel size the shared drawing code is laid out for (`nord_gui` layout px).
+pub const PANEL_W: f32 = layout_px::PANEL_WIDTH_PX;
+pub const PANEL_H: f32 = layout_px::PANEL_HEIGHT_PX;
+/// Default editor window size: 1560 x 420 logical px (half the layout size; fits a laptop).
+pub const DEFAULT_SIZE: (u32, u32) = ((PANEL_W / 2.0) as u32, (PANEL_H / 2.0) as u32);
 /// Smallest scale the editor shrinks to.
-pub const MIN_SCALE: f32 = 0.25;
+pub const MIN_SCALE: f32 = 0.1;
 
 /// Everything the editor keeps between frames (GUI thread only).
 pub struct EditorState {
@@ -48,6 +51,8 @@ pub struct EditorState {
     pub last_overlays: usize,
     /// Panel commands dropped for lack of a host parameter.
     pub unmapped: u64,
+    /// Scale of the panel layer in the last frame (diagnostics and tests).
+    pub last_scale: f32,
 }
 
 impl EditorState {
@@ -63,15 +68,22 @@ impl EditorState {
             notes,
             last_overlays: 0,
             unmapped: 0,
+            last_scale: 0.0,
         }
     }
 }
 
-/// Zoom that would make the whole panel fit a window of `size` logical px. Not applied while
-/// `egui-baseview` ignores the zoom factor (module docs); kept for when it honours it.
+/// Scale that makes the whole panel fit a window of `size` logical px.
 pub fn scale_for(size: (u32, u32)) -> f32 {
     let (w, h) = (size.0 as f32, size.1 as f32);
     (w / PANEL_W).min(h / PANEL_H).max(MIN_SCALE)
+}
+
+/// Panel-layer → window transform: the panel (origin 0,0) scaled to fit `avail`, centred.
+pub fn panel_transform(avail: Rect) -> TSTransform {
+    let s = scale_for((avail.width() as u32, avail.height() as u32));
+    let offset = ((avail.size() - Vec2::new(PANEL_W, PANEL_H) * s) * 0.5).max(Vec2::ZERO);
+    TSTransform::new((avail.min + offset).to_vec2(), s)
 }
 
 /// Translucent overlay with a tooltip over every dimmed control; returns how many were drawn.
@@ -122,13 +134,17 @@ pub fn draw_editor<W: ParamWriter>(
         .show(ctx, egui_state, |ui| {
             let avail = ui.max_rect();
             ui.painter().rect_filled(avail, 0.0_f32, CHASSIS_DARK);
-            let size = Vec2::new(PANEL_W, PANEL_H);
-            let offset = ((avail.size() - size) * 0.5).max(Vec2::ZERO);
-            let panel_rect = Rect::from_min_size(avail.min + offset, size);
-            ui.scope_builder(UiBuilder::new().max_rect(panel_rect), |ui| {
-                render_stage4_panel(ui, &mut st.panel, &st.handle);
-            });
-            st.last_overlays = draw_dim_overlay(ui, panel_rect.min, &st.coverage);
+            let to_global = panel_transform(avail);
+            // The panel gets its own layer on top of the window's, as egui's `Scene` does.
+            let layer = LayerId::new(ui.layer_id().order, ui.id().with("nord-panel-layer"));
+            ui.ctx().set_sublayer(ui.layer_id(), layer);
+            let panel_rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(PANEL_W, PANEL_H));
+            let mut local = ui.new_child(UiBuilder::new().layer_id(layer).max_rect(panel_rect));
+            local.set_clip_rect(to_global.inverse() * avail);
+            render_stage4_panel(&mut local, &mut st.panel, &st.handle);
+            st.last_overlays = draw_dim_overlay(&mut local, panel_rect.min, &st.coverage);
+            ui.ctx().set_transform_layer(layer, to_global);
+            st.last_scale = to_global.scaling;
         });
 
     let mut sink = ParamSink::new(writer, &st.notes);
@@ -156,18 +172,29 @@ mod tests {
 
     #[test]
     fn scale_fits_the_panel_and_keeps_the_aspect() {
-        assert!((scale_for((1560, 420)) - 1.0).abs() < 1e-6);
-        assert!((scale_for((780, 210)) - 0.5).abs() < 1e-6);
+        let full = (PANEL_W as u32, PANEL_H as u32);
+        assert!((scale_for(full) - 1.0).abs() < 1e-6);
+        assert!((scale_for((full.0 / 2, full.1 / 2)) - 0.5).abs() < 1e-6);
         // Wide window: height limits the scale.
-        assert!((scale_for((3120, 420)) - 1.0).abs() < 1e-6);
+        assert!((scale_for((full.0 * 2, full.1)) - 1.0).abs() < 1e-6);
         // Tall window: width limits the scale.
-        assert!((scale_for((780, 2000)) - 0.5).abs() < 1e-6);
+        assert!((scale_for((full.0 / 2, 4000)) - 0.5).abs() < 1e-6);
         assert_eq!(scale_for((1, 1)), MIN_SCALE);
-        assert_eq!(
-            scale_for(DEFAULT_SIZE),
-            DEFAULT_SIZE.0 as f32 / PANEL_W,
-            "default size has the panel aspect"
-        );
+        assert!((scale_for(DEFAULT_SIZE) - 0.5).abs() < 1e-3);
+        assert_eq!(DEFAULT_SIZE, (1560, 420));
+    }
+
+    #[test]
+    fn panel_transform_centres_and_maps_corners_into_the_window() {
+        // Wider than the panel aspect: letterboxed left and right.
+        let avail = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(2000.0, 420.0));
+        let t = panel_transform(avail);
+        assert!((t.scaling - 0.5).abs() < 1e-6);
+        let tl = t * Pos2::ZERO;
+        let br = t * Pos2::new(PANEL_W, PANEL_H);
+        assert!((tl.y - 20.0).abs() < 1e-3 && (br.y - 440.0).abs() < 1e-3);
+        assert!(((tl.x - 10.0) - (2010.0 - br.x)).abs() < 1e-3, "centred");
+        assert!(avail.contains(tl) && avail.expand(0.01).contains(br));
     }
 
     #[test]
@@ -186,7 +213,11 @@ mod tests {
             draw_editor(ctx, &egui_state, &mut st, Recorder::default());
         });
         assert_eq!(ctx.zoom_factor(), 1.0);
-        assert_eq!(DEFAULT_SIZE, (1560, 420));
+        assert!(
+            st.last_scale > 0.0 && st.last_scale < 1.0,
+            "{}",
+            st.last_scale
+        );
     }
 
     #[test]
