@@ -1,9 +1,15 @@
 //! One editor frame: read-back, the shared front panel, dimmed-control overlay, sink pump.
 //!
 //! The panel is the same `render_stage4_panel` the standalone app draws (`nord-gui`), at its
-//! native 1560 x 420 logical px. The window scales it with egui's zoom factor so the whole
-//! panel always fits (aspect preserved, centred, letterboxed in the chassis colour), which
-//! also covers HiDPI: the host's DPI scale multiplies on top through `nih_plug_egui`.
+//! native 1560 x 420 logical px, centred and letterboxed in the chassis colour. The host's DPI
+//! scale still applies through `nih_plug_egui`.
+//!
+//! The editor does not use egui's zoom factor: `egui-baseview` (rev ec70c3f, the version
+//! `nih_plug_egui` pins) tessellates every frame with the window's native `pixels_per_point`
+//! (`src/renderer/opengl/renderer.rs:109`) and ignores the zoom. Text laid out at the zoomed
+//! scale was drawn at the native one: an `epaint` "pixels_per_point changed" warning every frame
+//! and a doubled, cropped panel (seen on a Raspberry Pi 5, standalone, X11). The window therefore
+//! opens at the native panel size; a smaller window crops instead of scaling.
 
 use super::coverage::{Coverage, DIM_TOOLTIP};
 use super::index::ParamIndex;
@@ -25,8 +31,8 @@ use std::sync::Arc;
 /// Logical panel size the shared drawing code is laid out for.
 pub const PANEL_W: f32 = 1560.0;
 pub const PANEL_H: f32 = 420.0;
-/// Default editor window size (75 % of native; fits a laptop screen).
-pub const DEFAULT_SIZE: (u32, u32) = (1170, 315);
+/// Default editor window size: the native panel size, so no zoom is needed (see module docs).
+pub const DEFAULT_SIZE: (u32, u32) = (PANEL_W as u32, PANEL_H as u32);
 /// Smallest scale the editor shrinks to.
 pub const MIN_SCALE: f32 = 0.25;
 
@@ -61,7 +67,8 @@ impl EditorState {
     }
 }
 
-/// Zoom that makes the whole panel fit a window of `size` logical px.
+/// Zoom that would make the whole panel fit a window of `size` logical px. Not applied while
+/// `egui-baseview` ignores the zoom factor (module docs); kept for when it honours it.
 pub fn scale_for(size: (u32, u32)) -> f32 {
     let (w, h) = (size.0 as f32, size.1 as f32);
     (w / PANEL_W).min(h / PANEL_H).max(MIN_SCALE)
@@ -100,9 +107,9 @@ pub fn draw_editor<W: ParamWriter>(
 ) {
     sync_panel_from_params(&st.index, &mut st.panel);
 
-    let scale = scale_for(egui_state.size());
-    if (ctx.zoom_factor() - scale).abs() > 1e-3 {
-        ctx.set_zoom_factor(scale);
+    // Keep the zoom at 1 (module docs): the renderer would ignore anything else.
+    if (ctx.zoom_factor() - 1.0).abs() > 1e-3 {
+        ctx.set_zoom_factor(1.0);
     }
 
     ResizableWindow::new("nord-stage-4-editor")
@@ -156,6 +163,19 @@ mod tests {
             DEFAULT_SIZE.0 as f32 / PANEL_W,
             "default size has the panel aspect"
         );
+    }
+
+    #[test]
+    fn frames_never_zoom_even_in_a_small_window() {
+        let (_params, mut st, _rx) = state();
+        let egui_state = EguiState::from_size(780, 210);
+        let ctx = Context::default();
+        ctx.set_zoom_factor(0.5);
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            draw_editor(ctx, &egui_state, &mut st, Recorder::default());
+        });
+        assert_eq!(ctx.zoom_factor(), 1.0);
+        assert_eq!(DEFAULT_SIZE, (1560, 420));
     }
 
     #[test]
