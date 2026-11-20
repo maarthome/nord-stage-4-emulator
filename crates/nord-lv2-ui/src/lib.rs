@@ -4,6 +4,10 @@
 //! Hosts drive it through `ui:idleInterface` (jalv, Carla, Ardour, Zynthian's UI host). Control
 //! values travel as plain `float` port writes; the panel model lives in [`model`].
 
+pub mod layout;
+/// The plugin's program-folder rules, shared verbatim so the GUI numbers programs the same way.
+#[path = "../../nord-lv2/src/library.rs"]
+pub mod library;
 pub mod model;
 #[cfg(target_os = "linux")]
 mod view;
@@ -116,9 +120,15 @@ mod lv2ui {
                 f(r.handle, WIDTH, HEIGHT);
             }
         }
+        let programs = crate::library::program_dir()
+            .map(|d| crate::library::list_programs(&d))
+            .unwrap_or_default()
+            .iter()
+            .map(|p| crate::library::display_name(p))
+            .collect();
         let inst = Box::new(Instance {
             view,
-            ui: Ui::default(),
+            ui: Ui::with_programs(programs),
             write,
             controller,
         });
@@ -131,7 +141,7 @@ mod lv2ui {
         }
     }
 
-    /// Host → UI: control port values (format 0 = plain float).
+    /// Host → UI: control port values (format 0 = plain float), inputs and the plugin's outputs.
     unsafe extern "C" fn port_event(
         h: Handle,
         port: u32,
@@ -142,10 +152,14 @@ mod lv2ui {
         let Some(inst) = h.cast::<Instance>().as_mut() else {
             return;
         };
-        if format == 0 && size == 4 && !buf.is_null() && inst.ui.set_port(port, *buf.cast::<f32>())
-        {
-            inst.view.dirty = true;
+        if format != 0 || size != 4 || buf.is_null() {
+            return;
         }
+        let (redraw, sync) = inst.ui.host_value(port, *buf.cast::<f32>());
+        if let Some((p, v)) = sync {
+            (inst.write)(inst.controller, p, 4, 0, (&v as *const f32).cast());
+        }
+        inst.view.dirty |= redraw;
     }
 
     unsafe extern "C" fn idle(h: Handle) -> c_int {
@@ -165,6 +179,7 @@ mod lv2ui {
             }
             None => false,
         });
+        ui.tick();
         if view.dirty {
             view.draw(ui);
         }
@@ -231,6 +246,9 @@ mod lv2ui {
         /// Full host round trip on a real X server (`xvfb-run`); returns early without one.
         #[test]
         fn instantiate_port_event_idle_cleanup() {
+            let _x = crate::view::X_TEST_LOCK
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             let d = unsafe { &*lv2ui_descriptor(0) };
             let mut widget: *mut c_void = std::ptr::null_mut();
             let feats: [*const Feature; 1] = [std::ptr::null()];

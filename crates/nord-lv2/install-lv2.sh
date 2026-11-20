@@ -24,6 +24,11 @@ cp crates/nord-lv2/bundle/nord-stage4.lv2/*.ttl "$DEST/"
 cp target/release/libnord_lv2.so target/release/libnord_lv2_ui.so "$DEST/"
 echo "Installed to $DEST"
 
+PROG_DIR="${NS4_PROGRAM_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/ns4/programs}"
+mkdir -p "$PROG_DIR"
+COUNT=$(find "$PROG_DIR" -maxdepth 4 -iname '*.ns4p' | wc -l)
+echo "Programs: $COUNT .ns4p file(s) in $PROG_DIR"
+
 if command -v lv2info >/dev/null; then
     lv2info "$URI" | head -n 5
 else

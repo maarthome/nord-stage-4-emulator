@@ -21,6 +21,7 @@ const LED_ON: c_ulong = 0xFF3B2F;
 const LED_OFF: c_ulong = 0x3A0507;
 const BUTTON: c_ulong = 0x262626;
 const BUTTON_ON: c_ulong = 0x3A3A3A;
+const DISPLAY: c_ulong = 0x0B0B0B;
 
 /// Knob sweep: 270° clockwise starting at 7:30 (225° in X11 angle convention, 0° = 3 o'clock).
 const SWEEP_START_DEG: f32 = 225.0;
@@ -309,20 +310,47 @@ impl View {
         );
     }
 
+    /// `<` [ 012  Program name ] `>` in the header.
+    fn program_selector(&self, ui: &Ui) {
+        let (y, h, bw) = (model::PROG_Y, model::PROG_H, model::PROG_BTN_W);
+        for (x, glyph) in [(model::PROG_PREV_X, "<"), (model::PROG_NEXT_X, ">")] {
+            self.rect(x, y, bw, h, BUTTON);
+            self.outline(x, y, bw, h, 0x3C3C3C);
+            self.text_centered(self.font, glyph, x + bw / 2, y + 17, TEXT);
+        }
+        let (bx, w) = (model::PROG_BOX_X, model::PROG_BOX_W);
+        self.rect(bx, y, w, h, DISPLAY);
+        self.outline(bx, y, w, h, 0x3C3C3C);
+        let label = ui.program_label();
+        let (num, name) = label.split_at(label.len().min(3));
+        self.text_left(self.font, num, bx + 8, y + 17, LED_ON);
+        let name_x = bx + 8 + self.text_width(self.font, num);
+        let name = self.fit(name, bx + w - 8 - name_x);
+        self.text_left(self.font, &name, name_x, y + 17, TEXT);
+    }
+
+    /// `s` shortened with ".." so it is at most `max_px` wide (ASCII; other chars dropped).
+    fn fit(&self, s: &str, max_px: i32) -> String {
+        let mut t: String = s
+            .chars()
+            .filter(|c| c.is_ascii() && !c.is_ascii_control())
+            .collect();
+        if self.text_width(self.font, &t) <= max_px {
+            return t;
+        }
+        while !t.is_empty() && self.text_width(self.font, &format!("{t}..")) > max_px {
+            t.pop();
+        }
+        t + ".."
+    }
+
     /// Paints the whole panel off-screen, then copies it to the window.
     pub fn draw(&mut self, ui: &Ui) {
         self.rect(0, 0, WIDTH, HEIGHT, BG);
         self.rect(0, 0, WIDTH, model::HEADER_H, HEADER);
         self.text_left(self.title_font, "NORD STAGE 4", 16, 26, TEXT);
         self.text_left(self.font, "EMULATOR  -  LV2", 160, 26, LED_ON);
-        let hint = "drag / wheel = adjust   shift = fine   right-click = reset";
-        self.text_left(
-            self.font,
-            hint,
-            WIDTH - 16 - self.text_width(self.font, hint),
-            26,
-            0x8C8C8C,
-        );
+        self.program_selector(ui);
         for g in &model::GROUPS {
             let h = model::PANEL_BOTTOM - model::PANEL_TOP;
             self.rect(g.x, model::PANEL_TOP, g.w, h, GROUP);
@@ -382,6 +410,11 @@ impl Drop for View {
     }
 }
 
+/// Serialises tests that open X connections: Xlib is not thread-safe across connections without
+/// `XInitThreads`, which a plugin cannot call (the host owns the process).
+#[cfg(test)]
+pub(crate) static X_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -390,6 +423,7 @@ mod tests {
     /// (`xvfb-run cargo test -p nord-lv2-ui`); without `DISPLAY` it only checks `open` fails cleanly.
     #[test]
     fn open_draw_and_close() {
+        let _x = X_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let Some(mut view) = View::open(None) else {
             assert!(
                 std::env::var_os("DISPLAY").is_none(),
@@ -397,8 +431,14 @@ mod tests {
             );
             return;
         };
-        let mut ui = Ui::default();
+        let mut ui = Ui::with_programs(vec![
+            "A very long program name that cannot fit in the box".into()
+        ]);
+        ui.host_value(model::PROGRAM_OUT_PORT, 1.0);
         view.draw(&ui);
+        let fitted = view.fit(&ui.programs[0], 120);
+        assert!(fitted.ends_with("..") && view.text_width(view.font, &fitted) <= 120);
+        assert_eq!(view.fit("Short", 500), "Short");
         let k = ui.controls[8];
         ui.input(Input::Press {
             x: k.cx,
