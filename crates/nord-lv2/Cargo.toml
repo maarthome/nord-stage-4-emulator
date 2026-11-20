@@ -1,0 +1,16 @@
+[package]
+name = "nord-lv2"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "LV2 instrument wrapper (Linux, incl. aarch64 / Raspberry Pi 5) around the Nord Stage 4 Emulator engine"
+
+[lib]
+# cdylib = the LV2 binary (libnord_lv2.so); lib = unit tests.
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+# Deliberately nothing but the engine: the LV2 C ABI is declared by hand in `ffi.rs`,
+# so the build needs no nih-plug, egui, X11 or lv2 headers.
+nord-core = { path = "../nord-core" }

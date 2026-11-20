@@ -1,0 +1,148 @@
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix midi:  <http://lv2plug.in/ns/ext/midi#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
+
+# Port indices must match crates/nord-lv2/src/ports.rs (enforced by a unit test).
+
+<https://github.com/ymatrix1/nord-stage-4-emulator#lv2>
+    a lv2:Plugin , lv2:InstrumentPlugin ;
+    doap:name "Nord Stage 4 Emulator" ;
+    doap:license <https://spdx.org/licenses/MIT> ;
+    rdfs:comment "Open-source Nord Stage 4 7-layer emulator (organ, piano, synth, FX). MIDI channel 1 plays the layers switched on below; MIDI CCs follow the Nord Stage 4 CC map." ;
+    lv2:requiredFeature urid:map ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+    lv2:port [
+        a lv2:InputPort , atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports midi:MidiEvent ;
+        lv2:designation lv2:control ;
+        lv2:index 0 ;
+        lv2:symbol "midi_in" ;
+        lv2:name "MIDI In"
+    ] , [
+        a lv2:OutputPort , lv2:AudioPort ;
+        lv2:index 1 ;
+        lv2:symbol "out_l" ;
+        lv2:name "Main Out L"
+    ] , [
+        a lv2:OutputPort , lv2:AudioPort ;
+        lv2:index 2 ;
+        lv2:symbol "out_r" ;
+        lv2:name "Main Out R"
+    ] , [
+        a lv2:OutputPort , lv2:AudioPort ;
+        lv2:portProperty lv2:connectionOptional ;
+        lv2:index 3 ;
+        lv2:symbol "aux_l" ;
+        lv2:name "Aux Out 3"
+    ] , [
+        a lv2:OutputPort , lv2:AudioPort ;
+        lv2:portProperty lv2:connectionOptional ;
+        lv2:index 4 ;
+        lv2:symbol "aux_r" ;
+        lv2:name "Aux Out 4"
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 5 ;
+        lv2:symbol "master" ;
+        lv2:name "Master Level" ;
+        lv2:default 0.0 ;
+        lv2:minimum -60.0 ;
+        lv2:maximum 6.0 ;
+        units:unit units:db
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 6 ;
+        lv2:symbol "organ_a_on" ;
+        lv2:name "Organ A On" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 7 ;
+        lv2:symbol "organ_b_on" ;
+        lv2:name "Organ B On" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 8 ;
+        lv2:symbol "piano_a_on" ;
+        lv2:name "Piano A On" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 9 ;
+        lv2:symbol "piano_b_on" ;
+        lv2:name "Piano B On" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 10 ;
+        lv2:symbol "synth_a_on" ;
+        lv2:name "Synth A On" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 11 ;
+        lv2:symbol "synth_b_on" ;
+        lv2:name "Synth B On" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 12 ;
+        lv2:symbol "synth_c_on" ;
+        lv2:name "Synth C On" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 13 ;
+        lv2:symbol "organ_a_level" ;
+        lv2:name "Organ A Level" ;
+        lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 14 ;
+        lv2:symbol "organ_b_level" ;
+        lv2:name "Organ B Level" ;
+        lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 15 ;
+        lv2:symbol "piano_a_level" ;
+        lv2:name "Piano A Level" ;
+        lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 16 ;
+        lv2:symbol "piano_b_level" ;
+        lv2:name "Piano B Level" ;
+        lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 17 ;
+        lv2:symbol "synth_a_level" ;
+        lv2:name "Synth A Level" ;
+        lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 18 ;
+        lv2:symbol "synth_b_level" ;
+        lv2:name "Synth B Level" ;
+        lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort , lv2:ControlPort ;
+        lv2:index 19 ;
+        lv2:symbol "synth_c_level" ;
+        lv2:name "Synth C Level" ;
+        lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] .

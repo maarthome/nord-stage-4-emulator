@@ -92,6 +92,17 @@ python tools/check_tests.py
 
 ---
 
+### LV2 plugin for Linux / Raspberry Pi 5 (`crates/nord-lv2`)
+
+An LV2 instrument build of the engine for Carla, Ardour, jalv or Zynthian, including aarch64 (Pi 5,
+Debian trixie). Build and install it into `~/.lv2`:
+
+```bash
+crates/nord-lv2/install-lv2.sh
+```
+
+Ports, defaults and limits are in [crates/nord-lv2/README.md](crates/nord-lv2/README.md).
+
 ## Contributing
 
 Before opening a pull request:

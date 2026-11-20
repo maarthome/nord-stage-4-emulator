@@ -2480,6 +2480,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nord-lv2"
+version = "0.1.0"
+dependencies = [
+ "nord-core",
+]
+
+[[package]]
 name = "nord-panel"
 version = "0.1.0"
 
