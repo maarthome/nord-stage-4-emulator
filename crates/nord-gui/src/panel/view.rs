@@ -81,6 +81,14 @@ impl ViewState {
     }
 
     /// Part of the panel the view shows in logical panel px; `None` is the whole panel.
+    /// Whether the app's tool bars (library, firmware, OS file, computer keyboard / MIDI / meter)
+    /// are shown. Only in the whole-panel view: the zoom of a focused section or the panorama
+    /// reserves no room for them (`extra_h`), and zoomed with the panel they would push it out of
+    /// the window. Esc returns to the whole panel and the bars.
+    pub fn bars_visible(&self) -> bool {
+        self.focus.is_none() && self.panorama.is_none()
+    }
+
     pub fn region(&self) -> Option<Rect> {
         self.panorama.or_else(|| focus_region(self.focus))
     }
@@ -232,6 +240,18 @@ pub fn panel_origin(focus: Option<Section>, top_left: Pos2) -> Pos2 {
 mod tests {
     use super::*;
     use egui::pos2;
+
+    #[test]
+    fn bars_show_only_in_the_whole_panel_view() {
+        let mut v = ViewState::default();
+        assert!(v.bars_visible());
+        v.toggle(Section::Organ);
+        assert!(!v.bars_visible());
+        v.exit();
+        assert!(v.bars_visible());
+        v.panorama = Some(Rect::from_min_size(Pos2::ZERO, vec2(100.0, 50.0)));
+        assert!(!v.bars_visible());
+    }
 
     #[test]
     fn toggle_enters_and_leaves_and_remembers() {

@@ -239,7 +239,10 @@ impl eframe::App for Stage4App {
             *pressed = self.active_keys[i].load(Ordering::Relaxed);
         }
 
-        if self.shot.is_none() {
+        // Tool bars only in the whole-panel view (`ViewState::bars_visible`); the library drawer,
+        // its keys and the OS-update window stay available in every view.
+        let bars = self.shot.is_none() && self.state.view.bars_visible();
+        if bars {
             egui::TopBottomPanel::top("ns4_library_bar")
                 .frame(
                     egui::Frame::NONE
@@ -257,7 +260,6 @@ impl eframe::App for Stage4App {
             egui::TopBottomPanel::top("ns4_os_update_bar").show(ctx, |ui| {
                 self.os_update.show_bar(ui);
             });
-            self.os_update.show_window(ctx);
             if before != self.firmware.opts {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Title(firmware_panel::window_title(
                     &self.firmware.opts,
@@ -271,7 +273,9 @@ impl eframe::App for Stage4App {
                 }
                 nord_gui::audio::meter_ui::show(ui, self.audio_handle.meter());
             });
-
+        }
+        if self.shot.is_none() {
+            self.os_update.show_window(ctx);
             self.library.handle_keys(ctx);
             self.library
                 .render_drawer(ctx, &mut self.state, &self.audio_handle);
