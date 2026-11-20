@@ -107,7 +107,12 @@ pub fn draw_editor<W: ParamWriter>(
 ) {
     sync_panel_from_params(&st.index, &mut st.panel);
 
-    // Keep the zoom at 1 (module docs): the renderer would ignore anything else.
+    // Keep the zoom at 1 (module docs): the renderer would ignore anything else. The shared panel
+    // fits its own zoom every frame (`nord_gui::panel::view::apply_zoom`); a fixed zoom of one
+    // physical px per native px makes it ask for exactly 1 too, so the two never alternate (which
+    // forced a repaint every frame and kept the scale mismatch).
+    let native = ctx.native_pixels_per_point().unwrap_or(1.0);
+    st.panel.view.fixed_zoom = Some(native);
     if (ctx.zoom_factor() - 1.0).abs() > 1e-3 {
         ctx.set_zoom_factor(1.0);
     }
@@ -171,6 +176,12 @@ mod tests {
         let egui_state = EguiState::from_size(780, 210);
         let ctx = Context::default();
         ctx.set_zoom_factor(0.5);
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            draw_editor(ctx, &egui_state, &mut st, Recorder::default());
+        });
+        assert_eq!(ctx.zoom_factor(), 1.0);
+        assert_eq!(st.panel.view.fixed_zoom, Some(1.0));
+        // A second frame must not move the zoom again (the panel used to re-fit it).
         let _ = ctx.run(egui::RawInput::default(), |ctx| {
             draw_editor(ctx, &egui_state, &mut st, Recorder::default());
         });
