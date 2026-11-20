@@ -48,9 +48,26 @@ use nih_plug_egui::{create_egui_editor, EguiState};
 use std::sync::Arc;
 use write::GuiParamWriter;
 
-/// Persistent editor window state with the default size.
+/// Environment variable with the editor's start size, `WIDTHxHEIGHT` in logical px (e.g.
+/// `2560x690`). Some window managers (X11 forwarding) do not pass a maximise on to the editor's
+/// drawing surface, so this is the way to open it large.
+pub const EDITOR_SIZE_ENV: &str = "NORD_EDITOR_SIZE";
+
+/// Parses `WIDTHxHEIGHT` (also `X`, spaces allowed); each side 200..=16384.
+pub fn parse_editor_size(v: &str) -> Option<(u32, u32)> {
+    let (w, h) = v.trim().split_once(['x', 'X'])?;
+    let (w, h) = (w.trim().parse::<u32>().ok()?, h.trim().parse::<u32>().ok()?);
+    let ok = |n: u32| (200..=16384).contains(&n);
+    (ok(w) && ok(h)).then_some((w, h))
+}
+
+/// Persistent editor window state with the default size, or the size in `NORD_EDITOR_SIZE`.
 pub fn default_editor_state() -> Arc<EguiState> {
-    EguiState::from_size(draw::DEFAULT_SIZE.0, draw::DEFAULT_SIZE.1)
+    let (w, h) = std::env::var(EDITOR_SIZE_ENV)
+        .ok()
+        .and_then(|v| parse_editor_size(&v))
+        .unwrap_or(draw::DEFAULT_SIZE);
+    EguiState::from_size(w, h)
 }
 
 /// Build the editor for `params`; keybed events go to `notes`.
@@ -81,6 +98,15 @@ pub fn create(params: Arc<Stage4Params>, notes: notes::NoteSender) -> Option<Box
 mod tests {
     use super::*;
     use nih_plug::prelude::Params;
+
+    #[test]
+    fn editor_size_parses_and_rejects_nonsense() {
+        assert_eq!(parse_editor_size("2560x690"), Some((2560, 690)));
+        assert_eq!(parse_editor_size(" 1920 X 517 "), Some((1920, 517)));
+        for bad in ["", "2560", "x690", "10x10", "2560x99999", "big"] {
+            assert_eq!(parse_editor_size(bad), None, "{bad:?}");
+        }
+    }
 
     #[test]
     fn default_editor_state_has_the_default_size() {
