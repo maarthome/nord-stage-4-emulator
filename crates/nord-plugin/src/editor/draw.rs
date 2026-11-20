@@ -2,7 +2,9 @@
 //!
 //! The panel is the same `render_stage4_panel` the standalone app draws (`nord-gui`), laid out
 //! at its full logical size (`layout_px`, 3120 x 840 with `LAYOUT_SCALE` 2). It is drawn into its
-//! own egui layer, and that layer is scaled and centred to fit the whole window with
+//! own egui layer. The editor shows [`view_region`]: every control section from the Master Level
+//! knob and Rotary box to the Effects section, without the keybed and the pitch stick / mod wheel
+//! (a MIDI keyboard brings its own). That region is scaled and centred to fit the whole window with
 //! `Context::set_transform_layer`; egui applies the transform to shapes before tessellation and to
 //! pointer input (the mechanism of egui's own `Scene` container), letterboxed in the chassis colour.
 //!
@@ -27,15 +29,17 @@ use nih_plug_egui::egui::{
 use nih_plug_egui::resizable_window::ResizableWindow;
 use nih_plug_egui::EguiState;
 use nord_gui::audio::{AudioCommand, AudioHandle};
+use nord_gui::panel::view::focus_region;
 use nord_gui::panel::{layout_px, render_stage4_panel, Stage4PanelState};
 use nord_gui::style::CHASSIS_DARK;
+use nord_panel::Section;
 use std::sync::Arc;
 
 /// Logical panel size the shared drawing code is laid out for (`nord_gui` layout px).
 pub const PANEL_W: f32 = layout_px::PANEL_WIDTH_PX;
 pub const PANEL_H: f32 = layout_px::PANEL_HEIGHT_PX;
-/// Default editor window size: 1560 x 420 logical px (half the layout size; fits a laptop).
-pub const DEFAULT_SIZE: (u32, u32) = ((PANEL_W / 2.0) as u32, (PANEL_H / 2.0) as u32);
+/// Default editor window size (logical px), about the aspect of [`view_region`]; fits a laptop.
+pub const DEFAULT_SIZE: (u32, u32) = (1560, 240);
 /// Smallest scale the editor shrinks to.
 pub const MIN_SCALE: f32 = 0.1;
 
@@ -73,17 +77,55 @@ impl EditorState {
     }
 }
 
-/// Scale that makes the whole panel fit a window of `size` logical px.
-pub fn scale_for(size: (u32, u32)) -> f32 {
-    let (w, h) = (size.0 as f32, size.1 as f32);
-    (w / PANEL_W).min(h / PANEL_H).max(MIN_SCALE)
+/// Sections shown whole (each with the panel's focus margin).
+const SHOWN_SECTIONS: [Section; 5] = [
+    Section::Organ,
+    Section::Piano,
+    Section::Program,
+    Section::Synth,
+    Section::Effects,
+];
+/// Master-area controls kept in view: level knob and the Rotary Speaker box (not the pitch stick
+/// or mod wheel).
+const SHOWN_MASTER_IDS: [&str; 6] = [
+    "master.level",
+    "rotary.drive",
+    "rotary.organ",
+    "rotary.stop_mode",
+    "rotary.speed_leds",
+    "rotary.speed",
+];
+/// Room around the master controls for their labels and the Rotary box frame (layout px).
+/// ASSUMED: by eye from the panel drawing; widen if a label is clipped.
+const MASTER_MARGIN: f32 = 24.0;
+
+/// The part of the panel the editor shows, in panel layout px (panel origin at 0,0).
+pub fn view_region() -> Rect {
+    let sections = SHOWN_SECTIONS
+        .into_iter()
+        .filter_map(|s| focus_region(Some(s)));
+    let master = SHOWN_MASTER_IDS
+        .iter()
+        .filter_map(|id| layout_px::rect_of(id, Pos2::ZERO))
+        .map(|r| r.expand(MASTER_MARGIN));
+    sections
+        .chain(master)
+        .fold(Rect::NOTHING, |a, r| a.union(r))
 }
 
-/// Panel-layer → window transform: the panel (origin 0,0) scaled to fit `avail`, centred.
+/// Scale that makes [`view_region`] fit a window of `size` logical px.
+pub fn scale_for(size: (u32, u32)) -> f32 {
+    let r = view_region();
+    let (w, h) = (size.0 as f32, size.1 as f32);
+    (w / r.width()).min(h / r.height()).max(MIN_SCALE)
+}
+
+/// Panel-layer → window transform: [`view_region`] scaled to fit `avail`, centred.
 pub fn panel_transform(avail: Rect) -> TSTransform {
+    let r = view_region();
     let s = scale_for((avail.width() as u32, avail.height() as u32));
-    let offset = ((avail.size() - Vec2::new(PANEL_W, PANEL_H) * s) * 0.5).max(Vec2::ZERO);
-    TSTransform::new((avail.min + offset).to_vec2(), s)
+    let offset = ((avail.size() - r.size() * s) * 0.5).max(Vec2::ZERO);
+    TSTransform::new((avail.min + offset).to_vec2() - r.min.to_vec2() * s, s)
 }
 
 /// Translucent overlay with a tooltip over every dimmed control; returns how many were drawn.
@@ -144,7 +186,8 @@ pub fn draw_editor<W: ParamWriter>(
             ui.ctx().set_sublayer(ui.layer_id(), layer);
             let panel_rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(PANEL_W, PANEL_H));
             let mut local = ui.new_child(UiBuilder::new().layer_id(layer).max_rect(panel_rect));
-            local.set_clip_rect(to_global.inverse() * avail);
+            // Only the shown region: the keybed and the wheels stay hidden and unclickable.
+            local.set_clip_rect(view_region().intersect(to_global.inverse() * avail));
             render_stage4_panel(&mut local, &mut st.panel, &st.handle);
             st.last_overlays = draw_dim_overlay(&mut local, panel_rect.min, &st.coverage);
             ui.ctx().set_transform_layer(layer, to_global);
@@ -175,30 +218,46 @@ mod tests {
     }
 
     #[test]
-    fn scale_fits_the_panel_and_keeps_the_aspect() {
-        let full = (PANEL_W as u32, PANEL_H as u32);
-        assert!((scale_for(full) - 1.0).abs() < 1e-6);
-        assert!((scale_for((full.0 / 2, full.1 / 2)) - 0.5).abs() < 1e-6);
-        // Wide window: height limits the scale.
-        assert!((scale_for((full.0 * 2, full.1)) - 1.0).abs() < 1e-6);
-        // Tall window: width limits the scale.
-        assert!((scale_for((full.0 / 2, 4000)) - 0.5).abs() < 1e-6);
-        assert_eq!(scale_for((1, 1)), MIN_SCALE);
-        assert!((scale_for(DEFAULT_SIZE) - 0.5).abs() < 1e-3);
-        assert_eq!(DEFAULT_SIZE, (1560, 420));
+    fn view_region_leaves_out_keybed_and_wheels_but_keeps_all_sections() {
+        let r = view_region();
+        assert!(r.is_positive() && r.width() > 3.0 * r.height());
+        let keybed = focus_region(Some(Section::Keybed)).unwrap();
+        assert!(r.max.y <= keybed.min.y + 6.0, "{r:?} vs keybed {keybed:?}");
+        for id in ["master.pitch_stick", "master.mod_wheel"] {
+            let w = layout_px::rect_of(id, Pos2::ZERO).unwrap();
+            assert!(!r.intersects(w), "{id} {w:?} inside {r:?}");
+        }
+        for s in SHOWN_SECTIONS {
+            assert!(r.contains_rect(focus_region(Some(s)).unwrap()), "{s:?}");
+        }
+        assert!(r.min.x >= 0.0 && r.max.x <= PANEL_W && r.min.y >= 0.0);
     }
 
     #[test]
-    fn panel_transform_centres_and_maps_corners_into_the_window() {
-        // Wider than the panel aspect: letterboxed left and right.
-        let avail = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(2000.0, 420.0));
+    fn scale_fits_the_region_and_keeps_the_aspect() {
+        let r = view_region();
+        let exact = (r.width() as u32, r.height() as u32);
+        assert!((scale_for(exact) - 1.0).abs() < 0.01);
+        // Wide window: height limits the scale; tall window: width does.
+        assert!((scale_for((exact.0 * 4, exact.1)) - 1.0).abs() < 0.01);
+        assert!((scale_for((exact.0, exact.1 * 4)) - 1.0).abs() < 0.01);
+        assert_eq!(scale_for((1, 1)), MIN_SCALE);
+        // The default window shows the controls at a usable size.
+        assert!(scale_for(DEFAULT_SIZE) > 0.5, "{}", scale_for(DEFAULT_SIZE));
+    }
+
+    #[test]
+    fn panel_transform_centres_the_region_in_the_window() {
+        let r = view_region();
+        let avail = Rect::from_min_size(Pos2::new(10.0, 20.0), Vec2::new(r.width() * 2.0, 4000.0));
         let t = panel_transform(avail);
-        assert!((t.scaling - 0.5).abs() < 1e-6);
-        let tl = t * Pos2::ZERO;
-        let br = t * Pos2::new(PANEL_W, PANEL_H);
-        assert!((tl.y - 20.0).abs() < 1e-3 && (br.y - 440.0).abs() < 1e-3);
-        assert!(((tl.x - 10.0) - (2010.0 - br.x)).abs() < 1e-3, "centred");
-        assert!(avail.contains(tl) && avail.expand(0.01).contains(br));
+        assert!((t.scaling - 2.0).abs() < 0.01);
+        let (tl, br) = (t * r.min, t * r.max);
+        assert!((tl.x - 10.0).abs() < 1.0 && (br.x - avail.max.x).abs() < 1.0);
+        assert!(
+            ((tl.y - avail.min.y) - (avail.max.y - br.y)).abs() < 1.0,
+            "centred"
+        );
     }
 
     #[test]
@@ -227,12 +286,6 @@ mod tests {
             "{}",
             st.last_scale
         );
-    }
-
-    #[test]
-    fn default_size_has_the_panel_aspect_ratio() {
-        let a = DEFAULT_SIZE.0 as f32 / DEFAULT_SIZE.1 as f32;
-        assert!((a - PANEL_W / PANEL_H).abs() < 0.05, "{a}");
     }
 
     #[test]
