@@ -2,7 +2,7 @@
 //!
 //! The panel is the same `render_stage4_panel` the standalone app draws (`nord-gui`), laid out
 //! at its full logical size (`layout_px`, 3120 x 840 with `LAYOUT_SCALE` 2). It is drawn into its
-//! own egui layer, and that layer is scaled and centred to fit the window with
+//! own egui layer, and that layer is scaled and centred to fit the whole window with
 //! `Context::set_transform_layer`; egui applies the transform to shapes before tessellation and to
 //! pointer input (the mechanism of egui's own `Scene` container), letterboxed in the chassis colour.
 //!
@@ -132,8 +132,12 @@ pub fn draw_editor<W: ParamWriter>(
     ResizableWindow::new("nord-stage-4-editor")
         .min_size(Vec2::splat(8.0_f32))
         .show(ctx, egui_state, |ui| {
-            let avail = ui.max_rect();
-            ui.painter().rect_filled(avail, 0.0_f32, CHASSIS_DARK);
+            // Fit to the whole window, not the saved editor size: a window maximised or resized
+            // by the window manager (standalone) is bigger than `egui_state.size()`.
+            let avail = ui.ctx().screen_rect();
+            ui.ctx()
+                .layer_painter(LayerId::background())
+                .rect_filled(avail, 0.0_f32, CHASSIS_DARK);
             let to_global = panel_transform(avail);
             // The panel gets its own layer on top of the window's, as egui's `Scene` does.
             let layer = LayerId::new(ui.layer_id().order, ui.id().with("nord-panel-layer"));
@@ -198,23 +202,28 @@ mod tests {
     }
 
     #[test]
-    fn frames_never_zoom_even_in_a_small_window() {
+    fn frames_never_zoom_and_fit_the_real_window() {
         let (_params, mut st, _rx) = state();
-        let egui_state = EguiState::from_size(780, 210);
+        // The saved editor size is bigger than the window: the window wins.
+        let egui_state = EguiState::from_size(1560, 420);
+        let window = || egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(780.0, 210.0))),
+            ..Default::default()
+        };
         let ctx = Context::default();
         ctx.set_zoom_factor(0.5);
-        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+        let _ = ctx.run(window(), |ctx| {
             draw_editor(ctx, &egui_state, &mut st, Recorder::default());
         });
         assert_eq!(ctx.zoom_factor(), 1.0);
         assert_eq!(st.panel.view.fixed_zoom, Some(1.0));
         // A second frame must not move the zoom again (the panel used to re-fit it).
-        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+        let _ = ctx.run(window(), |ctx| {
             draw_editor(ctx, &egui_state, &mut st, Recorder::default());
         });
         assert_eq!(ctx.zoom_factor(), 1.0);
         assert!(
-            st.last_scale > 0.0 && st.last_scale < 1.0,
+            (st.last_scale - 780.0 / PANEL_W).abs() < 1e-3,
             "{}",
             st.last_scale
         );
