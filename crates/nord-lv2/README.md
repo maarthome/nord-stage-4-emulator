@@ -12,15 +12,15 @@ headers, and the only dependency is `nord-core`.
 crates/nord-lv2/install-lv2.sh
 ```
 
-This builds `target/release/libnord_lv2.so` and copies it, with the TTL files from
+This builds `target/release/libnord_lv2.so` (plugin) and `libnord_lv2_ui.so` (GUI) and copies them, with the TTL files from
 `bundle/nord-stage4.lv2/`, to `~/.lv2/nord-stage4.lv2/`. Set `LV2_DEST` to install somewhere
 else, for example `LV2_DEST=/usr/local/lib/lv2` (that path needs sudo).
 
-Quick test with jalv (`sudo apt install jalv lilv-utils`):
+Quick test with jalv (`sudo apt install jalv lilv-utils`). `jalv.gtk3` shows the plugin's own GUI; plain `jalv` is the console version:
 
 ```bash
 lv2info 'https://github.com/ymatrix1/nord-stage-4-emulator#lv2'
-jalv 'https://github.com/ymatrix1/nord-stage-4-emulator#lv2'
+jalv.gtk3 'https://github.com/ymatrix1/nord-stage-4-emulator#lv2'
 ```
 
 ## Ports
@@ -38,6 +38,18 @@ The defaults match a fresh engine: Organ A, Piano A and Synth A on, all levels a
 port is written to the engine only when its value changes, so MIDI CCs that move the same state
 (layer levels, Scene II) keep working between knob moves.
 
+## GUI (X11)
+
+`crates/nord-lv2-ui` builds `libnord_lv2_ui.so`, an X11 panel declared in `manifest.ttl` as
+`ui:X11UI`. It embeds into the host window (Carla, Ardour, Zynthian) or opens its own window
+(`jalv.gtk3`). It needs `libx11-dev` to build.
+
+![panel](../nord-lv2-ui/panel.png)
+
+- Click a layer button to switch the layer on or off; its LED lights up when it is on.
+- Drag a knob up or down, or use the mouse wheel. Hold Shift (or Ctrl) for fine steps.
+- Right-click resets a control to its default.
+
 ## Real-time behaviour
 
 `run()` never allocates, locks or does I/O. MIDI events are applied at their exact frame offset,
@@ -46,7 +58,6 @@ and blocks of any size are rendered in 256-frame chunks through `process_block_m
 
 ## Not yet included
 
-- No custom GUI: hosts show their generic control UI.
 - No program / preset (`.ns4p`) loading or LV2 state yet; sounds start from engine defaults.
 - No host tempo (`time:Position`) yet; the master clock runs at its default BPM.
 - The WAVE wavetables are firmware and are not included (see the main README).

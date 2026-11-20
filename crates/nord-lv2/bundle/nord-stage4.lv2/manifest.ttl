@@ -1,7 +1,17 @@
 @prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ui:   <http://lv2plug.in/ns/extensions/ui#> .
 
 <https://github.com/ymatrix1/nord-stage-4-emulator#lv2>
     a lv2:Plugin ;
     lv2:binary <libnord_lv2.so> ;
-    rdfs:seeAlso <nord-stage4.ttl> .
+    rdfs:seeAlso <nord-stage4.ttl> ;
+    ui:ui <https://github.com/ymatrix1/nord-stage-4-emulator#ui> .
+
+# X11 panel from crates/nord-lv2-ui (optional: the plugin works without it).
+<https://github.com/ymatrix1/nord-stage-4-emulator#ui>
+    a ui:X11UI ;
+    ui:binary <libnord_lv2_ui.so> ;
+    lv2:requiredFeature ui:idleInterface ;
+    lv2:optionalFeature ui:parent , ui:resize ;
+    lv2:extensionData ui:idleInterface .

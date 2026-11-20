@@ -1,0 +1,15 @@
+[package]
+name = "nord-lv2-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "X11 GUI (LV2 ui:X11UI) for the nord-lv2 plugin: layer toggles, level knobs and master level"
+
+[lib]
+# cdylib = libnord_lv2_ui.so (loaded by the host next to libnord_lv2.so); lib = unit tests.
+crate-type = ["cdylib", "lib"]
+
+# No dependencies: Xlib and the LV2 UI ABI are declared by hand. On Linux this links libX11
+# (Debian: `libx11-dev`); on other platforms only the platform-independent model compiles.
+[dependencies]
