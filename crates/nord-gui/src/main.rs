@@ -93,6 +93,8 @@ struct Stage4App {
     headless_load: nord_gui::headless_load::HeadlessLoad,
     firmware: FirmwarePanelState,
     os_update: nord_gui::os_update_panel::OsUpdatePanel,
+    /// Tool windows opened from the top bar's Menu.
+    tools: nord_gui::app_menu::ToolWindows,
 }
 
 impl Stage4App {
@@ -119,7 +121,12 @@ impl Stage4App {
                 nord_core::user_config::default_config_path(),
                 std::env::var("NS4_WAVE_TABLES").ok().as_deref(),
             ),
+            tools: nord_gui::app_menu::ToolWindows::default(),
         };
+        // No keybed (a MIDI keyboard plays) and room for the top bar in every view; a screenshot
+        // plan below replaces the whole view state.
+        app.state.view.hide_keybed = true;
+        app.state.view.nav_h = nord_gui::app_menu::NAV_H;
         app.firmware.push(&app.audio_handle);
         if let Some(plan) = &app.shot {
             app.state.view = plan.view();
@@ -239,42 +246,52 @@ impl eframe::App for Stage4App {
             *pressed = self.active_keys[i].load(Ordering::Relaxed);
         }
 
-        // Tool bars only in the whole-panel view (`ViewState::bars_visible`); the library drawer,
-        // its keys and the OS-update window stay available in every view.
-        let bars = self.shot.is_none() && self.state.view.bars_visible();
-        if bars {
-            egui::TopBottomPanel::top("ns4_library_bar")
+        if self.shot.is_none() {
+            // One bar: Menu (tool windows) and a button per view (`app_menu`).
+            egui::TopBottomPanel::top("ns4_nav")
                 .frame(
                     egui::Frame::NONE
                         .fill(egui::Color32::from_rgb(36, 12, 14))
                         .inner_margin(egui::Margin::symmetric(10, 4)),
                 )
                 .show(ctx, |ui| {
+                    nord_gui::app_menu::show_bar(ui, &mut self.tools, &mut self.state.view);
+                });
+
+            let [library_title, engine_title, os_title, keys_title] =
+                nord_gui::app_menu::MENU_ITEMS;
+            egui::Window::new(library_title)
+                .open(&mut self.tools.library)
+                .show(ctx, |ui| {
                     self.library.render_top_bar(ui, &mut self.state);
                 });
 
             let before = self.firmware.opts;
-            egui::TopBottomPanel::top("ns4_firmware_bar").show(ctx, |ui| {
-                self.firmware.show_bar(ui, &self.audio_handle);
-            });
-            egui::TopBottomPanel::top("ns4_os_update_bar").show(ctx, |ui| {
-                self.os_update.show_bar(ui);
-            });
+            egui::Window::new(engine_title)
+                .open(&mut self.tools.engine)
+                .show(ctx, |ui| {
+                    self.firmware.show_bar(ui, &self.audio_handle);
+                });
             if before != self.firmware.opts {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Title(firmware_panel::window_title(
                     &self.firmware.opts,
                 )));
             }
+            egui::Window::new(os_title)
+                .open(&mut self.tools.os_file)
+                .show(ctx, |ui| {
+                    self.os_update.show_bar(ui);
+                });
+            egui::Window::new(keys_title)
+                .open(&mut self.tools.keys_midi)
+                .show(ctx, |ui| {
+                    nord_gui::panel::computer_kb_bar::show_bar(ui, &mut self.state.computer_kb);
+                    if let Some(ports) = self.audio_handle.midi_ports() {
+                        nord_gui::audio::midi_ports::show(ui, ports);
+                    }
+                    nord_gui::audio::meter_ui::show(ui, self.audio_handle.meter());
+                });
 
-            egui::TopBottomPanel::bottom("ns4_computer_kb_bar").show(ctx, |ui| {
-                nord_gui::panel::computer_kb_bar::show_bar(ui, &mut self.state.computer_kb);
-                if let Some(ports) = self.audio_handle.midi_ports() {
-                    nord_gui::audio::midi_ports::show(ui, ports);
-                }
-                nord_gui::audio::meter_ui::show(ui, self.audio_handle.meter());
-            });
-        }
-        if self.shot.is_none() {
             self.os_update.show_window(ctx);
             self.library.handle_keys(ctx);
             self.library

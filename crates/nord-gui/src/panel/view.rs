@@ -48,6 +48,10 @@ pub struct ViewState {
     pub fixed_zoom: Option<f32>,
     /// Panorama mode: the visible rectangle in logical panel px (`None` = mode off).
     pub panorama: Option<Rect>,
+    /// Leave the keybed out of the whole-panel view (the app: a MIDI keyboard plays instead).
+    pub hide_keybed: bool,
+    /// Logical height of an app bar above the panel that every view keeps (navigation bar).
+    pub nav_h: f32,
 }
 
 impl ViewState {
@@ -80,17 +84,21 @@ impl ViewState {
         }
     }
 
-    /// Part of the panel the view shows in logical panel px; `None` is the whole panel.
-    /// Whether the app's tool bars (library, firmware, OS file, computer keyboard / MIDI / meter)
-    /// are shown. Only in the whole-panel view: the zoom of a focused section or the panorama
-    /// reserves no room for them (`extra_h`), and zoomed with the panel they would push it out of
-    /// the window. Esc returns to the whole panel and the bars.
-    pub fn bars_visible(&self) -> bool {
-        self.focus.is_none() && self.panorama.is_none()
+    /// Go straight to `target` (`None` = the whole panel): the app's navigation buttons.
+    pub fn go(&mut self, target: Option<Section>) {
+        self.panorama = None;
+        match target {
+            Some(s) => self.focus = Some(s),
+            None => self.exit(),
+        }
     }
 
+    /// Part of the panel the view shows in logical panel px; `None` is the whole panel. With
+    /// `hide_keybed` the whole-panel view is [`controls_region`] instead.
     pub fn region(&self) -> Option<Rect> {
-        self.panorama.or_else(|| focus_region(self.focus))
+        self.panorama
+            .or_else(|| focus_region(self.focus))
+            .or_else(|| self.hide_keybed.then(controls_region))
     }
 
     /// Top-left of the panel for a view whose visible area starts at `top_left`.
@@ -100,11 +108,12 @@ impl ViewState {
 
     /// Logical height the view reserves on top of the panel (bars, panorama strip).
     fn extra_h(&self) -> f32 {
-        match (self.panorama, self.focus) {
-            (Some(_), _) => BAR_H + panorama::strip_extra_h(),
-            (None, Some(_)) => 0.0,
-            (None, None) => BAR_H,
-        }
+        self.nav_h
+            + match (self.panorama, self.focus) {
+                (Some(_), _) => BAR_H + panorama::strip_extra_h(),
+                (None, Some(_)) => 0.0,
+                (None, None) => BAR_H,
+            }
     }
 
     /// Apply P, Z, Esc, 1-5 and (in the panorama) arrows and +/- from this frame's input. Returns `true` when the view changed.
@@ -168,6 +177,25 @@ pub fn section_at(pos: Pos2, origin: Pos2) -> Option<Section> {
 pub fn header_px(section: Section, origin: Pos2) -> Rect {
     let r = section_px(section, origin);
     Rect::from_min_size(r.min, vec2(r.width(), HEADER_H))
+}
+
+/// The app's navigation targets in button order: the whole panel, then each section.
+pub const NAV: [(Option<Section>, &str); 6] = [
+    (None, "Panel"),
+    (Some(Section::Organ), "Organ"),
+    (Some(Section::Piano), "Piano"),
+    (Some(Section::Program), "Program"),
+    (Some(Section::Synth), "Synth"),
+    (Some(Section::Effects), "Layer Effects"),
+];
+
+/// Every control section (Master and the five layer sections) without the keybed, with
+/// [`FOCUS_MARGIN`].
+pub fn controls_region() -> Rect {
+    std::iter::once(Section::Master)
+        .chain(FOCUSABLE)
+        .map(|s| section_px(s, Pos2::ZERO).expand(FOCUS_MARGIN))
+        .fold(Rect::NOTHING, |a, r| a.union(r))
 }
 
 /// Region of the panel a focused section shows (the section plus [`FOCUS_MARGIN`]).
@@ -242,15 +270,44 @@ mod tests {
     use egui::pos2;
 
     #[test]
-    fn bars_show_only_in_the_whole_panel_view() {
+    fn hide_keybed_shows_every_section_but_not_the_keybed() {
         let mut v = ViewState::default();
-        assert!(v.bars_visible());
-        v.toggle(Section::Organ);
-        assert!(!v.bars_visible());
-        v.exit();
-        assert!(v.bars_visible());
-        v.panorama = Some(Rect::from_min_size(Pos2::ZERO, vec2(100.0, 50.0)));
-        assert!(!v.bars_visible());
+        assert_eq!(
+            v.region(),
+            None,
+            "default: the whole panel, keybed included"
+        );
+        v.hide_keybed = true;
+        let r = v.region().unwrap();
+        let keybed = section_px(Section::Keybed, Pos2::ZERO);
+        assert!(r.max.y <= keybed.min.y + FOCUS_MARGIN, "{r:?} / {keybed:?}");
+        for s in FOCUSABLE.into_iter().chain([Section::Master]) {
+            assert!(r.contains_rect(section_px(s, Pos2::ZERO)), "{s:?}");
+        }
+        // A focused section still wins over the keybed-less overview.
+        v.toggle(Section::Synth);
+        assert_eq!(v.region(), focus_region(Some(Section::Synth)));
+    }
+
+    #[test]
+    fn nav_goes_straight_to_each_target_and_reserves_its_bar() {
+        assert_eq!(NAV.len(), FOCUSABLE.len() + 1);
+        assert!(FOCUSABLE
+            .iter()
+            .all(|s| NAV.iter().any(|(t, _)| *t == Some(*s))));
+        let mut v = ViewState::default();
+        v.go(Some(Section::Piano));
+        v.go(Some(Section::Effects));
+        assert_eq!(
+            v.focus,
+            Some(Section::Effects),
+            "no toggle-off on a second target"
+        );
+        v.go(None);
+        assert_eq!((v.focus, v.last), (None, Some(Section::Effects)));
+        let plain = v.extra_h();
+        v.nav_h = 30.0;
+        assert!((v.extra_h() - plain - 30.0).abs() < 1e-6);
     }
 
     #[test]

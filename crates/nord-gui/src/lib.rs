@@ -2,6 +2,7 @@
 //!
 //! Spec: `docs/specs/visual-style-and-panel.md`
 
+pub mod app_menu;
 pub mod audio;
 pub mod firmware_panel;
 pub mod headless_load;
